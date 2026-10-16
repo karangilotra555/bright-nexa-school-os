@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Temporary and backup files
+*.bak
+*.bak.*
+*.tmp
+
+# Compiled heavy Electron / Windows binaries (exceeds GitHub 100MB limit)
+*.exe
+*.dll
+*.pak
+*.dat
+*.bin
+*.rar
+*.html.bak
+LICENSES.chromium.html
+locales/
+
+# Asar archives and backups
+*.asar
+*.asar.bak
+*.asar.before-brightnexa.bak
+resources/*.asar*
+resources/app.asar.unpacked/
+resources/elevate.exe
+
+# Redundant files
+resources/source_code/
+index-mBkIV49_.js
+vk_swiftshader_icd.json
