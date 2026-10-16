@@ -4,7 +4,7 @@ const path = require("node:path");
 const { registerGoogleDriveHandlers } = require("./googleDrive.cjs");
 
 const OFFICIAL_RELEASES_URL =
-  "https://github.com/amankingofai/bharat-ai-school-os-releases/releases/latest";
+  "https://github.com/amankingofai/bright-nexa-school-os-releases/releases/latest";
 
 let updateStatus = {
   phase: "idle",
@@ -66,7 +66,7 @@ function registerSoftwareUpdateHandlers() {
     publishUpdateStatus({
       phase: "checking",
       percent: 0,
-      message: "Checking the official Bharat AI release channel…",
+      message: "Checking the official Bright Nexa release channel…",
     }),
   );
   autoUpdater.on("update-available", (info) =>

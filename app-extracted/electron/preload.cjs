@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("bharatSchool", {
+const api = {
   googleDrive: {
     status: () => ipcRenderer.invoke("google-drive:status"),
     configure: (credentials) => ipcRenderer.invoke("google-drive:configure", credentials),
@@ -21,4 +21,7 @@ contextBridge.exposeInMainWorld("bharatSchool", {
       return () => ipcRenderer.removeListener("software-update:status", listener);
     },
   },
-});
+};
+
+contextBridge.exposeInMainWorld("brightNexa", api);
+contextBridge.exposeInMainWorld("bharatSchool", api);

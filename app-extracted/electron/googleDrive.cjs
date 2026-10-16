@@ -6,7 +6,7 @@ const { clientId: embeddedClientId, clientSecret: embeddedClientSecret } = requi
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
 const SCOPES = `openid email ${DRIVE_SCOPE}`;
-const PRODUCT_KEY = "bharat-ai-school-os";
+const PRODUCT_KEY = "bright-nexa-school-os";
 
 function registerGoogleDriveHandlers({ ipcMain, app, shell, safeStorage }) {
   const authPath = () => path.join(app.getPath("userData"), "google-drive-auth.json");
@@ -133,7 +133,7 @@ function registerGoogleDriveHandlers({ ipcMain, app, shell, safeStorage }) {
   async function uploadBackup({ fileName, bytes }) {
     const token = await accessToken();
     const content = Buffer.from(bytes);
-    const boundary = `bharat_ai_${crypto.randomBytes(12).toString("hex")}`;
+    const boundary = `bright_nexa_${crypto.randomBytes(12).toString("hex")}`;
     const metadata = JSON.stringify({ name: fileName, parents: ["appDataFolder"], appProperties: { product: PRODUCT_KEY } });
     const body = Buffer.concat([
       Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: application/octet-stream\r\n\r\n`),
