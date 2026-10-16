@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="iconBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="110" fill="url(#iconBg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="94" fill="none" stroke="url(#accent)" stroke-width="6" opacity="0.3"/>
+
+  <!-- Monogram AA Badge -->
+  <circle cx="256" cy="230" r="130" fill="#1e293b" stroke="url(#accent)" stroke-width="8"/>
+  <text x="256" y="275" text-anchor="middle" font-family="'Arial Black', Impact, sans-serif" font-size="110" font-weight="900" fill="#ffffff">AA</text>
+
+  <!-- Title Bottom -->
+  <text x="256" y="420" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="30" font-weight="800" fill="#38bdf8" letter-spacing="3">ANGELS</text>
+  <text x="256" y="455" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="20" font-weight="600" fill="#94a3b8" letter-spacing="4">ACADEMY</text>
+</svg>
