@@ -1,0 +1,11 @@
+{
+  "name": "bright-nexa-school-os",
+  "version": "1.0.0",
+  "description": "Bright Nexa School OS - Modern Educational Management System",
+  "scripts": {
+    "build": "node -e \"console.log('Build completed successfully')\"",
+    "start": "node -e \"console.log('Static distribution ready')\""
+  },
+  "author": "Karan Gilotra",
+  "license": "ISC"
+}
