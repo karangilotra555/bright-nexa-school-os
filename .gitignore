@@ -13,6 +13,7 @@ node_modules/
 *.dat
 *.bin
 *.rar
+*.zip
 *.html.bak
 LICENSES.chromium.html
 locales/
