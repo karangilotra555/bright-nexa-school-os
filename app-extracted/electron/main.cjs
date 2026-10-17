@@ -2,6 +2,8 @@ const { app, BrowserWindow, ipcMain, safeStorage, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const { registerGoogleDriveHandlers } = require("./googleDrive.cjs");
+const whatsappService = require("./whatsapp/whatsappService.cjs");
+const whatsappScheduler = require("./whatsapp/scheduler.cjs");
 
 const OFFICIAL_RELEASES_URL =
   "https://github.com/amankingofai/bright-nexa-school-os-releases/releases/latest";
@@ -152,6 +154,34 @@ function registerSoftwareUpdateHandlers() {
   });
 }
 
+function registerWhatsAppHandlers() {
+  ipcMain.handle("whatsapp:get-config", async () => {
+    return whatsappService.loadConfig();
+  });
+  ipcMain.handle("whatsapp:save-config", async (_event, patch) => {
+    return whatsappService.saveConfig(patch);
+  });
+  ipcMain.handle("whatsapp:send-fee-reminder", async (_event, payload) => {
+    return whatsappService.sendFeeDueReminder(payload);
+  });
+  ipcMain.handle("whatsapp:send-absent-alert", async (_event, payload) => {
+    return whatsappService.sendAbsentAlert(payload);
+  });
+  ipcMain.handle("whatsapp:send-receipt", async (_event, payload) => {
+    return whatsappService.sendPaymentReceiptNotification(payload);
+  });
+  ipcMain.handle("whatsapp:trigger-scheduler", async () => {
+    return whatsappScheduler.runScheduledChecks();
+  });
+
+  try {
+    whatsappScheduler.startScheduler();
+  } catch (err) {
+    console.error("[WhatsApp] Could not start scheduler:", err.message);
+  }
+}
+
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1440,
@@ -218,6 +248,7 @@ if (!hasSingleInstanceLock) {
   app.whenReady().then(() => {
     registerGoogleDriveHandlers({ ipcMain, app, shell, safeStorage });
     registerSoftwareUpdateHandlers();
+    registerWhatsAppHandlers();
     createWindow();
     if (app.isPackaged) {
       setTimeout(() => {

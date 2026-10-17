@@ -1,0 +1,22 @@
+{
+  "enabled": false,
+  "mockMode": true,
+  "provider": "meta_cloud_api",
+  "phoneNumberId": "YOUR_META_PHONE_NUMBER_ID",
+  "accessToken": "YOUR_META_SYSTEM_USER_PERMANENT_ACCESS_TOKEN",
+  "wabaId": "YOUR_WHATSAPP_BUSINESS_ACCOUNT_ID",
+  "schoolName": "Bright Nexa Academy",
+  "supportContact": "+91 7500058655",
+  "templates": {
+    "feeReminder": "bright_nexa_fee_reminder",
+    "feeReceipt": "bright_nexa_fee_receipt",
+    "absentAlert": "bright_nexa_student_absent",
+    "schoolNotice": "bright_nexa_general_notice"
+  },
+  "scheduler": {
+    "enabled": true,
+    "checkIntervalMinutes": 30,
+    "morningAbsentNotificationTime": "09:30",
+    "eveningFeeReminderTime": "17:00"
+  }
+}

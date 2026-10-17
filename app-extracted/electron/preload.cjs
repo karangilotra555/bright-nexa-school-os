@@ -21,6 +21,14 @@ const api = {
       return () => ipcRenderer.removeListener("software-update:status", listener);
     },
   },
+  whatsapp: {
+    getConfig: () => ipcRenderer.invoke("whatsapp:get-config"),
+    saveConfig: (patch) => ipcRenderer.invoke("whatsapp:save-config", patch),
+    sendFeeReminder: (payload) => ipcRenderer.invoke("whatsapp:send-fee-reminder", payload),
+    sendAbsentAlert: (payload) => ipcRenderer.invoke("whatsapp:send-absent-alert", payload),
+    sendReceipt: (payload) => ipcRenderer.invoke("whatsapp:send-receipt", payload),
+    triggerScheduler: () => ipcRenderer.invoke("whatsapp:trigger-scheduler"),
+  },
 };
 
 contextBridge.exposeInMainWorld("brightNexa", api);

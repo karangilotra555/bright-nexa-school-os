@@ -1,0 +1,55 @@
+{
+  "templates": [
+    {
+      "name": "bright_nexa_fee_reminder",
+      "category": "UTILITY",
+      "language": "en",
+      "header": "School Fee Reminder",
+      "body": "Dear Parent, this is a gentle reminder that school fees of INR {{2}} for {{1}} is due on {{3}}. Please ensure timely clearance to avoid late fees. Regards, {{4}}.",
+      "placeholders": {
+        "1": "Student Name (e.g. Rahul Sharma)",
+        "2": "Due Amount (e.g. 3,500)",
+        "3": "Due Date (e.g. 25-Oct-2026)",
+        "4": "School Name (e.g. Bright Nexa Academy)"
+      }
+    },
+    {
+      "name": "bright_nexa_fee_receipt",
+      "category": "UTILITY",
+      "language": "en",
+      "header": "Fee Payment Receipt",
+      "body": "Dear Parent, fee payment for {{1}} has been received successfully. Receipt No: {{2}}, Amount: {{3}}, Date: {{4}}. Thank you, {{5}}.",
+      "placeholders": {
+        "1": "Student Name",
+        "2": "Receipt Number (e.g. REC-2026-104)",
+        "3": "Amount Paid (e.g. INR 5,000)",
+        "4": "Payment Date",
+        "5": "School Name"
+      }
+    },
+    {
+      "name": "bright_nexa_student_absent",
+      "category": "UTILITY",
+      "language": "en",
+      "header": "Attendance Alert",
+      "body": "Dear Parent, your ward {{1}} was marked ABSENT today on {{2}}. If this was informed or due to illness, please update the school office. Regards, {{3}}.",
+      "placeholders": {
+        "1": "Student Name",
+        "2": "Date (e.g. 18-Oct-2026)",
+        "3": "School Name"
+      }
+    },
+    {
+      "name": "bright_nexa_general_notice",
+      "category": "UTILITY",
+      "language": "en",
+      "header": "School Circular",
+      "body": "Important Notice from {{3}}: {{1}}. {{2}}. For any queries, contact the school desk.",
+      "placeholders": {
+        "1": "Notice Title / Subject",
+        "2": "Notice Details / Timings",
+        "3": "School Name"
+      }
+    }
+  ]
+}
