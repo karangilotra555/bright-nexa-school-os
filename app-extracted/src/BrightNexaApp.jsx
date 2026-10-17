@@ -27942,14 +27942,24 @@ function Hi({ data: e, students: t, snapshot: n }) {
         }
         subtitle={`Review editable remarks and prepare professional print or PDF reports`}
         action={
-          <Component883
-            className={`primary-button`}
-            onClick={() => window.print()}
-            disabled={!l || !a}
-          >
-            <Je size={17} />
-            {`Print / Save PDF`}
-          </Component883>
+          <div style={{ display: `flex`, gap: `10px`, flexWrap: `wrap` }}>
+            <button
+              className={`secondary-button`}
+              style={{ background: `#dbeafe`, color: `#0369a1`, borderColor: `#0284c7`, fontWeight: 800 }}
+              onClick={() => window.open(`./marksheet.html`, `_blank`)}
+            >
+              <Je size={16} />
+              {`⭐ Open Modern CBSE A4 Marksheet`}
+            </button>
+            <Component883
+              className={`primary-button`}
+              onClick={() => window.print()}
+              disabled={!l || !a}
+            >
+              <Je size={17} />
+              {`Print / Save PDF`}
+            </Component883>
+          </div>
         }
       />
       <Component896 className={`report-selectors`}>
@@ -28255,6 +28265,37 @@ function Hi({ data: e, students: t, snapshot: n }) {
               </Component975>
             </Component976>
           </Component977>
+          <div className={`report-coscholastic-section`}>
+            <div className={`coscholastic-heading-tag`}>
+              {`PART 2: CO-SCHOLASTIC & 21ST CENTURY LIFE SKILLS (3-POINT SCALE: A = OUTSTANDING, B = VERY GOOD, C = FAIR)`}
+            </div>
+            <div className={`coscholastic-pill-grid`}>
+              <div className={`coscholastic-pill`}>
+                <span>{`Work Education & AI / Coding`}</span>
+                <strong>{`Grade A`}</strong>
+              </div>
+              <div className={`coscholastic-pill`}>
+                <span>{`Visual & Performing Arts`}</span>
+                <strong>{`Grade A`}</strong>
+              </div>
+              <div className={`coscholastic-pill`}>
+                <span>{`Health & Physical Education / Sports`}</span>
+                <strong>{`Grade A+`}</strong>
+              </div>
+              <div className={`coscholastic-pill`}>
+                <span>{`Discipline & Moral Conduct`}</span>
+                <strong>{`Grade A+`}</strong>
+              </div>
+            </div>
+          </div>
+          <div className={`report-promotion-banner`}>
+            <span>{`OFFICIAL PROMOTION STATUS:`}</span>
+            <strong>
+              {_ >= 33
+                ? `PROMOTED TO HIGHER CLASS (SESSION 2027 - 2028) WITH COMMENDABLE DISTINCTION`
+                : `NEEDS STRUCTURED REMEDIAL REVISION`}
+            </strong>
+          </div>
           <Component980 className={`report-grading-scale`}>
             <Component978>{`GRADING SCALE:`}</Component978>
             <Component979>{`A+ (90-100% Outstanding) • A (80-89% Excellent) • B+ (70-79% Very Good) • B (60-69% Good) • C (50-59% Fair) • D (33-49% Pass) • E (Below 33% Needs Repeat)`}</Component979>
@@ -28281,6 +28322,11 @@ function Hi({ data: e, students: t, snapshot: n }) {
               <Component989>{`Class Teacher`}</Component989>
               <Component990>{`Date: ${new Date().toLocaleDateString()}`}</Component990>
             </Component991>
+            <Component991 className={`sig-block`}>
+              <Component988 className={`sig-line`} />
+              <Component989>{`Exam Coordinator`}</Component989>
+              <Component990>{`Verified Record`}</Component990>
+            </Component991>
             <Component998 className={`sig-seal-center`}>
               <Component996 className={`official-stamp-circle`}>
                 <Component992 className={`stamp-star`}>{`★`}</Component992>
@@ -28298,6 +28344,11 @@ function Hi({ data: e, students: t, snapshot: n }) {
                 {n.institution.principalName || `Principal`}
               </Component1000>
               <Component1001>{`Authorised Signatory`}</Component1001>
+            </Component1002>
+            <Component1002 className={`sig-block`}>
+              <Component999 className={`sig-line`} />
+              <Component1000>{`Parent / Guardian`}</Component1000>
+              <Component1001>{`Signature & Acknowledgement`}</Component1001>
             </Component1002>
           </Component1003>
         </Component1004>

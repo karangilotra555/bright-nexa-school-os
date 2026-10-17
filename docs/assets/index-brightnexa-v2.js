@@ -21802,11 +21802,22 @@ function Hi({ data: e, students: t, snapshot: n }) {
             ? `Performance Reports`
             : `Report Cards`,
         subtitle: `Review editable remarks and prepare professional print or PDF reports`,
-        action: (0, P.jsxs)(`button`, {
-          className: `primary-button`,
-          onClick: () => window.print(),
-          disabled: !l || !a,
-          children: [(0, P.jsx)(Je, { size: 17 }), `Print / Save PDF`],
+        action: (0, P.jsxs)(`div`, {
+          style: { display: `flex`, gap: `10px`, flexWrap: `wrap` },
+          children: [
+            (0, P.jsxs)(`button`, {
+              className: `secondary-button`,
+              style: { background: `#dbeafe`, color: `#0369a1`, borderColor: `#0284c7`, fontWeight: 800 },
+              onClick: () => window.open(`./marksheet.html`, `_blank`),
+              children: [(0, P.jsx)(Je, { size: 16 }), `⭐ Open Modern CBSE A4 Marksheet`],
+            }),
+            (0, P.jsxs)(`button`, {
+              className: `primary-button`,
+              onClick: () => window.print(),
+              disabled: !l || !a,
+              children: [(0, P.jsx)(Je, { size: 17 }), `Print / Save PDF`],
+            }),
+          ],
         }),
       }),
       (0, P.jsxs)(`div`, {
@@ -22211,6 +22222,60 @@ function Hi({ data: e, students: t, snapshot: n }) {
                 ],
               }),
               (0, P.jsxs)(`div`, {
+                className: `report-coscholastic-section`,
+                children: [
+                  (0, P.jsx)(`div`, {
+                    className: `coscholastic-heading-tag`,
+                    children: `PART 2: CO-SCHOLASTIC & 21ST CENTURY LIFE SKILLS (3-POINT SCALE: A = OUTSTANDING, B = VERY GOOD, C = FAIR)`,
+                  }),
+                  (0, P.jsxs)(`div`, {
+                    className: `coscholastic-pill-grid`,
+                    children: [
+                      (0, P.jsxs)(`div`, {
+                        className: `coscholastic-pill`,
+                        children: [
+                          (0, P.jsx)(`span`, { children: `Work Education & AI / Coding` }),
+                          (0, P.jsx)(`strong`, { children: `Grade A` }),
+                        ],
+                      }),
+                      (0, P.jsxs)(`div`, {
+                        className: `coscholastic-pill`,
+                        children: [
+                          (0, P.jsx)(`span`, { children: `Visual & Performing Arts` }),
+                          (0, P.jsx)(`strong`, { children: `Grade A` }),
+                        ],
+                      }),
+                      (0, P.jsxs)(`div`, {
+                        className: `coscholastic-pill`,
+                        children: [
+                          (0, P.jsx)(`span`, { children: `Health & Physical Education / Sports` }),
+                          (0, P.jsx)(`strong`, { children: `Grade A+` }),
+                        ],
+                      }),
+                      (0, P.jsxs)(`div`, {
+                        className: `coscholastic-pill`,
+                        children: [
+                          (0, P.jsx)(`span`, { children: `Discipline & Moral Conduct` }),
+                          (0, P.jsx)(`strong`, { children: `Grade A+` }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              (0, P.jsxs)(`div`, {
+                className: `report-promotion-banner`,
+                children: [
+                  (0, P.jsx)(`span`, { children: `OFFICIAL PROMOTION STATUS:` }),
+                  (0, P.jsx)(`strong`, {
+                    children:
+                      _ >= 33
+                        ? `PROMOTED TO HIGHER CLASS (SESSION 2027 - 2028) WITH COMMENDABLE DISTINCTION`
+                        : `NEEDS STRUCTURED REMEDIAL REVISION`,
+                  }),
+                ],
+              }),
+              (0, P.jsxs)(`div`, {
                 className: `report-grading-scale`,
                 children: [
                   (0, P.jsx)(`strong`, { children: `GRADING SCALE:` }),
@@ -22262,6 +22327,14 @@ function Hi({ data: e, students: t, snapshot: n }) {
                     ],
                   }),
                   (0, P.jsxs)(`div`, {
+                    className: `sig-block`,
+                    children: [
+                      (0, P.jsx)(`div`, { className: `sig-line` }),
+                      (0, P.jsx)(`span`, { children: `Exam Coordinator` }),
+                      (0, P.jsx)(`small`, { children: `Verified Record` }),
+                    ],
+                  }),
+                  (0, P.jsxs)(`div`, {
                     className: `sig-seal-center`,
                     children: [
                       (0, P.jsxs)(`div`, {
@@ -22296,6 +22369,14 @@ function Hi({ data: e, students: t, snapshot: n }) {
                         children: n.institution.principalName || `Principal`,
                       }),
                       (0, P.jsx)(`small`, { children: `Authorised Signatory` }),
+                    ],
+                  }),
+                  (0, P.jsxs)(`div`, {
+                    className: `sig-block`,
+                    children: [
+                      (0, P.jsx)(`div`, { className: `sig-line` }),
+                      (0, P.jsx)(`span`, { children: `Parent / Guardian` }),
+                      (0, P.jsx)(`small`, { children: `Signature & Acknowledgement` }),
                     ],
                   }),
                 ],

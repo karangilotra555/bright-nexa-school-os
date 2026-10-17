@@ -8017,3 +8017,70 @@ button:disabled {
     page-break-inside: avoid !important;
   }
 }
+
+/* ==================== MODERN CBSE CO-SCHOLASTIC & PROMOTION SYSTEM ==================== */
+.report-coscholastic-section {
+  margin: 6px 0 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  background: #f8fafc !important;
+  padding: 6px 10px !important;
+}
+.coscholastic-heading-tag {
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  color: #0b2545 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 5px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding-bottom: 3px !important;
+}
+.coscholastic-pill-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+}
+.coscholastic-pill {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 4px !important;
+  padding: 4px 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 8.5px !important;
+}
+.coscholastic-pill span {
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+.coscholastic-pill strong {
+  color: #0284c7 !important;
+  font-weight: 800 !important;
+  background: #e0f2fe !important;
+  padding: 1px 5px !important;
+  border-radius: 3px !important;
+}
+.report-promotion-banner {
+  background: linear-gradient(135deg, #065f46, #047857) !important;
+  color: #ffffff !important;
+  padding: 5px 12px !important;
+  border-radius: 6px !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin: 6px 0 8px !important;
+  border: 1px solid #34d399 !important;
+}
+.report-promotion-banner span {
+  letter-spacing: 0.5px !important;
+  color: #d1fae5 !important;
+}
+.report-promotion-banner strong {
+  letter-spacing: 0.5px !important;
+  color: #ffffff !important;
+}
+
