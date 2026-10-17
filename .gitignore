@@ -5,6 +5,9 @@ node_modules/
 *.bak
 *.bak.*
 *.tmp
+.env
+deploy-render.*
+
 
 # Compiled heavy Electron / Windows binaries (exceeds GitHub 100MB limit)
 *.exe
