@@ -34587,12 +34587,25 @@ var Cs = [`OWNER`, `ADMIN`, `TEACHER`],
     currency: `INR`,
     maximumFractionDigits: 0,
   });
+function bnGetTabSlug(label) {
+  return (label || "dashboard").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function bnGetTabFromHash() {
+  try {
+    let raw = (window.location.hash || "").replace(/^#\/?/, "").toLowerCase().trim();
+    if (!raw) return "Dashboard";
+    let match = Ts.find(t => bnGetTabSlug(t.label) === raw || t.label.toLowerCase() === raw);
+    return match ? match.label : "Dashboard";
+  } catch {
+    return "Dashboard";
+  }
+}
 function Ds() {
   let [e, t] = (0, w.useState)(wn),
     [n, r] = (0, w.useState)(Dn),
     [i, a] = (0, w.useState)(Ai),
     [o, s] = (0, w.useState)(!1),
-    [c, l] = (0, w.useState)(`Dashboard`),
+    [c, l] = (0, w.useState)(bnGetTabFromHash),
     [u, d] = (0, w.useState)(!1),
     [f, p] = (0, w.useState)(``),
     [m, h] = (0, w.useState)(``),
@@ -34600,8 +34613,15 @@ function Ds() {
     _ = (0, w.useMemo)(() => fn(e.language), [e.language]),
     v = g?.role ?? e.role;
   (0, w.useEffect)(() => {
+    let onHash = () => l(bnGetTabFromHash());
+    window.addEventListener("hashchange", onHash);
+    if (window.location.pathname.includes("marksheet")) {
+      try {
+        window.history.replaceState(null, "", "./" + (window.location.hash || "#/" + bnGetTabSlug(c)));
+      } catch {}
+    }
     let e = (window.brightNexa || window.bharatSchool)?.softwareUpdate;
-    if (!e) return;
+    if (!e) return () => window.removeEventListener("hashchange", onHash);
     let t = (e) => {
       h(
         [`available`, `downloading`, `ready`].includes(e.phase)
@@ -34609,13 +34629,12 @@ function Ds() {
           : ``,
       );
     };
-    return (
-      e
-        .status()
-        .then(t)
-        .catch(() => void 0),
-      e.onStatus(t)
-    );
+    e.status().then(t).catch(() => void 0);
+    let unsub = e.onStatus(t);
+    return () => {
+      window.removeEventListener("hashchange", onHash);
+      if (typeof unsub === "function") unsub();
+    };
   }, []);
   let y = (0, w.useMemo)(() => {
       if (g?.linkedStudentId)
@@ -34722,6 +34741,12 @@ function Ds() {
   }, []);
   let se = (e) => {
       (l(e), s(!1));
+      try {
+        let slug = "#/" + bnGetTabSlug(e);
+        if (window.location.hash !== slug) {
+          window.history.pushState(null, "", slug);
+        }
+      } catch {}
     },
     ce = (o) => {
       let s = [o, ...n],
