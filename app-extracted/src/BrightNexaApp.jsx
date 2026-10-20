@@ -42532,7 +42532,7 @@ function Fs({ children: e }) {
         <Component2166 className={`auth-brand`}>
           <Component2165
             className={`auth-official-logo`}
-            src="/bright-nexa-official-logo.jpg"
+            src="./bright-nexa-official-logo.jpg"
             alt={`Bright Nexa`}
           />
         </Component2166>

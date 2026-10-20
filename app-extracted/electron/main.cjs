@@ -6,7 +6,7 @@ const whatsappService = require("./whatsapp/whatsappService.cjs");
 const whatsappScheduler = require("./whatsapp/scheduler.cjs");
 
 const OFFICIAL_RELEASES_URL =
-  "https://github.com/amankingofai/bright-nexa-school-os-releases/releases/latest";
+  "https://github.com/karangilotra555/bright-nexa-school-os/releases/latest";
 
 let updateStatus = {
   phase: "idle",
@@ -203,7 +203,26 @@ function createWindow() {
   });
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https://")) shell.openExternal(url);
+    if (url.startsWith("https://") || url.startsWith("http://")) {
+      shell.openExternal(url);
+      return { action: "deny" };
+    }
+    if (url.includes("marksheet") || url.endsWith(".html")) {
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: {
+          width: 1180,
+          height: 920,
+          autoHideMenuBar: true,
+          backgroundColor: "#ffffff",
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+          },
+        },
+      };
+    }
     return { action: "deny" };
   });
 

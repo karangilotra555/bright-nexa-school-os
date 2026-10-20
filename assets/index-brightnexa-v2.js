@@ -35922,7 +35922,7 @@ function Fs({ children: e }) {
             className: `auth-brand`,
             children: (0, P.jsx)(`img`, {
               className: `auth-official-logo`,
-              src: "/bright-nexa-official-logo.jpg",
+              src: `./bright-nexa-official-logo.jpg`,
               alt: `Bright Nexa`,
             }),
           }),

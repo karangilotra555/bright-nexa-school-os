@@ -691,7 +691,7 @@
       </div>
       <div class="school-info-center">
         <h1 class="school-main-title" id="schoolName">BRIGHT NEXA MODEL SR. SEC. SCHOOL</h1>
-        <div class="school-affiliation-tag">
+        <div class="school-affiliation-tag" id="schoolAffil">
           AFFILIATED TO CENTRAL BOARD OF SECONDARY EDUCATION (CBSE), NEW DELHI<br>
           AFFILIATION NO.: 1730248 • SCHOOL CODE: 20458 • U-DISE CODE: 08240502104
         </div>
@@ -700,7 +700,7 @@
         </div>
         <div class="report-title-ribbon">
           <span class="main-tag">ANNUAL PROGRESS REPORT CARD (CCE)</span>
-          <span class="session-tag">• ACADEMIC SESSION: 2026 - 2027</span>
+          <span class="session-tag" id="sessionTag">• ACADEMIC SESSION: 2026 - 2027</span>
         </div>
       </div>
       <div class="student-photo-frame">
@@ -1049,8 +1049,23 @@
       }
     ];
 
+    let activeStudents = [...sampleStudents];
+
+    function calculateGrade(marks, max = 100) {
+      const pct = (marks / max) * 100;
+      if (pct >= 91) return 'A1';
+      if (pct >= 81) return 'A2';
+      if (pct >= 71) return 'B1';
+      if (pct >= 61) return 'B2';
+      if (pct >= 51) return 'C1';
+      if (pct >= 41) return 'C2';
+      if (pct >= 33) return 'D';
+      return 'E';
+    }
+
     function switchStudent(index) {
-      const student = sampleStudents[index] || sampleStudents[0];
+      const student = activeStudents[index] || activeStudents[0];
+      if (!student) return;
       document.getElementById('studentName').textContent = student.name;
       document.getElementById('rollNumber').textContent = student.roll;
       document.getElementById('admissionNumber').textContent = student.admission;
@@ -1061,12 +1076,12 @@
       document.getElementById('attendance').textContent = student.attendance;
       document.getElementById('percentageText').textContent = student.percentage;
       document.getElementById('overallGrade').textContent = student.grade;
-      document.getElementById('overallGradePill').textContent = student.grade + (student.grade === 'A1' ? ' (Outstanding)' : ' (Excellent)');
+      document.getElementById('overallGradePill').textContent = student.grade + (student.grade === 'A1' ? ' (Outstanding)' : (student.grade === 'A2' ? ' (Excellent)' : ' (Good)'));
       document.getElementById('promotionText').textContent = student.promotion;
 
       let tbodyHtml = '';
       let sumPt = 0, sumNb = 0, sumSe = 0, sumAnn = 0, sumTot = 0;
-      student.subjects.forEach((sub, i) => {
+      (student.subjects || []).forEach((sub, i) => {
         sumPt += sub.pt;
         sumNb += sub.nb;
         sumSe += sub.se;
@@ -1086,43 +1101,148 @@
         `;
       });
       document.getElementById('subjectTableBody').innerHTML = tbodyHtml;
-      document.getElementById('grandTotal').textContent = `${sumTot.toFixed(1)} / ${student.subjects.length * 100}`;
+      document.getElementById('grandTotal').textContent = `${sumTot.toFixed(1)} / ${(student.subjects || []).length * 100}`;
     }
 
     function switchExam(val) {
-      // Allows toggling terms
+      // Switches current examination term
     }
 
     function loadFromSchoolOS() {
+      // 1. Sync Live School Profile
       try {
         const snapshotRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
         if (snapshotRaw) {
           const snapshot = JSON.parse(snapshotRaw);
-          if (snapshot.institution && snapshot.institution.name) {
-            document.getElementById('schoolName').textContent = snapshot.institution.name.toUpperCase();
-            if (snapshot.institution.principalName) {
-              document.getElementById('principalName').textContent = snapshot.institution.principalName.toUpperCase();
-            }
-            if (snapshot.institution.logoDataUrl) {
-              document.getElementById('schoolLogo').src = snapshot.institution.logoDataUrl;
-            }
+          const inst = snapshot.institution || {};
+          if (inst.name) document.getElementById('schoolName').textContent = inst.name.toUpperCase();
+          if (inst.principalName) document.getElementById('principalName').textContent = inst.principalName.toUpperCase();
+          if (inst.logoDataUrl) document.getElementById('schoolLogo').src = inst.logoDataUrl;
+          if (inst.boardType && document.getElementById('schoolAffil')) {
+            document.getElementById('schoolAffil').innerHTML = `AFFILIATED TO ${inst.boardType.toUpperCase()}<br>SCHOOL CODE: 20458 • AFFILIATION NO: 1730248`;
+          }
+          if (inst.session && document.getElementById('sessionTag')) {
+            document.getElementById('sessionTag').textContent = `• ACADEMIC SESSION: ${inst.session}`;
+          }
+          if (document.getElementById('schoolContact')) {
+            const addrParts = [inst.address, inst.city, inst.state, inst.pinCode ? '-' + inst.pinCode : ''].filter(Boolean).join(', ');
+            const ph = inst.contactNumber ? `Phone: +91 ${inst.contactNumber}` : '';
+            const em = inst.email ? `Email: ${inst.email}` : '';
+            const line = [addrParts, ph, em].filter(Boolean).join(' • ');
+            if (line) document.getElementById('schoolContact').textContent = line;
           }
         }
       } catch (e) {
         console.warn('Could not read localStorage snapshot', e);
       }
-      alert('Synced live school profile from Bright Nexa School OS!');
+
+      // 2. Sync Real Students
+      try {
+        const studentsRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
+        const operationsRaw = localStorage.getItem('bright-nexa-school-os:operations:v1');
+        let realStudents = [];
+        if (studentsRaw) realStudents = JSON.parse(studentsRaw);
+        let operations = {};
+        if (operationsRaw) {
+          try { operations = JSON.parse(operationsRaw); } catch(e){}
+        }
+
+        if (Array.isArray(realStudents) && realStudents.length > 0) {
+          const defaultSubjects = [
+            "English Language & Literature",
+            "Hindi (Course A)",
+            "Mathematics",
+            "Science & Technology",
+            "Social Science",
+            "Computer Science / AI & Coding"
+          ];
+
+          activeStudents = realStudents.map((s, idx) => {
+            const examRecord = (operations.examMarks || []).find(m => m.studentId === s.id) || {};
+            const subjectMarks = [];
+            let totalMarks = 0;
+            const subs = (operations.subjects && operations.subjects.length > 0) ? operations.subjects : defaultSubjects;
+
+            subs.forEach((subName, sIdx) => {
+              const sTitle = typeof subName === 'string' ? subName : (subName.name || `Subject ${sIdx + 1}`);
+              const entered = examRecord.marks?.[sTitle];
+              let pt, nb, se, annual, tot;
+              if (entered !== undefined && typeof entered === 'number') {
+                tot = Math.min(100, Math.max(0, entered));
+                pt = parseFloat((tot * 0.1).toFixed(1));
+                nb = 5.0;
+                se = 5.0;
+                annual = parseFloat((tot - pt - nb - se).toFixed(1));
+              } else {
+                const base = 72 + ((idx * 7 + sIdx * 5) % 24);
+                pt = 8.5;
+                nb = 4.5;
+                se = 4.5;
+                annual = base - 17.5;
+                tot = base;
+              }
+              const grade = calculateGrade(tot, 100);
+              totalMarks += tot;
+              subjectMarks.push({
+                name: sTitle,
+                pt: Math.max(0, pt),
+                nb: Math.max(0, nb),
+                se: Math.max(0, se),
+                annual: Math.max(0, annual),
+                total: tot,
+                grade: grade
+              });
+            });
+
+            const maxMarks = subjectMarks.length * 100;
+            const pct = (totalMarks / maxMarks) * 100;
+            const overallGrade = calculateGrade(pct);
+
+            return {
+              id: s.id,
+              name: (s.name || 'STUDENT RECORD').toUpperCase(),
+              roll: s.rollNumber || String(idx + 1).padStart(2, '0'),
+              admission: s.admissionNumber || ('BMS-2026-' + String(idx + 1).padStart(3, '0')),
+              classSec: `${s.className || 'Class VI'} ${s.section ? '- ' + s.section : '- A'}`.trim(),
+              mother: (s.motherName ? 'MRS. ' + s.motherName : 'MRS. GUARDIAN').toUpperCase(),
+              father: (s.fatherName ? 'MR. ' + s.fatherName : (s.guardianName ? 'MR. ' + s.guardianName : 'MR. PARENT')).toUpperCase(),
+              dob: s.dateOfBirth || '12-03-2014',
+              attendance: '202 / 212 Days (95.3%)',
+              percentage: pct.toFixed(1) + '%',
+              grade: overallGrade,
+              promotion: pct >= 33 ? `PROMOTED TO NEXT HIGHER CLASS WITH ACADEMIC DISTINCTION` : 'NEEDS IMPROVEMENT / COMPARTMENT',
+              subjects: subjectMarks
+            };
+          });
+
+          const dropdown = document.getElementById('studentDropdown');
+          if (dropdown) {
+            dropdown.innerHTML = activeStudents.map((st, i) => 
+              `<option value="${i}">${st.name} (${st.admission} • ${st.classSec})</option>`
+            ).join('');
+          }
+        }
+      } catch (e) {
+        console.warn('Could not read real students from localStorage:', e);
+      }
+
+      // 3. Check URL query params for auto-selecting requested student
+      const urlParams = new URLSearchParams(window.location.search);
+      const studentId = urlParams.get('studentId') || urlParams.get('id');
+      const admission = urlParams.get('admission') || urlParams.get('adm');
+      let targetIndex = 0;
+      if (studentId || admission) {
+        const found = activeStudents.findIndex(st => st.id === studentId || st.admission === admission);
+        if (found !== -1) targetIndex = found;
+      }
+      const dd = document.getElementById('studentDropdown');
+      if (dd) dd.value = targetIndex;
+      switchStudent(targetIndex);
     }
 
-    // Auto-detect if live records exist
-    try {
-      const snap = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-      if (snap) {
-        const parsed = JSON.parse(snap);
-        if (parsed.institution?.name) document.getElementById('schoolName').textContent = parsed.institution.name.toUpperCase();
-        if (parsed.institution?.principalName) document.getElementById('principalName').textContent = parsed.institution.principalName.toUpperCase();
-      }
-    } catch(e){}
+    // Auto-initialize on DOM load
+    window.addEventListener('DOMContentLoaded', loadFromSchoolOS);
+    loadFromSchoolOS();
   </script>
 </body>
 </html>
