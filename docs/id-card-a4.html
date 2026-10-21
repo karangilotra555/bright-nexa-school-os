@@ -930,7 +930,7 @@
                 fatherName: (s.fatherName || s.guardianName || "MR. GUARDIAN").toUpperCase(),
                 contactNumber: s.parentMobile || s.contactNumber || s.phone || s.alternateMobile || "9876543210",
                 bloodGroup: s.bloodGroup || "B+",
-                dob: s.dateOfBirth || "12-03-2014",
+                dob: s.dateOfBirth || s.dob || "",
                 address: s.address || "Haridwar, Uttarakhand",
                 busStop: s.busStop || s.transportRoute || "Self / Walker",
                 photoUrl: s.photoUrl || s.avatarUrl || null,
@@ -1200,7 +1200,7 @@
                 </div>
 
                 <div class="card-footer">
-                  <span style="font-size: 3.8pt;">D.O.B: ${escapeHtml(st.dob)}</span>
+                  <span style="font-size: 3.8pt;">D.O.B: ${st.dob ? escapeHtml(st.dob) : '<span style="color:#b91c1c; font-weight:700;">Not Registered</span>'}</span>
                   <div class="principal-sign-box">
                     <div class="principal-sign-line">PRINCIPAL</div>
                   </div>

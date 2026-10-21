@@ -1142,7 +1142,7 @@
               fatherName: (s.fatherName || s.guardianName || "MR. PARENT").toUpperCase(),
               contactNumber: s.parentMobile || s.contactNumber || s.phone || "9876543210",
               bloodGroup: s.bloodGroup || "B+",
-              dob: s.dateOfBirth || s.dob || "12-03-2014",
+              dob: s.dateOfBirth || s.dob || "",
               address: s.address || "Haridwar, Uttarakhand",
               busStop: s.busStop || s.transportRoute || "Self / Walker"
             }));
@@ -1184,18 +1184,13 @@
     // ==========================================
     // PUBLIC CREDENTIAL VERIFICATION VIEW
     // ==========================================
-    function showPublicVerification(adm, sig) {
+    async function showPublicVerification(adm, sig) {
       document.getElementById('loginView').style.display = 'none';
       document.getElementById('dashboardView').style.display = 'none';
       const vView = document.getElementById('verificationView');
       vView.style.display = 'block';
 
       const cleanAdm = (adm || '').trim().toUpperCase();
-      const student = students.find(s => 
-        (s.admissionNumber && s.admissionNumber.toUpperCase() === cleanAdm) || 
-        (s.id && String(s.id).toUpperCase() === cleanAdm)
-      );
-
       const vIcon = document.getElementById('vIcon');
       const vTitle = document.getElementById('vTitle');
       const vSubtitle = document.getElementById('vSubtitle');
@@ -1210,8 +1205,66 @@
 
       vSubtitle.textContent = `${institution.name} • Academic Session ${institution.session || '2026-2027'}`;
 
+      // 1. If online HTTP environment, verify via server-side authority API
+      if (typeof window !== 'undefined' && window.location && typeof window.location.protocol === 'string' && window.location.protocol.startsWith('http')) {
+        try {
+          const res = await fetch(`/api/verify?adm=${encodeURIComponent(cleanAdm)}&sig=${encodeURIComponent(sig || '')}`);
+          if (res.ok) {
+            const data = await res.json();
+            vName.textContent = (data.student.name || 'STUDENT').toUpperCase();
+            vAdm.textContent = data.student.admissionNumber;
+            vClass.textContent = `${data.student.className || 'Class VI'} - ${data.student.section || 'A'}`;
+            vRoll.textContent = data.student.rollNumber || '01';
+
+            if (data.verified) {
+              vIcon.textContent = '🛡️';
+              vTitle.textContent = 'DIGITALLY VERIFIED CREDENTIAL';
+              vBadge.className = 'verification-badge badge-valid';
+              vBadge.textContent = '✓ OFFICIAL ACTIVE ENROLLMENT';
+              vSigMatchBadge.style.background = '#10b981';
+              vSigMatchBadge.textContent = 'MATCH VERIFIED (' + (data.algorithm || 'ECDSA') + ')';
+              vSigHash.textContent = `${escapeHtml(sig)} [Cert: ${data.certificateId || 'P256'}]`;
+            } else {
+              vIcon.textContent = '⚠️';
+              vTitle.textContent = 'SIGNATURE VERIFICATION NOTICE';
+              vBadge.className = 'verification-badge badge-warning';
+              vBadge.textContent = '⚠️ SIGNATURE MISMATCH';
+              vSigMatchBadge.style.background = '#f59e0b';
+              vSigMatchBadge.textContent = 'KEY MISMATCH';
+              vSigHash.textContent = sig ? escapeHtml(sig) : 'NONE PROVIDED';
+            }
+
+            vBtnLogin.textContent = `🔐 Login with DOB to View Full Portal (${data.student.name.split(' ')[0]})`;
+            vBtnLogin.onclick = () => showLoginFromVerification(data.student.admissionNumber);
+            return;
+          } else if (res.status === 404) {
+            vIcon.textContent = '❌';
+            vTitle.textContent = 'NO ENROLLED RECORD FOUND';
+            vBadge.className = 'verification-badge badge-invalid';
+            vBadge.textContent = '❌ UNVERIFIED ID';
+            vName.textContent = 'RECORD NOT ON FILE';
+            vAdm.textContent = cleanAdm;
+            vClass.textContent = 'N/A';
+            vRoll.textContent = 'N/A';
+            vSigMatchBadge.style.background = '#ef4444';
+            vSigMatchBadge.textContent = 'UNVERIFIED';
+            vSigHash.textContent = sig ? escapeHtml(sig) : 'NONE';
+            vBtnLogin.textContent = '🔍 Return to Student Login';
+            vBtnLogin.onclick = () => showLoginScreen();
+            return;
+          }
+        } catch(netErr) {
+          console.warn("Server verify endpoint unreachable, falling back to local verification:", netErr);
+        }
+      }
+
+      // 2. Offline / local fallback
+      const student = students.find(s => 
+        (s.admissionNumber && s.admissionNumber.toUpperCase() === cleanAdm) || 
+        (s.id && String(s.id).toUpperCase() === cleanAdm)
+      );
+
       if (!student) {
-        // Record Not Found in institutional database
         vIcon.textContent = '❌';
         vTitle.textContent = 'NO ENROLLED RECORD FOUND';
         vBadge.className = 'verification-badge badge-invalid';
@@ -1228,13 +1281,11 @@
         return;
       }
 
-      // Student found: display verified public details only
       vName.textContent = (student.name || 'STUDENT').toUpperCase();
       vAdm.textContent = student.admissionNumber || student.id;
       vClass.textContent = `${student.className || 'Class VI'} - ${student.section || 'A'}`;
       vRoll.textContent = student.rollNumber || '01';
 
-      // Verify HMAC-SHA256 signature against institutional key
       const expectedSig = computeStudentHMAC(student, institution);
       const isSigValid = sig && sig.toUpperCase() === expectedSig.toUpperCase();
 
@@ -1247,7 +1298,6 @@
         vSigMatchBadge.textContent = 'MATCH VERIFIED';
         vSigHash.textContent = escapeHtml(sig);
       } else {
-        // Signature mismatch
         vIcon.textContent = '⚠️';
         vTitle.textContent = 'SIGNATURE VERIFICATION NOTICE';
         vBadge.className = 'verification-badge badge-warning';
@@ -1284,9 +1334,9 @@
     }
 
     // ==========================================
-    // STRICT AUTHENTICATION LOGIN HANDLER
+    // SECURE SERVER-SIDE & STRICT AUTHENTICATION LOGIN HANDLER
     // ==========================================
-    function handleLogin(e) {
+    async function handleLogin(e) {
       e.preventDefault();
       const alertBox = document.getElementById('loginAlert');
       const infoBox = document.getElementById('loginInfo');
@@ -1310,6 +1360,32 @@
         return;
       }
 
+      // 1. Try Server-Side Authentication API if online HTTP environment
+      if (typeof window !== 'undefined' && window.location && typeof window.location.protocol === 'string' && window.location.protocol.startsWith('http')) {
+        try {
+          const resp = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admissionNumber: adm, dob: dob })
+          });
+
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.token) sessionStorage.setItem('bn_portal_token', data.token);
+            loginStudent(data.student);
+            return;
+          } else {
+            const errData = await resp.json().catch(() => ({}));
+            showLoginError(errData.error || "Authentication failed: Invalid credentials.");
+            dobInput.focus();
+            return;
+          }
+        } catch(netErr) {
+          console.warn("Server login API unreachable, falling back to local authentication:", netErr);
+        }
+      }
+
+      // 2. Offline / local fallback authentication
       const student = students.find(s => 
         (s.admissionNumber && s.admissionNumber.toUpperCase() === adm) || 
         (s.id && String(s.id).toUpperCase() === adm)
@@ -1322,16 +1398,20 @@
       }
 
       // Strict DOB verification
-      const enteredDobNorm = normalizeDate(dob);
       const studentDobNorm = normalizeDate(student.dob || student.dateOfBirth || '');
+      if (!studentDobNorm) {
+        showLoginError("Access Restricted: Date of Birth is not registered for this student record in the institutional database. For student data privacy and security, please contact the school administration office to register the student's date of birth before portal access can be granted.");
+        return;
+      }
 
+      const enteredDobNorm = normalizeDate(dob);
       if (!enteredDobNorm) {
-        showLoginError("Please enter a valid Date of Birth (e.g. 12-03-2014 or 2014-03-12).");
+        showLoginError("Please enter a valid Date of Birth (e.g. DD-MM-YYYY).");
         dobInput.focus();
         return;
       }
 
-      if (studentDobNorm && enteredDobNorm !== studentDobNorm) {
+      if (enteredDobNorm !== studentDobNorm) {
         showLoginError("Authentication Failed: The Date of Birth entered does not match our records for this student. Please verify and try again.");
         dobInput.focus();
         return;
