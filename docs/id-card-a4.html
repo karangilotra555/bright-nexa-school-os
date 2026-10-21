@@ -613,6 +613,56 @@
     .photo-upload-label { font-size: 12px; font-weight: 700; color: #334155; }
     .photo-upload-hint { font-size: 11px; color: #64748b; line-height: 1.45; }
     @media print { .photo-upload-controls { display:none !important; } }
+
+    /* Industry-standard CR80 portrait PVC cards: 54 mm wide x 85.6 mm tall.
+       One student's front and back sit beside each other; 3 complete sets per A4. */
+    .a4-sheet {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto repeat(3, 85.6mm);
+      column-gap: 0;
+      row-gap: 4mm;
+      justify-items: center;
+      align-content: start;
+      padding: 8mm 6mm;
+    }
+    .sheet-meta-tag { grid-column: 1; }
+    .id-card-vertical {
+      box-sizing: border-box;
+      width: 108mm;
+      height: 85.6mm;
+      padding: 0;
+      gap: 0;
+      border: 1px dashed #94a3b8;
+      border-radius: 0;
+      background: white;
+    }
+    .card-side {
+      box-sizing: border-box;
+      width: 54mm;
+      height: 85.6mm;
+      flex: 0 0 54mm;
+      border-radius: 0;
+      box-shadow: none;
+      border: 0.25mm solid #dbe5ef;
+    }
+    .card-header { padding-top: 5mm; padding-bottom: 4mm; }
+    .school-logo-img { width: 9mm; height: 9mm; }
+    .school-title { font-size: 8pt; }
+    .school-tagline { font-size: 5pt; }
+    .card-body { padding: 3mm 3mm 2mm; }
+    .photo-frame { width: 24mm; height: 29mm; margin-bottom: 2mm; }
+    .student-name { font-size: 10pt; max-width: 46mm; white-space: normal; }
+    .class-badge { font-size: 6pt; }
+    .info-list { font-size: 6pt; }
+    .back-body { padding: 3mm; font-size: 6pt; }
+    .back-header { font-size: 7pt; padding: 2.5mm; }
+    .qr-canvas { width: 17mm; height: 17mm; flex-shrink: 0; }
+    .qr-text { font-size: 5pt; }
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      .a4-sheet { padding: 8mm 6mm !important; }
+      .id-card-vertical { break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
@@ -622,7 +672,7 @@
     <div class="bar-top-row">
       <div class="bar-title">
         <h2>🪪 Student ID Card Bulk Generator</h2>
-        <p>A4 Batch Print Engine (8 ID Cards per sheet with Front & Back fold guides)</p>
+        <p>A4 Batch Print Engine (3 students per A4 sheet · CR80 portrait (54 × 85.6 mm) front and back)</p>
       </div>
 
       <div class="control-actions">
@@ -1188,7 +1238,7 @@
       }
 
       // Chunk list into groups of 8 (A4 batch sheets)
-      const chunkSize = 8;
+      const chunkSize = 3;
       const totalPages = Math.ceil(list.length / chunkSize);
 
       for (let p = 0; p < totalPages; p++) {
