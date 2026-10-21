@@ -4,7 +4,8 @@
   "description": "Bright Nexa School OS - Modern Educational Management System",
   "scripts": {
     "build": "node -e \"console.log('Build completed successfully')\"",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test tests/*.test.cjs"
   },
   "author": "Karan Gilotra",
   "license": "ISC",

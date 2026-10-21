@@ -89,13 +89,20 @@ function signStudentPayload(student, institution) {
   return signer.sign(privKey, 'base64url');
 }
 
-const DEFAULT_HMAC_KEY = 'bn_sec_key_7500058655_brightnexa_2026_cbse_v1';
 
 function verifyStudentSignature(student, institution, signature) {
   if (!signature) return { verified: false, algorithm: 'NONE', certificateId: null };
   const payload = buildStudentPayload(student, institution);
 
-  // 1. Primary: Verify with Current Institutional Public Key (P-256 V2)
+  // Verify signatures issued by this deployment's configured or persisted key.
+  try {
+    const activePublicKey = crypto.createPublicKey(getInstitutionalPrivateKey());
+    if (crypto.verify('sha256', Buffer.from(payload), activePublicKey, Buffer.from(signature, 'base64url'))) {
+      return { verified: true, algorithm: 'ECDSA-P256-SHA256', certificateId: CERTIFICATE_ID };
+    }
+  } catch (_) {}
+
+  // Previously issued asymmetric credentials remain supported.
   try {
     const verifier = crypto.createVerify('SHA256');
     verifier.update(payload);
@@ -113,14 +120,7 @@ function verifyStudentSignature(student, institution, signature) {
     }
   } catch (err) {}
 
-  // 3. Backward Compatibility: Verify with Legacy HMAC
-  try {
-    const hmacSig = crypto.createHmac('sha256', DEFAULT_HMAC_KEY).update(payload).digest('hex').slice(0, 16).toUpperCase();
-    if (signature.toUpperCase() === hmacSig) {
-      return { verified: true, algorithm: 'HMAC-SHA256', certificateId: 'BN-LEGACY-HMAC' };
-    }
-  } catch (err) {}
-
+  // Legacy HMAC keys were shipped publicly and cannot establish authenticity.
   return { verified: false, algorithm: 'UNKNOWN', certificateId: null };
 }
 

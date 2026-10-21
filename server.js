@@ -54,7 +54,7 @@ if (!ADMIN_API_KEY) {
   ADMIN_API_KEY = crypto.randomBytes(32).toString('hex');
   serverSecrets.ADMIN_API_KEY = ADMIN_API_KEY;
   secretsUpdated = true;
-  console.log(`[Security Alert] Generated fresh administrative API key: ${ADMIN_API_KEY}`);
+  console.log('[Security] Administrative API key generated and stored in the server vault.');
 }
 
 if (secretsUpdated) {
@@ -368,6 +368,12 @@ const server = http.createServer(async (req, res) => {
   // -------------------------------------------------------------
   // 1. Health & Security Status
   // -------------------------------------------------------------
+  if (pathname === '/api/school-profile' && req.method === 'GET') {
+    const inst = getInstitution();
+    const institution = Object.fromEntries(['name','tagline','address','phone','email','session','principalName','logoUrl'].map(key => [key, inst[key] || '']));
+    return sendJson(res, 200, { institution });
+  }
+
   if (pathname === '/api/health' && req.method === 'GET') {
     const inst = getInstitution();
     const countRow = db.prepare('SELECT COUNT(*) as count FROM students').get();
@@ -698,11 +704,11 @@ const server = http.createServer(async (req, res) => {
             s.className || "Class VI",
             s.section || "A",
             s.dateOfBirth || s.dob || "",
-            s.bloodGroup || "B+",
-            (s.fatherName || s.guardianName || "MR. PARENT").toUpperCase(),
-            s.parentMobile || s.contactNumber || s.phone || "9876543210",
-            s.busStop || s.transportRoute || "Self / Walker",
-            s.address || "Haridwar, Uttarakhand",
+            s.bloodGroup || "",
+            (s.fatherName || s.guardianName || "").toUpperCase(),
+            s.parentMobile || s.contactNumber || s.phone || "",
+            s.busStop || s.transportRoute || "",
+            s.address || "",
             s.enrollmentStatus || "ACTIVE",
             now,
             now
@@ -729,10 +735,21 @@ const server = http.createServer(async (req, res) => {
   // -------------------------------------------------------------
   // 7. Static Asset Streaming with Security Headers
   // -------------------------------------------------------------
-  let filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname);
+  if (pathname.startsWith('/api/')) return sendJson(res, 404, { error: 'API endpoint not found.' });
+  let decodedPath;
+  try { decodedPath = decodeURIComponent(pathname).replace(/\\/g, '/'); }
+  catch (_) { return sendJson(res, 400, { error: 'Invalid path.' }); }
+  const segments = decodedPath.split('/').filter(Boolean);
+  const privateRoots = new Set(['data','node_modules','tests','app-extracted','resources','docs']);
+  if (segments.some(segment => segment.startsWith('.')) || privateRoots.has((segments[0] || '').toLowerCase()) ||
+      /(?:^|\/)(?:server\.js|package(?:-lock)?\.json|render\.yaml|Dockerfile)$/i.test(decodedPath) ||
+      /\.(?:db|sqlite3?|key|pem|cjs)$/i.test(decodedPath)) {
+    return sendJson(res, 403, { error: 'Protected asset.' });
+  }
+  let filePath = path.resolve(__dirname, '.' + (decodedPath === '/' ? '/index.html' : decodedPath));
 
   // Prevent directory traversal
-  if (!filePath.startsWith(__dirname)) {
+  if (!filePath.startsWith(__dirname + path.sep)) {
     res.writeHead(403, { 'Content-Type': 'text/plain' });
     res.end('Access Denied');
     return;
@@ -771,7 +788,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`[Bright Nexa Server] Production ACID SQLite Backend running on port ${PORT}`);
+  console.log(`[Bright Nexa Server] Production ACID SQLite Backend running on port ${server.address().port}`);
   console.log(`[Certificate Authority] Active: ${ca.CERTIFICATE_ID}`);
 });
 
