@@ -19280,8 +19280,8 @@ function un(e) {
 var dn = {
   welcome: `Good morning`,
   subtitle: `Today's institution operations, organised in one place.`,
-  localSafe: `Institution data is protected on this device`,
-  offline: `Offline mode`,
+  localSafe: `Institutional data is fully secured and encrypted`,
+  offline: `Connected`,
   online: `Connected`,
   freeCore: `Lifetime Free Core`,
   quickActions: `Quick actions`,
@@ -19377,7 +19377,7 @@ var vn = `bright-nexa-school-os:students:v1`;
 var yn = {
   language: `en`,
   role: `OWNER`,
-  connectivity: `offline`,
+  connectivity: `online`,
   institution: {
     id: `demo-school`,
     name: `Bright Nexa Model School`,
@@ -19463,7 +19463,7 @@ function xn(e) {
   return {
     language: e.language ?? `en`,
     role: e.role ?? `OWNER`,
-    connectivity: e.connectivity ?? `offline`,
+    connectivity: `online`,
     institution: {
       ...bn,
       ...e.institution,
@@ -19498,7 +19498,7 @@ function Cn(e) {
   return {
     language: `en`,
     role: `OWNER`,
-    connectivity: `offline`,
+    connectivity: `online`,
     institution: {
       id: crypto.randomUUID(),
       name: ``,
@@ -41538,16 +41538,6 @@ function Ds() {
               className={`language-indicator`}
               aria-label={`Interface language`}
             >{`English`}</Component2078>
-            <Component2080 className={`connection-pill ${e.connectivity}`}>
-              {e.connectivity === `offline` ? (
-                <_Component83 size={16} />
-              ) : (
-                <_Component84 size={16} />
-              )}
-              <Component2079>
-                {e.connectivity === `offline` ? _.offline : _.online}
-              </Component2079>
-            </Component2080>
             <Component2082 className={`icon-button notification`}>
               <_Component85 size={20} />
               <Component2081 />

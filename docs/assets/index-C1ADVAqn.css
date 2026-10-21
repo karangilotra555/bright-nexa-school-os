@@ -818,22 +818,13 @@ textarea:focus-visible {
   font-weight: 700;
 }
 .connection-pill {
-  border-radius: 18px;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 11px;
-  font-size: 11px;
-  font-weight: 600;
-  display: flex;
+  display: none !important;
 }
 .connection-pill.offline {
-  color: #ac5e13;
-  background: #fff5e9;
+  display: none !important;
 }
 .connection-pill.online {
-  color: #087b54;
-  background: #eaf8f3;
+  display: none !important;
 }
 .notification {
   position: relative;

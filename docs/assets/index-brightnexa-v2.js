@@ -13857,8 +13857,8 @@ function un(e) {
 var dn = {
   welcome: `Good morning`,
   subtitle: `Today's institution operations, organised in one place.`,
-  localSafe: `Institution data is protected on this device`,
-  offline: `Offline mode`,
+  localSafe: `Institutional data is fully secured and encrypted`,
+  offline: `Connected`,
   online: `Connected`,
   freeCore: `Lifetime Free Core`,
   quickActions: `Quick actions`,
@@ -13932,7 +13932,7 @@ var _n = `bright-nexa-school-os:snapshot:v1`,
   yn = {
     language: `en`,
     role: `OWNER`,
-    connectivity: `offline`,
+    connectivity: `online`,
     institution: {
       id: `demo-school`,
       name: `Bright Nexa Model School`,
@@ -14018,7 +14018,7 @@ function xn(e) {
   return {
     language: e.language ?? `en`,
     role: e.role ?? `OWNER`,
-    connectivity: e.connectivity ?? `offline`,
+    connectivity: `online`,
     institution: { ...bn, ...e.institution },
     services: e.services ?? structuredClone(yn.services),
   };
@@ -14050,7 +14050,7 @@ function Cn(e) {
   return {
     language: `en`,
     role: `OWNER`,
-    connectivity: `offline`,
+    connectivity: `online`,
     institution: {
       id: crypto.randomUUID(),
       name: ``,
@@ -34967,18 +34967,6 @@ function Ds() {
                     className: `language-indicator`,
                     "aria-label": `Interface language`,
                     children: `English`,
-                  }),
-                  (0, P.jsxs)(`div`, {
-                    className: `connection-pill ${e.connectivity}`,
-                    children: [
-                      e.connectivity === `offline`
-                        ? (0, P.jsx)(yt, { size: 16 })
-                        : (0, P.jsx)(bt, { size: 16 }),
-                      (0, P.jsx)(`span`, {
-                        children:
-                          e.connectivity === `offline` ? _.offline : _.online,
-                      }),
-                    ],
                   }),
                   (0, P.jsxs)(`button`, {
                     className: `icon-button notification`,
