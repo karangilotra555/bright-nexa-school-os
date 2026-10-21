@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student ID Card Bulk Generator (A4 Print Sheets) — Bright Nexa School OS</title>
+  <script src="./assets/qrcode.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
 
@@ -715,54 +716,153 @@
     }
 
     // ==========================================
-    // 2. VERIFIABLE SIGNATURE GENERATOR (Authenticity)
+    // 2. CRYPTOGRAPHIC HMAC-SHA256 SIGNATURE & GENUINE QR
     // ==========================================
-    function computeVerificationSig(st, inst) {
-      const raw = `BN:${inst?.session || '2026'}:${st?.admissionNumber || ''}:${st?.rollNumber || ''}:${st?.dob || ''}`;
-      let h1 = 0x811c9dc5, h2 = 0x9e3779b9;
-      for (let i = 0; i < raw.length; i++) {
-        const c = raw.charCodeAt(i);
-        h1 = Math.imul(h1 ^ c, 0x01000193);
-        h2 = Math.imul(h2 ^ (c << 3), 0x5bd1e995);
-      }
-      return (Math.abs(h1).toString(16).padStart(8, '0') + Math.abs(h2).toString(16).padStart(4, '0')).toUpperCase();
+    function normalizeDate(str) {
+      if (!str) return '';
+      const clean = String(str).trim();
+      const mIso = clean.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+      if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
+      const mDmy = clean.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (mDmy) return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
+      return clean;
     }
 
-    // Lightweight Canvas QR code renderer (pure offline)
-    function generateQRCanvas(text, canvas) {
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const size = 100;
-      canvas.width = size;
-      canvas.height = size;
-      
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, size, size);
-      ctx.fillStyle = "#0b2545";
-      
-      function drawFinder(x, y) {
-        ctx.fillRect(x, y, 28, 28);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(x + 4, y + 4, 20, 20);
-        ctx.fillStyle = "#0b2545";
-        ctx.fillRect(x + 8, y + 8, 12, 12);
+    function sha256(ascii) {
+      function rightRotate(value, amount) {
+        return (value >>> amount) | (value << (32 - amount));
       }
-      drawFinder(4, 4);
-      drawFinder(68, 4);
-      drawFinder(4, 68);
-      
-      let hash = 0;
-      for (let i = 0; i < text.length; i++) {
-        hash = ((hash << 5) - hash) + text.charCodeAt(i);
-        hash |= 0;
-      }
-      
-      for (let r = 8; r < 24; r++) {
-        for (let c = 8; c < 24; c++) {
-          if ((hash ^ (r * 13 + c * 7)) % 3 === 0) {
-            ctx.fillRect(c * 4, r * 4, 3, 3);
-          }
+      var mathPow = Math.pow;
+      var maxWord = mathPow(2, 32);
+      var lengthProperty = 'length';
+      var i, j;
+      var result = '';
+      var words = [];
+      var asciiBitLength = ascii[lengthProperty] * 8;
+      var hash = sha256.h = sha256.h || [];
+      var k = sha256.k = sha256.k || [];
+      var primeCounter = k[lengthProperty];
+      var isComposite = {};
+      for (var candidate = 2; primeCounter < 64; candidate++) {
+        if (!isComposite[candidate]) {
+          for (i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+          hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
+          k[primeCounter++] = (mathPow(candidate, 1/3) * maxWord) | 0;
         }
+      }
+      hash = hash.slice(0);
+      ascii += '\x80';
+      while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
+      for (i = 0; i < ascii[lengthProperty]; i++) {
+        j = ascii.charCodeAt(i);
+        words[i >> 2] |= j << ((3 - i) % 4) * 8;
+      }
+      words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
+      words[words[lengthProperty]] = (asciiBitLength | 0);
+      for (j = 0; j < words[lengthProperty];) {
+        var w = words.slice(j, j += 16);
+        var oldHash = hash;
+        hash = hash.slice(0, 8);
+        for (i = 0; i < 64; i++) {
+          var w15 = w[i - 15], w2 = w[i - 2];
+          var s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
+          var s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
+          var ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
+          var maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
+          var temp1 = hash[7] + (rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25)) + ch + k[i] + (w[i] = (i < 16) ? w[i] : (w[i - 16] + s0 + w[i - 7] + s1) | 0);
+          var temp2 = (rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22)) + maj;
+          hash = [(temp1 + temp2) | 0].concat(hash);
+          hash[4] = (hash[4] + temp1) | 0;
+        }
+        for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+      }
+      for (i = 0; i < 8; i++) {
+        for (j = 3; j + 1; j--) {
+          var b = (hash[i] >> (j * 8)) & 255;
+          result += ((b < 16) ? 0 : '') + b.toString(16);
+        }
+      }
+      return result;
+    }
+
+    function hexToAscii(hex) {
+      var str = '';
+      for (var i = 0; i < hex.length; i += 2) {
+        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+      }
+      return str;
+    }
+
+    function hmacSha256(key, message) {
+      var blockSize = 64;
+      if (key.length > blockSize) key = sha256(key);
+      while (key.length < blockSize) key += '\x00';
+      var oKeyPad = '', iKeyPad = '';
+      for (var i = 0; i < blockSize; i++) {
+        var kByte = key.charCodeAt(i);
+        oKeyPad += String.fromCharCode(kByte ^ 0x5c);
+        iKeyPad += String.fromCharCode(kByte ^ 0x36);
+      }
+      return sha256(oKeyPad + hexToAscii(sha256(iKeyPad + message)));
+    }
+
+    const DEFAULT_INSTITUTION_KEY = 'bn_sec_key_7500058655_brightnexa_2026_cbse_v1';
+
+    function getSchoolSigningKey() {
+      const STORAGE_KEY = 'bright-nexa-school-os:signing-key:v1';
+      let key = localStorage.getItem(STORAGE_KEY);
+      if (!key || key.length < 32) {
+        try {
+          const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
+          if (snapRaw) {
+            const snap = JSON.parse(snapRaw);
+            if (snap.institution && snap.institution.verificationSecretKey) {
+              key = snap.institution.verificationSecretKey;
+            }
+          }
+        } catch(e) {}
+      }
+      if (!key || key.length < 32) {
+        key = DEFAULT_INSTITUTION_KEY;
+        try {
+          localStorage.setItem(STORAGE_KEY, key);
+        } catch(e) {}
+      }
+      return key;
+    }
+
+    function computeStudentHMAC(st, inst) {
+      const key = getSchoolSigningKey();
+      const dobNorm = normalizeDate(st?.dob || st?.dateOfBirth || '');
+      const msg = `${inst?.name || 'Bright Nexa'}|${inst?.session || '2026-27'}|${st?.admissionNumber || ''}|${st?.rollNumber || ''}|${dobNorm}`;
+      return hmacSha256(key, msg).slice(0, 16).toUpperCase();
+    }
+
+    function getVerificationUrl(st, sig) {
+      const isWeb = window.location.protocol.startsWith('http');
+      const base = isWeb 
+        ? (window.location.origin + window.location.pathname.replace('id-card-a4.html', 'student-portal.html'))
+        : 'https://bright-nexa-school-os.onrender.com/student-portal.html';
+      return `${base}?action=verify&adm=${encodeURIComponent(st.admissionNumber)}&sig=${encodeURIComponent(sig)}`;
+    }
+
+    // Standard ISO/IEC 18004 QRCode Canvas renderer with error correction
+    function generateRealQRCode(canvas, text) {
+      if (!canvas) return;
+      if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+        window.QRCode.toCanvas(canvas, text, {
+          width: 90,
+          margin: 1,
+          color: {
+            dark: '#0b2545',
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'M'
+        }, function(err) {
+          if (err) console.error("QRCode render error:", err);
+        });
+      } else {
+        setTimeout(() => generateRealQRCode(canvas, text), 60);
       }
     }
 
@@ -1051,8 +1151,8 @@
           const photoSrc = sanitizeImageUrl(st.photoUrl, avatarSvg);
           const schoolLogoSrc = sanitizeImageUrl(institution.logoUrl, 'app-icon-512.png');
           
-          // Generate cryptographic verification signature
-          const sig = computeVerificationSig(st, institution);
+          // Generate Cryptographic HMAC-SHA256 signature
+          const sig = computeStudentHMAC(st, institution);
 
           // Specimen watermark HTML for demo cards
           const watermarkHtml = isDemoMode ? `<div class="watermark-specimen">SAMPLE SPECIMEN • NOT OFFICIAL</div>` : '';
@@ -1133,7 +1233,7 @@
                     <div class="qr-text">
                       <strong>DIGITAL CREDENTIAL</strong><br>
                       Scan to verify student admission & institutional authenticity.
-                      <span class="qr-verify-code">SIG: ${escapeHtml(sig)}</span>
+                      <span class="qr-verify-code">HMAC SIG: ${escapeHtml(sig)}</span>
                     </div>
                   </div>
 
@@ -1153,12 +1253,12 @@
 
           sheetDiv.insertAdjacentHTML('beforeend', cardHtml);
 
-          // Generate Canvas QR Code
+          // Generate Real Standard ISO QRCode on Canvas
           setTimeout(() => {
             const canvas = document.getElementById(`qr-${globalIdx}`);
             if (canvas) {
-              const verifyUrl = `student-portal.html?action=verify&adm=${encodeURIComponent(st.admissionNumber)}&sig=${encodeURIComponent(sig)}`;
-              generateQRCanvas(verifyUrl, canvas);
+              const verifyUrl = getVerificationUrl(st, sig);
+              generateRealQRCode(canvas, verifyUrl);
             }
           }, 10);
         });
