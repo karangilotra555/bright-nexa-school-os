@@ -5925,17 +5925,21 @@ button:disabled {
 }
 .auth-brand {
   align-items: center;
+  justify-content: center;
   gap: 11px;
+  width: 100%;
   display: flex;
 }
 .auth-official-logo {
-  border-radius: 18px;
-  width: min(260px, 72%);
+  width: min(270px, 76%);
   height: auto;
   display: block;
-  box-shadow:
-    0 18px 48px #00071252,
-    0 0 0 1px #3fb8ef33;
+  margin-inline: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 8px 20px rgba(0, 170, 235, 0.12));
 }
 .auth-brand-copy {
   max-width: 590px;
