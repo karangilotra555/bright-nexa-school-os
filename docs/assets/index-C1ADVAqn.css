@@ -5939,8 +5939,9 @@ button:disabled {
   border-radius: 0;
   box-shadow: none;
   mix-blend-mode: screen;
-  -webkit-mask-image: radial-gradient(ellipse 65% 65% at 50% 48%, #000 56%, transparent 100%);
-  mask-image: radial-gradient(ellipse 65% 65% at 50% 48%, #000 56%, transparent 100%);
+  /* Fade the original rectangular artwork into the navy panel, leaving the lettering intact. */
+  -webkit-mask-image: radial-gradient(ellipse 56% 54% at 50% 48%, #000 42%, rgba(0,0,0,.96) 54%, transparent 93%);
+  mask-image: radial-gradient(ellipse 56% 54% at 50% 48%, #000 42%, rgba(0,0,0,.96) 54%, transparent 93%);
 }
 .auth-brand-copy {
   max-width: 590px;
