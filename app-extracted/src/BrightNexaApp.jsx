@@ -20518,6 +20518,22 @@ function _Component90({
             <_Component size={17} />
             {`Export Excel`}
           </Component5>
+          <Component5
+            className={`secondary-button`}
+            style={{ background: `#dbeafe`, color: `#0284c7`, borderColor: `#38bdf8`, fontWeight: 800 }}
+            onClick={() => window.open(`./id-card-a4.html`, `_blank`)}
+          >
+            <_Component size={17} />
+            {`🪪 ID Cards Bulk Generator`}
+          </Component5>
+          <Component5
+            className={`secondary-button`}
+            style={{ background: `#fef9c3`, color: `#b45309`, borderColor: `#fde047`, fontWeight: 800 }}
+            onClick={() => window.open(`./tc-certificate-a4.html`, `_blank`)}
+          >
+            <_Component size={17} />
+            {`📜 Transfer TC`}
+          </Component5>
           <Component6
             className={`secondary-button`}
             onClick={() => u.current?.click()}
@@ -27950,6 +27966,14 @@ function Hi({ data: e, students: t, snapshot: n }) {
             >
               <Je size={16} />
               {`⭐ Open Modern CBSE A4 Marksheet`}
+            </button>
+            <button
+              className={`secondary-button`}
+              style={{ background: `#dcfce7`, color: `#15803d`, borderColor: `#86efac`, fontWeight: 800 }}
+              onClick={() => window.open(`./id-card-a4.html`, `_blank`)}
+            >
+              <Je size={16} />
+              {`🪪 Student ID Cards`}
             </button>
             <Component883
               className={`primary-button`}

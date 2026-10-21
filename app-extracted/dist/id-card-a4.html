@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student ID Card Generator (A4 Bulk Print) — Bright Nexa School OS</title>
+  <title>Student ID Card Bulk Generator (A4 Print Sheets) — Bright Nexa School OS</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
 
@@ -48,29 +48,42 @@
       margin-bottom: 20px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
       gap: 12px;
     }
 
-    .no-print-bar h2 {
-      font-size: 16px;
+    .bar-top-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .bar-title h2 {
+      font-size: 17px;
       color: var(--primary);
       display: flex;
       align-items: center;
       gap: 8px;
+      font-weight: 800;
+    }
+
+    .bar-title p {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
     }
 
     .control-actions {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .btn {
-      padding: 8px 16px;
+      padding: 8px 14px;
       border-radius: 8px;
       font-weight: 700;
       font-size: 13px;
@@ -98,66 +111,140 @@
     .btn-secondary {
       background: #f1f5f9;
       color: #334155;
+      border: 1px solid #cbd5e1;
     }
     .btn-secondary:hover {
       background: #e2e8f0;
     }
 
     select, input {
-      padding: 7px 12px;
+      padding: 8px 12px;
       border-radius: 6px;
       border: 1px solid #cbd5e1;
       font-size: 13px;
       background: #fff;
-      font-weight: 500;
+      font-weight: 600;
+      color: #0f172a;
     }
 
-    /* A4 Sheet Container */
+    /* Search Box Row */
+    .filter-bar-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .search-input-box {
+      position: relative;
+      flex: 1;
+      min-width: 240px;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input-box input {
+      width: 100%;
+      padding-left: 34px;
+      padding-right: 30px;
+      border: 1.5px solid #0284c7;
+      background: #f8fafc;
+      font-size: 13px;
+    }
+
+    .search-input-box input:focus {
+      background: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+      outline: none;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      font-size: 14px;
+      color: #0284c7;
+      pointer-events: none;
+    }
+
+    .search-clear-btn {
+      position: absolute;
+      right: 10px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 14px;
+      cursor: pointer;
+      display: none;
+    }
+
+    .badge-count {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #bae6fd;
+      white-space: nowrap;
+    }
+
+    /* Pages Container */
+    #pagesContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* A4 Sheet Container: 8 Cards per sheet (2 cols x 4 rows) */
     .a4-sheet {
       width: 210mm;
       min-height: 297mm;
+      height: 297mm;
       background: #ffffff;
       box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-      padding: 10mm 8mm;
+      padding: 8mm 6mm;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      grid-gap: 8mm 6mm;
+      grid-gap: 5mm 6mm;
       justify-items: center;
       align-content: start;
       page-break-after: always;
       position: relative;
     }
 
-    /* Standard Vertical ID Card (54mm x 86mm standard CR80) */
-    .id-card {
-      width: 86mm;
-      height: 54mm; /* Standard horizontal or landscape; vertical orientation below */
-      background: #ffffff;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      position: relative;
-      overflow: hidden;
+    /* Printable Page Number Banner */
+    .sheet-meta-tag {
+      grid-column: span 2;
+      width: 100%;
+      text-align: right;
+      font-size: 8pt;
+      color: #94a3b8;
+      border-bottom: 0.5px dashed #cbd5e1;
+      padding-bottom: 2mm;
+      margin-bottom: 1mm;
       display: flex;
-      flex-direction: row;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      page-break-inside: avoid;
+      justify-content: space-between;
     }
 
-    /* Vertical Card Style (54mm wide x 88mm tall) */
+    /* Vertical Card Style (Dual Front & Back Side-by-Side: 88mm x 58mm) */
     .id-card-vertical {
       width: 88mm;
-      height: 57mm; /* Dual Card Front & Back joined or compact A4 8-up */
+      height: 59mm;
       border: 1px dashed #cbd5e1;
       display: flex;
       flex-direction: row;
       background: #f8fafc;
       padding: 2px;
       border-radius: 6px;
+      page-break-inside: avoid;
     }
 
     .card-side {
       width: 43mm;
-      height: 55mm;
+      height: 57mm;
       background: #ffffff;
       border-radius: 6px;
       border: 1px solid #e2e8f0;
@@ -192,20 +279,23 @@
 
     .school-title {
       font-family: 'Cinzel', serif;
-      font-size: 7.5pt;
+      font-size: 7pt;
       font-weight: 800;
       line-height: 1.1;
       letter-spacing: 0.2px;
-      margin-left: 6mm;
+      margin-left: 6.5mm;
       text-transform: uppercase;
       color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .school-tagline {
       font-size: 4pt;
       font-weight: 600;
       color: var(--gold-light);
-      margin-left: 6mm;
+      margin-left: 6.5mm;
       margin-top: 0.5mm;
       text-transform: uppercase;
     }
@@ -248,6 +338,10 @@
       line-height: 1.1;
       margin-bottom: 0.8mm;
       text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 38mm;
     }
 
     .class-badge {
@@ -286,6 +380,10 @@
       font-weight: 700;
       color: #0f172a;
       text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 25mm;
     }
 
     /* Card Footer */
@@ -379,15 +477,6 @@
       margin-bottom: 1mm;
     }
 
-    /* Cutting guide marks */
-    .cutting-guides {
-      position: absolute;
-      font-size: 4pt;
-      color: #94a3b8;
-      top: 1mm;
-      right: 2mm;
-    }
-
     /* Print Styles */
     @media print {
       body {
@@ -403,7 +492,7 @@
         padding: 8mm 6mm !important;
         margin: 0 !important;
         width: 210mm !important;
-        min-height: 297mm !important;
+        height: 297mm !important;
       }
     }
   </style>
@@ -412,62 +501,81 @@
 
   <!-- Top Action Control Bar -->
   <div class="no-print-bar">
-    <div>
-      <h2>🪪 Student ID Card Generator (A4 Bulk Print)</h2>
-      <p style="font-size: 12px; color: #64748b; margin-top: 2px;">
-        8 ID Cards (Front + Back Foldable) per A4 sheet • CBSE / ICSE / State Board Standard
-      </p>
+    <div class="bar-top-row">
+      <div class="bar-title">
+        <h2>🪪 Student ID Card Bulk Generator</h2>
+        <p>A4 Batch Print Engine (8 ID Cards per sheet with Front & Back fold guides)</p>
+      </div>
+
+      <div class="control-actions">
+        <button class="btn btn-primary" onclick="window.print()">
+          🖨️ Print A4 Sheets
+        </button>
+
+        <a href="marksheet-a4.html" class="btn btn-secondary" style="text-decoration:none;">
+          📄 Marksheets
+        </a>
+
+        <a href="tc-certificate-a4.html" class="btn btn-secondary" style="text-decoration:none;">
+          📜 TC Certificate
+        </a>
+
+        <a href="student-portal.html" class="btn btn-gold" style="text-decoration:none;">
+          📱 Student Portal
+        </a>
+
+        <button class="btn btn-secondary" onclick="loadSchoolOSData()">
+          🔄 Reload Data
+        </button>
+      </div>
     </div>
 
-    <div class="control-actions">
+    <!-- Filters & Search Bar Row -->
+    <div class="filter-bar-row">
+      <!-- Search Input -->
+      <div class="search-input-box">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Search by student name, roll number, admission no, or class..." 
+          oninput="handleSearch()"
+        >
+        <button id="searchClearBtn" class="search-clear-btn" onclick="clearSearch()">✕</button>
+      </div>
+
       <!-- Class Filter -->
       <label style="font-size: 12px; font-weight: 700; color: #475569;">Class:</label>
       <select id="classFilter" onchange="filterStudents()">
-        <option value="ALL">All Classes (Full School)</option>
+        <option value="ALL">All Classes</option>
       </select>
 
       <!-- Student Filter -->
       <label style="font-size: 12px; font-weight: 700; color: #475569;">Student:</label>
       <select id="studentFilter" onchange="renderCards()">
-        <option value="ALL">All Students (Bulk Print)</option>
+        <option value="ALL">All in Filter</option>
       </select>
 
       <!-- Theme Color -->
       <select id="colorTheme" onchange="changeTheme()">
-        <option value="navy">Theme: Royal Navy & Gold</option>
-        <option value="maroon">Theme: Heritage Maroon</option>
-        <option value="forest">Theme: Emerald Green</option>
-        <option value="dark">Theme: Sleek Dark Slate</option>
+        <option value="navy">Royal Navy & Gold</option>
+        <option value="maroon">Heritage Maroon</option>
+        <option value="forest">Emerald Green</option>
+        <option value="dark">Sleek Dark Slate</option>
       </select>
 
-      <button class="btn btn-primary" onclick="window.print()">
-        🖨️ Print A4 Sheet
-      </button>
-
-      <a href="marksheet-a4.html" class="btn btn-secondary" style="text-decoration:none;">
-        📄 Marksheets
-      </a>
-
-      <a href="tc-certificate-a4.html" class="btn btn-secondary" style="text-decoration:none;">
-        📜 TC Certificate
-      </a>
-
-      <a href="student-portal.html" class="btn btn-gold" style="text-decoration:none;">
-        📱 Student Portal
-      </a>
-
-      <button class="btn btn-secondary" onclick="window.location.reload()">
-        🔄 Refresh
-      </button>
+      <!-- Counter Badge -->
+      <div class="badge-count" id="countBadge">
+        0 Students Ready
+      </div>
     </div>
   </div>
 
-  <!-- A4 Print Sheet Container -->
-  <div class="a4-sheet" id="cardsGrid">
-    <!-- ID Cards will be rendered here dynamically -->
+  <!-- A4 Multi-Page Container -->
+  <div id="pagesContainer">
+    <!-- A4 Sheets will be injected here dynamically -->
   </div>
 
-  <!-- Minimal Pure-JS Offline QR Code Generator (No external scripts needed) -->
   <script>
     // Lightweight Canvas QR code renderer (pure offline)
     function generateQRCanvas(text, canvas) {
@@ -477,14 +585,10 @@
       canvas.width = size;
       canvas.height = size;
       
-      // Background
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, size, size);
-      
-      // QR Pattern simulation using hash for visual realism + scanner readability
       ctx.fillStyle = "#0b2545";
       
-      // Corner Finder Patterns (standard QR markers)
       function drawFinder(x, y) {
         ctx.fillRect(x, y, 28, 28);
         ctx.fillStyle = "#ffffff";
@@ -496,7 +600,6 @@
       drawFinder(68, 4);
       drawFinder(4, 68);
       
-      // Data modules generated deterministically from student text
       let hash = 0;
       for (let i = 0; i < text.length; i++) {
         hash = ((hash << 5) - hash) + text.charCodeAt(i);
@@ -526,26 +629,26 @@
 
     // Default Demo Students (if localStorage has no data yet)
     let allStudents = [
-      { id: "1", name: "AARAV SHARMA", rollNumber: "01", admissionNumber: "BMS-2026-001", className: "Class VI", section: "A", fatherName: "MR. RAJESH SHARMA", contactNumber: "9876543210", bloodGroup: "O+", dob: "12-03-2014", address: "Sector 4, BHEL, Haridwar", busStop: "Route 3 (Gate No 2)" },
-      { id: "2", name: "ANANYA VERMA", rollNumber: "02", admissionNumber: "BMS-2026-002", className: "Class VI", section: "A", fatherName: "MR. SUNIL VERMA", contactNumber: "9812345678", bloodGroup: "B+", dob: "24-07-2014", address: "Shivalik Nagar, Haridwar", busStop: "Route 1 (Main Chowk)" },
-      { id: "3", name: "ROHAN MEHTA", rollNumber: "03", admissionNumber: "BMS-2026-003", className: "Class VI", section: "B", fatherName: "MR. AMIT MEHTA", contactNumber: "9988776655", bloodGroup: "A+", dob: "05-11-2013", address: "Ranipur More, Haridwar", busStop: "Route 2 (Station)" },
-      { id: "4", name: "PRIYA CHOUDHARY", rollNumber: "04", admissionNumber: "BMS-2026-004", className: "Class VII", section: "A", fatherName: "MR. VIKRAM SINGH", contactNumber: "9765432109", bloodGroup: "AB+", dob: "18-01-2013", address: "Jwalapur, Haridwar", busStop: "Route 4 (Post Office)" },
-      { id: "5", name: "KAVYA GUPTA", rollNumber: "05", admissionNumber: "BMS-2026-005", className: "Class VII", section: "A", fatherName: "MR. DEEPAK GUPTA", contactNumber: "9654321098", bloodGroup: "O+", dob: "09-09-2013", address: "Arya Nagar, Haridwar", busStop: "Route 1 (Main Chowk)" },
-      { id: "6", name: "ADITYA PATEL", rollNumber: "06", admissionNumber: "BMS-2026-006", className: "Class VIII", section: "A", fatherName: "MR. SURESH PATEL", contactNumber: "9543210987", bloodGroup: "B-", dob: "14-04-2012", address: "Kankhal, Haridwar", busStop: "Route 5 (Temple Road)" },
-      { id: "7", name: "SIMRAN KAUR", rollNumber: "07", admissionNumber: "BMS-2026-007", className: "Class VIII", section: "B", fatherName: "MR. HARPREET SINGH", contactNumber: "9432109876", bloodGroup: "A-", dob: "30-10-2012", address: "Roshnabad, Haridwar", busStop: "Route 6 (Court Complex)" },
-      { id: "8", name: "YASHVARDHAN JOSHI", rollNumber: "08", admissionNumber: "BMS-2026-008", className: "Class IX", section: "A", fatherName: "MR. MANOJ JOSHI", contactNumber: "9321098765", bloodGroup: "O-", dob: "02-02-2011", address: "Bahadrabad, Haridwar", busStop: "Route 2 (Toll Plaza)" }
+      { id: "1", name: "AARAV SHARMA", rollNumber: "01", admissionNumber: "BMS-2026-001", className: "Class 6", section: "A", fatherName: "MR. RAJESH SHARMA", contactNumber: "9876543210", bloodGroup: "O+", dob: "12-03-2014", address: "Sector 4, BHEL, Haridwar", busStop: "Route 3 (Gate No 2)" },
+      { id: "2", name: "ANANYA VERMA", rollNumber: "02", admissionNumber: "BMS-2026-002", className: "Class 6", section: "A", fatherName: "MR. SUNIL VERMA", contactNumber: "9812345678", bloodGroup: "B+", dob: "24-07-2014", address: "Shivalik Nagar, Haridwar", busStop: "Route 1 (Main Chowk)" },
+      { id: "3", name: "ROHAN MEHTA", rollNumber: "03", admissionNumber: "BMS-2026-003", className: "Class 6", section: "B", fatherName: "MR. AMIT MEHTA", contactNumber: "9988776655", bloodGroup: "A+", dob: "05-11-2013", address: "Ranipur More, Haridwar", busStop: "Route 2 (Station)" },
+      { id: "4", name: "PRIYA CHOUDHARY", rollNumber: "04", admissionNumber: "BMS-2026-004", className: "Class 7", section: "A", fatherName: "MR. VIKRAM SINGH", contactNumber: "9765432109", bloodGroup: "AB+", dob: "18-01-2013", address: "Jwalapur, Haridwar", busStop: "Route 4 (Post Office)" },
+      { id: "5", name: "KAVYA GUPTA", rollNumber: "05", admissionNumber: "BMS-2026-005", className: "Class 7", section: "A", fatherName: "MR. DEEPAK GUPTA", contactNumber: "9654321098", bloodGroup: "O+", dob: "09-09-2013", address: "Arya Nagar, Haridwar", busStop: "Route 1 (Main Chowk)" },
+      { id: "6", name: "ADITYA PATEL", rollNumber: "06", admissionNumber: "BMS-2026-006", className: "Class 8", section: "A", fatherName: "MR. SURESH PATEL", contactNumber: "9543210987", bloodGroup: "B-", dob: "14-04-2012", address: "Kankhal, Haridwar", busStop: "Route 5 (Temple Road)" },
+      { id: "7", name: "SIMRAN KAUR", rollNumber: "07", admissionNumber: "BMS-2026-007", className: "Class 8", section: "B", fatherName: "MR. HARPREET SINGH", contactNumber: "9432109876", bloodGroup: "A-", dob: "30-10-2012", address: "Roshnabad, Haridwar", busStop: "Route 6 (Court Complex)" },
+      { id: "8", name: "YASHVARDHAN JOSHI", rollNumber: "08", admissionNumber: "BMS-2026-008", className: "Class 9", section: "A", fatherName: "MR. MANOJ JOSHI", contactNumber: "9321098765", bloodGroup: "O-", dob: "02-02-2011", address: "Bahadrabad, Haridwar", busStop: "Route 2 (Toll Plaza)" }
     ];
 
     function loadSchoolOSData() {
       try {
-        // Read Institution
+        // Read Institution Profile
         const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
         if (snapRaw) {
           const snap = JSON.parse(snapRaw);
           if (snap.institution) {
             institution.name = snap.institution.name || institution.name;
             institution.tagline = snap.institution.tagline || institution.tagline;
-            institution.address = [snap.institution.address, snap.institution.city].filter(Boolean).join(', ') || institution.address;
+            institution.address = [snap.institution.address, snap.institution.city, snap.institution.state].filter(Boolean).join(', ') || institution.address;
             institution.phone = snap.institution.contactNumber ? `+91 ${snap.institution.contactNumber}` : institution.phone;
             institution.session = snap.institution.session || institution.session;
             institution.principalName = snap.institution.principalName || institution.principalName;
@@ -553,26 +656,29 @@
           }
         }
 
-        // Read Real Students
+        // Read Live Students (bright-nexa-school-os:students:v1)
         const stdRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
         if (stdRaw) {
           const parsed = JSON.parse(stdRaw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            allStudents = parsed.map((s, idx) => ({
-              id: s.id || String(idx + 1),
-              name: (s.name || `STUDENT ${idx + 1}`).toUpperCase(),
-              rollNumber: s.rollNumber || String(idx + 1).padStart(2, '0'),
-              admissionNumber: s.admissionNumber || `BMS-2026-${String(idx + 1).padStart(3, '0')}`,
-              className: s.className || "Class VI",
-              section: s.section || "A",
-              fatherName: (s.fatherName || s.guardianName || "MR. GUARDIAN").toUpperCase(),
-              contactNumber: s.contactNumber || s.phone || s.parentPhone || "9876543210",
-              bloodGroup: s.bloodGroup || "B+",
-              dob: s.dateOfBirth || "12-03-2014",
-              address: s.address || "Haridwar, Uttarakhand",
-              busStop: s.busStop || s.transportRoute || "Self / Walker",
-              photoUrl: s.photoUrl || s.avatarUrl || null
-            }));
+            allStudents = parsed.map((s, idx) => {
+              const cName = s.className ? (String(s.className).toLowerCase().startsWith('class') ? s.className : `Class ${s.className}`) : 'Class 6';
+              return {
+                id: s.id || String(idx + 1),
+                name: (s.name || `STUDENT ${idx + 1}`).toUpperCase(),
+                rollNumber: s.rollNumber ? String(s.rollNumber).padStart(2, '0') : String(idx + 1).padStart(2, '0'),
+                admissionNumber: s.admissionNumber || `BMS-2026-${String(idx + 1).padStart(3, '0')}`,
+                className: cName,
+                section: s.section || "A",
+                fatherName: (s.fatherName || s.guardianName || "MR. GUARDIAN").toUpperCase(),
+                contactNumber: s.parentMobile || s.contactNumber || s.phone || s.alternateMobile || "9876543210",
+                bloodGroup: s.bloodGroup || "B+",
+                dob: s.dateOfBirth || "12-03-2014",
+                address: s.address || "Haridwar, Uttarakhand",
+                busStop: s.busStop || s.transportRoute || "Self / Walker",
+                photoUrl: s.photoUrl || s.avatarUrl || null
+              };
+            });
           }
         }
       } catch (err) {
@@ -584,8 +690,7 @@
     }
 
     function populateFilters() {
-      // Classes
-      const classes = Array.from(new Set(allStudents.map(s => s.className))).filter(Boolean);
+      const classes = Array.from(new Set(allStudents.map(s => s.className))).filter(Boolean).sort();
       const classSelect = document.getElementById('classFilter');
       classSelect.innerHTML = `<option value="ALL">All Classes (${allStudents.length} Students)</option>` +
         classes.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -600,139 +705,205 @@
         : allStudents.filter(s => s.className === selectedClass);
 
       const studentSelect = document.getElementById('studentFilter');
-      studentSelect.innerHTML = `<option value="ALL">All ${filtered.length} Students (Bulk Print)</option>` +
+      studentSelect.innerHTML = `<option value="ALL">All in Filter (${filtered.length} Students)</option>` +
         filtered.map(s => `<option value="${s.id}">${s.name} (${s.rollNumber} • ${s.className}-${s.section})</option>`).join('');
 
       renderCards();
     }
 
+    function handleSearch() {
+      const query = document.getElementById('searchInput').value.trim();
+      const clearBtn = document.getElementById('searchClearBtn');
+      if (clearBtn) clearBtn.style.display = query ? 'block' : 'none';
+      renderCards();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('searchInput');
+      input.value = '';
+      document.getElementById('searchClearBtn').style.display = 'none';
+      input.focus();
+      renderCards();
+    }
+
     function renderCards() {
-      const selectedClass = document.getElementById('classFilter').value;
-      const selectedStudentId = document.getElementById('studentFilter').value;
+      const query = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+      const selectedClass = document.getElementById('classFilter')?.value || 'ALL';
+      const selectedStudentId = document.getElementById('studentFilter')?.value || 'ALL';
 
       let list = allStudents;
+
+      // 1. Class filter
       if (selectedClass !== 'ALL') {
         list = list.filter(s => s.className === selectedClass);
       }
+
+      // 2. Student single filter (if not ALL)
       if (selectedStudentId !== 'ALL') {
         list = list.filter(s => s.id === selectedStudentId);
       }
 
-      const grid = document.getElementById('cardsGrid');
-      grid.innerHTML = '';
+      // 3. Search text query
+      if (query) {
+        list = list.filter(s => 
+          (s.name && s.name.toLowerCase().includes(query)) ||
+          (s.rollNumber && s.rollNumber.toLowerCase().includes(query)) ||
+          (s.admissionNumber && s.admissionNumber.toLowerCase().includes(query)) ||
+          (s.className && s.className.toLowerCase().includes(query)) ||
+          (s.fatherName && s.fatherName.toLowerCase().includes(query)) ||
+          (s.contactNumber && s.contactNumber.includes(query))
+        );
+      }
+
+      // Update badge
+      const badge = document.getElementById('countBadge');
+      if (badge) {
+        badge.textContent = `${list.length} Student${list.length === 1 ? '' : 's'} Ready`;
+      }
+
+      const container = document.getElementById('pagesContainer');
+      container.innerHTML = '';
 
       if (list.length === 0) {
-        grid.innerHTML = '<div style="grid-column: span 2; padding: 40px; text-align: center; color: #64748b;">No students found for selected filter.</div>';
+        container.innerHTML = `
+          <div class="a4-sheet" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+            <div style="font-size: 40px; margin-bottom: 12px;">🔍</div>
+            <h3 style="color: #0b2545; font-size: 18px; margin-bottom: 6px;">No Students Matched</h3>
+            <p style="color: #64748b; font-size: 13px;">Try clearing your search query or choosing 'All Classes'.</p>
+            <button class="btn btn-secondary" onclick="clearSearch()" style="margin-top: 14px;">Clear Search</button>
+          </div>
+        `;
         return;
       }
 
-      list.forEach((st, idx) => {
-        // Fallback default avatar generator using initials
-        const initials = st.name.split(' ').map(w => w[0]).slice(0, 2).join('');
-        const avatarSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120" viewBox="0 0 100 120"><rect width="100" height="120" fill="%230b2545"/><circle cx="50" cy="45" r="22" fill="%23fef9c3"/><rect x="25" y="75" width="50" height="40" rx="10" fill="%230284c7"/><text x="50" y="52" font-family="Arial" font-size="16" font-weight="bold" fill="%230b2545" text-anchor="middle">${initials}</text></svg>`;
-        const photoSrc = st.photoUrl || avatarSvg;
+      // Chunk list into groups of 8 (A4 batch sheets)
+      const chunkSize = 8;
+      const totalPages = Math.ceil(list.length / chunkSize);
 
-        const cardHtml = `
-          <div class="id-card-vertical" id="card-${idx}">
-            <!-- FRONT SIDE -->
-            <div class="card-side">
-              <div class="card-header">
-                <img src="${institution.logoUrl}" class="school-logo-img" onerror="this.src='app-icon-512.png'">
-                <div class="school-title">${institution.name}</div>
-                <div class="school-tagline">${institution.session} • IDENTITY CARD</div>
-              </div>
+      for (let p = 0; p < totalPages; p++) {
+        const pageStudents = list.slice(p * chunkSize, (p + 1) * chunkSize);
+        const sheetDiv = document.createElement('div');
+        sheetDiv.className = 'a4-sheet';
 
-              <div class="card-body">
-                <div class="photo-frame">
-                  <img src="${photoSrc}" alt="${st.name}" onerror="this.src='${avatarSvg}'">
-                </div>
-                <div class="student-name">${st.name}</div>
-                <div class="class-badge">${st.className} - ${st.section}</div>
-
-                <div class="info-list">
-                  <div class="info-row">
-                    <span class="info-label">Roll No:</span>
-                    <span class="info-val">${st.rollNumber}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Adm No:</span>
-                    <span class="info-val">${st.admissionNumber}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Father:</span>
-                    <span class="info-val" style="font-size: 4.2pt;">${st.fatherName}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Phone:</span>
-                    <span class="info-val">${st.contactNumber}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-label">Blood Grp:</span>
-                    <span class="info-val" style="color: #b91c1c;">${st.bloodGroup}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card-footer">
-                <span style="font-size: 3.8pt;">D.O.B: ${st.dob}</span>
-                <div class="principal-sign-box">
-                  <div class="principal-sign-line">PRINCIPAL</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- BACK SIDE -->
-            <div class="card-side">
-              <div class="back-header">STUDENT RECORD & RULES</div>
-              
-              <div class="back-body">
-                <div class="emergency-box">
-                  🚨 EMERGENCY: ${institution.phone}
-                </div>
-
-                <div class="info-list">
-                  <div class="info-row">
-                    <span class="info-label">Route:</span>
-                    <span class="info-val">${st.busStop}</span>
-                  </div>
-                  <div class="info-row" style="flex-direction: column; gap: 0.5mm; border-bottom: none; padding: 1mm 0;">
-                    <span class="info-label">Res. Address:</span>
-                    <span class="info-val" style="text-align: left; font-size: 4.2pt; color: #475569;">${st.address}</span>
-                  </div>
-                </div>
-
-                <div class="qr-container">
-                  <canvas id="qr-${idx}" class="qr-canvas"></canvas>
-                  <div class="qr-text">
-                    <strong>OFFICIAL DIGITAL ID</strong><br>
-                    Scan to verify student admission & attendance.
-                  </div>
-                </div>
-
-                <div class="terms-box">
-                  1. This card is non-transferable & must be worn daily.<br>
-                  2. Loss of card must be reported to the school office.<br>
-                  3. If found, please return to: ${institution.address}.
-                </div>
-              </div>
-
-              <div class="card-footer" style="background: #0f172a; color: #94a3b8; font-size: 3.6pt; justify-content: center;">
-                BRIGHT NEXA SCHOOL OS • SECURE ENCRYPTED ID
-              </div>
-            </div>
-          </div>
+        // Sheet Header Info
+        const metaTag = document.createElement('div');
+        metaTag.className = 'sheet-meta-tag';
+        metaTag.innerHTML = `
+          <span><strong>${institution.name}</strong> • Official Student ID Cards</span>
+          <span>A4 Sheet ${p + 1} of ${totalPages} (${list.length} Total)</span>
         `;
+        sheetDiv.appendChild(metaTag);
 
-        grid.insertAdjacentHTML('beforeend', cardHtml);
+        pageStudents.forEach((st, idx) => {
+          const globalIdx = p * chunkSize + idx;
+          const initials = (st.name || 'ST').split(' ').map(w => w[0]).slice(0, 2).join('');
+          const avatarSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120" viewBox="0 0 100 120"><rect width="100" height="120" fill="%230b2545"/><circle cx="50" cy="45" r="22" fill="%23fef9c3"/><rect x="25" y="75" width="50" height="40" rx="10" fill="%230284c7"/><text x="50" y="52" font-family="Arial" font-size="16" font-weight="bold" fill="%230b2545" text-anchor="middle">${initials}</text></svg>`;
+          const photoSrc = st.photoUrl || avatarSvg;
 
-        // Generate QR Code on canvas
-        setTimeout(() => {
-          const canvas = document.getElementById(`qr-${idx}`);
-          if (canvas) {
-            generateQRCanvas(`ST:${st.admissionNumber}|ROLL:${st.rollNumber}|NAME:${st.name}`, canvas);
-          }
-        }, 10);
-      });
+          const cardHtml = `
+            <div class="id-card-vertical" id="card-${globalIdx}">
+              <!-- FRONT SIDE -->
+              <div class="card-side">
+                <div class="card-header">
+                  <img src="${institution.logoUrl}" class="school-logo-img" onerror="this.src='app-icon-512.png'">
+                  <div class="school-title">${institution.name}</div>
+                  <div class="school-tagline">${institution.session} • IDENTITY CARD</div>
+                </div>
+
+                <div class="card-body">
+                  <div class="photo-frame">
+                    <img src="${photoSrc}" alt="${st.name}" onerror="this.src='${avatarSvg}'">
+                  </div>
+                  <div class="student-name">${st.name}</div>
+                  <div class="class-badge">${st.className} - ${st.section}</div>
+
+                  <div class="info-list">
+                    <div class="info-row">
+                      <span class="info-label">Roll No:</span>
+                      <span class="info-val">${st.rollNumber}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Adm No:</span>
+                      <span class="info-val">${st.admissionNumber}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Father:</span>
+                      <span class="info-val" style="font-size: 4.2pt;">${st.fatherName}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Phone:</span>
+                      <span class="info-val">${st.contactNumber}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Blood Grp:</span>
+                      <span class="info-val" style="color: #b91c1c;">${st.bloodGroup}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card-footer">
+                  <span style="font-size: 3.8pt;">D.O.B: ${st.dob}</span>
+                  <div class="principal-sign-box">
+                    <div class="principal-sign-line">PRINCIPAL</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- BACK SIDE -->
+              <div class="card-side">
+                <div class="back-header">STUDENT RECORD & RULES</div>
+                
+                <div class="back-body">
+                  <div class="emergency-box">
+                    🚨 EMERGENCY: ${institution.phone}
+                  </div>
+
+                  <div class="info-list">
+                    <div class="info-row">
+                      <span class="info-label">Route:</span>
+                      <span class="info-val">${st.busStop}</span>
+                    </div>
+                    <div class="info-row" style="flex-direction: column; gap: 0.5mm; border-bottom: none; padding: 1mm 0;">
+                      <span class="info-label">Res. Address:</span>
+                      <span class="info-val" style="text-align: left; font-size: 4pt; color: #475569;">${st.address}</span>
+                    </div>
+                  </div>
+
+                  <div class="qr-container">
+                    <canvas id="qr-${globalIdx}" class="qr-canvas"></canvas>
+                    <div class="qr-text">
+                      <strong>OFFICIAL DIGITAL ID</strong><br>
+                      Scan to verify student admission & attendance.
+                    </div>
+                  </div>
+
+                  <div class="terms-box">
+                    1. Card is non-transferable & must be worn daily.<br>
+                    2. Loss of card must be reported to school office.<br>
+                    3. Return to: ${institution.address}.
+                  </div>
+                </div>
+
+                <div class="card-footer" style="background: #0f172a; color: #94a3b8; font-size: 3.6pt; justify-content: center;">
+                  BRIGHT NEXA SCHOOL OS • SECURE ENCRYPTED ID
+                </div>
+              </div>
+            </div>
+          `;
+
+          sheetDiv.insertAdjacentHTML('beforeend', cardHtml);
+
+          // Generate Canvas QR Code
+          setTimeout(() => {
+            const canvas = document.getElementById(`qr-${globalIdx}`);
+            if (canvas) {
+              generateQRCanvas(`ST:${st.admissionNumber}|ROLL:${st.rollNumber}|NAME:${st.name}`, canvas);
+            }
+          }, 10);
+        });
+
+        container.appendChild(sheetDiv);
+      }
     }
 
     function changeTheme() {
@@ -755,7 +926,9 @@
 
     // Auto-init on load
     window.addEventListener('DOMContentLoaded', loadSchoolOSData);
-    loadSchoolOSData();
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      loadSchoolOSData();
+    }
   </script>
 </body>
 </html>
