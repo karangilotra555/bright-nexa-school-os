@@ -24149,33 +24149,42 @@ function _a({ initial: e, studentId: t, onClose: n, onSave: r }) {
     }),
   });
 }
-function va({ data: e, students: t, coachingMode: n = !1 }) {
-  let r = e.attendance.length
-      ? (e.attendance.filter((e) => e.status === `Present`).length /
-          e.attendance.length) *
+function bnCalculateQualityScore(e, t = []) {
+  let attendance = e?.attendance || [],
+    marks = e?.marks || [],
+    notices = e?.notices || [],
+    homework = e?.homework || [],
+    opportunities = e?.opportunities || [],
+    achievements = e?.achievements || [],
+    feePayments = e?.feePayments || [],
+    audit = e?.audit || [],
+    studentCount = Math.max(1, (t || []).length);
+  let r = attendance.length
+      ? (attendance.filter((x) => x.status === `Present`).length /
+          attendance.length) *
         100
       : 0,
-    i = e.marks.length
-      ? (e.marks.reduce((e, t) => e + t.obtainedMarks, 0) /
+    i = marks.length
+      ? (marks.reduce((acc, cur) => acc + (cur.obtainedMarks || 0), 0) /
           Math.max(
             1,
-            e.marks.reduce((e, t) => e + t.maximumMarks, 0),
+            marks.reduce((acc, cur) => acc + (cur.maximumMarks || 0), 0),
           )) *
         100
       : 0,
-    a = Math.min(100, e.notices.length * 8 + e.homework.length * 5),
+    a = Math.min(100, notices.length * 8 + homework.length * 5),
     o = Math.min(
       100,
-      e.homework.length * 5 +
-        (e.attendance.length / Math.max(1, t.length)) * 10,
+      homework.length * 5 +
+        (attendance.length / studentCount) * 10,
     ),
     s = Math.min(
       100,
-      e.opportunities.filter((e) => e.status !== `Closed`).length * 10 +
-        e.achievements.length * 5,
+      opportunities.filter((x) => x.status !== `Closed`).length * 10 +
+        achievements.length * 5,
     ),
-    c = Math.min(100, e.feePayments.length * 5),
-    l = Math.min(100, e.audit.length * 2),
+    c = Math.min(100, feePayments.length * 5),
+    l = Math.min(100, audit.length * 2),
     u = [
       { name: `Attendance`, value: r },
       { name: `Academics`, value: i },
@@ -24185,7 +24194,11 @@ function va({ data: e, students: t, coachingMode: n = !1 }) {
       { name: `Fee management`, value: c },
       { name: `Digital usage`, value: l },
     ],
-    d = Math.round(u.reduce((e, t) => e + t.value, 0) / u.length);
+    d = Math.round(u.reduce((acc, cur) => acc + cur.value, 0) / u.length);
+  return { metrics: u, overallScore: d };
+}
+function va({ data: e, students: t, coachingMode: n = !1 }) {
+  let { metrics: u, overallScore: d } = bnCalculateQualityScore(e, t);
   return (0, P.jsxs)(`section`, {
     children: [
       (0, P.jsx)(F, {
@@ -34710,7 +34723,11 @@ function Ds() {
       i.vehicles.length ||
       i.infrastructureAssets.length
     ),
-    oe = i.infrastructureAssets.reduce((e, t) => e + (t.quantity || 0), 0);
+    oe = i.infrastructureAssets.reduce((e, t) => e + (t.quantity || 0), 0),
+    liveQualityScore = (0, w.useMemo)(
+      () => bnCalculateQualityScore(i, y).overallScore,
+      [i, y],
+    );
   (0, w.useEffect)(() => {
     let o = !0;
     return (
@@ -35120,7 +35137,7 @@ function Ds() {
                                     title: x
                                       ? `Institute Quality Score`
                                       : _.quality,
-                                    subtitle: e.institution.qualityScore
+                                    subtitle: liveQualityScore
                                       ? `Data-driven improvement`
                                       : `Awaiting verified records`,
                                   }),
@@ -35130,13 +35147,13 @@ function Ds() {
                                       (0, P.jsx)(`div`, {
                                         className: `score-ring`,
                                         style: {
-                                          "--score": `${e.institution.qualityScore * 3.6}deg`,
+                                          "--score": `${liveQualityScore * 3.6}deg`,
                                         },
                                         children: (0, P.jsxs)(`div`, {
                                           children: [
                                             (0, P.jsx)(`strong`, {
                                               children:
-                                                e.institution.qualityScore,
+                                                liveQualityScore,
                                             }),
                                             (0, P.jsx)(`span`, {
                                               children: `/ 100`,
@@ -35149,16 +35166,18 @@ function Ds() {
                                         children: [
                                           (0, P.jsx)(`span`, {
                                             className: `growth-badge`,
-                                            children: e.institution.qualityScore
+                                            children: liveQualityScore
                                               ? `Active improvement plan`
                                               : `Ready for first records`,
                                           }),
                                           (0, P.jsx)(`p`, {
-                                            children: e.institution.qualityScore
+                                            children: liveQualityScore
                                               ? `Review the lowest-scoring operational area for the next improvement action.`
                                               : `Your quality score will develop as verified school records are added.`,
                                           }),
                                           (0, P.jsxs)(`button`, {
+                                            onClick: () =>
+                                              se(`School Quality Score`),
                                             children: [
                                               _.improve,
                                               (0, P.jsx)(fe, { size: 16 }),
