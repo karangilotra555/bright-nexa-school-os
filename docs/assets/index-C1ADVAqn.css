@@ -8142,3 +8142,48 @@ button:disabled {
   line-height: 1.65;
   color: #64748b;
 }
+
+/* Landing page final typography and feature-card polish */
+.auth-brand-copy h1 {
+  font-size: clamp(32px, 3.8vw, 53px);
+  line-height: 1.12;
+  letter-spacing: -1.5px;
+  text-wrap: balance;
+}
+.auth-brand-copy p {
+  font-size: 14px;
+  line-height: 1.65;
+  max-width: 565px;
+}
+.auth-promises {
+  gap: 12px;
+}
+.auth-promises > div {
+  min-width: 0;
+  align-items: center;
+  padding: 15px 13px;
+  border: 1px solid rgba(180, 223, 255, .19);
+  background: rgba(255, 255, 255, .075);
+  border-radius: 13px;
+}
+.auth-promises strong {
+  font-size: 11px;
+  line-height: 1.35;
+}
+.auth-promises small {
+  font-size: 9px;
+  line-height: 1.5;
+}
+.auth-card:not(.auth-setup-card) h2 {
+  font-size: clamp(24px, 2vw, 28px);
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -.55px;
+}
+.auth-card:not(.auth-setup-card) .auth-eyebrow {
+  font-size: 11px;
+  letter-spacing: 1.3px;
+}
+@media (max-width: 1100px) {
+  .auth-promises { grid-template-columns: 1fr; }
+}
