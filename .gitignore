@@ -8,6 +8,16 @@ node_modules/
 *.ipynb
 .env
 deploy-render.*
+scratch/
+
+# Data, local database and secret keys
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.key
+*.pem
+.server-secrets.json
 
 
 # Compiled heavy Electron / Windows binaries (exceeds GitHub 100MB limit)

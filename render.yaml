@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: bright-nexa-school-os-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_API_KEY
+        generateValue: true

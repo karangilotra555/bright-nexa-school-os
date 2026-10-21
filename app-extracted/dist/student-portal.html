@@ -1209,14 +1209,24 @@
       if (typeof window !== 'undefined' && window.location && typeof window.location.protocol === 'string' && window.location.protocol.startsWith('http')) {
         try {
           const res = await fetch(`/api/verify?adm=${encodeURIComponent(cleanAdm)}&sig=${encodeURIComponent(sig || '')}`);
-          if (res.ok) {
+          const contentType = res.headers.get('content-type') || '';
+
+          if (res.ok && contentType.includes('application/json')) {
             const data = await res.json();
             vName.textContent = (data.student.name || 'STUDENT').toUpperCase();
             vAdm.textContent = data.student.admissionNumber;
             vClass.textContent = `${data.student.className || 'Class VI'} - ${data.student.section || 'A'}`;
             vRoll.textContent = data.student.rollNumber || '01';
 
-            if (data.verified) {
+            if (data.status === 'ENROLLMENT_REVOKED') {
+              vIcon.textContent = '⛔';
+              vTitle.textContent = 'CREDENTIAL REVOKED';
+              vBadge.className = 'verification-badge badge-invalid';
+              vBadge.textContent = '❌ ENROLLMENT INACTIVE / SUSPENDED';
+              vSigMatchBadge.style.background = '#ef4444';
+              vSigMatchBadge.textContent = 'STATUS REVOKED';
+              vSigHash.textContent = `Status: ${data.student.enrollmentStatus || 'SUSPENDED'}`;
+            } else if (data.verified) {
               vIcon.textContent = '🛡️';
               vTitle.textContent = 'DIGITALLY VERIFIED CREDENTIAL';
               vBadge.className = 'verification-badge badge-valid';
@@ -1237,7 +1247,8 @@
             vBtnLogin.textContent = `🔐 Login with DOB to View Full Portal (${data.student.name.split(' ')[0]})`;
             vBtnLogin.onclick = () => showLoginFromVerification(data.student.admissionNumber);
             return;
-          } else if (res.status === 404) {
+          } else if (res.status === 404 && contentType.includes('application/json')) {
+            // Backend confirmed student record not on file
             vIcon.textContent = '❌';
             vTitle.textContent = 'NO ENROLLED RECORD FOUND';
             vBadge.className = 'verification-badge badge-invalid';
@@ -1252,6 +1263,9 @@
             vBtnLogin.textContent = '🔍 Return to Student Login';
             vBtnLogin.onclick = () => showLoginScreen();
             return;
+          } else {
+            // Static host 404 (e.g. Render Static Site or GitHub Pages) — seamlessly fall through to client engine
+            console.info("Notice: Backend API not active on this host environment (HTTP " + res.status + "). Using client verification engine.");
           }
         } catch(netErr) {
           console.warn("Server verify endpoint unreachable, falling back to local verification:", netErr);
@@ -1368,30 +1382,53 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ admissionNumber: adm, dob: dob })
           });
+          const contentType = resp.headers.get('content-type') || '';
 
-          if (resp.ok) {
+          if (resp.ok && contentType.includes('application/json')) {
             const data = await resp.json();
             if (data.token) sessionStorage.setItem('bn_portal_token', data.token);
             loginStudent(data.student);
             return;
-          } else {
+          } else if ((resp.status === 401 || resp.status === 403 || resp.status === 429) && contentType.includes('application/json')) {
+            // Authentic rejection from backend auth service (wrong DOB, account lockout, or rate-limited)
             const errData = await resp.json().catch(() => ({}));
             showLoginError(errData.error || "Authentication failed: Invalid credentials.");
             dobInput.focus();
             return;
+          } else {
+            // Static host 404 (e.g. Render Static Site without Node backend process) — fall through to client engine
+            console.info("Notice: Backend login endpoint returned HTTP " + resp.status + ". Seamlessly engaging institutional client security engine.");
           }
         } catch(netErr) {
           console.warn("Server login API unreachable, falling back to local authentication:", netErr);
         }
       }
 
-      // 2. Offline / local fallback authentication
+      // 2. Client-Side Authentication Engine with Strict Rate Limiting
+      // Check client-side rate limit (max 5 failed attempts per 15 minutes)
+      const rateLimitKey = 'bn_rl_' + adm.toUpperCase();
+      let rl = { attempts: 0, lockedUntil: 0 };
+      try {
+        const rawRl = sessionStorage.getItem(rateLimitKey);
+        if (rawRl) rl = JSON.parse(rawRl);
+      } catch (e) {}
+
+      const now = Date.now();
+      if (rl.lockedUntil && rl.lockedUntil > now) {
+        const waitMins = Math.ceil((rl.lockedUntil - now) / 60000);
+        showLoginError(`Account temporarily locked due to 5 consecutive failed login attempts. Please retry after ${waitMins} minute(s) for security.`);
+        return;
+      }
+
       const student = students.find(s => 
         (s.admissionNumber && s.admissionNumber.toUpperCase() === adm) || 
         (s.id && String(s.id).toUpperCase() === adm)
       );
 
       if (!student) {
+        rl.attempts = (rl.attempts || 0) + 1;
+        if (rl.attempts >= 5) rl.lockedUntil = now + (15 * 60 * 1000);
+        try { sessionStorage.setItem(rateLimitKey, JSON.stringify(rl)); } catch(e) {}
         showLoginError(`Student record with Admission ID "${escapeHtml(adm)}" was not found in the institutional database.`);
         admInput.focus();
         return;
@@ -1412,10 +1449,21 @@
       }
 
       if (enteredDobNorm !== studentDobNorm) {
-        showLoginError("Authentication Failed: The Date of Birth entered does not match our records for this student. Please verify and try again.");
+        rl.attempts = (rl.attempts || 0) + 1;
+        if (rl.attempts >= 5) {
+          rl.lockedUntil = now + (15 * 60 * 1000);
+          try { sessionStorage.setItem(rateLimitKey, JSON.stringify(rl)); } catch(e) {}
+          showLoginError("Account locked due to 5 consecutive failed login attempts. Please retry after 15 minutes.");
+        } else {
+          try { sessionStorage.setItem(rateLimitKey, JSON.stringify(rl)); } catch(e) {}
+          showLoginError(`Authentication Failed: The Date of Birth entered does not match our records for this student. (${5 - rl.attempts} attempt(s) remaining before account lockout)`);
+        }
         dobInput.focus();
         return;
       }
+
+      // Reset rate limit counter on successful login
+      try { sessionStorage.removeItem(rateLimitKey); } catch(e) {}
 
       // Authentication passed successfully
       loginStudent(student);

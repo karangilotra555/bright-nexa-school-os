@@ -1,27 +1,65 @@
 /**
- * Bright Nexa School OS — Cryptographic Authority
- * Implements Asymmetric ECDSA (NIST P-256 / SHA-256) Institutional Signing & Verification
+ * Bright Nexa School OS — Institutional Cryptographic Authority
+ * Implements Asymmetric ECDSA (NIST P-256 / SHA-256) Signing & Public Verification
  * 
- * Security Guarantee:
- * - Signing requires the Institutional Private Key (kept strictly on server/admin vault).
- * - Verification requires ONLY the Institutional Public Key (safe for public web clients).
- * - Signatures cannot be forged even if the entire public portal and web code is inspected.
+ * Strict Security Architecture:
+ * - Public Key is published for open, trustless verification across web/mobile.
+ * - Private Key is NEVER committed to code or public directories.
+ * - Private Key is loaded exclusively from environment (INSTITUTION_PRIVATE_KEY) 
+ *   or the protected, gitignored vault file (data/.institution-private.key).
+ * - Multi-key verifier supports seamless key rotation without breaking existing issued cards.
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
+// Published Institutional Public Key (CBSE Standard P-256)
 const INSTITUTIONAL_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8IiF6W6R3STAAw5FiMUz/+YPlmhx
+1JkTrB5yAj7h1av5pa9gM8A6ysGjKzd0/LPQ8iXrifgwqb2YyaUNgj4SDg==
+-----END PUBLIC KEY-----`;
+
+// Legacy public key for backward-compatibility with previously printed cards
+const LEGACY_PUBLIC_KEY_V1 = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGzcPVvWiJb++/pzedFF0Zrt8c1mq
 QVC1myz3qR/TBsB321UvyiwCKJr/cW3NQBrusP4/3jD6H/p37b4dgCQO5w==
 -----END PUBLIC KEY-----`;
 
-const INSTITUTIONAL_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQge3Zy8Oao/pSRX+5i
-07a+wgDk62i+A6tMRK8qT89/qG6hRANCAAQbNw9W9aIlv77+nN50UXRmu3xzWapB
-ULWbLPepH9MGwHfbVS/KLAIomv9xbc1AGu6w/j/eMPof+nftvh2AJA7n
------END PRIVATE KEY-----`;
+const CERTIFICATE_ID = "BN-CERT-2026-CBSE-P256-V2";
+const VAULT_KEY_PATH = path.join(__dirname, '..', 'data', '.institution-private.key');
 
-const CERTIFICATE_ID = "BN-CERT-2026-CBSE-P256";
+/**
+ * Retrieve institutional private signing key securely from environment or vault.
+ */
+function getInstitutionalPrivateKey() {
+  if (process.env.INSTITUTION_PRIVATE_KEY && process.env.INSTITUTION_PRIVATE_KEY.trim()) {
+    return process.env.INSTITUTION_PRIVATE_KEY.trim();
+  }
+
+  try {
+    if (fs.existsSync(VAULT_KEY_PATH)) {
+      const keyData = fs.readFileSync(VAULT_KEY_PATH, 'utf8').trim();
+      if (keyData.includes('BEGIN PRIVATE KEY')) return keyData;
+    }
+  } catch (err) {
+    console.warn('[CryptoAuthority] Warning reading vault key:', err.message);
+  }
+
+  // If no private key exists (e.g., fresh setup), generate a secure one and save to vault
+  try {
+    const { privateKey } = crypto.generateKeyPairSync('ec', {
+      namedCurve: 'prime256v1',
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+    });
+    const dir = path.dirname(VAULT_KEY_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(VAULT_KEY_PATH, privateKey, { mode: 0o600 });
+    return privateKey;
+  } catch (genErr) {
+    throw new Error('Failed to load or generate institutional private signing key: ' + genErr.message);
+  }
+}
 
 function normalizeDate(str) {
   if (!str) return '';
@@ -34,7 +72,6 @@ function normalizeDate(str) {
 }
 
 function buildStudentPayload(student, institution) {
-  const sName = (student?.name || '').trim().toUpperCase();
   const adm = (student?.admissionNumber || student?.id || '').trim().toUpperCase();
   const roll = (student?.rollNumber || '').trim();
   const dob = normalizeDate(student?.dob || student?.dateOfBirth || '');
@@ -45,19 +82,20 @@ function buildStudentPayload(student, institution) {
 }
 
 function signStudentPayload(student, institution) {
+  const privKey = getInstitutionalPrivateKey();
   const payload = buildStudentPayload(student, institution);
   const signer = crypto.createSign('SHA256');
   signer.update(payload);
-  return signer.sign(INSTITUTIONAL_PRIVATE_KEY, 'base64url');
+  return signer.sign(privKey, 'base64url');
 }
 
 const DEFAULT_HMAC_KEY = 'bn_sec_key_7500058655_brightnexa_2026_cbse_v1';
 
 function verifyStudentSignature(student, institution, signature) {
-  if (!signature) return false;
+  if (!signature) return { verified: false, algorithm: 'NONE', certificateId: null };
   const payload = buildStudentPayload(student, institution);
 
-  // 1. Try Asymmetric ECDSA P-256 verification (Primary)
+  // 1. Primary: Verify with Current Institutional Public Key (P-256 V2)
   try {
     const verifier = crypto.createVerify('SHA256');
     verifier.update(payload);
@@ -66,7 +104,16 @@ function verifyStudentSignature(student, institution, signature) {
     }
   } catch (err) {}
 
-  // 2. Try HMAC-SHA256 verification (Secondary)
+  // 2. Backward Compatibility: Verify with Legacy V1 Key
+  try {
+    const verifier = crypto.createVerify('SHA256');
+    verifier.update(payload);
+    if (verifier.verify(LEGACY_PUBLIC_KEY_V1, signature, 'base64url')) {
+      return { verified: true, algorithm: 'ECDSA-P256-SHA256-V1', certificateId: 'BN-CERT-2026-CBSE-P256' };
+    }
+  } catch (err) {}
+
+  // 3. Backward Compatibility: Verify with Legacy HMAC
   try {
     const hmacSig = crypto.createHmac('sha256', DEFAULT_HMAC_KEY).update(payload).digest('hex').slice(0, 16).toUpperCase();
     if (signature.toUpperCase() === hmacSig) {
@@ -79,7 +126,6 @@ function verifyStudentSignature(student, institution, signature) {
 
 module.exports = {
   INSTITUTIONAL_PUBLIC_KEY,
-  INSTITUTIONAL_PRIVATE_KEY,
   CERTIFICATE_ID,
   normalizeDate,
   buildStudentPayload,
