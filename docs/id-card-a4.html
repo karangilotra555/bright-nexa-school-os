@@ -683,6 +683,23 @@
     .id-card-vertical .card-side:nth-child(2) { background: linear-gradient(180deg,#fff 0%,#f7faff 100%); }
     .id-card-vertical .qr-container { max-width: 100%; }
     .id-card-vertical .qr-canvas { width: 18mm; height: 18mm; }
+
+    /* Separate 54 x 85.6 mm CR80 portrait cards for front/back sheet production. */
+    .a4-sheet { grid-template-columns: 1fr 1fr; grid-template-rows: auto repeat(3,85.6mm); column-gap: 5mm; row-gap: 4mm; }
+    .sheet-meta-tag { grid-column: 1 / -1; }
+    .id-card-vertical { width: 54mm; height: 85.6mm; border: 0.25mm dashed #94a3b8; }
+    .id-card-vertical .card-side { width: 54mm; height: 85.6mm; flex: 0 0 54mm; }
+    body[data-print-side="front"] .id-card-vertical .card-side:nth-child(2),
+    body[data-print-side="back"] .id-card-vertical .card-side:first-child { display: none; }
+    body[data-print-side="back"] .id-card-vertical .card-side:nth-child(2) { display: flex; }
+    body[data-print-side="both"] .a4-sheet { grid-template-columns: 1fr; }
+    body[data-print-side="both"] .id-card-vertical { width: 112mm; gap: 4mm; }
+    body[data-print-side="both"] .id-card-vertical .card-side { display: flex; }
+    @media print {
+      body[data-print-side="both"] .id-card-vertical .card-side:nth-child(2) { display: none; }
+      body[data-print-side="both"] .id-card-vertical { width: 54mm; }
+      body[data-print-side="both"] .a4-sheet { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -701,6 +718,12 @@
           🟢 Live School Records
         </span>
 
+        <label for="printSideMode" style="font-size:12px;font-weight:700;color:#334155">Print side:</label>
+        <select id="printSideMode" onchange="setIdPrintSide(this.value)" aria-label="Choose ID card print side" style="min-height:38px;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px">
+          <option value="front">Front sheet</option>
+          <option value="back">Back sheet</option>
+          <option value="both">Preview both</option>
+        </select>
         <button class="btn btn-primary" onclick="handlePrint()">
           🖨️ Print A4 Sheets
         </button>
@@ -1097,6 +1120,10 @@
       }
     }
 
+    function setIdPrintSide(mode) {
+      document.body.dataset.printSide = ['front','back','both'].includes(mode) ? mode : 'front';
+    }
+    document.addEventListener('DOMContentLoaded', () => setIdPrintSide(document.getElementById('printSideMode')?.value || 'front'));
     function handlePrint() {
       if (isDemoMode) {
         const proceed = window.confirm(
