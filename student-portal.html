@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student & Parent Portal — Bright Nexa School OS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
+
+    :root {
+      --primary: #0b2545;
+      --primary-accent: #0284c7;
+      --gold: #d4af37;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background: #f1f5f9;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Global Header */
+    .portal-nav {
+      background: var(--primary);
+      color: #ffffff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 15px rgba(11,37,69,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: #fff;
+      padding: 2px;
+      object-fit: contain;
+    }
+
+    .brand-name {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-tag {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .badge-secure {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid #10b981;
+      color: #6ee7b7;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Main Container */
+    .portal-container {
+      max-width: 960px;
+      width: 100%;
+      margin: 24px auto;
+      padding: 0 16px;
+      flex: 1;
+    }
+
+    /* LOGIN VIEW */
+    .login-card {
+      max-width: 440px;
+      margin: 40px auto;
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      border: 1px solid var(--border);
+      padding: 32px 28px;
+      text-align: center;
+    }
+
+    .login-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #f0fdf4;
+      color: #16a34a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      margin: 0 auto 16px;
+      border: 1px solid #bbf7d0;
+    }
+
+    .login-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+
+    .login-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      text-align: left;
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 14px;
+      background: #f8fafc;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary-accent);
+      background: #fff;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(2,132,199,0.15);
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.2s;
+    }
+
+    .btn-login:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    .quick-demo-pill {
+      display: inline-block;
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--primary-accent);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    /* DASHBOARD VIEW */
+    .dashboard-view {
+      display: none;
+    }
+
+    /* Student Identity Banner */
+    .student-banner {
+      background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%);
+      color: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 25px rgba(11,37,69,0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .banner-left {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .student-avatar {
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      border: 3px solid var(--gold);
+      background: #ffffff;
+      object-fit: cover;
+    }
+
+    .student-name-box h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    .student-meta {
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-top: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .meta-tag {
+      background: rgba(255,255,255,0.12);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .btn-logout {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-logout:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    /* Status Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 18px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* Tabs Bar */
+    .tabs-bar {
+      display: flex;
+      gap: 8px;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 10px 18px;
+      background: transparent;
+      border: none;
+      font-size: 14px;
+      font-weight: 700;
+      color: #64748b;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* Tab Contents */
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    .content-box {
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+      margin-bottom: 24px;
+    }
+
+    .box-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+
+    .box-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .btn-action {
+      background: var(--primary);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-action:hover {
+      background: #1e3a8a;
+    }
+
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .data-table th {
+      background: #f8fafc;
+      text-align: left;
+      padding: 10px 12px;
+      color: #475569;
+      font-weight: 700;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .data-table td {
+      padding: 12px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .badge-paid { background: #dcfce7; color: #15803d; }
+    .badge-due { background: #fee2e2; color: #b91c1c; }
+
+    /* Footer Notice */
+    .read-only-banner {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #1e40af;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Global Portal Header -->
+  <header class="portal-nav">
+    <div class="brand-box">
+      <img id="navLogo" src="app-icon-512.png" class="brand-logo" alt="Logo" onerror="this.src='app-icon-512.png'">
+      <div>
+        <div class="brand-name" id="navSchoolName">BRIGHT NEXA SCHOOL OS</div>
+        <div class="brand-tag">Student & Parent Portal (Read-Only)</div>
+      </div>
+    </div>
+
+    <div class="badge-secure">
+      🛡️ Verified Institutional Access
+    </div>
+  </header>
+
+  <main class="portal-container">
+    
+    <!-- 1. LOGIN SCREEN -->
+    <div class="login-card" id="loginView">
+      <div class="login-icon">🎓</div>
+      <h2 class="login-title">Student & Parent Login</h2>
+      <p class="login-subtitle">Access your attendance, fee receipts, marksheets & digital ID card.</p>
+
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label">Admission Number / Scholar ID:</label>
+          <input type="text" id="admInput" class="form-input" placeholder="e.g. BMS-2026-001" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Date of Birth (Access Key):</label>
+          <input type="text" id="dobInput" class="form-input" placeholder="DD-MM-YYYY (e.g. 12-03-2014)" required>
+        </div>
+
+        <button type="submit" class="btn-login">
+          🔐 View My Student Portal
+        </button>
+      </form>
+
+      <div class="quick-demo-pill" onclick="demoLogin()">
+        ⚡ Click here for Instant Demo Login (Aarav Sharma)
+      </div>
+    </div>
+
+    <!-- 2. DASHBOARD VIEW (LOGGED IN) -->
+    <div class="dashboard-view" id="dashboardView">
+      
+      <!-- Student Profile Banner -->
+      <div class="student-banner">
+        <div class="banner-left">
+          <img id="dashAvatar" src="app-icon-512.png" class="student-avatar" alt="Avatar">
+          <div class="student-name-box">
+            <h1 id="dashStudentName">AARAV SHARMA</h1>
+            <div class="student-meta">
+              <span class="meta-tag" id="dashClassSec">Class VI - Section A</span>
+              <span class="meta-tag" id="dashRoll">Roll No: 01</span>
+              <span class="meta-tag" id="dashAdm">Adm: BMS-2026-001</span>
+              <span class="meta-tag" id="dashBlood">Blood: O+</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-logout" onclick="handleLogout()">
+          🚪 Logout
+        </button>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Attendance</div>
+          <div class="stat-val" style="color: #10b981;">95.3%</div>
+          <div class="stat-sub" style="color: #059669;">202 Present / 212 Days</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">Fee Clearance</div>
+          <div class="stat-val" style="color: #0284c7;">₹0 Due</div>
+          <div class="stat-sub" style="color: #0369a1;">All Term Dues Cleared</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">Latest Exam Rank / Grade</div>
+          <div class="stat-val" style="color: #d97706;">A1 (92.4%)</div>
+          <div class="stat-sub" style="color: #b45309;">Rank #2 in Class VI-A</div>
+        </div>
+      </div>
+
+      <!-- Tabs Navigation -->
+      <div class="tabs-bar">
+        <button class="tab-btn active" onclick="switchTab('tab-idcard')">🪪 Digital ID Card</button>
+        <button class="tab-btn" onclick="switchTab('tab-marksheet')">📄 Academic Marksheet</button>
+        <button class="tab-btn" onclick="switchTab('tab-fees')">💰 Fee Receipts</button>
+        <button class="tab-btn" onclick="switchTab('tab-attendance')">📊 Attendance Log</button>
+      </div>
+
+      <!-- TAB 1: DIGITAL ID CARD -->
+      <div class="tab-content active" id="tab-idcard">
+        <div class="content-box">
+          <div class="box-header">
+            <div class="box-title">Student Identity & Official Verification Card</div>
+            <a id="btnIdPrint" href="id-card-a4.html" target="_blank" class="btn-action">
+              🖨️ Open Full A4 ID Card Sheet
+            </a>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: center;">
+            <div style="max-width: 340px; width: 100%; border-radius: 12px; border: 1.5px solid #cbd5e1; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); background: #fff;">
+              <div style="background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%); color: #fff; padding: 14px; text-align: center; border-bottom: 2px solid #d4af37;">
+                <div style="font-family: 'Cinzel'; font-size: 13px; font-weight: 800;" id="cardSchoolName">BRIGHT NEXA INTERNATIONAL ACADEMY</div>
+                <div style="font-size: 10px; color: #fef9c3; margin-top: 2px;">SESSION 2026-2027 • STUDENT ID</div>
+              </div>
+
+              <div style="padding: 16px; text-align: center;">
+                <img id="cardPhoto" src="app-icon-512.png" style="width: 70px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #0b2545; margin-bottom: 8px;">
+                <h3 id="cardName" style="color: #0b2545; font-size: 16px; font-weight: 800;">AARAV SHARMA</h3>
+                <div style="background: #d4af37; color: #fff; display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-bottom: 12px;" id="cardBadge">Class VI - A</div>
+
+                <div style="text-align: left; font-size: 12px; line-height: 1.6; color: #334155;">
+                  <div><strong>Father:</strong> <span id="cardFather">MR. RAJESH SHARMA</span></div>
+                  <div><strong>Emergency Phone:</strong> <span id="cardPhone">+91 9876543210</span></div>
+                  <div><strong>Transport Route:</strong> <span id="cardBus">Route 3 (Gate No 2)</span></div>
+                  <div><strong>Blood Group:</strong> <span id="cardBlood" style="color: #b91c1c; font-weight: 800;">O+</span></div>
+                </div>
+              </div>
+
+              <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 10px 14px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center;">
+                <span>Verified Active Student</span>
+                <span style="font-weight: 700; color: #0b2545;">BRIGHT NEXA OS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: MARKSHEET -->
+      <div class="tab-content" id="tab-marksheet">
+        <div class="content-box">
+          <div class="box-header">
+            <div class="box-title">Academic Examination Report</div>
+            <a id="btnMarksheetPrint" href="marksheet-a4.html" target="_blank" class="btn-action">
+              🖨️ View & Print Official CBSE Marksheet
+            </a>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Subject Name</th>
+                <th>Periodic (10)</th>
+                <th>Note Book (5)</th>
+                <th>Sub Enrich (5)</th>
+                <th>Annual (80)</th>
+                <th>Total (100)</th>
+                <th>Grade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>English Language & Literature</strong></td>
+                <td>9.0</td>
+                <td>5.0</td>
+                <td>4.5</td>
+                <td>74.0</td>
+                <td><strong>92.5</strong></td>
+                <td><span class="badge-status badge-paid">A1</span></td>
+              </tr>
+              <tr>
+                <td><strong>Hindi (Course A)</strong></td>
+                <td>8.5</td>
+                <td>5.0</td>
+                <td>5.0</td>
+                <td>71.0</td>
+                <td><strong>89.5</strong></td>
+                <td><span class="badge-status badge-paid">A2</span></td>
+              </tr>
+              <tr>
+                <td><strong>Mathematics</strong></td>
+                <td>9.5</td>
+                <td>5.0</td>
+                <td>5.0</td>
+                <td>76.0</td>
+                <td><strong>95.5</strong></td>
+                <td><span class="badge-status badge-paid">A1</span></td>
+              </tr>
+              <tr>
+                <td><strong>Science & Technology</strong></td>
+                <td>9.0</td>
+                <td>4.5</td>
+                <td>5.0</td>
+                <td>72.5</td>
+                <td><strong>91.0</strong></td>
+                <td><span class="badge-status badge-paid">A1</span></td>
+              </tr>
+              <tr>
+                <td><strong>Social Science</strong></td>
+                <td>8.5</td>
+                <td>5.0</td>
+                <td>4.5</td>
+                <td>70.0</td>
+                <td><strong>88.0</strong></td>
+                <td><span class="badge-status badge-paid">A2</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: FEES -->
+      <div class="tab-content" id="tab-fees">
+        <div class="content-box">
+          <div class="box-header">
+            <div class="box-title">Institutional Fee Ledger & Payment Receipts</div>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Receipt No.</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Payment Mode</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>REC-2026-104</strong></td>
+                <td>10-10-2026</td>
+                <td>Quarter 3 Tuition & Lab Fees</td>
+                <td>UPI / Bank Transfer</td>
+                <td><strong>₹4,500</strong></td>
+                <td><span class="badge-status badge-paid">PAID & CLEARED</span></td>
+              </tr>
+              <tr>
+                <td><strong>REC-2026-068</strong></td>
+                <td>12-07-2026</td>
+                <td>Quarter 2 Tuition & Transport</td>
+                <td>Cash Counter</td>
+                <td><strong>₹6,200</strong></td>
+                <td><span class="badge-status badge-paid">PAID & CLEARED</span></td>
+              </tr>
+              <tr>
+                <td><strong>REC-2026-012</strong></td>
+                <td>05-04-2026</td>
+                <td>Annual Admission & Session Charges</td>
+                <td>UPI</td>
+                <td><strong>₹8,000</strong></td>
+                <td><span class="badge-status badge-paid">PAID & CLEARED</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 4: ATTENDANCE -->
+      <div class="tab-content" id="tab-attendance">
+        <div class="content-box">
+          <div class="box-header">
+            <div class="box-title">Monthly Attendance Breakdown</div>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Working Days</th>
+                <th>Present Days</th>
+                <th>Absent Days</th>
+                <th>Monthly Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>October 2026</td>
+                <td>20</td>
+                <td>19</td>
+                <td>1</td>
+                <td><strong>95.0%</strong></td>
+              </tr>
+              <tr>
+                <td>September 2026</td>
+                <td>24</td>
+                <td>23</td>
+                <td>1</td>
+                <td><strong>95.8%</strong></td>
+              </tr>
+              <tr>
+                <td>August 2026</td>
+                <td>22</td>
+                <td>21</td>
+                <td>1</td>
+                <td><strong>95.5%</strong></td>
+              </tr>
+              <tr>
+                <td>July 2026</td>
+                <td>26</td>
+                <td>25</td>
+                <td>1</td>
+                <td><strong>96.1%</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Read-Only Notice -->
+      <div class="read-only-banner">
+        🔒 <strong>Read-Only Access:</strong> This student portal is securely synchronized directly from Bright Nexa School OS. Records cannot be edited by students or parents. For any queries, please contact the school administration office.
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let activeStudent = null;
+    let students = [
+      { id: "1", name: "AARAV SHARMA", rollNumber: "01", admissionNumber: "BMS-2026-001", className: "Class VI", section: "A", dob: "12-03-2014", bloodGroup: "O+", fatherName: "MR. RAJESH SHARMA", contactNumber: "9876543210", busStop: "Route 3 (Gate No 2)" },
+      { id: "2", name: "ANANYA VERMA", rollNumber: "02", admissionNumber: "BMS-2026-002", className: "Class VI", section: "A", dob: "24-07-2014", bloodGroup: "B+", fatherName: "MR. SUNIL VERMA", contactNumber: "9812345678", busStop: "Route 1 (Main Chowk)" }
+    ];
+
+    function initPortal() {
+      // Load School Branding from localStorage
+      try {
+        const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
+        if (snapRaw) {
+          const snap = JSON.parse(snapRaw);
+          if (snap.institution && snap.institution.name) {
+            document.getElementById('navSchoolName').textContent = snap.institution.name.toUpperCase();
+            document.getElementById('cardSchoolName').textContent = snap.institution.name.toUpperCase();
+          }
+          if (snap.institution && snap.institution.logoDataUrl) {
+            document.getElementById('navLogo').src = snap.institution.logoDataUrl;
+          }
+        }
+
+        const stdRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
+        if (stdRaw) {
+          const parsed = JSON.parse(stdRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) students = parsed;
+        }
+      } catch(e) {
+        console.warn("Storage snapshot error", e);
+      }
+
+      // Check URL query parameters (e.g. ?adm=BMS-2026-001)
+      const urlParams = new URLSearchParams(window.location.search);
+      const adm = urlParams.get('adm') || urlParams.get('admission') || urlParams.get('id');
+      if (adm) {
+        const found = students.find(s => s.admissionNumber === adm || s.id === adm);
+        if (found) {
+          loginStudent(found);
+        }
+      }
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const adm = document.getElementById('admInput').value.trim().toUpperCase();
+      const dob = document.getElementById('dobInput').value.trim();
+
+      const student = students.find(s => 
+        (s.admissionNumber && s.admissionNumber.toUpperCase() === adm) || 
+        (s.id && s.id === adm)
+      );
+
+      if (student) {
+        loginStudent(student);
+      } else {
+        alert("Student record not found! Please check your Admission Number or try the Demo Login.");
+      }
+    }
+
+    function demoLogin() {
+      loginStudent(students[0]);
+    }
+
+    function loginStudent(st) {
+      activeStudent = st;
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('dashboardView').style.display = 'block';
+
+      // Fill dashboard data
+      document.getElementById('dashStudentName').textContent = (st.name || 'STUDENT').toUpperCase();
+      document.getElementById('dashClassSec').textContent = `${st.className || 'Class VI'} - ${st.section || 'A'}`;
+      document.getElementById('dashRoll').textContent = `Roll No: ${st.rollNumber || '01'}`;
+      document.getElementById('dashAdm').textContent = `Adm: ${st.admissionNumber || st.id}`;
+      document.getElementById('dashBlood').textContent = `Blood: ${st.bloodGroup || 'B+'}`;
+
+      // Card tab
+      document.getElementById('cardName').textContent = (st.name || 'STUDENT').toUpperCase();
+      document.getElementById('cardBadge').textContent = `${st.className || 'Class VI'} - ${st.section || 'A'}`;
+      document.getElementById('cardFather').textContent = (st.fatherName || st.guardianName || 'MR. PARENT').toUpperCase();
+      document.getElementById('cardPhone').textContent = st.contactNumber || '+91 9876543210';
+      document.getElementById('cardBus').textContent = st.busStop || st.transportRoute || 'Self / Walker';
+      document.getElementById('cardBlood').textContent = st.bloodGroup || 'B+';
+
+      // Link to print sheets
+      document.getElementById('btnIdPrint').href = `id-card-a4.html?adm=${st.admissionNumber || st.id}`;
+      document.getElementById('btnMarksheetPrint').href = `marksheet-a4.html?admission=${st.admissionNumber || st.id}`;
+    }
+
+    function handleLogout() {
+      activeStudent = null;
+      document.getElementById('dashboardView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'block';
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      event.currentTarget.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    window.addEventListener('DOMContentLoaded', initPortal);
+  </script>
+</body>
+</html>

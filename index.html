@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <script>
-if (window.location.pathname.includes('marksheet')) {
+if (window.location.pathname.includes('marksheet') || window.location.pathname.includes('id-card') || window.location.pathname.includes('tc-certificate') || window.location.pathname.includes('student-portal')) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function(regs) {
       if (regs.length > 0) {

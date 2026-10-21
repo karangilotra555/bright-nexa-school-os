@@ -5,6 +5,7 @@ node_modules/
 *.bak
 *.bak.*
 *.tmp
+*.ipynb
 .env
 deploy-render.*
 

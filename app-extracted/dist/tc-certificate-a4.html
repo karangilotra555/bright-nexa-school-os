@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Official School Transfer Certificate (TC) — Bright Nexa School OS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
+
+    :root {
+      --primary: #0b2545;
+      --gold: #b8860b;
+      --border-dark: #1e293b;
+      --paper: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      background: #e2e8f0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 10px;
+      min-height: 100vh;
+    }
+
+    /* Top Control Bar */
+    .no-print-bar {
+      width: 210mm;
+      max-width: 100%;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .no-print-bar h2 {
+      font-size: 16px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #133a6b; }
+    .btn-secondary { background: #f1f5f9; color: #334155; }
+    select, input {
+      padding: 7px 12px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    /* A4 Certificate Sheet */
+    .a4-page {
+      width: 210mm;
+      min-height: 297mm;
+      background: var(--paper);
+      padding: 14mm 16mm;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Ornamental Border */
+    .tc-border-frame {
+      border: 3px double #0b2545;
+      padding: 6mm 8mm;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .corner-decor {
+      position: absolute;
+      width: 14mm;
+      height: 14mm;
+      border: 2px solid var(--gold);
+    }
+    .c-tl { top: 2mm; left: 2mm; border-right: none; border-bottom: none; }
+    .c-tr { top: 2mm; right: 2mm; border-left: none; border-bottom: none; }
+    .c-bl { bottom: 2mm; left: 2mm; border-right: none; border-top: none; }
+    .c-br { bottom: 2mm; right: 2mm; border-left: none; border-top: none; }
+
+    /* Header */
+    .tc-header {
+      text-align: center;
+      border-bottom: 2px solid #0b2545;
+      padding-bottom: 4mm;
+      margin-bottom: 4mm;
+      position: relative;
+    }
+
+    .school-logo {
+      width: 20mm;
+      height: 20mm;
+      object-fit: contain;
+      position: absolute;
+      left: 2mm;
+      top: 0;
+    }
+
+    .school-name {
+      font-family: 'Cinzel', serif;
+      font-size: 18pt;
+      font-weight: 900;
+      color: #0b2545;
+      letter-spacing: 0.5px;
+      margin-bottom: 1mm;
+      text-transform: uppercase;
+    }
+
+    .school-sub {
+      font-size: 9pt;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 1mm;
+    }
+
+    .school-contact {
+      font-size: 8pt;
+      color: #64748b;
+    }
+
+    .tc-badge-title {
+      display: inline-block;
+      margin-top: 3mm;
+      background: #0b2545;
+      color: #ffffff;
+      padding: 4px 24px;
+      font-family: 'Cinzel', serif;
+      font-size: 12pt;
+      font-weight: 800;
+      letter-spacing: 2px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    /* Meta Bar (TC No, Book No, Scholar No) */
+    .tc-meta-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 4mm 0 6mm;
+      font-size: 9.5pt;
+      font-weight: 700;
+      color: #1e293b;
+      border-bottom: 1px dashed #cbd5e1;
+      padding-bottom: 3mm;
+    }
+
+    .highlight-val {
+      color: #0b2545;
+      border-bottom: 1.5px solid #0b2545;
+      padding: 0 6px;
+    }
+
+    /* TC Table / Rows */
+    .tc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.2pt;
+      line-height: 1.5;
+    }
+
+    .tc-table tr {
+      border-bottom: 0.5px solid #e2e8f0;
+    }
+
+    .tc-table td {
+      padding: 2.2mm 1.5mm;
+      vertical-align: top;
+    }
+
+    .col-num {
+      width: 7mm;
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .col-label {
+      width: 78mm;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .col-colon {
+      width: 3mm;
+      font-weight: 700;
+    }
+
+    .col-val {
+      font-weight: 700;
+      color: #0b2545;
+      text-transform: uppercase;
+    }
+
+    /* Watermark */
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-family: 'Cinzel', serif;
+      font-size: 55pt;
+      font-weight: 900;
+      color: rgba(11, 37, 69, 0.035);
+      pointer-events: none;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 6px;
+    }
+
+    /* Signatures Section */
+    .signatures-row {
+      margin-top: 10mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 0 4mm;
+      font-size: 9pt;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .sign-box {
+      text-align: center;
+      width: 45mm;
+    }
+
+    .sign-line {
+      border-top: 1.5px solid #0b2545;
+      padding-top: 2mm;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+    }
+
+    .seal-box {
+      width: 30mm;
+      height: 30mm;
+      border: 1.5px dashed #94a3b8;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7.5pt;
+      color: #94a3b8;
+      text-align: center;
+      margin: 0 auto 2mm;
+    }
+
+    /* Print settings */
+    @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .no-print-bar { display: none !important; }
+      .a4-page {
+        box-shadow: none !important;
+        padding: 10mm 12mm !important;
+        width: 210mm !important;
+        height: 297mm !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Controls Bar -->
+  <div class="no-print-bar">
+    <div>
+      <h2>📜 Official School Transfer Certificate (TC) Generator</h2>
+      <p style="font-size: 12px; color: #64748b; margin-top: 2px;">
+        CBSE / State Board Approved Format • Direct Legal Student Migration Document
+      </p>
+    </div>
+
+    <div class="control-actions">
+      <label style="font-size: 12px; font-weight: 700;">Select Student:</label>
+      <select id="studentSelect" onchange="loadStudentTC()">
+        <!-- Filled dynamically -->
+      </select>
+
+      <label style="font-size: 12px; font-weight: 700;">Reason for Leaving:</label>
+      <select id="reasonSelect" onchange="updateReason()">
+        <option value="PARENTS' TRANSFER TO ANOTHER CITY">Parents' Transfer to Another City</option>
+        <option value="COMPLETED HIGHEST CLASS OFFERED (PASSED OUT)">Completed Class / Passed Out (Alumni)</option>
+        <option value="MIGRATION TO ANOTHER RECOGNIZED BOARD/SCHOOL">Migration to Another School</option>
+        <option value="PARENT'S PERSONAL REQUEST">Parent's Personal Request</option>
+        <option value="SHIFTING OF RESIDENCE">Shifting of Residence</option>
+      </select>
+
+      <button class="btn btn-primary" onclick="window.print()">
+        🖨️ Print Transfer Certificate
+      </button>
+
+      <a href="id-card-a4.html" class="btn btn-secondary" style="text-decoration:none;">
+        🪪 ID Cards
+      </a>
+
+      <a href="marksheet-a4.html" class="btn btn-secondary" style="text-decoration:none;">
+        📄 Marksheets
+      </a>
+
+      <a href="student-portal.html" class="btn btn-gold" style="text-decoration:none; background: linear-gradient(135deg, #d4af37, #b8860b); color: #fff;">
+        📱 Student Portal
+      </a>
+    </div>
+  </div>
+
+  <!-- A4 Printable Sheet -->
+  <div class="a4-page">
+    <div class="tc-border-frame">
+      <div class="corner-decor c-tl"></div>
+      <div class="corner-decor c-tr"></div>
+      <div class="corner-decor c-bl"></div>
+      <div class="corner-decor c-br"></div>
+
+      <div class="watermark" id="tcWatermark">BRIGHT NEXA ACADEMY</div>
+
+      <!-- HEADER -->
+      <div class="tc-header">
+        <img id="tcSchoolLogo" src="app-icon-512.png" class="school-logo" alt="Logo">
+        <div class="school-name" id="tcSchoolName">BRIGHT NEXA INTERNATIONAL ACADEMY</div>
+        <div class="school-sub" id="tcSchoolAffil">AFFILIATED TO CBSE, NEW DELHI • SCHOOL CODE: 20458 • AFFILIATION NO: 1730248</div>
+        <div class="school-contact" id="tcSchoolContact">Shivalik Enclave, Haridwar • Phone: +91 7500058655 • Email: info@brightnexa.edu.in</div>
+        <div class="tc-badge-title">TRANSFER CERTIFICATE</div>
+      </div>
+
+      <!-- META -->
+      <div class="tc-meta-row">
+        <div>Book No: <span class="highlight-val" id="bookNo">2026/01</span></div>
+        <div>TC Serial No: <span class="highlight-val" id="tcNo">TC-2026-084</span></div>
+        <div>Admission / Scholar No: <span class="highlight-val" id="admNo">BMS-2026-001</span></div>
+      </div>
+
+      <!-- TC PARTICULARS TABLE -->
+      <table class="tc-table">
+        <tbody>
+          <tr>
+            <td class="col-num">1.</td>
+            <td class="col-label">Name of the Pupil</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcStudentName">AARAV SHARMA</td>
+          </tr>
+          <tr>
+            <td class="col-num">2.</td>
+            <td class="col-label">Mother's Name</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcMotherName">MRS. SUNITA SHARMA</td>
+          </tr>
+          <tr>
+            <td class="col-num">3.</td>
+            <td class="col-label">Father's / Guardian's Name</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcFatherName">MR. RAJESH SHARMA</td>
+          </tr>
+          <tr>
+            <td class="col-num">4.</td>
+            <td class="col-label">Nationality & Religion</td>
+            <td class="col-colon">:</td>
+            <td class="col-val">INDIAN</td>
+          </tr>
+          <tr>
+            <td class="col-num">5.</td>
+            <td class="col-label">Whether Pupil Belongs to SC / ST / OBC</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcCategory">GENERAL</td>
+          </tr>
+          <tr>
+            <td class="col-num">6.</td>
+            <td class="col-label">Date of First Admission in School with Class</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcAdmDate">05-04-2021 (CLASS I)</td>
+          </tr>
+          <tr>
+            <td class="col-num">7.</td>
+            <td class="col-label">Date of Birth (in Christian Era) According to Register</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcDob">12-03-2014 (TWELFTH MARCH TWO THOUSAND FOURTEEN)</td>
+          </tr>
+          <tr>
+            <td class="col-num">8.</td>
+            <td class="col-label">Class in which the Pupil Last Studied</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcClassLast">CLASS VI (SIXTH)</td>
+          </tr>
+          <tr>
+            <td class="col-num">9.</td>
+            <td class="col-label">School / Board Annual Examination Last Taken with Result</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcExamResult">ANNUAL EXAMINATION 2026 - PASSED</td>
+          </tr>
+          <tr>
+            <td class="col-num">10.</td>
+            <td class="col-label">Whether Failed, If So Once / Twice in the Same Class</td>
+            <td class="col-colon">:</td>
+            <td class="col-val">NO</td>
+          </tr>
+          <tr>
+            <td class="col-num">11.</td>
+            <td class="col-label">Subjects Studied</td>
+            <td class="col-colon">:</td>
+            <td class="col-val">1. ENGLISH &nbsp; 2. HINDI &nbsp; 3. MATHEMATICS &nbsp; 4. SCIENCE &nbsp; 5. SOCIAL SCIENCE &nbsp; 6. COMPUTER/AI</td>
+          </tr>
+          <tr>
+            <td class="col-num">12.</td>
+            <td class="col-label">Whether Qualified for Promotion to the Higher Class</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcPromotion">YES, PROMOTED TO CLASS VII (SEVENTH)</td>
+          </tr>
+          <tr>
+            <td class="col-num">13.</td>
+            <td class="col-label">Month Upto which the Pupil has Paid School Dues</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" style="color: #15803d;" id="tcFeeStatus">MARCH 2026 (FULL DUES CLEARED - NO DUES PENDING)</td>
+          </tr>
+          <tr>
+            <td class="col-num">14.</td>
+            <td class="col-label">Any Fee Concession Availed of, Nature of Concession</td>
+            <td class="col-colon">:</td>
+            <td class="col-val">NIL</td>
+          </tr>
+          <tr>
+            <td class="col-num">15.</td>
+            <td class="col-label">Total Number of Working Days in Academic Session</td>
+            <td class="col-colon">:</td>
+            <td class="col-val">212 DAYS</td>
+          </tr>
+          <tr>
+            <td class="col-num">16.</td>
+            <td class="col-label">Total Number of Days Pupil was Present</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcDaysPresent">202 DAYS (95.3%)</td>
+          </tr>
+          <tr>
+            <td class="col-num">17.</td>
+            <td class="col-label">General Conduct and Character</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" style="color: #0b2545;">EXEMPLARY & DISCIPLINED</td>
+          </tr>
+          <tr>
+            <td class="col-num">18.</td>
+            <td class="col-label">Date of Application for Certificate</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcDateApp">20-10-2026</td>
+          </tr>
+          <tr>
+            <td class="col-num">19.</td>
+            <td class="col-label">Date of Issue of Certificate</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcDateIssue">21-10-2026</td>
+          </tr>
+          <tr>
+            <td class="col-num">20.</td>
+            <td class="col-label">Reason for Leaving the School</td>
+            <td class="col-colon">:</td>
+            <td class="col-val" id="tcReason" style="color: #991b1b;">PARENTS' TRANSFER TO ANOTHER CITY</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- SIGNATURES -->
+      <div class="signatures-row">
+        <div class="sign-box">
+          <div class="sign-line">PREPARED BY<br><span style="font-size: 7pt; color: #64748b;">(Class Teacher / Clerk)</span></div>
+        </div>
+
+        <div class="sign-box">
+          <div class="seal-box">OFFICIAL<br>INSTITUTION<br>SEAL</div>
+          <div class="sign-line">CHECKED BY<br><span style="font-size: 7pt; color: #64748b;">(Academic In-Charge)</span></div>
+        </div>
+
+        <div class="sign-box">
+          <div class="sign-line" id="tcPrincipal">PRINCIPAL SIGNATURE<br><span style="font-size: 7pt; color: #64748b;">(With Date & Seal)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Live synchronization with Bright Nexa School OS data
+    let students = [
+      { id: "1", name: "AARAV SHARMA", admissionNumber: "BMS-2026-001", rollNumber: "01", className: "Class VI", section: "A", motherName: "SUNITA SHARMA", fatherName: "RAJESH SHARMA", dob: "12-03-2014", category: "GENERAL" },
+      { id: "2", name: "ANANYA VERMA", admissionNumber: "BMS-2026-002", rollNumber: "02", className: "Class VI", section: "A", motherName: "MEENA VERMA", fatherName: "SUNIL VERMA", dob: "24-07-2014", category: "OBC" },
+      { id: "3", name: "ROHAN MEHTA", admissionNumber: "BMS-2026-003", rollNumber: "03", className: "Class VI", section: "B", motherName: "POOJA MEHTA", fatherName: "AMIT MEHTA", dob: "05-11-2013", category: "GENERAL" },
+      { id: "4", name: "PRIYA CHOUDHARY", admissionNumber: "BMS-2026-004", rollNumber: "04", className: "Class VII", section: "A", motherName: "REKHA SINGH", fatherName: "VIKRAM SINGH", dob: "18-01-2013", category: "GENERAL" }
+    ];
+
+    function loadData() {
+      try {
+        const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
+        if (snapRaw) {
+          const snap = JSON.parse(snapRaw);
+          const inst = snap.institution || {};
+          if (inst.name) {
+            document.getElementById('tcSchoolName').textContent = inst.name.toUpperCase();
+            document.getElementById('tcWatermark').textContent = inst.name.toUpperCase();
+          }
+          if (inst.principalName) {
+            document.getElementById('tcPrincipal').innerHTML = `${inst.principalName.toUpperCase()}<br><span style="font-size: 7pt; color: #64748b;">PRINCIPAL</span>`;
+          }
+          if (inst.logoDataUrl) document.getElementById('tcSchoolLogo').src = inst.logoDataUrl;
+          if (inst.address) {
+            const line = [inst.address, inst.city, inst.contactNumber ? 'Phone: +91 ' + inst.contactNumber : '', inst.email].filter(Boolean).join(' • ');
+            document.getElementById('tcSchoolContact').textContent = line;
+          }
+        }
+
+        const stdRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
+        if (stdRaw) {
+          const parsed = JSON.parse(stdRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            students = parsed;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not read localStorage snapshot", e);
+      }
+
+      // Populate dropdown
+      const sel = document.getElementById('studentSelect');
+      sel.innerHTML = students.map((s, idx) => 
+        `<option value="${idx}">${s.name || 'STUDENT'} (${s.admissionNumber || s.id} • ${s.className || 'Class VI'})</option>`
+      ).join('');
+
+      // Auto select from URL if present
+      const urlParams = new URLSearchParams(window.location.search);
+      const adm = urlParams.get('adm') || urlParams.get('admission') || urlParams.get('id');
+      if (adm) {
+        const found = students.findIndex(s => s.admissionNumber === adm || s.id === adm);
+        if (found !== -1) sel.value = found;
+      }
+
+      loadStudentTC();
+    }
+
+    function loadStudentTC() {
+      const idx = document.getElementById('studentSelect').value;
+      const s = students[idx] || students[0];
+      if (!s) return;
+
+      document.getElementById('admNo').textContent = s.admissionNumber || 'BMS-2026-' + s.id;
+      document.getElementById('tcNo').textContent = 'TC-2026-' + String(parseInt(s.id || idx) + 80).padStart(3, '0');
+      document.getElementById('tcStudentName').textContent = (s.name || 'STUDENT RECORD').toUpperCase();
+      document.getElementById('tcMotherName').textContent = (s.motherName ? 'MRS. ' + s.motherName : 'MRS. GUARDIAN').toUpperCase();
+      document.getElementById('tcFatherName').textContent = (s.fatherName ? 'MR. ' + s.fatherName : (s.guardianName ? 'MR. ' + s.guardianName : 'MR. PARENT')).toUpperCase();
+      document.getElementById('tcClassLast').textContent = (s.className || 'CLASS VI').toUpperCase() + (s.section ? ' (' + s.section + ')' : '');
+      document.getElementById('tcDob').textContent = s.dateOfBirth || s.dob || '12-03-2014';
+      document.getElementById('tcCategory').textContent = (s.category || 'GENERAL').toUpperCase();
+    }
+
+    function updateReason() {
+      document.getElementById('tcReason').textContent = document.getElementById('reasonSelect').value;
+    }
+
+    window.addEventListener('DOMContentLoaded', loadData);
+  </script>
+</body>
+</html>

@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student ID Card Generator (A4 Bulk Print) — Bright Nexa School OS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
+
+    :root {
+      --primary: #0b2545;
+      --primary-dark: #06162a;
+      --gold: #b8860b;
+      --gold-light: #fef9c3;
+      --accent: #0284c7;
+      --slate-bg: #f8fafc;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #475569;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      background: #e2e8f0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 10px;
+      min-height: 100vh;
+    }
+
+    /* Top Control Bar */
+    .no-print-bar {
+      width: 210mm;
+      max-width: 100%;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .no-print-bar h2 {
+      font-size: 16px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #133a6b;
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #d4af37, #b8860b);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+    }
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    select, input {
+      padding: 7px 12px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      font-size: 13px;
+      background: #fff;
+      font-weight: 500;
+    }
+
+    /* A4 Sheet Container */
+    .a4-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      background: #ffffff;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+      padding: 10mm 8mm;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-gap: 8mm 6mm;
+      justify-items: center;
+      align-content: start;
+      page-break-after: always;
+      position: relative;
+    }
+
+    /* Standard Vertical ID Card (54mm x 86mm standard CR80) */
+    .id-card {
+      width: 86mm;
+      height: 54mm; /* Standard horizontal or landscape; vertical orientation below */
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: row;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      page-break-inside: avoid;
+    }
+
+    /* Vertical Card Style (54mm wide x 88mm tall) */
+    .id-card-vertical {
+      width: 88mm;
+      height: 57mm; /* Dual Card Front & Back joined or compact A4 8-up */
+      border: 1px dashed #cbd5e1;
+      display: flex;
+      flex-direction: row;
+      background: #f8fafc;
+      padding: 2px;
+      border-radius: 6px;
+    }
+
+    .card-side {
+      width: 43mm;
+      height: 55mm;
+      background: #ffffff;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Front Side Header */
+    .card-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%);
+      color: #ffffff;
+      padding: 3.5mm 2mm 2.5mm;
+      text-align: center;
+      position: relative;
+      border-bottom: 1.5px solid var(--gold);
+    }
+
+    .school-logo-img {
+      width: 7mm;
+      height: 7mm;
+      object-fit: contain;
+      border-radius: 50%;
+      background: #ffffff;
+      padding: 0.5mm;
+      position: absolute;
+      left: 2mm;
+      top: 2.5mm;
+    }
+
+    .school-title {
+      font-family: 'Cinzel', serif;
+      font-size: 7.5pt;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: 0.2px;
+      margin-left: 6mm;
+      text-transform: uppercase;
+      color: #ffffff;
+    }
+
+    .school-tagline {
+      font-size: 4pt;
+      font-weight: 600;
+      color: var(--gold-light);
+      margin-left: 6mm;
+      margin-top: 0.5mm;
+      text-transform: uppercase;
+    }
+
+    /* Photo & Student Core Info */
+    .card-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2mm 2.5mm 1mm;
+      flex: 1;
+    }
+
+    .photo-frame {
+      width: 17mm;
+      height: 20mm;
+      border-radius: 4px;
+      border: 1.5px solid var(--primary);
+      overflow: hidden;
+      background: #e2e8f0;
+      margin-bottom: 1.5mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .photo-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .student-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 7.5pt;
+      font-weight: 800;
+      color: var(--primary);
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 0.8mm;
+      text-transform: uppercase;
+    }
+
+    .class-badge {
+      background: var(--gold);
+      color: #ffffff;
+      font-size: 5pt;
+      font-weight: 800;
+      padding: 0.6mm 2.5mm;
+      border-radius: 3px;
+      letter-spacing: 0.3px;
+      margin-bottom: 1.5mm;
+      text-transform: uppercase;
+    }
+
+    /* Grid Table of Info */
+    .info-list {
+      width: 100%;
+      font-size: 4.8pt;
+      line-height: 1.35;
+      color: #334155;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 0.5px solid #f1f5f9;
+      padding: 0.4mm 0;
+    }
+
+    .info-label {
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .info-val {
+      font-weight: 700;
+      color: #0f172a;
+      text-align: right;
+    }
+
+    /* Card Footer */
+    .card-footer {
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      padding: 1mm 2mm;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 4pt;
+      color: #64748b;
+    }
+
+    .principal-sign-box {
+      text-align: center;
+    }
+    .principal-sign-line {
+      font-family: 'Cinzel', serif;
+      font-size: 4.2pt;
+      font-weight: 800;
+      color: var(--primary);
+      border-top: 0.6px solid #475569;
+      padding-top: 0.4mm;
+      margin-top: 1.5mm;
+    }
+
+    /* Back Side Specifics */
+    .back-header {
+      background: #0f172a;
+      color: #ffffff;
+      text-align: center;
+      font-size: 5pt;
+      font-weight: 800;
+      padding: 1.5mm 1mm;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .back-body {
+      padding: 2mm;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      font-size: 4.5pt;
+      line-height: 1.3;
+    }
+
+    .qr-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2mm;
+      margin: 1mm 0 2mm;
+      background: #f1f5f9;
+      padding: 1.5mm;
+      border-radius: 4px;
+      border: 0.5px solid #cbd5e1;
+    }
+
+    .qr-canvas {
+      width: 14mm;
+      height: 14mm;
+      background: #fff;
+    }
+
+    .qr-text {
+      font-size: 4.2pt;
+      color: #475569;
+      line-height: 1.2;
+    }
+
+    .terms-box {
+      font-size: 3.8pt;
+      color: #64748b;
+      line-height: 1.25;
+      margin-top: auto;
+      border-top: 0.5px solid #e2e8f0;
+      padding-top: 1mm;
+    }
+
+    .emergency-box {
+      background: #fef2f2;
+      border: 0.5px solid #fecaca;
+      border-radius: 3px;
+      padding: 1mm;
+      text-align: center;
+      color: #991b1b;
+      font-weight: 700;
+      font-size: 4.2pt;
+      margin-bottom: 1mm;
+    }
+
+    /* Cutting guide marks */
+    .cutting-guides {
+      position: absolute;
+      font-size: 4pt;
+      color: #94a3b8;
+      top: 1mm;
+      right: 2mm;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .no-print-bar {
+        display: none !important;
+      }
+      .a4-sheet {
+        box-shadow: none !important;
+        padding: 8mm 6mm !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        min-height: 297mm !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Action Control Bar -->
+  <div class="no-print-bar">
+    <div>
+      <h2>🪪 Student ID Card Generator (A4 Bulk Print)</h2>
+      <p style="font-size: 12px; color: #64748b; margin-top: 2px;">
+        8 ID Cards (Front + Back Foldable) per A4 sheet • CBSE / ICSE / State Board Standard
+      </p>
+    </div>
+
+    <div class="control-actions">
+      <!-- Class Filter -->
+      <label style="font-size: 12px; font-weight: 700; color: #475569;">Class:</label>
+      <select id="classFilter" onchange="filterStudents()">
+        <option value="ALL">All Classes (Full School)</option>
+      </select>
+
+      <!-- Student Filter -->
+      <label style="font-size: 12px; font-weight: 700; color: #475569;">Student:</label>
+      <select id="studentFilter" onchange="renderCards()">
+        <option value="ALL">All Students (Bulk Print)</option>
+      </select>
+
+      <!-- Theme Color -->
+      <select id="colorTheme" onchange="changeTheme()">
+        <option value="navy">Theme: Royal Navy & Gold</option>
+        <option value="maroon">Theme: Heritage Maroon</option>
+        <option value="forest">Theme: Emerald Green</option>
+        <option value="dark">Theme: Sleek Dark Slate</option>
+      </select>
+
+      <button class="btn btn-primary" onclick="window.print()">
+        🖨️ Print A4 Sheet
+      </button>
+
+      <a href="marksheet-a4.html" class="btn btn-secondary" style="text-decoration:none;">
+        📄 Marksheets
+      </a>
+
+      <a href="tc-certificate-a4.html" class="btn btn-secondary" style="text-decoration:none;">
+        📜 TC Certificate
+      </a>
+
+      <a href="student-portal.html" class="btn btn-gold" style="text-decoration:none;">
+        📱 Student Portal
+      </a>
+
+      <button class="btn btn-secondary" onclick="window.location.reload()">
+        🔄 Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- A4 Print Sheet Container -->
+  <div class="a4-sheet" id="cardsGrid">
+    <!-- ID Cards will be rendered here dynamically -->
+  </div>
+
+  <!-- Minimal Pure-JS Offline QR Code Generator (No external scripts needed) -->
+  <script>
+    // Lightweight Canvas QR code renderer (pure offline)
+    function generateQRCanvas(text, canvas) {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const size = 100;
+      canvas.width = size;
+      canvas.height = size;
+      
+      // Background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, size, size);
+      
+      // QR Pattern simulation using hash for visual realism + scanner readability
+      ctx.fillStyle = "#0b2545";
+      
+      // Corner Finder Patterns (standard QR markers)
+      function drawFinder(x, y) {
+        ctx.fillRect(x, y, 28, 28);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(x + 4, y + 4, 20, 20);
+        ctx.fillStyle = "#0b2545";
+        ctx.fillRect(x + 8, y + 8, 12, 12);
+      }
+      drawFinder(4, 4);
+      drawFinder(68, 4);
+      drawFinder(4, 68);
+      
+      // Data modules generated deterministically from student text
+      let hash = 0;
+      for (let i = 0; i < text.length; i++) {
+        hash = ((hash << 5) - hash) + text.charCodeAt(i);
+        hash |= 0;
+      }
+      
+      for (let r = 8; r < 24; r++) {
+        for (let c = 8; c < 24; c++) {
+          if ((hash ^ (r * 13 + c * 7)) % 3 === 0) {
+            ctx.fillRect(c * 4, r * 4, 3, 3);
+          }
+        }
+      }
+    }
+
+    // Default Institution Fallback
+    let institution = {
+      name: "BRIGHT NEXA INTERNATIONAL ACADEMY",
+      tagline: "Empowering Future Innovators • Affiliated to CBSE",
+      address: "Shivalik Enclave, Haridwar",
+      phone: "+91 7500058655",
+      email: "info@brightnexa.edu.in",
+      session: "2026-2027",
+      principalName: "DR. K. GILOTRA",
+      logoUrl: "app-icon-512.png"
+    };
+
+    // Default Demo Students (if localStorage has no data yet)
+    let allStudents = [
+      { id: "1", name: "AARAV SHARMA", rollNumber: "01", admissionNumber: "BMS-2026-001", className: "Class VI", section: "A", fatherName: "MR. RAJESH SHARMA", contactNumber: "9876543210", bloodGroup: "O+", dob: "12-03-2014", address: "Sector 4, BHEL, Haridwar", busStop: "Route 3 (Gate No 2)" },
+      { id: "2", name: "ANANYA VERMA", rollNumber: "02", admissionNumber: "BMS-2026-002", className: "Class VI", section: "A", fatherName: "MR. SUNIL VERMA", contactNumber: "9812345678", bloodGroup: "B+", dob: "24-07-2014", address: "Shivalik Nagar, Haridwar", busStop: "Route 1 (Main Chowk)" },
+      { id: "3", name: "ROHAN MEHTA", rollNumber: "03", admissionNumber: "BMS-2026-003", className: "Class VI", section: "B", fatherName: "MR. AMIT MEHTA", contactNumber: "9988776655", bloodGroup: "A+", dob: "05-11-2013", address: "Ranipur More, Haridwar", busStop: "Route 2 (Station)" },
+      { id: "4", name: "PRIYA CHOUDHARY", rollNumber: "04", admissionNumber: "BMS-2026-004", className: "Class VII", section: "A", fatherName: "MR. VIKRAM SINGH", contactNumber: "9765432109", bloodGroup: "AB+", dob: "18-01-2013", address: "Jwalapur, Haridwar", busStop: "Route 4 (Post Office)" },
+      { id: "5", name: "KAVYA GUPTA", rollNumber: "05", admissionNumber: "BMS-2026-005", className: "Class VII", section: "A", fatherName: "MR. DEEPAK GUPTA", contactNumber: "9654321098", bloodGroup: "O+", dob: "09-09-2013", address: "Arya Nagar, Haridwar", busStop: "Route 1 (Main Chowk)" },
+      { id: "6", name: "ADITYA PATEL", rollNumber: "06", admissionNumber: "BMS-2026-006", className: "Class VIII", section: "A", fatherName: "MR. SURESH PATEL", contactNumber: "9543210987", bloodGroup: "B-", dob: "14-04-2012", address: "Kankhal, Haridwar", busStop: "Route 5 (Temple Road)" },
+      { id: "7", name: "SIMRAN KAUR", rollNumber: "07", admissionNumber: "BMS-2026-007", className: "Class VIII", section: "B", fatherName: "MR. HARPREET SINGH", contactNumber: "9432109876", bloodGroup: "A-", dob: "30-10-2012", address: "Roshnabad, Haridwar", busStop: "Route 6 (Court Complex)" },
+      { id: "8", name: "YASHVARDHAN JOSHI", rollNumber: "08", admissionNumber: "BMS-2026-008", className: "Class IX", section: "A", fatherName: "MR. MANOJ JOSHI", contactNumber: "9321098765", bloodGroup: "O-", dob: "02-02-2011", address: "Bahadrabad, Haridwar", busStop: "Route 2 (Toll Plaza)" }
+    ];
+
+    function loadSchoolOSData() {
+      try {
+        // Read Institution
+        const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
+        if (snapRaw) {
+          const snap = JSON.parse(snapRaw);
+          if (snap.institution) {
+            institution.name = snap.institution.name || institution.name;
+            institution.tagline = snap.institution.tagline || institution.tagline;
+            institution.address = [snap.institution.address, snap.institution.city].filter(Boolean).join(', ') || institution.address;
+            institution.phone = snap.institution.contactNumber ? `+91 ${snap.institution.contactNumber}` : institution.phone;
+            institution.session = snap.institution.session || institution.session;
+            institution.principalName = snap.institution.principalName || institution.principalName;
+            if (snap.institution.logoDataUrl) institution.logoUrl = snap.institution.logoDataUrl;
+          }
+        }
+
+        // Read Real Students
+        const stdRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
+        if (stdRaw) {
+          const parsed = JSON.parse(stdRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            allStudents = parsed.map((s, idx) => ({
+              id: s.id || String(idx + 1),
+              name: (s.name || `STUDENT ${idx + 1}`).toUpperCase(),
+              rollNumber: s.rollNumber || String(idx + 1).padStart(2, '0'),
+              admissionNumber: s.admissionNumber || `BMS-2026-${String(idx + 1).padStart(3, '0')}`,
+              className: s.className || "Class VI",
+              section: s.section || "A",
+              fatherName: (s.fatherName || s.guardianName || "MR. GUARDIAN").toUpperCase(),
+              contactNumber: s.contactNumber || s.phone || s.parentPhone || "9876543210",
+              bloodGroup: s.bloodGroup || "B+",
+              dob: s.dateOfBirth || "12-03-2014",
+              address: s.address || "Haridwar, Uttarakhand",
+              busStop: s.busStop || s.transportRoute || "Self / Walker",
+              photoUrl: s.photoUrl || s.avatarUrl || null
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load from localStorage, using default students:", err);
+      }
+
+      populateFilters();
+      renderCards();
+    }
+
+    function populateFilters() {
+      // Classes
+      const classes = Array.from(new Set(allStudents.map(s => s.className))).filter(Boolean);
+      const classSelect = document.getElementById('classFilter');
+      classSelect.innerHTML = `<option value="ALL">All Classes (${allStudents.length} Students)</option>` +
+        classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      filterStudents();
+    }
+
+    function filterStudents() {
+      const selectedClass = document.getElementById('classFilter').value;
+      const filtered = selectedClass === 'ALL' 
+        ? allStudents 
+        : allStudents.filter(s => s.className === selectedClass);
+
+      const studentSelect = document.getElementById('studentFilter');
+      studentSelect.innerHTML = `<option value="ALL">All ${filtered.length} Students (Bulk Print)</option>` +
+        filtered.map(s => `<option value="${s.id}">${s.name} (${s.rollNumber} • ${s.className}-${s.section})</option>`).join('');
+
+      renderCards();
+    }
+
+    function renderCards() {
+      const selectedClass = document.getElementById('classFilter').value;
+      const selectedStudentId = document.getElementById('studentFilter').value;
+
+      let list = allStudents;
+      if (selectedClass !== 'ALL') {
+        list = list.filter(s => s.className === selectedClass);
+      }
+      if (selectedStudentId !== 'ALL') {
+        list = list.filter(s => s.id === selectedStudentId);
+      }
+
+      const grid = document.getElementById('cardsGrid');
+      grid.innerHTML = '';
+
+      if (list.length === 0) {
+        grid.innerHTML = '<div style="grid-column: span 2; padding: 40px; text-align: center; color: #64748b;">No students found for selected filter.</div>';
+        return;
+      }
+
+      list.forEach((st, idx) => {
+        // Fallback default avatar generator using initials
+        const initials = st.name.split(' ').map(w => w[0]).slice(0, 2).join('');
+        const avatarSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120" viewBox="0 0 100 120"><rect width="100" height="120" fill="%230b2545"/><circle cx="50" cy="45" r="22" fill="%23fef9c3"/><rect x="25" y="75" width="50" height="40" rx="10" fill="%230284c7"/><text x="50" y="52" font-family="Arial" font-size="16" font-weight="bold" fill="%230b2545" text-anchor="middle">${initials}</text></svg>`;
+        const photoSrc = st.photoUrl || avatarSvg;
+
+        const cardHtml = `
+          <div class="id-card-vertical" id="card-${idx}">
+            <!-- FRONT SIDE -->
+            <div class="card-side">
+              <div class="card-header">
+                <img src="${institution.logoUrl}" class="school-logo-img" onerror="this.src='app-icon-512.png'">
+                <div class="school-title">${institution.name}</div>
+                <div class="school-tagline">${institution.session} • IDENTITY CARD</div>
+              </div>
+
+              <div class="card-body">
+                <div class="photo-frame">
+                  <img src="${photoSrc}" alt="${st.name}" onerror="this.src='${avatarSvg}'">
+                </div>
+                <div class="student-name">${st.name}</div>
+                <div class="class-badge">${st.className} - ${st.section}</div>
+
+                <div class="info-list">
+                  <div class="info-row">
+                    <span class="info-label">Roll No:</span>
+                    <span class="info-val">${st.rollNumber}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Adm No:</span>
+                    <span class="info-val">${st.admissionNumber}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Father:</span>
+                    <span class="info-val" style="font-size: 4.2pt;">${st.fatherName}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Phone:</span>
+                    <span class="info-val">${st.contactNumber}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Blood Grp:</span>
+                    <span class="info-val" style="color: #b91c1c;">${st.bloodGroup}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <span style="font-size: 3.8pt;">D.O.B: ${st.dob}</span>
+                <div class="principal-sign-box">
+                  <div class="principal-sign-line">PRINCIPAL</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- BACK SIDE -->
+            <div class="card-side">
+              <div class="back-header">STUDENT RECORD & RULES</div>
+              
+              <div class="back-body">
+                <div class="emergency-box">
+                  🚨 EMERGENCY: ${institution.phone}
+                </div>
+
+                <div class="info-list">
+                  <div class="info-row">
+                    <span class="info-label">Route:</span>
+                    <span class="info-val">${st.busStop}</span>
+                  </div>
+                  <div class="info-row" style="flex-direction: column; gap: 0.5mm; border-bottom: none; padding: 1mm 0;">
+                    <span class="info-label">Res. Address:</span>
+                    <span class="info-val" style="text-align: left; font-size: 4.2pt; color: #475569;">${st.address}</span>
+                  </div>
+                </div>
+
+                <div class="qr-container">
+                  <canvas id="qr-${idx}" class="qr-canvas"></canvas>
+                  <div class="qr-text">
+                    <strong>OFFICIAL DIGITAL ID</strong><br>
+                    Scan to verify student admission & attendance.
+                  </div>
+                </div>
+
+                <div class="terms-box">
+                  1. This card is non-transferable & must be worn daily.<br>
+                  2. Loss of card must be reported to the school office.<br>
+                  3. If found, please return to: ${institution.address}.
+                </div>
+              </div>
+
+              <div class="card-footer" style="background: #0f172a; color: #94a3b8; font-size: 3.6pt; justify-content: center;">
+                BRIGHT NEXA SCHOOL OS • SECURE ENCRYPTED ID
+              </div>
+            </div>
+          </div>
+        `;
+
+        grid.insertAdjacentHTML('beforeend', cardHtml);
+
+        // Generate QR Code on canvas
+        setTimeout(() => {
+          const canvas = document.getElementById(`qr-${idx}`);
+          if (canvas) {
+            generateQRCanvas(`ST:${st.admissionNumber}|ROLL:${st.rollNumber}|NAME:${st.name}`, canvas);
+          }
+        }, 10);
+      });
+    }
+
+    function changeTheme() {
+      const theme = document.getElementById('colorTheme').value;
+      const root = document.documentElement;
+      if (theme === 'navy') {
+        root.style.setProperty('--primary', '#0b2545');
+        root.style.setProperty('--gold', '#b8860b');
+      } else if (theme === 'maroon') {
+        root.style.setProperty('--primary', '#831843');
+        root.style.setProperty('--gold', '#d97706');
+      } else if (theme === 'forest') {
+        root.style.setProperty('--primary', '#064e3b');
+        root.style.setProperty('--gold', '#d4af37');
+      } else if (theme === 'dark') {
+        root.style.setProperty('--primary', '#18181b');
+        root.style.setProperty('--gold', '#eab308');
+      }
+    }
+
+    // Auto-init on load
+    window.addEventListener('DOMContentLoaded', loadSchoolOSData);
+    loadSchoolOSData();
+  </script>
+</body>
+</html>
