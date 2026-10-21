@@ -5939,7 +5939,8 @@ button:disabled {
   border-radius: 0;
   box-shadow: none;
   mix-blend-mode: screen;
-  filter: drop-shadow(0 8px 20px rgba(0, 170, 235, 0.12));
+  -webkit-mask-image: radial-gradient(ellipse 65% 65% at 50% 48%, #000 56%, transparent 100%);
+  mask-image: radial-gradient(ellipse 65% 65% at 50% 48%, #000 56%, transparent 100%);
 }
 .auth-brand-copy {
   max-width: 590px;
