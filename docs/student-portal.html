@@ -573,6 +573,22 @@
       gap: 10px;
       margin-top: 20px;
     }
+
+    .portal-links { display:flex; gap:20px; margin-bottom:20px; }
+    .portal-links a { color:#0b2545; padding:10px 0; }
+    .school-details { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:20px; margin:24px 0; }
+    .school-details dt { font-weight:700; margin-bottom:6px; }
+    .school-details dd { margin:0; overflow-wrap:anywhere; }
+    .table-scroll { max-width:100%; overflow-x:auto; }
+    .quick-demo-pill { background:transparent; border:0; padding:12px; }
+    .document-notice { color:#475569; font-size:12px; }
+    button:focus-visible,a:focus-visible,.table-scroll:focus-visible { outline:3px solid #0284c7; outline-offset:3px; }
+    button:disabled { opacity:.6; cursor:wait; }
+    .box-header { gap:12px; flex-wrap:wrap; }
+    .brand-box,.banner-left,.student-name-box { min-width:0; }
+    .brand-name,.student-name-box h1 { overflow-wrap:anywhere; }
+    @media(max-width:600px) { .portal-nav { flex-wrap:wrap; gap:10px; } .content-box { padding:16px; } .login-card { margin:20px auto; padding:24px 18px; } .banner-left { flex-wrap:wrap; } }
+    @media(prefers-reduced-motion:reduce) { * { transition:none!important; } }
   </style>
 </head>
 <body>
@@ -580,7 +596,7 @@
   <!-- Global Portal Header -->
   <header class="portal-nav">
     <div class="brand-box">
-      <img id="navLogo" src="app-icon-512.png" class="brand-logo" alt="Logo" onerror="this.src='app-icon-512.png'">
+      <img id="navLogo" src="app-icon-512.png" class="brand-logo" alt="School logo" onerror="this.onerror=null;this.src='app-icon-512.png'">
       <div>
         <div class="brand-name" id="navSchoolName">BRIGHT NEXA SCHOOL OS</div>
         <div class="brand-tag">Student & Parent Portal (Read-Only)</div>
@@ -588,19 +604,31 @@
     </div>
 
     <div class="badge-secure">
-      🛡️ Verified Institutional Access
+      🛡️ Student & Parent Portal
     </div>
   </header>
 
   <main class="portal-container">
-    
+    <nav class="portal-links" aria-label="Portal navigation"><a href="#/school-profile">School profile</a><a href="#/login">Student login</a></nav>
+    <section id="schoolProfileView" class="content-box" style="display:none" aria-labelledby="schoolName">
+      <h1 id="schoolName">School profile</h1><p id="schoolTagline"></p>
+      <p id="schoolStatus" role="status">Loading school details…</p>
+      <dl class="school-details">
+        <div><dt>Address</dt><dd id="schoolAddress">—</dd></div>
+        <div><dt>Phone</dt><dd id="schoolPhone">—</dd></div>
+        <div><dt>Email</dt><dd id="schoolEmail">—</dd></div>
+        <div><dt>Academic session</dt><dd id="schoolSession">—</dd></div>
+        <div><dt>Principal</dt><dd id="schoolPrincipal">—</dd></div>
+      </dl><button type="button" class="btn-action" onclick="loadSchoolProfile()">Refresh details</button>
+    </section>
+
     <!-- 0. PUBLIC CREDENTIAL VERIFICATION VIEW (From ID Card QR Scan) -->
     <div class="verification-card" id="verificationView" style="display: none;">
       <div class="verification-header" id="vHeader">
         <div class="verification-icon-box" id="vIcon">🛡️</div>
-        <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 4px;" id="vTitle">DIGITALLY VERIFIED CREDENTIAL</h2>
-        <div style="font-size: 13px; color: #cbd5e1;" id="vSubtitle">Bright Nexa International Academy • Academic Session 2026-2027</div>
-        <div class="verification-badge badge-valid" id="vBadge">✓ ACTIVE OFFICIAL ENROLLMENT</div>
+        <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 4px;" id="vTitle">Credential verification</h2>
+        <div style="font-size: 13px; color: #cbd5e1;" id="vSubtitle">School credential check</div>
+        <div class="verification-badge badge-valid" id="vBadge">Not yet verified</div>
       </div>
 
       <div class="verification-body">
@@ -626,10 +654,10 @@
         <div class="v-sig-box" id="vSigBox">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <strong style="color: #0b2545;">🔐 Cryptographic Verification</strong>
-            <span id="vSigMatchBadge" style="background: #10b981; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">MATCH VERIFIED</span>
+            <span id="vSigMatchBadge" style="background: #10b981; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">Pending</span>
           </div>
           <div style="color: #475569; margin-bottom: 4px;">
-            Standard: <code style="background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px;">HMAC-SHA256 (Institutional Key)</code>
+            Standard: <code style="background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px;">School server verification</code>
           </div>
           <div style="color: #475569; word-break: break-all;">
             Signature: <code id="vSigHash" style="color: #0b2545; font-weight: bold; background: #e2e8f0; padding: 1px 4px; border-radius: 4px; font-size: 11px;">E9D2CE8E64530EA0</code>
@@ -654,37 +682,35 @@
     <!-- 1. LOGIN SCREEN -->
     <div class="login-card" id="loginView">
       <div class="login-icon">🎓</div>
-      <h2 class="login-title">Student & Parent Login</h2>
+      <h2 id="loginTitle" class="login-title">Student & Parent Login</h2>
       <p class="login-subtitle">Access your attendance, fee receipts, marksheets & digital ID card.</p>
 
       <div id="loginInfo" style="display:none; background:#eff6ff; border:1px solid #93c5fd; color:#1e40af; padding:12px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; line-height:1.4;"></div>
-      <div id="loginAlert" style="display:none; background:#fef2f2; border:1px solid #f87171; color:#991b1b; padding:12px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; line-height:1.4;"></div>
+      <div id="loginAlert" role="alert" style="display:none; background:#fef2f2; border:1px solid #f87171; color:#991b1b; padding:12px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; line-height:1.4;"></div>
 
-      <form onsubmit="handleLogin(event)">
+      <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
-          <label class="form-label">Admission Number / Scholar ID:</label>
-          <input type="text" id="admInput" class="form-input" placeholder="e.g. BMS-2026-001" required autocomplete="username">
+          <label class="form-label" for="admInput">Admission Number / Scholar ID:</label>
+          <input type="text" id="admInput" name="admissionNumber" spellcheck="false" class="form-input" placeholder="e.g. BMS-2026-001" required autocomplete="username">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Date of Birth (Security Authentication Key):</label>
-          <input type="text" id="dobInput" class="form-input" placeholder="DD-MM-YYYY (e.g. 12-03-2014)" required autocomplete="current-password">
+          <label class="form-label" for="dobInput">Date of birth:</label>
+          <input type="text" id="dobInput" name="dob" inputmode="numeric" class="form-input" placeholder="DD-MM-YYYY (e.g. 12-03-2014)" required autocomplete="bday">
           <div style="font-size: 11px; color: #64748b; margin-top: 4px;">* Enter student's official Date of Birth as registered with school.</div>
         </div>
 
-        <button type="submit" class="btn-login">
+        <button type="submit" id="loginButton" class="btn-login">
           🔐 View My Student Portal
         </button>
       </form>
 
-      <div class="quick-demo-pill" onclick="demoLogin()">
-        ⚡ Click here for Instant Demo Login (Aarav Sharma • 12-03-2014)
-      </div>
+      <button type="button" class="quick-demo-pill" onclick="demoLogin()">Explore demo (fictional sample)</button>
     </div>
 
     <!-- 2. DASHBOARD VIEW (LOGGED IN) -->
     <div class="dashboard-view" id="dashboardView">
-      
+
       <!-- Student Profile Banner -->
       <div class="student-banner">
         <div class="banner-left">
@@ -709,29 +735,29 @@
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Total Attendance</div>
-          <div class="stat-val" style="color: #10b981;">95.3%</div>
-          <div class="stat-sub" style="color: #059669;">202 Present / 212 Days</div>
+          <div class="stat-val" style="color: #10b981;">—</div>
+          <div class="stat-sub" style="color: #059669;">Records not available</div>
         </div>
 
         <div class="stat-card">
           <div class="stat-label">Fee Clearance</div>
-          <div class="stat-val" style="color: #0284c7;">₹0 Due</div>
-          <div class="stat-sub" style="color: #0369a1;">All Term Dues Cleared</div>
+          <div class="stat-val" style="color: #0284c7;">—</div>
+          <div class="stat-sub" style="color: #0369a1;">Records not available</div>
         </div>
 
         <div class="stat-card">
           <div class="stat-label">Latest Exam Rank / Grade</div>
-          <div class="stat-val" style="color: #d97706;">A1 (92.4%)</div>
-          <div class="stat-sub" style="color: #b45309;">Rank #2 in Class VI-A</div>
+          <div class="stat-val" style="color: #d97706;">—</div>
+          <div class="stat-sub" style="color: #b45309;">Records not available</div>
         </div>
       </div>
 
       <!-- Tabs Navigation -->
       <div class="tabs-bar">
-        <button class="tab-btn active" onclick="switchTab('tab-idcard')">🪪 Digital ID Card</button>
-        <button class="tab-btn" onclick="switchTab('tab-marksheet')">📄 Academic Marksheet</button>
-        <button class="tab-btn" onclick="switchTab('tab-fees')">💰 Fee Receipts</button>
-        <button class="tab-btn" onclick="switchTab('tab-attendance')">📊 Attendance Log</button>
+        <button class="tab-btn active" data-tab="tab-idcard" aria-pressed="false" onclick="switchTab('tab-idcard')">🪪 Digital ID Card</button>
+        <button class="tab-btn" data-tab="tab-marksheet" aria-pressed="false" onclick="switchTab('tab-marksheet')">📄 Academic Marksheet</button>
+        <button class="tab-btn" data-tab="tab-fees" aria-pressed="false" onclick="switchTab('tab-fees')">💰 Fee Receipts</button>
+        <button class="tab-btn" data-tab="tab-attendance" aria-pressed="false" onclick="switchTab('tab-attendance')">📊 Attendance Log</button>
       </div>
 
       <!-- TAB 1: DIGITAL ID CARD -->
@@ -739,20 +765,18 @@
         <div class="content-box">
           <div class="box-header">
             <div class="box-title">Student Identity & Official Verification Card</div>
-            <a id="btnIdPrint" href="id-card-a4.html" target="_blank" class="btn-action">
-              🖨️ Open Full A4 ID Card Sheet
-            </a>
+            <span class="document-notice">Official documents: contact the school office.</span>
           </div>
 
           <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: center;">
             <div style="max-width: 340px; width: 100%; border-radius: 12px; border: 1.5px solid #cbd5e1; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); background: #fff;">
               <div style="background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%); color: #fff; padding: 14px; text-align: center; border-bottom: 2px solid #d4af37;">
                 <div style="font-family: 'Cinzel'; font-size: 13px; font-weight: 800;" id="cardSchoolName">BRIGHT NEXA INTERNATIONAL ACADEMY</div>
-                <div style="font-size: 10px; color: #fef9c3; margin-top: 2px;">SESSION 2026-2027 • STUDENT ID</div>
+                <div style="font-size: 10px; color: #fef9c3; margin-top: 2px;"><span id="cardSession">Session not available</span> • STUDENT ID</div>
               </div>
 
               <div style="padding: 16px; text-align: center;">
-                <img id="cardPhoto" src="app-icon-512.png" style="width: 70px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #0b2545; margin-bottom: 8px;">
+                <img id="cardPhoto" alt="Student photo placeholder" src="app-icon-512.png" style="width: 70px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #0b2545; margin-bottom: 8px;">
                 <h3 id="cardName" style="color: #0b2545; font-size: 16px; font-weight: 800;">AARAV SHARMA</h3>
                 <div style="background: #d4af37; color: #fff; display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-bottom: 12px;" id="cardBadge">Class VI - A</div>
 
@@ -765,7 +789,7 @@
               </div>
 
               <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 10px 14px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center;">
-                <span>Verified Active Student</span>
+                <span id="cardStatus">Student profile</span>
                 <span style="font-weight: 700; color: #0b2545;">BRIGHT NEXA OS</span>
               </div>
             </div>
@@ -778,12 +802,10 @@
         <div class="content-box">
           <div class="box-header">
             <div class="box-title">Academic Examination Report</div>
-            <a id="btnMarksheetPrint" href="marksheet-a4.html" target="_blank" class="btn-action">
-              🖨️ View & Print Official CBSE Marksheet
-            </a>
+            <span class="document-notice">Official documents: contact the school office.</span>
           </div>
 
-          <table class="data-table">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Student records"><table class="data-table">
             <thead>
               <tr>
                 <th>Subject Name</th>
@@ -795,54 +817,8 @@
                 <th>Grade</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td><strong>English Language & Literature</strong></td>
-                <td>9.0</td>
-                <td>5.0</td>
-                <td>4.5</td>
-                <td>74.0</td>
-                <td><strong>92.5</strong></td>
-                <td><span class="badge-status badge-paid">A1</span></td>
-              </tr>
-              <tr>
-                <td><strong>Hindi (Course A)</strong></td>
-                <td>8.5</td>
-                <td>5.0</td>
-                <td>5.0</td>
-                <td>71.0</td>
-                <td><strong>89.5</strong></td>
-                <td><span class="badge-status badge-paid">A2</span></td>
-              </tr>
-              <tr>
-                <td><strong>Mathematics</strong></td>
-                <td>9.5</td>
-                <td>5.0</td>
-                <td>5.0</td>
-                <td>76.0</td>
-                <td><strong>95.5</strong></td>
-                <td><span class="badge-status badge-paid">A1</span></td>
-              </tr>
-              <tr>
-                <td><strong>Science & Technology</strong></td>
-                <td>9.0</td>
-                <td>4.5</td>
-                <td>5.0</td>
-                <td>72.5</td>
-                <td><strong>91.0</strong></td>
-                <td><span class="badge-status badge-paid">A1</span></td>
-              </tr>
-              <tr>
-                <td><strong>Social Science</strong></td>
-                <td>8.5</td>
-                <td>5.0</td>
-                <td>4.5</td>
-                <td>70.0</td>
-                <td><strong>88.0</strong></td>
-                <td><span class="badge-status badge-paid">A2</span></td>
-              </tr>
-            </tbody>
-          </table>
+            <tbody><tr><td colspan="7">Records are not available in this portal yet. Contact the school office.</td></tr></tbody>
+          </table></div>
         </div>
       </div>
 
@@ -853,7 +829,7 @@
             <div class="box-title">Institutional Fee Ledger & Payment Receipts</div>
           </div>
 
-          <table class="data-table">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Student records"><table class="data-table">
             <thead>
               <tr>
                 <th>Receipt No.</th>
@@ -864,33 +840,8 @@
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td><strong>REC-2026-104</strong></td>
-                <td>10-10-2026</td>
-                <td>Quarter 3 Tuition & Lab Fees</td>
-                <td>UPI / Bank Transfer</td>
-                <td><strong>₹4,500</strong></td>
-                <td><span class="badge-status badge-paid">PAID & CLEARED</span></td>
-              </tr>
-              <tr>
-                <td><strong>REC-2026-068</strong></td>
-                <td>12-07-2026</td>
-                <td>Quarter 2 Tuition & Transport</td>
-                <td>Cash Counter</td>
-                <td><strong>₹6,200</strong></td>
-                <td><span class="badge-status badge-paid">PAID & CLEARED</span></td>
-              </tr>
-              <tr>
-                <td><strong>REC-2026-012</strong></td>
-                <td>05-04-2026</td>
-                <td>Annual Admission & Session Charges</td>
-                <td>UPI</td>
-                <td><strong>₹8,000</strong></td>
-                <td><span class="badge-status badge-paid">PAID & CLEARED</span></td>
-              </tr>
-            </tbody>
-          </table>
+            <tbody><tr><td colspan="7">Records are not available in this portal yet. Contact the school office.</td></tr></tbody>
+          </table></div>
         </div>
       </div>
 
@@ -901,7 +852,7 @@
             <div class="box-title">Monthly Attendance Breakdown</div>
           </div>
 
-          <table class="data-table">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Student records"><table class="data-table">
             <thead>
               <tr>
                 <th>Month</th>
@@ -911,632 +862,18 @@
                 <th>Monthly Rate</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>October 2026</td>
-                <td>20</td>
-                <td>19</td>
-                <td>1</td>
-                <td><strong>95.0%</strong></td>
-              </tr>
-              <tr>
-                <td>September 2026</td>
-                <td>24</td>
-                <td>23</td>
-                <td>1</td>
-                <td><strong>95.8%</strong></td>
-              </tr>
-              <tr>
-                <td>August 2026</td>
-                <td>22</td>
-                <td>21</td>
-                <td>1</td>
-                <td><strong>95.5%</strong></td>
-              </tr>
-              <tr>
-                <td>July 2026</td>
-                <td>26</td>
-                <td>25</td>
-                <td>1</td>
-                <td><strong>96.1%</strong></td>
-              </tr>
-            </tbody>
-          </table>
+            <tbody><tr><td colspan="7">Records are not available in this portal yet. Contact the school office.</td></tr></tbody>
+          </table></div>
         </div>
       </div>
 
       <!-- Read-Only Notice -->
-      <div class="read-only-banner">
+      <div id="portalNotice" class="read-only-banner" role="status">
         🔒 <strong>Read-Only Access:</strong> This student portal is securely synchronized directly from Bright Nexa School OS. Records cannot be edited by students or parents. For any queries, please contact the school administration office.
       </div>
     </div>
   </main>
 
-  <script>
-    let activeStudent = null;
-
-    let institution = {
-      name: "BRIGHT NEXA INTERNATIONAL ACADEMY",
-      tagline: "Empowering Future Innovators • Affiliated to CBSE",
-      address: "Shivalik Enclave, Haridwar",
-      phone: "+91 7500058655",
-      email: "info@brightnexa.edu.in",
-      session: "2026-2027",
-      principalName: "DR. K. GILOTRA",
-      logoUrl: "app-icon-512.png"
-    };
-
-    let students = [
-      { id: "1", name: "AARAV SHARMA", rollNumber: "01", admissionNumber: "BMS-2026-001", className: "Class VI", section: "A", dob: "12-03-2014", bloodGroup: "O+", fatherName: "MR. RAJESH SHARMA", contactNumber: "9876543210", busStop: "Route 3 (Gate No 2)", address: "Sector 4, BHEL, Haridwar" },
-      { id: "2", name: "ANANYA VERMA", rollNumber: "02", admissionNumber: "BMS-2026-002", className: "Class VI", section: "A", dob: "24-07-2014", bloodGroup: "B+", fatherName: "MR. SUNIL VERMA", contactNumber: "9812345678", busStop: "Route 1 (Main Chowk)", address: "Shivalik Nagar, Haridwar" },
-      { id: "3", name: "ROHAN MEHTA", rollNumber: "03", admissionNumber: "DEMO-2026-003", className: "Class VI", section: "B", dob: "05-11-2013", bloodGroup: "A+", fatherName: "MR. AMIT MEHTA", contactNumber: "9988776655", busStop: "Route 2 (Station)", address: "Ranipur More, Haridwar" },
-      { id: "4", name: "PRIYA CHOUDHARY", rollNumber: "04", admissionNumber: "DEMO-2026-004", className: "Class VII", section: "A", dob: "18-01-2013", bloodGroup: "AB+", fatherName: "MR. VIKRAM SINGH", contactNumber: "9765432109", busStop: "Route 4 (Post Office)", address: "Jwalapur, Haridwar" }
-    ];
-
-    function escapeHtml(val) {
-      if (val === null || val === undefined) return '';
-      return String(val)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    // ==========================================
-    // CRYPTOGRAPHIC SHA-256 & HMAC-SHA256 (RFC 2104)
-    // ==========================================
-    function normalizeDate(str) {
-      if (!str) return '';
-      const clean = String(str).trim();
-      const mIso = clean.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
-      if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
-      const mDmy = clean.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-      if (mDmy) return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
-      return clean.replace(/[^0-9]/g, '');
-    }
-
-    function sha256(ascii) {
-      function rightRotate(value, amount) {
-        return (value >>> amount) | (value << (32 - amount));
-      }
-      var mathPow = Math.pow;
-      var maxWord = mathPow(2, 32);
-      var lengthProperty = 'length';
-      var i, j;
-      var result = '';
-      var words = [];
-      var asciiBitLength = ascii[lengthProperty] * 8;
-      var hash = sha256.h = sha256.h || [];
-      var k = sha256.k = sha256.k || [];
-      var primeCounter = k[lengthProperty];
-      var isComposite = {};
-      for (var candidate = 2; primeCounter < 64; candidate++) {
-        if (!isComposite[candidate]) {
-          for (i = 0; i < 313; i += candidate) isComposite[i] = candidate;
-          hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
-          k[primeCounter++] = (mathPow(candidate, 1/3) * maxWord) | 0;
-        }
-      }
-      hash = hash.slice(0);
-      ascii += '\x80';
-      while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
-      for (i = 0; i < ascii[lengthProperty]; i++) {
-        j = ascii.charCodeAt(i);
-        words[i >> 2] |= j << ((3 - i) % 4) * 8;
-      }
-      words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
-      words[words[lengthProperty]] = (asciiBitLength | 0);
-      for (j = 0; j < words[lengthProperty];) {
-        var w = words.slice(j, j += 16);
-        var oldHash = hash;
-        hash = hash.slice(0, 8);
-        for (i = 0; i < 64; i++) {
-          var w15 = w[i - 15], w2 = w[i - 2];
-          var s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
-          var s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
-          var ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
-          var maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
-          var temp1 = hash[7] + (rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25)) + ch + k[i] + (w[i] = (i < 16) ? w[i] : (w[i - 16] + s0 + w[i - 7] + s1) | 0);
-          var temp2 = (rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22)) + maj;
-          hash = [(temp1 + temp2) | 0].concat(hash);
-          hash[4] = (hash[4] + temp1) | 0;
-        }
-        for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
-      }
-      for (i = 0; i < 8; i++) {
-        for (j = 3; j + 1; j--) {
-          var b = (hash[i] >> (j * 8)) & 255;
-          result += ((b < 16) ? 0 : '') + b.toString(16);
-        }
-      }
-      return result;
-    }
-
-    function hexToAscii(hex) {
-      var str = '';
-      for (var i = 0; i < hex.length; i += 2) {
-        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-      }
-      return str;
-    }
-
-    function hmacSha256(key, message) {
-      var blockSize = 64;
-      if (key.length > blockSize) key = sha256(key);
-      while (key.length < blockSize) key += '\x00';
-      var oKeyPad = '', iKeyPad = '';
-      for (var i = 0; i < blockSize; i++) {
-        var kByte = key.charCodeAt(i);
-        oKeyPad += String.fromCharCode(kByte ^ 0x5c);
-        iKeyPad += String.fromCharCode(kByte ^ 0x36);
-      }
-      return sha256(oKeyPad + hexToAscii(sha256(iKeyPad + message)));
-    }
-
-    const DEFAULT_INSTITUTION_KEY = 'bn_sec_key_7500058655_brightnexa_2026_cbse_v1';
-
-    function getSchoolSigningKey() {
-      const STORAGE_KEY = 'bright-nexa-school-os:signing-key:v1';
-      let key = localStorage.getItem(STORAGE_KEY);
-      if (!key || key.length < 32) {
-        try {
-          const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-          if (snapRaw) {
-            const snap = JSON.parse(snapRaw);
-            if (snap.institution && snap.institution.verificationSecretKey) {
-              key = snap.institution.verificationSecretKey;
-            }
-          }
-        } catch(e) {}
-      }
-      if (!key || key.length < 32) {
-        key = DEFAULT_INSTITUTION_KEY;
-        try {
-          localStorage.setItem(STORAGE_KEY, key);
-        } catch(e) {}
-      }
-      return key;
-    }
-
-    function computeStudentHMAC(st, inst) {
-      const key = getSchoolSigningKey();
-      const dobNorm = normalizeDate(st?.dob || st?.dateOfBirth || '');
-      const msg = `${inst?.name || 'Bright Nexa'}|${inst?.session || '2026-27'}|${st?.admissionNumber || ''}|${st?.rollNumber || ''}|${dobNorm}`;
-      return hmacSha256(key, msg).slice(0, 16).toUpperCase();
-    }
-
-    // ==========================================
-    // PORTAL INITIALIZATION & SECURITY CONTROLS
-    // ==========================================
-    function initPortal() {
-      // 1. Load School Branding from localStorage snapshot
-      try {
-        const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-        if (snapRaw) {
-          const snap = JSON.parse(snapRaw);
-          if (snap.institution) {
-            institution.name = snap.institution.name || institution.name;
-            institution.session = snap.institution.session || institution.session;
-            institution.phone = snap.institution.contactNumber ? `+91 ${snap.institution.contactNumber}` : institution.phone;
-            if (snap.institution.logoDataUrl) institution.logoUrl = snap.institution.logoDataUrl;
-
-            document.getElementById('navSchoolName').textContent = institution.name.toUpperCase();
-            document.getElementById('cardSchoolName').textContent = institution.name.toUpperCase();
-            document.getElementById('navLogo').src = institution.logoUrl;
-          }
-        }
-
-        // 2. Load live students from localStorage
-        const stdRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
-        if (stdRaw) {
-          const parsed = JSON.parse(stdRaw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const mapped = parsed.map((s, idx) => ({
-              id: s.id || String(idx + 1),
-              name: (s.name || `STUDENT ${idx + 1}`).toUpperCase(),
-              rollNumber: s.rollNumber ? String(s.rollNumber).padStart(2, '0') : String(idx + 1).padStart(2, '0'),
-              admissionNumber: s.admissionNumber || `BMS-2026-${String(idx + 1).padStart(3, '0')}`,
-              className: s.className || "Class VI",
-              section: s.section || "A",
-              fatherName: (s.fatherName || s.guardianName || "MR. PARENT").toUpperCase(),
-              contactNumber: s.parentMobile || s.contactNumber || s.phone || "9876543210",
-              bloodGroup: s.bloodGroup || "B+",
-              dob: s.dateOfBirth || s.dob || "",
-              address: s.address || "Haridwar, Uttarakhand",
-              busStop: s.busStop || s.transportRoute || "Self / Walker"
-            }));
-            // Merge with defaults so both live and sample records are accessible
-            students = [...mapped, ...students.filter(ds => !mapped.some(m => m.admissionNumber === ds.admissionNumber))];
-          }
-        }
-      } catch(e) {
-        console.warn("Storage snapshot error", e);
-      }
-
-      // 3. Inspect URL query parameters (e.g. ?action=verify&adm=BMS-2026-001&sig=...)
-      const urlParams = new URLSearchParams(window.location.search);
-      const adm = urlParams.get('adm') || urlParams.get('admission') || urlParams.get('id');
-      const action = urlParams.get('action');
-      const sig = urlParams.get('sig');
-
-      if (action === 'verify' && adm) {
-        // PUBLIC DIGITAL CREDENTIAL VERIFICATION (From QR Code Scan)
-        // CRITICAL SECURITY ENFORCEMENT: Never automatically log in or expose private student portal data!
-        showPublicVerification(adm, sig);
-      } else if (adm) {
-        // Direct link to login with student admission number pre-filled
-        showLoginScreen();
-        const admInput = document.getElementById('admInput');
-        if (admInput) admInput.value = adm;
-        const infoBox = document.getElementById('loginInfo');
-        if (infoBox) {
-          infoBox.style.display = 'block';
-          infoBox.innerHTML = `🔐 Admission Number <strong>${escapeHtml(adm)}</strong> detected. Please enter student's Date of Birth to log into the private portal.`;
-        }
-        const dobInput = document.getElementById('dobInput');
-        if (dobInput) dobInput.focus();
-      } else {
-        showLoginScreen();
-      }
-    }
-
-    // ==========================================
-    // PUBLIC CREDENTIAL VERIFICATION VIEW
-    // ==========================================
-    async function showPublicVerification(adm, sig) {
-      document.getElementById('loginView').style.display = 'none';
-      document.getElementById('dashboardView').style.display = 'none';
-      const vView = document.getElementById('verificationView');
-      vView.style.display = 'block';
-
-      const cleanAdm = (adm || '').trim().toUpperCase();
-      const vIcon = document.getElementById('vIcon');
-      const vTitle = document.getElementById('vTitle');
-      const vSubtitle = document.getElementById('vSubtitle');
-      const vBadge = document.getElementById('vBadge');
-      const vName = document.getElementById('vName');
-      const vAdm = document.getElementById('vAdm');
-      const vClass = document.getElementById('vClass');
-      const vRoll = document.getElementById('vRoll');
-      const vSigMatchBadge = document.getElementById('vSigMatchBadge');
-      const vSigHash = document.getElementById('vSigHash');
-      const vBtnLogin = document.getElementById('vBtnLogin');
-
-      vSubtitle.textContent = `${institution.name} • Academic Session ${institution.session || '2026-2027'}`;
-
-      // 1. If online HTTP environment, verify via server-side authority API
-      if (typeof window !== 'undefined' && window.location && typeof window.location.protocol === 'string' && window.location.protocol.startsWith('http')) {
-        try {
-          const res = await fetch(`/api/verify?adm=${encodeURIComponent(cleanAdm)}&sig=${encodeURIComponent(sig || '')}`);
-          const contentType = res.headers.get('content-type') || '';
-
-          if (res.ok && contentType.includes('application/json')) {
-            const data = await res.json();
-            vName.textContent = (data.student.name || 'STUDENT').toUpperCase();
-            vAdm.textContent = data.student.admissionNumber;
-            vClass.textContent = `${data.student.className || 'Class VI'} - ${data.student.section || 'A'}`;
-            vRoll.textContent = data.student.rollNumber || '01';
-
-            if (data.status === 'ENROLLMENT_REVOKED') {
-              vIcon.textContent = '⛔';
-              vTitle.textContent = 'CREDENTIAL REVOKED';
-              vBadge.className = 'verification-badge badge-invalid';
-              vBadge.textContent = '❌ ENROLLMENT INACTIVE / SUSPENDED';
-              vSigMatchBadge.style.background = '#ef4444';
-              vSigMatchBadge.textContent = 'STATUS REVOKED';
-              vSigHash.textContent = `Status: ${data.student.enrollmentStatus || 'SUSPENDED'}`;
-            } else if (data.verified) {
-              vIcon.textContent = '🛡️';
-              vTitle.textContent = 'DIGITALLY VERIFIED CREDENTIAL';
-              vBadge.className = 'verification-badge badge-valid';
-              vBadge.textContent = '✓ OFFICIAL ACTIVE ENROLLMENT';
-              vSigMatchBadge.style.background = '#10b981';
-              vSigMatchBadge.textContent = 'MATCH VERIFIED (' + (data.algorithm || 'ECDSA') + ')';
-              vSigHash.textContent = `${escapeHtml(sig)} [Cert: ${data.certificateId || 'P256'}]`;
-            } else {
-              vIcon.textContent = '⚠️';
-              vTitle.textContent = 'SIGNATURE VERIFICATION NOTICE';
-              vBadge.className = 'verification-badge badge-warning';
-              vBadge.textContent = '⚠️ SIGNATURE MISMATCH';
-              vSigMatchBadge.style.background = '#f59e0b';
-              vSigMatchBadge.textContent = 'KEY MISMATCH';
-              vSigHash.textContent = sig ? escapeHtml(sig) : 'NONE PROVIDED';
-            }
-
-            vBtnLogin.textContent = `🔐 Login with DOB to View Full Portal (${data.student.name.split(' ')[0]})`;
-            vBtnLogin.onclick = () => showLoginFromVerification(data.student.admissionNumber);
-            return;
-          } else if (res.status === 404 && contentType.includes('application/json')) {
-            // Backend confirmed student record not on file
-            vIcon.textContent = '❌';
-            vTitle.textContent = 'NO ENROLLED RECORD FOUND';
-            vBadge.className = 'verification-badge badge-invalid';
-            vBadge.textContent = '❌ UNVERIFIED ID';
-            vName.textContent = 'RECORD NOT ON FILE';
-            vAdm.textContent = cleanAdm;
-            vClass.textContent = 'N/A';
-            vRoll.textContent = 'N/A';
-            vSigMatchBadge.style.background = '#ef4444';
-            vSigMatchBadge.textContent = 'UNVERIFIED';
-            vSigHash.textContent = sig ? escapeHtml(sig) : 'NONE';
-            vBtnLogin.textContent = '🔍 Return to Student Login';
-            vBtnLogin.onclick = () => showLoginScreen();
-            return;
-          } else {
-            // Static host 404 (e.g. Render Static Site or GitHub Pages) — seamlessly fall through to client engine
-            console.info("Notice: Backend API not active on this host environment (HTTP " + res.status + "). Using client verification engine.");
-          }
-        } catch(netErr) {
-          console.warn("Server verify endpoint unreachable, falling back to local verification:", netErr);
-        }
-      }
-
-      // 2. Offline / local fallback
-      const student = students.find(s => 
-        (s.admissionNumber && s.admissionNumber.toUpperCase() === cleanAdm) || 
-        (s.id && String(s.id).toUpperCase() === cleanAdm)
-      );
-
-      if (!student) {
-        vIcon.textContent = '❌';
-        vTitle.textContent = 'NO ENROLLED RECORD FOUND';
-        vBadge.className = 'verification-badge badge-invalid';
-        vBadge.textContent = '❌ UNVERIFIED ID';
-        vName.textContent = 'RECORD NOT ON FILE';
-        vAdm.textContent = cleanAdm;
-        vClass.textContent = 'N/A';
-        vRoll.textContent = 'N/A';
-        vSigMatchBadge.style.background = '#ef4444';
-        vSigMatchBadge.textContent = 'UNVERIFIED';
-        vSigHash.textContent = sig ? escapeHtml(sig) : 'NONE';
-        vBtnLogin.textContent = '🔍 Return to Student Login';
-        vBtnLogin.onclick = () => showLoginScreen();
-        return;
-      }
-
-      vName.textContent = (student.name || 'STUDENT').toUpperCase();
-      vAdm.textContent = student.admissionNumber || student.id;
-      vClass.textContent = `${student.className || 'Class VI'} - ${student.section || 'A'}`;
-      vRoll.textContent = student.rollNumber || '01';
-
-      const expectedSig = computeStudentHMAC(student, institution);
-      const isSigValid = sig && sig.toUpperCase() === expectedSig.toUpperCase();
-
-      if (isSigValid) {
-        vIcon.textContent = '🛡️';
-        vTitle.textContent = 'DIGITALLY VERIFIED CREDENTIAL';
-        vBadge.className = 'verification-badge badge-valid';
-        vBadge.textContent = '✓ OFFICIAL ACTIVE ENROLLMENT';
-        vSigMatchBadge.style.background = '#10b981';
-        vSigMatchBadge.textContent = 'MATCH VERIFIED';
-        vSigHash.textContent = escapeHtml(sig);
-      } else {
-        vIcon.textContent = '⚠️';
-        vTitle.textContent = 'SIGNATURE VERIFICATION NOTICE';
-        vBadge.className = 'verification-badge badge-warning';
-        vBadge.textContent = '⚠️ SIGNATURE MISMATCH';
-        vSigMatchBadge.style.background = '#f59e0b';
-        vSigMatchBadge.textContent = 'KEY MISMATCH';
-        vSigHash.textContent = sig ? `${escapeHtml(sig)} (Expected: ${expectedSig.slice(0, 8)}...)` : 'NONE PROVIDED';
-      }
-
-      vBtnLogin.textContent = `🔐 Login with DOB to View Full Portal (${student.name.split(' ')[0]})`;
-      vBtnLogin.onclick = () => showLoginFromVerification(student.admissionNumber || student.id);
-    }
-
-    function showLoginFromVerification(adm) {
-      showLoginScreen();
-      const admInput = document.getElementById('admInput');
-      if (admInput && adm) admInput.value = adm;
-      const dobInput = document.getElementById('dobInput');
-      if (dobInput) {
-        dobInput.value = '';
-        dobInput.focus();
-      }
-      const infoBox = document.getElementById('loginInfo');
-      if (infoBox) {
-        infoBox.style.display = 'block';
-        infoBox.innerHTML = `🔐 Admission ID <strong>${escapeHtml(adm)}</strong> verified. Please enter student's Date of Birth to access confidential student records.`;
-      }
-    }
-
-    function showLoginScreen() {
-      document.getElementById('verificationView').style.display = 'none';
-      document.getElementById('dashboardView').style.display = 'none';
-      document.getElementById('loginView').style.display = 'block';
-    }
-
-    // ==========================================
-    // SECURE SERVER-SIDE & STRICT AUTHENTICATION LOGIN HANDLER
-    // ==========================================
-    async function handleLogin(e) {
-      e.preventDefault();
-      const alertBox = document.getElementById('loginAlert');
-      const infoBox = document.getElementById('loginInfo');
-      if (alertBox) alertBox.style.display = 'none';
-      if (infoBox) infoBox.style.display = 'none';
-
-      const admInput = document.getElementById('admInput');
-      const dobInput = document.getElementById('dobInput');
-      const adm = (admInput.value || '').trim().toUpperCase();
-      const dob = (dobInput.value || '').trim();
-
-      if (!adm) {
-        showLoginError("Please enter your Admission Number / Scholar ID.");
-        admInput.focus();
-        return;
-      }
-
-      if (!dob) {
-        showLoginError("Please enter your Date of Birth in DD-MM-YYYY format to authenticate.");
-        dobInput.focus();
-        return;
-      }
-
-      // 1. Try Server-Side Authentication API if online HTTP environment
-      if (typeof window !== 'undefined' && window.location && typeof window.location.protocol === 'string' && window.location.protocol.startsWith('http')) {
-        try {
-          const resp = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ admissionNumber: adm, dob: dob })
-          });
-          const contentType = resp.headers.get('content-type') || '';
-
-          if (resp.ok && contentType.includes('application/json')) {
-            const data = await resp.json();
-            if (data.token) sessionStorage.setItem('bn_portal_token', data.token);
-            loginStudent(data.student);
-            return;
-          } else if ((resp.status === 401 || resp.status === 403 || resp.status === 429) && contentType.includes('application/json')) {
-            // Authentic rejection from backend auth service (wrong DOB, account lockout, or rate-limited)
-            const errData = await resp.json().catch(() => ({}));
-            showLoginError(errData.error || "Authentication failed: Invalid credentials.");
-            dobInput.focus();
-            return;
-          } else {
-            // Static host 404 (e.g. Render Static Site without Node backend process) — fall through to client engine
-            console.info("Notice: Backend login endpoint returned HTTP " + resp.status + ". Seamlessly engaging institutional client security engine.");
-          }
-        } catch(netErr) {
-          console.warn("Server login API unreachable, falling back to local authentication:", netErr);
-        }
-      }
-
-      // 2. Client-Side Authentication Engine with Strict Rate Limiting
-      // Check client-side rate limit (max 5 failed attempts per 15 minutes)
-      const rateLimitKey = 'bn_rl_' + adm.toUpperCase();
-      let rl = { attempts: 0, lockedUntil: 0 };
-      try {
-        const rawRl = sessionStorage.getItem(rateLimitKey);
-        if (rawRl) rl = JSON.parse(rawRl);
-      } catch (e) {}
-
-      const now = Date.now();
-      if (rl.lockedUntil && rl.lockedUntil > now) {
-        const waitMins = Math.ceil((rl.lockedUntil - now) / 60000);
-        showLoginError(`Account temporarily locked due to 5 consecutive failed login attempts. Please retry after ${waitMins} minute(s) for security.`);
-        return;
-      }
-
-      const student = students.find(s => 
-        (s.admissionNumber && s.admissionNumber.toUpperCase() === adm) || 
-        (s.id && String(s.id).toUpperCase() === adm)
-      );
-
-      if (!student) {
-        rl.attempts = (rl.attempts || 0) + 1;
-        if (rl.attempts >= 5) rl.lockedUntil = now + (15 * 60 * 1000);
-        try { sessionStorage.setItem(rateLimitKey, JSON.stringify(rl)); } catch(e) {}
-        showLoginError(`Student record with Admission ID "${escapeHtml(adm)}" was not found in the institutional database.`);
-        admInput.focus();
-        return;
-      }
-
-      // Strict DOB verification
-      const studentDobNorm = normalizeDate(student.dob || student.dateOfBirth || '');
-      if (!studentDobNorm) {
-        showLoginError("Access Restricted: Date of Birth is not registered for this student record in the institutional database. For student data privacy and security, please contact the school administration office to register the student's date of birth before portal access can be granted.");
-        return;
-      }
-
-      const enteredDobNorm = normalizeDate(dob);
-      if (!enteredDobNorm) {
-        showLoginError("Please enter a valid Date of Birth (e.g. DD-MM-YYYY).");
-        dobInput.focus();
-        return;
-      }
-
-      if (enteredDobNorm !== studentDobNorm) {
-        rl.attempts = (rl.attempts || 0) + 1;
-        if (rl.attempts >= 5) {
-          rl.lockedUntil = now + (15 * 60 * 1000);
-          try { sessionStorage.setItem(rateLimitKey, JSON.stringify(rl)); } catch(e) {}
-          showLoginError("Account locked due to 5 consecutive failed login attempts. Please retry after 15 minutes.");
-        } else {
-          try { sessionStorage.setItem(rateLimitKey, JSON.stringify(rl)); } catch(e) {}
-          showLoginError(`Authentication Failed: The Date of Birth entered does not match our records for this student. (${5 - rl.attempts} attempt(s) remaining before account lockout)`);
-        }
-        dobInput.focus();
-        return;
-      }
-
-      // Reset rate limit counter on successful login
-      try { sessionStorage.removeItem(rateLimitKey); } catch(e) {}
-
-      // Authentication passed successfully
-      loginStudent(student);
-    }
-
-    function showLoginError(msg) {
-      const alertBox = document.getElementById('loginAlert');
-      if (alertBox) {
-        alertBox.innerHTML = `⚠️ <strong>Access Denied:</strong> ${msg}`;
-        alertBox.style.display = 'block';
-      } else {
-        alert(msg);
-      }
-    }
-
-    function demoLogin() {
-      const demoSt = students[0];
-      const admInput = document.getElementById('admInput');
-      const dobInput = document.getElementById('dobInput');
-      if (admInput) admInput.value = demoSt.admissionNumber || 'BMS-2026-001';
-      if (dobInput) dobInput.value = demoSt.dob || '12-03-2014';
-      loginStudent(demoSt);
-    }
-
-    function loginStudent(st) {
-      activeStudent = st;
-      document.getElementById('verificationView').style.display = 'none';
-      document.getElementById('loginView').style.display = 'none';
-      document.getElementById('dashboardView').style.display = 'block';
-
-      // Fill dashboard data
-      document.getElementById('dashStudentName').textContent = (st.name || 'STUDENT').toUpperCase();
-      document.getElementById('dashClassSec').textContent = `${st.className || 'Class VI'} - ${st.section || 'A'}`;
-      document.getElementById('dashRoll').textContent = `Roll No: ${st.rollNumber || '01'}`;
-      document.getElementById('dashAdm').textContent = `Adm: ${st.admissionNumber || st.id}`;
-      document.getElementById('dashBlood').textContent = `Blood: ${st.bloodGroup || 'B+'}`;
-
-      // Card tab
-      document.getElementById('cardName').textContent = (st.name || 'STUDENT').toUpperCase();
-      document.getElementById('cardBadge').textContent = `${st.className || 'Class VI'} - ${st.section || 'A'}`;
-      document.getElementById('cardFather').textContent = (st.fatherName || st.guardianName || 'MR. PARENT').toUpperCase();
-      document.getElementById('cardPhone').textContent = st.contactNumber || '+91 9876543210';
-      document.getElementById('cardBus').textContent = st.busStop || st.transportRoute || 'Self / Walker';
-      document.getElementById('cardBlood').textContent = st.bloodGroup || 'B+';
-
-      // Link to print sheets
-      document.getElementById('btnIdPrint').href = `id-card-a4.html?adm=${encodeURIComponent(st.admissionNumber || st.id)}`;
-      document.getElementById('btnMarksheetPrint').href = `marksheet-a4.html?admission=${encodeURIComponent(st.admissionNumber || st.id)}`;
-    }
-
-    function handleLogout() {
-      activeStudent = null;
-      document.getElementById('dashboardView').style.display = 'none';
-      document.getElementById('verificationView').style.display = 'none';
-      document.getElementById('loginView').style.display = 'block';
-      const infoBox = document.getElementById('loginInfo');
-      if (infoBox) infoBox.style.display = 'none';
-      const alertBox = document.getElementById('loginAlert');
-      if (alertBox) alertBox.style.display = 'none';
-    }
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-      if (event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
-      }
-      const target = document.getElementById(tabId);
-      if (target) target.classList.add('active');
-    }
-
-    window.addEventListener('DOMContentLoaded', initPortal);
-  </script>
+  <script src="portal.js?v=20261021-portal-fix" defer></script>
 </body>
 </html>

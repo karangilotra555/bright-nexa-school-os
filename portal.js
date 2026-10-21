@@ -20,13 +20,21 @@ async function api(url, options = {}) {
 async function loadSchoolProfile() {
   $('schoolStatus').textContent = 'Loading school details…';
   try {
-    const {institution} = await api('/api/school-profile');
+    let profile;
+    try { profile = await api('/api/school-profile'); }
+    catch (_) { profile = await api('school-profile.json'); }
+    const {institution} = profile;
+    const demoOnly = profile.deploymentMode === 'demo';
+    $('loginForm').hidden = demoOnly;
+    $('loginTitle').textContent = demoOnly ? 'Explore the student portal' : 'Student & Parent Login';
+    $('loginInfo').style.display = demoOnly ? 'block' : 'none';
+    $('loginInfo').textContent = demoOnly ? 'Demo mode: explore a fictional student profile below. Real student login and official records are not connected on this site.' : '';
     if (!institution || typeof institution.name !== 'string') throw new Error('School details unavailable.');
     for (const [id,key] of Object.entries({schoolName:'name',schoolTagline:'tagline',schoolAddress:'address',schoolPhone:'phone',schoolEmail:'email',schoolSession:'session',schoolPrincipal:'principalName'})) $(id).textContent = value(institution[key]);
     $('navSchoolName').textContent = institution.name;
     $('cardSchoolName').textContent = institution.name;
     $('cardSession').textContent = 'Session: ' + value(institution.session);
-    $('schoolStatus').textContent = '';
+    $('schoolStatus').textContent = demoOnly ? 'Published school information • Demo portal. Contact the school to confirm current details.' : '';
   } catch (_) { $('schoolStatus').textContent = 'School details are unavailable. Please try again later.'; }
 }
 function routePortal() {

@@ -682,13 +682,13 @@
     <!-- 1. LOGIN SCREEN -->
     <div class="login-card" id="loginView">
       <div class="login-icon">🎓</div>
-      <h2 class="login-title">Student & Parent Login</h2>
+      <h2 id="loginTitle" class="login-title">Student & Parent Login</h2>
       <p class="login-subtitle">Access your attendance, fee receipts, marksheets & digital ID card.</p>
 
       <div id="loginInfo" style="display:none; background:#eff6ff; border:1px solid #93c5fd; color:#1e40af; padding:12px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; line-height:1.4;"></div>
       <div id="loginAlert" role="alert" style="display:none; background:#fef2f2; border:1px solid #f87171; color:#991b1b; padding:12px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; line-height:1.4;"></div>
 
-      <form onsubmit="handleLogin(event)">
+      <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
           <label class="form-label" for="admInput">Admission Number / Scholar ID:</label>
           <input type="text" id="admInput" name="admissionNumber" spellcheck="false" class="form-input" placeholder="e.g. BMS-2026-001" required autocomplete="username">
