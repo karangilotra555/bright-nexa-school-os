@@ -8187,3 +8187,22 @@ button:disabled {
 @media (max-width: 1100px) {
   .auth-promises { grid-template-columns: 1fr; }
 }
+
+/* Fit the welcome screen into common laptop viewports without shrinking mobile controls. */
+@media (min-width: 901px) and (max-height: 850px) {
+  .auth-brand-panel { min-height: 100vh; padding-top: 20px; padding-bottom: 20px; }
+  .auth-brand { min-height: 0; }
+  .auth-official-logo { width: min(215px, 64%); }
+  .auth-brand-copy { padding: 20px 0; }
+  .auth-brand-copy h1 { font-size: clamp(30px, 3.3vw, 46px); line-height: 1.1; margin: 10px 0; }
+  .auth-brand-copy p { font-size: 12px; line-height: 1.5; }
+  .auth-promises > div { padding: 10px; }
+  .auth-promises strong { font-size: 10px; }
+  .auth-promises small { font-size: 8px; }
+  .auth-form-panel { min-height: 100vh; padding: 24px; }
+  .auth-card:not(.auth-setup-card) { padding: 26px; }
+  .auth-card:not(.auth-setup-card) .auth-icon { width: 48px; height: 48px; margin-bottom: 14px; }
+  .auth-card:not(.auth-setup-card) h2 { font-size: 24px; margin: 8px 0; }
+  .auth-card:not(.auth-setup-card) > p { font-size: 11px; line-height: 1.5; }
+  .auth-form-panel > footer { margin-top: 12px; }
+}
