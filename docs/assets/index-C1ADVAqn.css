@@ -8206,3 +8206,18 @@ button:disabled {
   .auth-card:not(.auth-setup-card) > p { font-size: 11px; line-height: 1.5; }
   .auth-form-panel > footer { margin-top: 12px; }
 }
+
+/* Keep the welcome-card label consistent even when React rerenders its text. */
+.auth-card:not(.auth-setup-card) .auth-eyebrow {
+  font-size: 0 !important;
+  letter-spacing: 0;
+}
+.auth-card:not(.auth-setup-card) .auth-eyebrow::after {
+  content: "GET STARTED";
+  display: inline-block;
+  color: #1674ad;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+  line-height: 1.5;
+}
