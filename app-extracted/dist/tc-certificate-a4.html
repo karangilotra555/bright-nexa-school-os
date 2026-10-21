@@ -529,6 +529,16 @@
       { id: "4", name: "PRIYA CHOUDHARY", admissionNumber: "BMS-2026-004", rollNumber: "04", className: "Class VII", section: "A", motherName: "REKHA SINGH", fatherName: "VIKRAM SINGH", dob: "18-01-2013", category: "GENERAL" }
     ];
 
+    function escapeHtml(val) {
+      if (val === null || val === undefined) return '';
+      return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function loadData() {
       try {
         const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
@@ -540,7 +550,7 @@
             document.getElementById('tcWatermark').textContent = inst.name.toUpperCase();
           }
           if (inst.principalName) {
-            document.getElementById('tcPrincipal').innerHTML = `${inst.principalName.toUpperCase()}<br><span style="font-size: 7pt; color: #64748b;">PRINCIPAL</span>`;
+            document.getElementById('tcPrincipal').innerHTML = `${escapeHtml(inst.principalName.toUpperCase())}<br><span style="font-size: 7pt; color: #64748b;">PRINCIPAL</span>`;
           }
           if (inst.logoDataUrl) document.getElementById('tcSchoolLogo').src = inst.logoDataUrl;
           if (inst.address) {
@@ -563,7 +573,7 @@
       // Populate dropdown
       const sel = document.getElementById('studentSelect');
       sel.innerHTML = students.map((s, idx) => 
-        `<option value="${idx}">${s.name || 'STUDENT'} (${s.admissionNumber || s.id} • ${s.className || 'Class VI'})</option>`
+        `<option value="${idx}">${escapeHtml(s.name || 'STUDENT')} (${escapeHtml(s.admissionNumber || s.id)} • ${escapeHtml(s.className || 'Class VI')})</option>`
       ).join('');
 
       // Auto select from URL if present

@@ -1060,6 +1060,16 @@
 
     let activeStudents = [...sampleStudents];
 
+    function escapeHtml(val) {
+      if (val === null || val === undefined) return '';
+      return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function calculateGrade(marks, max = 100) {
       const pct = (marks / max) * 100;
       if (pct >= 91) return 'A1';
@@ -1099,13 +1109,13 @@
         tbodyHtml += `
           <tr>
             <td>${i + 1}</td>
-            <td style="text-align: left; font-weight: 700;">${sub.name}</td>
+            <td style="text-align: left; font-weight: 700;">${escapeHtml(sub.name)}</td>
             <td>${sub.pt.toFixed(1)}</td>
             <td>${sub.nb.toFixed(1)}</td>
             <td>${sub.se.toFixed(1)}</td>
             <td>${sub.annual.toFixed(1)}</td>
             <td style="font-weight: 800;">${sub.total.toFixed(1)}</td>
-            <td style="font-weight: 800; color: ${sub.grade === 'A1' ? '#059669' : '#0284c7'};">${sub.grade}</td>
+            <td style="font-weight: 800; color: ${sub.grade === 'A1' ? '#059669' : '#0284c7'};">${escapeHtml(sub.grade)}</td>
           </tr>
         `;
       });
@@ -1227,7 +1237,7 @@
           const dropdown = document.getElementById('studentDropdown');
           if (dropdown) {
             dropdown.innerHTML = activeStudents.map((st, i) => 
-              `<option value="${i}">${st.name} (${st.admission} • ${st.classSec})</option>`
+              `<option value="${i}">${escapeHtml(st.name)} (${escapeHtml(st.admission)} • ${escapeHtml(st.classSec)})</option>`
             ).join('');
           }
         }

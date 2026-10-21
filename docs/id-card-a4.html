@@ -107,6 +107,9 @@
       background: linear-gradient(135deg, #d4af37, #b8860b);
       color: #fff;
     }
+    .btn-gold:hover {
+      filter: brightness(1.08);
+    }
 
     .btn-secondary {
       background: #f1f5f9;
@@ -115,6 +118,30 @@
     }
     .btn-secondary:hover {
       background: #e2e8f0;
+    }
+
+    /* Data Source Pill */
+    .data-source-pill {
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.2px;
+    }
+
+    .source-live {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    .source-demo {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
     }
 
     select, input {
@@ -191,6 +218,61 @@
       white-space: nowrap;
     }
 
+    /* Demo Warning Banner */
+    .demo-warning-banner {
+      width: 210mm;
+      max-width: 100%;
+      background: #fffbeb;
+      border: 1.5px solid #fde68a;
+      border-left: 6px solid #d97706;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      font-size: 12.5px;
+      color: #92400e;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(217, 119, 6, 0.08);
+    }
+
+    .demo-warning-banner strong {
+      color: #78350f;
+    }
+
+    /* Empty State Card */
+    .empty-state-box {
+      background: #ffffff;
+      border: 2px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 48px 24px;
+      text-align: center;
+      max-width: 580px;
+      margin: 30px auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    }
+
+    /* Watermark for Demo Cards */
+    .watermark-specimen {
+      position: absolute;
+      top: 48%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-32deg);
+      color: rgba(220, 38, 38, 0.28);
+      font-size: 6.8pt;
+      font-weight: 900;
+      letter-spacing: 0.7px;
+      border: 1px dashed rgba(220, 38, 38, 0.45);
+      padding: 1mm 2.5mm;
+      border-radius: 3px;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 10;
+      text-transform: uppercase;
+      background: rgba(254, 242, 242, 0.5);
+    }
+
     /* Pages Container */
     #pagesContainer {
       display: flex;
@@ -229,7 +311,7 @@
       justify-content: space-between;
     }
 
-    /* Vertical Card Style (Dual Front & Back Side-by-Side: 88mm x 58mm) */
+    /* Vertical Card Style (Dual Front & Back Side-by-Side: 88mm x 59mm) */
     .id-card-vertical {
       width: 88mm;
       height: 59mm;
@@ -240,6 +322,7 @@
       padding: 2px;
       border-radius: 6px;
       page-break-inside: avoid;
+      position: relative;
     }
 
     .card-side {
@@ -307,6 +390,7 @@
       align-items: center;
       padding: 2mm 2.5mm 1mm;
       flex: 1;
+      position: relative;
     }
 
     .photo-frame {
@@ -430,6 +514,7 @@
       flex: 1;
       font-size: 4.5pt;
       line-height: 1.3;
+      position: relative;
     }
 
     .qr-container {
@@ -454,6 +539,16 @@
       font-size: 4.2pt;
       color: #475569;
       line-height: 1.2;
+    }
+
+    .qr-verify-code {
+      font-family: monospace;
+      font-size: 3.6pt;
+      color: #0369a1;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      display: block;
+      margin-top: 0.4mm;
     }
 
     .terms-box {
@@ -484,7 +579,7 @@
         padding: 0 !important;
         margin: 0 !important;
       }
-      .no-print-bar {
+      .no-print-bar, .demo-warning-banner {
         display: none !important;
       }
       .a4-sheet {
@@ -508,8 +603,17 @@
       </div>
 
       <div class="control-actions">
-        <button class="btn btn-primary" onclick="window.print()">
+        <!-- Live vs Demo Indicator Pill -->
+        <span class="data-source-pill source-live" id="dataSourcePill">
+          🟢 Live School Records
+        </span>
+
+        <button class="btn btn-primary" onclick="handlePrint()">
           🖨️ Print A4 Sheets
+        </button>
+
+        <button class="btn btn-secondary" id="demoToggleBtn" onclick="toggleDemoMode()">
+          👁️ Preview Sample Cards
         </button>
 
         <a href="marksheet-a4.html" class="btn btn-secondary" style="text-decoration:none;">
@@ -571,12 +675,59 @@
     </div>
   </div>
 
+  <!-- Demo Mode Warning Alert Banner -->
+  <div id="demoWarningBanner" class="demo-warning-banner" style="display: none;">
+    <div>
+      ⚠️ <strong>SAMPLE DEMO PREVIEW:</strong> Currently showing 8 sample demonstration cards. These are <u>NOT</u> official school database records. Each card displays a specimen watermark.
+    </div>
+    <button class="btn btn-secondary" onclick="toggleDemoMode()" style="background:#ffffff; color:#92400e; border:1px solid #fcd34d; font-size:12px; padding:4px 10px;">
+      🟢 Switch to Live School Data
+    </button>
+  </div>
+
   <!-- A4 Multi-Page Container -->
   <div id="pagesContainer">
-    <!-- A4 Sheets will be injected here dynamically -->
+    <!-- A4 Sheets or Empty State will be injected here dynamically -->
   </div>
 
   <script>
+    // ==========================================
+    // 1. SECURITY & ESCAPING UTILITIES (XSS Prevention)
+    // ==========================================
+    function escapeHtml(val) {
+      if (val === null || val === undefined) return '';
+      return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function sanitizeImageUrl(url, fallback) {
+      if (!url || typeof url !== 'string') return fallback || '';
+      const trimmed = url.trim();
+      // Allow only safe data:image, blob, http(s), or safe local file paths
+      if (/^(data:image\/(png|jpeg|jpg|webp|svg\+xml);base64,|blob:|https?:\/\/|\.\/|[a-zA-Z0-9_\-\.\/]+\.(png|jpg|jpeg|svg|webp))/i.test(trimmed)) {
+        return trimmed.replace(/[<>"'`;]/g, '');
+      }
+      return fallback || '';
+    }
+
+    // ==========================================
+    // 2. VERIFIABLE SIGNATURE GENERATOR (Authenticity)
+    // ==========================================
+    function computeVerificationSig(st, inst) {
+      const raw = `BN:${inst?.session || '2026'}:${st?.admissionNumber || ''}:${st?.rollNumber || ''}:${st?.dob || ''}`;
+      let h1 = 0x811c9dc5, h2 = 0x9e3779b9;
+      for (let i = 0; i < raw.length; i++) {
+        const c = raw.charCodeAt(i);
+        h1 = Math.imul(h1 ^ c, 0x01000193);
+        h2 = Math.imul(h2 ^ (c << 3), 0x5bd1e995);
+      }
+      return (Math.abs(h1).toString(16).padStart(8, '0') + Math.abs(h2).toString(16).padStart(4, '0')).toUpperCase();
+    }
+
     // Lightweight Canvas QR code renderer (pure offline)
     function generateQRCanvas(text, canvas) {
       if (!canvas) return;
@@ -615,7 +766,25 @@
       }
     }
 
-    // Default Institution Fallback
+    // ==========================================
+    // 3. SAMPLE DEMO DATA (Completely Separated)
+    // ==========================================
+    const SAMPLE_DEMO_STUDENTS = [
+      { id: "DEMO-1", name: "AARAV SHARMA", rollNumber: "01", admissionNumber: "DEMO-2026-001", className: "Class 6", section: "A", fatherName: "MR. RAJESH SHARMA", contactNumber: "9876543210", bloodGroup: "O+", dob: "12-03-2014", address: "Sector 4, BHEL, Haridwar", busStop: "Route 3 (Gate No 2)", isDemo: true },
+      { id: "DEMO-2", name: "ANANYA VERMA", rollNumber: "02", admissionNumber: "DEMO-2026-002", className: "Class 6", section: "A", fatherName: "MR. SUNIL VERMA", contactNumber: "9812345678", bloodGroup: "B+", dob: "24-07-2014", address: "Shivalik Nagar, Haridwar", busStop: "Route 1 (Main Chowk)", isDemo: true },
+      { id: "DEMO-3", name: "ROHAN MEHTA", rollNumber: "03", admissionNumber: "DEMO-2026-003", className: "Class 6", section: "B", fatherName: "MR. AMIT MEHTA", contactNumber: "9988776655", bloodGroup: "A+", dob: "05-11-2013", address: "Ranipur More, Haridwar", busStop: "Route 2 (Station)", isDemo: true },
+      { id: "DEMO-4", name: "PRIYA CHOUDHARY", rollNumber: "04", admissionNumber: "DEMO-2026-004", className: "Class 7", section: "A", fatherName: "MR. VIKRAM SINGH", contactNumber: "9765432109", bloodGroup: "AB+", dob: "18-01-2013", address: "Jwalapur, Haridwar", busStop: "Route 4 (Post Office)", isDemo: true },
+      { id: "DEMO-5", name: "KAVYA GUPTA", rollNumber: "05", admissionNumber: "DEMO-2026-005", className: "Class 7", section: "A", fatherName: "MR. DEEPAK GUPTA", contactNumber: "9654321098", bloodGroup: "O+", dob: "09-09-2013", address: "Arya Nagar, Haridwar", busStop: "Route 1 (Main Chowk)", isDemo: true },
+      { id: "DEMO-6", name: "ADITYA PATEL", rollNumber: "06", admissionNumber: "DEMO-2026-006", className: "Class 8", section: "A", fatherName: "MR. SURESH PATEL", contactNumber: "9543210987", bloodGroup: "B-", dob: "14-04-2012", address: "Kankhal, Haridwar", busStop: "Route 5 (Temple Road)", isDemo: true },
+      { id: "DEMO-7", name: "SIMRAN KAUR", rollNumber: "07", admissionNumber: "DEMO-2026-007", className: "Class 8", section: "B", fatherName: "MR. HARPREET SINGH", contactNumber: "9432109876", bloodGroup: "A-", dob: "30-10-2012", address: "Roshnabad, Haridwar", busStop: "Route 6 (Court Complex)", isDemo: true },
+      { id: "DEMO-8", name: "YASHVARDHAN JOSHI", rollNumber: "08", admissionNumber: "DEMO-2026-008", className: "Class 9", section: "A", fatherName: "MR. MANOJ JOSHI", contactNumber: "9321098765", bloodGroup: "O-", dob: "02-02-2011", address: "Bahadrabad, Haridwar", busStop: "Route 2 (Toll Plaza)", isDemo: true }
+    ];
+
+    // State Variables
+    let liveStudents = [];
+    let activeStudents = [];
+    let isDemoMode = false;
+
     let institution = {
       name: "BRIGHT NEXA INTERNATIONAL ACADEMY",
       tagline: "Empowering Future Innovators • Affiliated to CBSE",
@@ -626,18 +795,6 @@
       principalName: "DR. K. GILOTRA",
       logoUrl: "app-icon-512.png"
     };
-
-    // Default Demo Students (if localStorage has no data yet)
-    let allStudents = [
-      { id: "1", name: "AARAV SHARMA", rollNumber: "01", admissionNumber: "BMS-2026-001", className: "Class 6", section: "A", fatherName: "MR. RAJESH SHARMA", contactNumber: "9876543210", bloodGroup: "O+", dob: "12-03-2014", address: "Sector 4, BHEL, Haridwar", busStop: "Route 3 (Gate No 2)" },
-      { id: "2", name: "ANANYA VERMA", rollNumber: "02", admissionNumber: "BMS-2026-002", className: "Class 6", section: "A", fatherName: "MR. SUNIL VERMA", contactNumber: "9812345678", bloodGroup: "B+", dob: "24-07-2014", address: "Shivalik Nagar, Haridwar", busStop: "Route 1 (Main Chowk)" },
-      { id: "3", name: "ROHAN MEHTA", rollNumber: "03", admissionNumber: "BMS-2026-003", className: "Class 6", section: "B", fatherName: "MR. AMIT MEHTA", contactNumber: "9988776655", bloodGroup: "A+", dob: "05-11-2013", address: "Ranipur More, Haridwar", busStop: "Route 2 (Station)" },
-      { id: "4", name: "PRIYA CHOUDHARY", rollNumber: "04", admissionNumber: "BMS-2026-004", className: "Class 7", section: "A", fatherName: "MR. VIKRAM SINGH", contactNumber: "9765432109", bloodGroup: "AB+", dob: "18-01-2013", address: "Jwalapur, Haridwar", busStop: "Route 4 (Post Office)" },
-      { id: "5", name: "KAVYA GUPTA", rollNumber: "05", admissionNumber: "BMS-2026-005", className: "Class 7", section: "A", fatherName: "MR. DEEPAK GUPTA", contactNumber: "9654321098", bloodGroup: "O+", dob: "09-09-2013", address: "Arya Nagar, Haridwar", busStop: "Route 1 (Main Chowk)" },
-      { id: "6", name: "ADITYA PATEL", rollNumber: "06", admissionNumber: "BMS-2026-006", className: "Class 8", section: "A", fatherName: "MR. SURESH PATEL", contactNumber: "9543210987", bloodGroup: "B-", dob: "14-04-2012", address: "Kankhal, Haridwar", busStop: "Route 5 (Temple Road)" },
-      { id: "7", name: "SIMRAN KAUR", rollNumber: "07", admissionNumber: "BMS-2026-007", className: "Class 8", section: "B", fatherName: "MR. HARPREET SINGH", contactNumber: "9432109876", bloodGroup: "A-", dob: "30-10-2012", address: "Roshnabad, Haridwar", busStop: "Route 6 (Court Complex)" },
-      { id: "8", name: "YASHVARDHAN JOSHI", rollNumber: "08", admissionNumber: "BMS-2026-008", className: "Class 9", section: "A", fatherName: "MR. MANOJ JOSHI", contactNumber: "9321098765", bloodGroup: "O-", dob: "02-02-2011", address: "Bahadrabad, Haridwar", busStop: "Route 2 (Toll Plaza)" }
-    ];
 
     function loadSchoolOSData() {
       try {
@@ -661,7 +818,7 @@
         if (stdRaw) {
           const parsed = JSON.parse(stdRaw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            allStudents = parsed.map((s, idx) => {
+            liveStudents = parsed.map((s, idx) => {
               const cName = s.className ? (String(s.className).toLowerCase().startsWith('class') ? s.className : `Class ${s.className}`) : 'Class 6';
               return {
                 id: s.id || String(idx + 1),
@@ -676,24 +833,91 @@
                 dob: s.dateOfBirth || "12-03-2014",
                 address: s.address || "Haridwar, Uttarakhand",
                 busStop: s.busStop || s.transportRoute || "Self / Walker",
-                photoUrl: s.photoUrl || s.avatarUrl || null
+                photoUrl: s.photoUrl || s.avatarUrl || null,
+                isDemo: false
               };
             });
+          } else {
+            liveStudents = [];
           }
+        } else {
+          liveStudents = [];
         }
       } catch (err) {
-        console.warn("Could not load from localStorage, using default students:", err);
+        console.warn("Could not load from localStorage:", err);
+        liveStudents = [];
       }
 
+      // If user had not explicitly selected demo mode, default to live mode
+      if (!isDemoMode) {
+        activeStudents = liveStudents;
+      } else {
+        activeStudents = SAMPLE_DEMO_STUDENTS;
+      }
+
+      updateSourceUI();
       populateFilters();
       renderCards();
     }
 
+    function toggleDemoMode() {
+      isDemoMode = !isDemoMode;
+      activeStudents = isDemoMode ? SAMPLE_DEMO_STUDENTS : liveStudents;
+      
+      updateSourceUI();
+      populateFilters();
+      renderCards();
+    }
+
+    function updateSourceUI() {
+      const pill = document.getElementById('dataSourcePill');
+      const toggleBtn = document.getElementById('demoToggleBtn');
+      const banner = document.getElementById('demoWarningBanner');
+
+      if (isDemoMode) {
+        if (pill) {
+          pill.className = 'data-source-pill source-demo';
+          pill.innerHTML = '🟡 Sample Demo Cards';
+        }
+        if (toggleBtn) {
+          toggleBtn.className = 'btn btn-gold';
+          toggleBtn.innerHTML = '🟢 Switch to Live Records';
+        }
+        if (banner) banner.style.display = 'flex';
+      } else {
+        if (pill) {
+          pill.className = 'data-source-pill source-live';
+          pill.innerHTML = `🟢 Live Records (${liveStudents.length})`;
+        }
+        if (toggleBtn) {
+          toggleBtn.className = 'btn btn-secondary';
+          toggleBtn.innerHTML = '👁️ Preview Sample Cards';
+        }
+        if (banner) banner.style.display = 'none';
+      }
+    }
+
+    function handlePrint() {
+      if (isDemoMode) {
+        const proceed = window.confirm(
+          "⚠️ NOTICE: You are currently viewing SAMPLE DEMO DATA (not actual school records).\n\n" +
+          "These demonstration cards include a specimen watermark.\n\n" +
+          "Do you wish to proceed with printing sample demonstration sheets?"
+        );
+        if (!proceed) return;
+      }
+      window.print();
+    }
+
     function populateFilters() {
-      const classes = Array.from(new Set(allStudents.map(s => s.className))).filter(Boolean).sort();
+      const classes = Array.from(new Set(activeStudents.map(s => s.className))).filter(Boolean).sort();
       const classSelect = document.getElementById('classFilter');
-      classSelect.innerHTML = `<option value="ALL">All Classes (${allStudents.length} Students)</option>` +
-        classes.map(c => `<option value="${c}">${c}</option>`).join('');
+      
+      let classHtml = `<option value="ALL">All Classes (${activeStudents.length} Students)</option>`;
+      classes.forEach(c => {
+        classHtml += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
+      });
+      classSelect.innerHTML = classHtml;
 
       filterStudents();
     }
@@ -701,12 +925,15 @@
     function filterStudents() {
       const selectedClass = document.getElementById('classFilter').value;
       const filtered = selectedClass === 'ALL' 
-        ? allStudents 
-        : allStudents.filter(s => s.className === selectedClass);
+        ? activeStudents 
+        : activeStudents.filter(s => s.className === selectedClass);
 
       const studentSelect = document.getElementById('studentFilter');
-      studentSelect.innerHTML = `<option value="ALL">All in Filter (${filtered.length} Students)</option>` +
-        filtered.map(s => `<option value="${s.id}">${s.name} (${s.rollNumber} • ${s.className}-${s.section})</option>`).join('');
+      let studentHtml = `<option value="ALL">All in Filter (${filtered.length} Students)</option>`;
+      filtered.forEach(s => {
+        studentHtml += `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${escapeHtml(s.rollNumber)} • ${escapeHtml(s.className)}-${escapeHtml(s.section)})</option>`;
+      });
+      studentSelect.innerHTML = studentHtml;
 
       renderCards();
     }
@@ -731,7 +958,7 @@
       const selectedClass = document.getElementById('classFilter')?.value || 'ALL';
       const selectedStudentId = document.getElementById('studentFilter')?.value || 'ALL';
 
-      let list = allStudents;
+      let list = activeStudents;
 
       // 1. Class filter
       if (selectedClass !== 'ALL') {
@@ -740,7 +967,7 @@
 
       // 2. Student single filter (if not ALL)
       if (selectedStudentId !== 'ALL') {
-        list = list.filter(s => s.id === selectedStudentId);
+        list = list.filter(s => String(s.id) === String(selectedStudentId));
       }
 
       // 3. Search text query
@@ -764,11 +991,34 @@
       const container = document.getElementById('pagesContainer');
       container.innerHTML = '';
 
+      // Check if completely empty (Live mode with 0 students in DB)
+      if (!isDemoMode && liveStudents.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state-box">
+            <div style="font-size: 48px; margin-bottom: 12px;">📭</div>
+            <h3 style="color: #0b2545; font-size: 19px; margin-bottom: 8px;">No Live Student Records Found in School OS</h3>
+            <p style="color: #64748b; font-size: 13.5px; line-height: 1.6; margin-bottom: 20px;">
+              Your school database currently does not have active student records. 
+              Add student records in the main School OS to generate official ID cards, or preview the A4 layout with sample demonstration data.
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+              <a href="index.html" class="btn btn-primary" style="text-decoration:none;">
+                ➕ Add Students in School OS
+              </a>
+              <button class="btn btn-gold" onclick="toggleDemoMode()">
+                👁️ Preview with Sample Demo Data
+              </button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
       if (list.length === 0) {
         container.innerHTML = `
           <div class="a4-sheet" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
             <div style="font-size: 40px; margin-bottom: 12px;">🔍</div>
-            <h3 style="color: #0b2545; font-size: 18px; margin-bottom: 6px;">No Students Matched</h3>
+            <h3 style="color: #0b2545; font-size: 18px; margin-bottom: 6px;">No Students Matched Filter</h3>
             <p style="color: #64748b; font-size: 13px;">Try clearing your search query or choosing 'All Classes'.</p>
             <button class="btn btn-secondary" onclick="clearSearch()" style="margin-top: 14px;">Clear Search</button>
           </div>
@@ -789,60 +1039,68 @@
         const metaTag = document.createElement('div');
         metaTag.className = 'sheet-meta-tag';
         metaTag.innerHTML = `
-          <span><strong>${institution.name}</strong> • Official Student ID Cards</span>
+          <span><strong>${escapeHtml(institution.name)}</strong> • Official Student ID Cards ${isDemoMode ? '(SAMPLE SPECIMEN SHEET)' : ''}</span>
           <span>A4 Sheet ${p + 1} of ${totalPages} (${list.length} Total)</span>
         `;
         sheetDiv.appendChild(metaTag);
 
         pageStudents.forEach((st, idx) => {
           const globalIdx = p * chunkSize + idx;
-          const initials = (st.name || 'ST').split(' ').map(w => w[0]).slice(0, 2).join('');
-          const avatarSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120" viewBox="0 0 100 120"><rect width="100" height="120" fill="%230b2545"/><circle cx="50" cy="45" r="22" fill="%23fef9c3"/><rect x="25" y="75" width="50" height="40" rx="10" fill="%230284c7"/><text x="50" y="52" font-family="Arial" font-size="16" font-weight="bold" fill="%230b2545" text-anchor="middle">${initials}</text></svg>`;
-          const photoSrc = st.photoUrl || avatarSvg;
+          const cleanInitials = (st.name || 'ST').replace(/[^A-Za-z0-9 ]/g, '').split(' ').map(w => w[0]).slice(0, 2).join('');
+          const avatarSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120" viewBox="0 0 100 120"><rect width="100" height="120" fill="%230b2545"/><circle cx="50" cy="45" r="22" fill="%23fef9c3"/><rect x="25" y="75" width="50" height="40" rx="10" fill="%230284c7"/><text x="50" y="52" font-family="Arial" font-size="16" font-weight="bold" fill="%230b2545" text-anchor="middle">${cleanInitials}</text></svg>`;
+          const photoSrc = sanitizeImageUrl(st.photoUrl, avatarSvg);
+          const schoolLogoSrc = sanitizeImageUrl(institution.logoUrl, 'app-icon-512.png');
+          
+          // Generate cryptographic verification signature
+          const sig = computeVerificationSig(st, institution);
+
+          // Specimen watermark HTML for demo cards
+          const watermarkHtml = isDemoMode ? `<div class="watermark-specimen">SAMPLE SPECIMEN • NOT OFFICIAL</div>` : '';
 
           const cardHtml = `
             <div class="id-card-vertical" id="card-${globalIdx}">
               <!-- FRONT SIDE -->
               <div class="card-side">
+                ${watermarkHtml}
                 <div class="card-header">
-                  <img src="${institution.logoUrl}" class="school-logo-img" onerror="this.src='app-icon-512.png'">
-                  <div class="school-title">${institution.name}</div>
-                  <div class="school-tagline">${institution.session} • IDENTITY CARD</div>
+                  <img src="${schoolLogoSrc}" class="school-logo-img" alt="Logo" onerror="this.src='app-icon-512.png'">
+                  <div class="school-title">${escapeHtml(institution.name)}</div>
+                  <div class="school-tagline">${escapeHtml(institution.session)} • IDENTITY CARD</div>
                 </div>
 
                 <div class="card-body">
                   <div class="photo-frame">
-                    <img src="${photoSrc}" alt="${st.name}" onerror="this.src='${avatarSvg}'">
+                    <img src="${photoSrc}" alt="${escapeHtml(st.name)}" onerror="this.src='${avatarSvg}'">
                   </div>
-                  <div class="student-name">${st.name}</div>
-                  <div class="class-badge">${st.className} - ${st.section}</div>
+                  <div class="student-name">${escapeHtml(st.name)}</div>
+                  <div class="class-badge">${escapeHtml(st.className)} - ${escapeHtml(st.section)}</div>
 
                   <div class="info-list">
                     <div class="info-row">
                       <span class="info-label">Roll No:</span>
-                      <span class="info-val">${st.rollNumber}</span>
+                      <span class="info-val">${escapeHtml(st.rollNumber)}</span>
                     </div>
                     <div class="info-row">
                       <span class="info-label">Adm No:</span>
-                      <span class="info-val">${st.admissionNumber}</span>
+                      <span class="info-val">${escapeHtml(st.admissionNumber)}</span>
                     </div>
                     <div class="info-row">
                       <span class="info-label">Father:</span>
-                      <span class="info-val" style="font-size: 4.2pt;">${st.fatherName}</span>
+                      <span class="info-val" style="font-size: 4.2pt;">${escapeHtml(st.fatherName)}</span>
                     </div>
                     <div class="info-row">
                       <span class="info-label">Phone:</span>
-                      <span class="info-val">${st.contactNumber}</span>
+                      <span class="info-val">${escapeHtml(st.contactNumber)}</span>
                     </div>
                     <div class="info-row">
                       <span class="info-label">Blood Grp:</span>
-                      <span class="info-val" style="color: #b91c1c;">${st.bloodGroup}</span>
+                      <span class="info-val" style="color: #b91c1c;">${escapeHtml(st.bloodGroup)}</span>
                     </div>
                   </div>
                 </div>
 
                 <div class="card-footer">
-                  <span style="font-size: 3.8pt;">D.O.B: ${st.dob}</span>
+                  <span style="font-size: 3.8pt;">D.O.B: ${escapeHtml(st.dob)}</span>
                   <div class="principal-sign-box">
                     <div class="principal-sign-line">PRINCIPAL</div>
                   </div>
@@ -851,41 +1109,43 @@
 
               <!-- BACK SIDE -->
               <div class="card-side">
+                ${watermarkHtml}
                 <div class="back-header">STUDENT RECORD & RULES</div>
                 
                 <div class="back-body">
                   <div class="emergency-box">
-                    🚨 EMERGENCY: ${institution.phone}
+                    🚨 EMERGENCY: ${escapeHtml(institution.phone)}
                   </div>
 
                   <div class="info-list">
                     <div class="info-row">
                       <span class="info-label">Route:</span>
-                      <span class="info-val">${st.busStop}</span>
+                      <span class="info-val">${escapeHtml(st.busStop)}</span>
                     </div>
                     <div class="info-row" style="flex-direction: column; gap: 0.5mm; border-bottom: none; padding: 1mm 0;">
                       <span class="info-label">Res. Address:</span>
-                      <span class="info-val" style="text-align: left; font-size: 4pt; color: #475569;">${st.address}</span>
+                      <span class="info-val" style="text-align: left; font-size: 4pt; color: #475569;">${escapeHtml(st.address)}</span>
                     </div>
                   </div>
 
                   <div class="qr-container">
                     <canvas id="qr-${globalIdx}" class="qr-canvas"></canvas>
                     <div class="qr-text">
-                      <strong>OFFICIAL DIGITAL ID</strong><br>
-                      Scan to verify student admission & attendance.
+                      <strong>DIGITAL CREDENTIAL</strong><br>
+                      Scan to verify student admission & institutional authenticity.
+                      <span class="qr-verify-code">SIG: ${escapeHtml(sig)}</span>
                     </div>
                   </div>
 
                   <div class="terms-box">
                     1. Card is non-transferable & must be worn daily.<br>
                     2. Loss of card must be reported to school office.<br>
-                    3. Return to: ${institution.address}.
+                    3. Return to: ${escapeHtml(institution.address)}.
                   </div>
                 </div>
 
-                <div class="card-footer" style="background: #0f172a; color: #94a3b8; font-size: 3.6pt; justify-content: center;">
-                  BRIGHT NEXA SCHOOL OS • SECURE ENCRYPTED ID
+                <div class="card-footer" style="background: #0f172a; color: #94a3b8; font-size: 3.6pt; justify-content: center; letter-spacing: 0.3px;">
+                  BRIGHT NEXA SCHOOL OS • DIGITALLY VERIFIED STUDENT PASS
                 </div>
               </div>
             </div>
@@ -897,7 +1157,8 @@
           setTimeout(() => {
             const canvas = document.getElementById(`qr-${globalIdx}`);
             if (canvas) {
-              generateQRCanvas(`ST:${st.admissionNumber}|ROLL:${st.rollNumber}|NAME:${st.name}`, canvas);
+              const verifyUrl = `student-portal.html?action=verify&adm=${encodeURIComponent(st.admissionNumber)}&sig=${encodeURIComponent(sig)}`;
+              generateQRCanvas(verifyUrl, canvas);
             }
           }, 10);
         });
