@@ -5949,11 +5949,22 @@ button:disabled {
   padding: 65px 0;
 }
 .auth-brand-copy > span {
-  color: #f1ad68;
-  letter-spacing: 0.8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #bfeaff;
+  letter-spacing: 2.4px;
   text-transform: uppercase;
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.auth-brand-copy > span::before {
+  content: "";
+  width: 25px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #19d8f3, #f4ba62);
 }
 .auth-brand-copy h1 {
   letter-spacing: -1.8px;
