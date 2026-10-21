@@ -2,8 +2,17 @@
    This does not pretend that local browser records are cloud-synced. */
 (() => {
   const replacements = new Map([
-    ['Offline-first', 'Online School OS'],
-    ['Daily school work without internet', 'Cloud-based school management is the goal'],
+    ['Offline-first', 'School Management'],
+    ['Online School OS', 'School Management'],
+    ['Daily school work without internet', 'Explore school administration features'],
+    ['Cloud-based school management is the goal', 'Explore school administration features'],
+    ['No connected service can lock your records', 'School records and access controls in one place'],
+    ['School-owned data', 'School Data Management'],
+    ['Cost protected', 'Simple Pricing'],
+    ['No provider call without credits or BYOK', 'Transparent plans for schools'],
+    ['without internet', 'with an internet connection'],
+    ['offline-first', 'online school management'],
+    ['Offline mode', 'Online access'],
     ['The core system remains available without internet access or paid providers.', 'Explore the school management demo. Secure multi-user cloud storage and synchronization are not yet enabled.'],
     ['Run complete school operations securely on this device.', 'Explore Bright Nexa School OS in a demonstration workspace.']
   ]);
