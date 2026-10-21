@@ -6256,9 +6256,13 @@ button:disabled {
   font-size: 9px;
 }
 .auth-form-panel > footer {
-  color: #8b96a5;
-  margin-top: 17px;
-  font-size: 8px;
+  color: #71849b;
+  margin-top: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .1px;
+  text-align: center;
+  line-height: 1.5;
 }
 .institution-profile-page {
   --profile-blue: #0a3f73;
