@@ -2,6 +2,8 @@
    This does not pretend that local browser records are cloud-synced. */
 (() => {
   const replacements = new Map([
+    ['WELCOME TO BRIGHT NEXA', 'BRIGHT NEXA  ·  SCHOOL OS'],
+    ['Start your institution workspace', 'Your school. One smart workspace.'],
     ['Offline-first', 'School Management'],
     ['Online School OS', 'School Management'],
     ['Daily school work without internet', 'Explore school administration features'],
