@@ -663,6 +663,26 @@
       .a4-sheet { padding: 8mm 6mm !important; }
       .id-card-vertical { break-inside: avoid; }
     }
+
+    /* CR80 portrait card production refinements */
+    .id-card-vertical .card-side { min-height: 85.6mm; }
+    .id-card-vertical .card-header { min-height: 18mm; padding: 3.5mm 2.5mm 2.5mm 13mm; display: flex; flex-direction: column; justify-content: center; }
+    .id-card-vertical .school-logo-img { left: 2.5mm; top: 4mm; width: 9mm; height: 9mm; }
+    .id-card-vertical .school-title { margin-left: 0; font-size: 7.2pt; line-height: 1.12; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; max-height: 11mm; }
+    .id-card-vertical .school-tagline { margin-left: 0; font-size: 4.5pt; line-height: 1.2; }
+    .id-card-vertical .card-body { justify-content: flex-start; padding: 2.5mm 3mm 1mm; }
+    .id-card-vertical .photo-frame { width: 23mm; height: 27mm; flex-shrink: 0; margin-bottom: 1.7mm; background: #eaf2fb; }
+    .id-card-vertical .photo-frame img { display: block; object-fit: cover; }
+    .id-card-vertical .student-name { font-size: 9pt; line-height: 1.2; max-width: 47mm; white-space: normal; overflow-wrap: anywhere; }
+    .id-card-vertical .class-badge { margin-bottom: 2mm; }
+    .id-card-vertical .info-list { width: 100%; font-size: 6pt; margin-top: 1mm; }
+    .id-card-vertical .info-row { min-height: 3.1mm; align-items: center; }
+    .id-card-vertical .info-label { font-size: 5.6pt; }
+    .id-card-vertical .info-val { font-size: 5.7pt; overflow-wrap: anywhere; }
+    .id-card-vertical .card-footer { min-height: 6mm; }
+    .id-card-vertical .card-side:nth-child(2) { background: linear-gradient(180deg,#fff 0%,#f7faff 100%); }
+    .id-card-vertical .qr-container { max-width: 100%; }
+    .id-card-vertical .qr-canvas { width: 18mm; height: 18mm; }
   </style>
 </head>
 <body>
@@ -1297,7 +1317,7 @@
                     </div>
                     <div class="info-row">
                       <span class="info-label">Father:</span>
-                      <span class="info-val" style="font-size: 4.2pt;">${escapeHtml(st.fatherName)}</span>
+                      <span class="info-val">${escapeHtml(st.fatherName)}</span>
                     </div>
                     <div class="info-row">
                       <span class="info-label">Phone:</span>
