@@ -2,8 +2,15 @@
    This does not pretend that local browser records are cloud-synced. */
 (() => {
   const replacements = new Map([
-    ['WELCOME TO BRIGHT NEXA', 'BRIGHT NEXA  ·  SCHOOL OS'],
-    ['Start your institution workspace', 'Your school. One smart workspace.'],
+    ['WELCOME TO BRIGHT NEXA', 'GET STARTED'],
+    ['BRIGHT NEXA  ·  SCHOOL OS', 'GET STARTED'],
+    ['Start your institution workspace', 'Set up your school workspace'],
+    ['Your school. One smart workspace.', 'Set up your school workspace'],
+    ['Run complete school operations securely on this device. The core system remains available without internet access or paid providers.', 'Explore admissions, attendance, fees and school operations in one demonstration workspace.'],
+    ['Explore Bright Nexa School OS in a demonstration workspace. The core system remains available with an internet connection access or paid providers.', 'Explore admissions, attendance, fees and school operations in one demonstration workspace.'],
+    ['The core system remains available with an internet connection access or paid providers.', 'Cloud synchronization is not enabled in this demo.'],
+    ['The core system remains available without internet access or paid providers.', 'Cloud synchronization is not enabled in this demo.'],
+    ['Run complete school operations securely on this device.', 'Explore Bright Nexa School OS in a demonstration workspace.'],
     ['Offline-first', 'School Management'],
     ['Online School OS', 'School Management'],
     ['Daily school work without internet', 'Explore school administration features'],
@@ -11,12 +18,7 @@
     ['No connected service can lock your records', 'School records and access controls in one place'],
     ['School-owned data', 'School Data Management'],
     ['Cost protected', 'Simple Pricing'],
-    ['No provider call without credits or BYOK', 'Transparent plans for schools'],
-    ['without internet', 'with an internet connection'],
-    ['offline-first', 'online school management'],
-    ['Offline mode', 'Online access'],
-    ['The core system remains available without internet access or paid providers.', 'Explore the school management demo. Secure multi-user cloud storage and synchronization are not yet enabled.'],
-    ['Run complete school operations securely on this device.', 'Explore Bright Nexa School OS in a demonstration workspace.']
+    ['No provider call without credits or BYOK', 'Transparent plans for schools']
   ]);
   let queued = false;
   function refresh() {
