@@ -1,0 +1,22 @@
+name: Browser sidebar smoke test
+on:
+  pull_request:
+    paths:
+      - "tests/real-browser-sidebar-smoke.cjs"
+      - ".github/workflows/browser-sidebar-smoke.yml"
+  workflow_dispatch:
+jobs:
+  browser-sidebar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Playwright without modifying lockfile
+        run: npm install --no-save --ignore-scripts playwright@1.55.1
+      - name: Install Chromium browser
+        run: npx playwright install --with-deps chromium
+      - name: Click live School OS sidebar in Chromium
+        run: node tests/real-browser-sidebar-smoke.cjs
