@@ -21,6 +21,8 @@ function rowsSorted(table,rows) {
 function createArchive(dbPath,sourceLabel='bright-nexa-legacy-api'){
  if(!fs.existsSync(dbPath))throw Error('Source SQLite database does not exist. Refusing to create seed data.');
  const db=new DatabaseSync(dbPath,{readOnly:true});
+ // One read transaction guarantees every table comes from the same snapshot.
+ db.exec('BEGIN');
  try{
   const integrity=db.prepare('PRAGMA integrity_check').all();
   if(integrity.length!==1||integrity[0].integrity_check!=='ok')throw Error('SQLite integrity_check failed; do not migrate.');
@@ -40,7 +42,7 @@ function createArchive(dbPath,sourceLabel='bright-nexa-legacy-api'){
    contentSha256:sha256(stable),
    tables
   };
- }finally{db.close();}
+ }finally{db.exec('ROLLBACK');db.close();}
 }
 function validateArchive(archive){
  if(!archive||archive.schemaVersion!==1||typeof archive.sourceLabel!=='string'||
