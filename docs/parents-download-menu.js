@@ -11,7 +11,11 @@
     smart: {path:'smart-tools.html', icon:'🧠', title:'Smart Tools · No API', tooltip:'Timetable, substitutes, performance and audits'}
   });
 
-  const elementId = (type, place) => 'bn-'+type+'-'+place;
+  // Keep the original IDs; existing CSS/tests and UI shortcuts rely on them.
+  const elementId = (type, place) => {
+    const stem={parents:'parents-app',teachers:'teacher-access',smart:'smart-tools'}[type];
+    return stem?'bn-'+stem+'-'+place:'';
+  };
   // App-internal React navigation can intercept ordinary <a> clicks at the
   // root capture/bubble phase. Capture at window and perform real page
   // navigation before the SPA can swallow or prevent the click.
