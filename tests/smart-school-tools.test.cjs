@@ -115,3 +115,36 @@ test('Navigation exposes Smart Tools on school OS and static site',()=>{
   assert.doesNotThrow(()=>new Function(s));
  }
 });
+
+
+test('Timetable uses editable school forms rather than raw CSV by default',()=>{
+ const html=source('smart-tools.html'),js=source('smart-tools-ui.js');
+ assert.equal(html,source('docs/smart-tools.html'));
+ assert.equal(js,source('docs/smart-tools-ui.js'));
+ for(const id of ['demandsEditor','teachersEditor','addDemand','addTeacher','ttClassesList','ttSubjectsList','importTimetableCsv','teachersCsv','demandsCsv']){
+   assert.ok(html.includes('id="'+id+'"'),id);
+ }
+ const details=html.indexOf('<details class="tt-advanced" id="advancedTimetable">');
+ assert.ok(details>0,'Advanced CSV collapsed by default');
+ const raw=html.indexOf('id="teachersCsv"');
+ assert.ok(raw>details,'CSV is inside collapsed advanced editor');
+ assert.doesNotMatch(html.slice(details,details+95),/\bopen\b/);
+ for(const fn of ['renderDemands','renderTeachers','loadEditorCsv','validatedTimetableInputs','invalidateTimetable','renderSchedule']){
+   assert.ok(js.includes('function '+fn+'('),fn);
+ }
+ assert.match(js,/checkChoices\(card,'SUBJECTS'/);
+ assert.match(js,/checkChoices\(card,'CLASSES'/);
+ assert.match(js,/id="advancedTimetable"|\$\('advancedTimetable'\)/);
+ assert.doesNotThrow(()=>new Function(js));
+});
+test('Timetable produces class/day/period matrix for user readability',()=>{
+ const js=source('smart-tools-ui.js'),start=js.indexOf('function renderSchedule(){');
+ const end=js.indexOf('function renderSubstitutes(){',start);
+ const fn=js.slice(start,end);
+ assert.match(fn,/tt-result-table/);
+ assert.match(fn,/tt-result-class/);
+ assert.match(fn,/for\(const day of plan.days\)/);
+ assert.match(fn,/for\(let period=1;period<=plan.periods;period\+\+\)/);
+ assert.match(fn,/Free \/ Study/);
+ assert.match(fn,/lesson\.teacher/);
+});
