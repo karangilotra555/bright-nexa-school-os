@@ -231,14 +231,35 @@ function runTimetable(){
  msg('Timetable generated: '+plan.assigned+' teaching periods assigned; '+plan.rows.filter(r=>r.unfilled).length+' open periods.'+warnings,!!plan.issues.length);
 }
 function renderSchedule(){
- const p=state.plan;if(!p)return;
+ const plan=state.plan;if(!plan)return;
  const filter=$('timetableFilter').value;
- const rows=p.rows.filter(r=>filter==='all'||r.class===filter);
- $('scheduleSummary').textContent='Allocated: '+p.assigned+'/'+p.requested+' requested lessons. Open slots are explicitly marked. Conflicting teacher slots are not permitted.';
- table('scheduleTable',[
-  {key:'day',label:'Day'},{key:'period',label:'Period'},{key:'class',label:'Class'},
-  {key:'subject',label:'Subject'},{key:'teacher',label:'Teacher'}
- ],rows);
+ const classes=filter==='all'?plan.classes:plan.classes.filter(c=>c===filter);
+ $('scheduleSummary').textContent='Assigned '+plan.assigned+' of '+plan.requested+' requested weekly lessons. Review open periods and warnings before approval.';
+ const root=wipe('scheduleTable');
+ for(const cls of classes){
+  const wrap=dom('section',undefined,'tt-result-class');
+  wrap.append(dom('h3',cls+' · Weekly Timetable'));
+  const t=dom('table',undefined,'tt-result-table');
+  const head=dom('thead'),hr=dom('tr');
+  hr.append(dom('th','Period'));
+  for(const day of plan.days)hr.append(dom('th',day));
+  head.append(hr);t.append(head);
+  const body=dom('tbody');
+  for(let period=1;period<=plan.periods;period++){
+   const tr=dom('tr');tr.append(dom('td','Period '+period));
+   for(const day of plan.days){
+    const lesson=plan.rows.find(r=>r.class===cls&&r.day===day&&r.period===period);
+    const cell=dom('td');
+    if(lesson&&lesson.teacher){
+      cell.append(dom('span',lesson.subject,'tt-subject'),dom('span',lesson.teacher,'tt-teachername'));
+    }else cell.append(dom('span','Free / Study','tt-open'));
+    tr.append(cell);
+   }
+   body.append(tr);
+  }
+  t.append(body);wrap.append(t);root.append(wrap);
+ }
+ root.classList.remove('hidden');
 }
 function renderSubstitutes(){
  const p=state.plan;if(!p)throw Error('Generate a timetable first.');
@@ -383,7 +404,25 @@ for(const btn of document.querySelectorAll('[data-tab]')){
   for(const view of document.querySelectorAll('[data-view]'))view.classList.toggle('hidden',view.dataset.view!==btn.dataset.tab);
  });
 }
-$('sampleTimetable').addEventListener('click',()=>{ $('teachersCsv').value=DEMO.teachers;$('demandsCsv').value=DEMO.demands;msg('Timetable sample loaded. Click Generate to calculate.');});
+$('sampleTimetable').addEventListener('click',()=>task(()=>{
+ loadEditorCsv(DEMO.teachers,DEMO.demands);
+ $('advancedTimetable').open=false;
+ msg('Sample school loaded. You can now edit teachers and subjects, then Generate Timetable.');
+}));
+$('importTimetableCsv').addEventListener('click',()=>task(()=>{
+ loadEditorCsv($('teachersCsv').value,$('demandsCsv').value);
+ $('advancedTimetable').open=false;msg('CSV imported into editable forms. Review teacher skills and class requirements.');
+}));
+$('addDemand').addEventListener('click',()=>task(()=>{
+ if(editor.demands.length>=200)throw Error('Maximum 200 subjects.');
+ editor.demands.push({id:uid(),class:'',subject:'',periods:4});
+ renderDemands();renderTeachers();invalidateTimetable();
+}));
+$('addTeacher').addEventListener('click',()=>task(()=>{
+ if(editor.teachers.length>=200)throw Error('Maximum 200 teachers.');
+ editor.teachers.push({id:uid(),name:'',subjects:[],classes:[],maxdaily:6,unavailable:''});
+ renderTeachers();invalidateTimetable();
+}));
 $('generateTimetable').addEventListener('click',()=>task(runTimetable));
 $('timetableFilter').addEventListener('change',()=>task(renderSchedule));
 $('exportTimetable').addEventListener('click',()=>task(()=>download('bright-nexa-timetable.csv',E.toCsv(state.plan.rows,['day','period','class','subject','teacher']))));
@@ -410,6 +449,6 @@ $('clearImports').addEventListener('click',()=>{
 $('runAudit').addEventListener('click',()=>task(audit));
 $('sampleErrors').addEventListener('click',()=>task(()=>{for(const kind of ['students','fees','attendance','marks'])loadDataset(kind,DEMO[kind]);audit()}));
 $('exportFindings').addEventListener('click',()=>task(()=>download('bright-nexa-data-audit.csv',E.toCsv(state.findings,['kind','severity','row','message']))));
-$('teachersCsv').value=DEMO.teachers;$('demandsCsv').value=DEMO.demands;
+loadEditorCsv(DEMO.teachers,DEMO.demands);
 msg('Smart Tools ready. Start with Generate Timetable, or choose Import to analyze your own CSV / XLSX. No external AI API is used.');
 })();
