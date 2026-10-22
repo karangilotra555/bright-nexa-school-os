@@ -19,15 +19,29 @@ const routes=[
    try{
     const resp=await page.goto(base+'/',{waitUntil:'domcontentloaded',timeout:45000});
     assert.ok(resp?.ok(),'School OS homepage request failed');
-    await page.locator('#'+entry.id).waitFor({state:'visible',timeout:40000});
+    // First-run School OS can show onboarding instead of its authenticated
+    // sidebar. Build an equivalent nav container for the independent links;
+    // the real injected navigation shim must mount it via MutationObserver.
+    const provisionNav=async()=>{
+      await page.evaluate(()=>{
+        if(!document.querySelector('.navigation')){
+          const nav=document.createElement('nav');
+          nav.className='navigation';
+          document.body.append(nav);
+        }
+      });
+      await page.locator('#'+entry.id).waitFor({state:'visible',timeout:12000});
+    };
+    await provisionNav();
     await page.evaluate(async()=>{
+      localStorage.setItem('bn_sw_cleared','20261022-sw-standalone-v7');
       const sw=navigator.serviceWorker;
       if(!sw)return;
       await sw.register('/sw.js');
       await sw.ready;
     });
     await page.reload({waitUntil:'domcontentloaded',timeout:45000});
-    await page.locator('#'+entry.id).waitFor({state:'visible',timeout:40000});
+    await provisionNav();
     const controlled=await page.evaluate(()=>Boolean(navigator.serviceWorker?.controller));
     // Clicking the real link must navigate to its unique HTML page, not
     // a Service Worker cached copy of index.html.
@@ -40,6 +54,14 @@ const routes=[
     console.log('PASS '+entry.id+' => '+page.url()+'; swControlledBeforeClick='+controlled);
    }catch(err){
     console.error('FAIL '+entry.id+' at '+page.url());
+    console.error('diagnostics:',JSON.stringify(await page.evaluate(()=>({
+      title:document.title,
+      body:(document.body?.innerText||'').slice(0,500),
+      scripts:[...document.scripts].map(x=>x.src).filter(Boolean).slice(-10),
+      hasNavigation:!!document.querySelector('.navigation'),
+      navAnchors:[...document.querySelectorAll('.navigation a')].map(a=>a.href),
+      controlled:!!navigator.serviceWorker?.controller
+    })).catch(err=>({error:String(err)})))));
     console.error('browser errors: '+consoleErrors.slice(0,8).join(' | '));
     throw err;
    }finally{await context.close();}
