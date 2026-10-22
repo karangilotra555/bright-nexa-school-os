@@ -41,6 +41,39 @@ table{border-collapse:collapse;width:100%;font-size:12px;min-width:580px}td,th{p
 .metric{background:#f7faff;border:1px solid #e0ebf6;border-radius:12px;padding:16px}.metric strong{font-size:26px;display:block;margin-top:5px;color:#0b315e}.metric span{font-size:12px;color:#708196}
 .hint{border-left:3px solid #138ed8;padding:8px 11px;color:#436079;background:#f4f9fe;border-radius:6px;font-size:12px}
 footer{font-size:12px;color:#8090a2;text-align:center;margin-top:25px}
+
+.tt-step{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 11px;flex-wrap:wrap}
+.tt-step h3{margin:0;font-size:15px;color:#0b315e}
+.tt-section{background:#f8fbfe;border:1px solid #dce8f3;border-radius:13px;padding:14px;margin-bottom:12px}
+.tt-formrow{display:grid;grid-template-columns:1fr 1fr 115px auto;gap:9px;align-items:end;border-bottom:1px solid #e3edf5;padding:7px 0}
+.tt-formrow:last-child{border-bottom:0}.tt-formrow input{min-width:0}
+.tt-teachers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tt-teacher{border:1px solid #dae7f3;background:white;border-radius:12px;padding:13px;min-width:0}
+.tt-teacher-header{display:grid;grid-template-columns:1fr 120px auto;gap:9px;align-items:end}
+.tt-checkrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.tt-checkrow label{font-size:12px;display:inline-flex;align-items:center;gap:5px;padding:7px 9px;background:#edf5fc;border:1px solid #d3e6f6;border-radius:8px;margin:0;font-weight:550;cursor:pointer}
+.tt-checkrow label:has(input:checked){border-color:#138ed8;background:#deeffd;color:#07558a;font-weight:750}
+.tt-checkrow input{height:15px;min-height:15px;width:15px;accent-color:#138ed8}
+.tt-teacher .tt-small-label{font-size:11px;color:#657990;font-weight:800;display:block;margin:11px 0 7px}
+.tt-unavailable{margin-top:9px}.tt-unavailable input{min-height:36px;font-size:12px}
+.tt-help{color:#667e93;font-size:12px;line-height:1.5}
+.tt-advanced{border:1px dashed #bed5e8;border-radius:11px;padding:12px 15px;margin-top:15px}
+.tt-advanced summary{font-size:13px;font-weight:750;color:#365b7c;cursor:pointer}
+.tt-advanced[open] summary{margin-bottom:12px}
+.tt-advanced textarea{min-height:125px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.tt-result-class{margin:16px 0 22px}
+.tt-result-class h3{font-size:16px;margin:0 0 10px;color:#0b315e}
+#scheduleTable{max-height:none}
+.tt-result-table{min-width:670px;width:100%}
+.tt-result-table th{text-align:center;background:#0b315e;color:white;position:static}
+.tt-result-table td{text-align:center;vertical-align:middle;min-width:108px;height:62px}
+.tt-result-table td:first-child{background:#eaf3fa;font-weight:850;min-width:75px;color:#15436d}
+.tt-subject{display:block;font-weight:800;font-size:12px;color:#123d65;line-height:1.4}
+.tt-teachername{display:block;font-size:11px;color:#648197;margin-top:3px}
+.tt-open{color:#9f6d34;font-size:11px}
+@media(max-width:790px){.tt-teachers{grid-template-columns:1fr}.tt-formrow{grid-template-columns:1fr 1fr 95px auto}}
+@media(max-width:520px){.tt-formrow{grid-template-columns:1fr 1fr}.tt-formrow>button{align-self:end}.tt-teacher-header{grid-template-columns:1fr 93px auto}}
+@media print{.tt-editor,.tt-step,.tt-advanced{display:none!important}#scheduleTable{display:block!important;border:0}.tt-result-class{break-inside:avoid;page-break-inside:avoid}.tt-result-table{min-width:0}}
 @media(max-width:680px){.two,.three{grid-template-columns:1fr}.card{padding:16px}h1{font-size:22px}.head{padding:0 14px}.tabs button{font-size:12px;padding:10px}.intro{display:block}}
 @media print{header,.tabs,.actions,.banner,.hint,footer,input,textarea,select{display:none!important}main{padding:0}.card{box-shadow:none;border:none}.tablewrap{max-height:none;overflow:visible}table{font-size:9pt}}
 </style>
@@ -50,7 +83,7 @@ footer{font-size:12px;color:#8090a2;text-align:center;margin-top:25px}
 <header><div class="head"><div class="brand">Bright Nexa <span style="color:#ff9b49">✦</span> Smart Tools<small>School Intelligence · No paid AI API</small></div><a href="./index.html">← School OS</a></div></header>
 <main>
 <div class="intro"><div><h1>5 Practical Smart School Tools</h1><p class="sub">Timetable, substitute teachers, student performance, Excel import and error detection — deterministic algorithms, no LLM calls.</p></div><span class="pill">100% API-FREE ENGINE</span></div>
-<div class="banner"><b>Private analysis workspace:</b> Files are processed inside your browser, not uploaded to Bright Nexa or any AI provider. Nothing is automatically saved or synced to the school's database. Use a trusted device; review every result before official decisions. This is a pilot toolkit, not a replacement for school-approved records.</div>
+<div class="banner"><b>Private School Tools:</b> Data is processed only in this browser, not uploaded. Review generated timetables before publishing; this pilot does not auto-save changes to school records.</div>
 <div id="status" class="status hidden" role="status" aria-live="polite"></div>
 <nav class="tabs" aria-label="Smart features">
 <button type="button" class="active" data-tab="timetable">📅 Timetable</button>
@@ -60,17 +93,36 @@ footer{font-size:12px;color:#8090a2;text-align:center;margin-top:25px}
 <button type="button" data-tab="errors">🛡️ Error Detector</button>
 </nav>
 <section class="card" data-view="timetable">
-<h2>Smart Timetable Generator</h2><p class="sub">Teacher assignments aur class-wise weekly requirements se clash-free timetable generate karo. Browser ke andar free scheduler chalega. Unfillable periods aur shortages separately dikhenge.</p>
-<div class="two">
-<div><label for="teachersCsv">Teachers CSV — teacher, subjects (; separated), classes (; separated), maxdaily, unavailable (Mon-1; Tue-2)</label><textarea id="teachersCsv" spellcheck="false"></textarea></div>
-<div><label for="demandsCsv">Class Subject Requirements CSV — class, subject, periods (per week)</label><textarea id="demandsCsv" spellcheck="false"></textarea></div>
+<h2>Smart Timetable Generator</h2><p class="sub">Teachers, subjects aur classes select karke school timetable banayein. No coding, no AI API.</p>
+
+<div class="tt-editor">
+  <div class="tt-step"><h3>1. Classes & weekly subject periods</h3><button id="addDemand" type="button" class="secondary">+ Add Subject</button></div>
+  <div class="tt-section">
+    <p class="tt-help">Har class mein kaunsa subject hafte mein kitni baar padhana hai? Class aur subject ka naam likhein.</p>
+    <datalist id="ttClassesList"></datalist><datalist id="ttSubjectsList"></datalist>
+    <div id="demandsEditor"></div>
+  </div>
+  <div class="tt-step"><h3>2. Teachers & their assignments</h3><button id="addTeacher" type="button" class="secondary">+ Add Teacher</button></div>
+  <div class="tt-section">
+    <p class="tt-help">Teacher ka naam bharein, phir subjects aur classes tick karein. Ek teacher multiple subjects padha sakta hai.</p>
+    <div id="teachersEditor" class="tt-teachers"></div>
+  </div>
+  <details class="tt-advanced" id="advancedTimetable">
+    <summary>Advanced: Paste / edit CSV data (optional)</summary>
+    <p class="tt-help">Technical users ke liye. CSV import se upar ke forms replace honge.</p>
+    <div class="two">
+      <div><label for="teachersCsv">Teachers CSV</label><textarea id="teachersCsv" spellcheck="false"></textarea></div>
+      <div><label for="demandsCsv">Weekly subject requirements CSV</label><textarea id="demandsCsv" spellcheck="false"></textarea></div>
+    </div>
+    <div class="actions"><button id="importTimetableCsv" type="button" class="secondary">Import CSV into Forms</button></div>
+  </details>
 </div>
 <div class="three" style="margin-top:13px">
 <div><label for="daysSelect">Working days</label><select id="daysSelect"><option value="5">5 days · Mon–Fri</option><option value="6">6 days · Mon–Sat</option></select></div>
 <div><label for="periodsSelect">Periods / day</label><select id="periodsSelect"><option value="4">4 periods</option><option value="5">5 periods</option><option selected value="6">6 periods</option><option value="7">7 periods</option><option value="8">8 periods</option></select></div>
 <div><label for="timetableFilter">Display class</label><select id="timetableFilter"><option value="all">All classes</option></select></div>
 </div>
-<div class="actions"><button id="generateTimetable" class="primary" type="button">Generate Timetable</button><button id="sampleTimetable" class="secondary" type="button">Load Sample</button><button id="exportTimetable" class="light" type="button" disabled>Export CSV</button><button id="printTimetable" class="light" type="button" disabled>Print</button></div>
+<div class="actions"><button id="generateTimetable" class="primary" type="button">Generate Timetable</button><button id="sampleTimetable" class="secondary" type="button">Reset Demo</button><button id="exportTimetable" class="light" type="button" disabled>Export CSV</button><button id="printTimetable" class="light" type="button" disabled>Print</button></div>
 <div id="scheduleSummary" class="small"></div><div id="scheduleTable" class="tablewrap hidden"></div>
 </section>
 <section class="card hidden" data-view="substitute">
