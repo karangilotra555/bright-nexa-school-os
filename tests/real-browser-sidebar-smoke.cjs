@@ -54,15 +54,16 @@ const routes=[
     console.log('PASS '+entry.id+' => '+page.url()+'; swControlledBeforeClick='+controlled);
    }catch(err){
     console.error('FAIL '+entry.id+' at '+page.url());
-    console.error('diagnostics:',JSON.stringify(await page.evaluate(()=>({
+    const debug=await page.evaluate(()=>({
       title:document.title,
       body:(document.body?.innerText||'').slice(0,500),
       scripts:[...document.scripts].map(x=>x.src).filter(Boolean).slice(-10),
       hasNavigation:!!document.querySelector('.navigation'),
       navAnchors:[...document.querySelectorAll('.navigation a')].map(a=>a.href),
       controlled:!!navigator.serviceWorker?.controller
-    })).catch(err=>({error:String(err)})))));
-    console.error('browser errors: '+consoleErrors.slice(0,8).join(' | '));
+     })).catch(err=>({error:String(err)}));
+     console.error('diagnostics:',JSON.stringify(debug));
+     console.error('browser errors: '+consoleErrors.slice(0,8).join(' | '));
     throw err;
    }finally{await context.close();}
   }
