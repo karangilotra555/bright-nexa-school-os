@@ -1,0 +1,44 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+test('Staff portal displays password change for all signed-in school roles',()=>{
+ const html=read('teacher-access.html');
+ assert.equal(read('docs/teacher-access.html'),html);
+ assert.match(html,/data-tab="account"/);
+ assert.match(html,/data-view="account"/);
+ assert.match(html,/id="changePasswordForm"/);
+ assert.match(html,/id="currentStaffPassword"[^>]+autocomplete="current-password"/);
+ assert.match(html,/id="nextStaffPassword"[^>]+autocomplete="new-password"[^>]+minlength="12"/);
+ assert.match(html,/id="confirmStaffPassword"[^>]+autocomplete="new-password"[^>]+minlength="12"/);
+ assert.doesNotMatch(html,/id="changePasswordForm"[^>]*action=/);
+});
+test('Password change confirms current credentials via Supabase and signs out after update',()=>{
+ const js=read('teacher-access.js');
+ assert.equal(read('docs/teacher-access.js'),js);
+ assert.doesNotThrow(()=>new Function(js));
+ assert.match(js,/\$\('changePasswordForm'\)\.addEventListener\('submit'/);
+ assert.match(js,/authRequest\('token\?grant_type=password',[\s\S]*?password:current/);
+ assert.match(js,/verified\.user\?\.id!==identity\.id/);
+ assert.match(js,/apiAuthUserUpdate\(next,current,freshToken\)/);
+ assert.match(js,/current_password:currentPassword/);
+ assert.match(js,/result\.id!==identity\.id/);
+ assert.match(js,/form\.reset\(\)/);
+ assert.match(js,/dropSession\(\);\s*notify\('Password changed successfully/);
+ assert.doesNotMatch(js,/setItem\([^\n]*(password|Password)/);
+ assert.doesNotMatch(js,/console\.(log|debug)\([^\n]*(password|Password)/);
+});
+test('Password-change error path clears sensitive form inputs and revokes fresh session',()=>{
+ const js=read('teacher-access.js');
+ const a=js.indexOf("  // Staff self-service password change.");
+ const b=js.indexOf("  $('logout').addEventListener(",a);
+ const fn=js.slice(a,b);
+ assert.ok(a!==-1&&b>a);
+ assert.match(fn,/finally\s*\{[\s\S]*?if\(freshToken\)/);
+ assert.match(fn,/form\.reset\(\)/);
+ assert.match(fn,/button\.disabled=false/);
+ assert.match(fn,/next!==confirm/);
+ assert.match(fn,/next===current/);
+});
