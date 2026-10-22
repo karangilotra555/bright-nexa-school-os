@@ -29,10 +29,10 @@ test('GitHub Pages mirrors teacher login site',()=>{
 test('School OS navigation opens the hosted teacher portal on the same origin',()=>{
  for(const file of ['parents-download-menu.js','docs/parents-download-menu.js']){
   const s=read(file);
-  assert.match(s,/teacher-access\\.html/);
+  assert.ok(s.includes('teacher-access.html'));
   assert.match(s,/bn-teacher-access/);
-  assert.match(s,/window\\.location\\.assign/);
-  assert.match(s,/window\\.addEventListener\\('click', directNavigate, true\\)/);
+  assert.ok(s.includes('window.location.assign'));
+  assert.ok(s.includes("window.addEventListener('click', directNavigate, true)"));
   assert.doesNotThrow(()=>new Function(s));
  }
 });
