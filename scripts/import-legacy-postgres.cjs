@@ -12,6 +12,12 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const {sha256,validateArchive,TABLES}=require('./export-legacy-sqlite.cjs');
+function stableJson(value){
+ if(Array.isArray(value))return '['+value.map(stableJson).join(',')+']';
+ if(value && typeof value==='object')
+  return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+stableJson(value[k])).join(',')+'}';
+ return JSON.stringify(value);
+}
 function options(argv){
  const o={apply:false};
  for(let i=0;i<argv.length;i++){
@@ -43,7 +49,7 @@ function buildPlan(file){
    const marker=table+':'+key;
    if(uniques.has(marker))throw Error('Duplicate primary key '+marker);
    uniques.add(marker);
-   operations.push({table,key,row,digest:sha256(JSON.stringify(row))});
+   operations.push({table,key,row,digest:sha256(stableJson(row))});
   }
  }
  return {archive,operations};
@@ -100,7 +106,7 @@ async function stage(plan,connectionString){
   const received=new Map(rows.rows.map(r=>[r.source_table+':'+r.source_key,r]));
   for(const op of plan.operations){
    const row=received.get(op.table+':'+op.key);
-   if(!row||row.row_sha256!==op.digest||sha256(JSON.stringify(row.payload))!==op.digest)
+   if(!row||row.row_sha256!==op.digest||sha256(stableJson(row.payload))!==op.digest)
     throw Error('Postgres verification failed for '+op.table+' primary key '+op.key);
   }
   await client.query('COMMIT');
@@ -126,4 +132,4 @@ async function main(){
 if(require.main===module){
  main().catch(e=>{console.error('Migration aborted:',e.message);process.exitCode=1;});
 }
-module.exports={options,primaryKey,buildPlan,stage};
+module.exports={options,primaryKey,buildPlan,stage,stableJson};
