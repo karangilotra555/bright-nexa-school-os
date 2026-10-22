@@ -5,6 +5,7 @@ let child,dir,base;
 before(async()=>{
  dir=fs.mkdtempSync(path.join(os.tmpdir(),'bn-portal-test-'));
  fs.copyFileSync('server.js',path.join(dir,'server.js'));
+ fs.copyFileSync('parent-portal.cjs',path.join(dir,'parent-portal.cjs'));
  fs.cpSync('scripts',path.join(dir,'scripts'),{recursive:true});
  fs.copyFileSync('student-portal.html',path.join(dir,'student-portal.html'));
  fs.copyFileSync('index.html',path.join(dir,'index.html'));
