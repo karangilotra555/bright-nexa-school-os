@@ -1,0 +1,19 @@
+{
+  "name": "Bright Nexa Parents",
+  "short_name": "BN Parents",
+  "description": "Student attendance, homework, fees, notices and leave requests",
+  "id": "/parents.html",
+  "start_url": "/parents.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f8f7",
+  "theme_color": "#419c71",
+  "icons": [
+    {
+      "src": "/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
