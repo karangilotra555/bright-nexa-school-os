@@ -87,10 +87,132 @@ function parseDemandCsv(csv){
   periods:pick(r,['periods','weeklyperiods','lessons'])
  })).filter(x=>x.class&&x.subject);
 }
+
+const editor={teachers:[],demands:[]};let editSeq=0;
+const uid=()=>++editSeq;
+const skills=s=>String(s||'').split(';').map(v=>v.trim()).filter(Boolean);
+function invalidateTimetable(){
+ state.plan=null;state.substitutes=[];
+ $('exportTimetable').disabled=true;$('printTimetable').disabled=true;$('exportSubstitute').disabled=true;
+ $('scheduleSummary').textContent='Details changed — generate a new timetable.';
+ wipe('scheduleTable');wipe('substituteTable');
+}
+function demandChoices(field){
+ return [...new Set(editor.demands.map(d=>String(d[field]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+}
+function suggest(){
+ for(const [key,id] of [['class','ttClassesList'],['subject','ttSubjectsList']]){
+  const list=$(id);list.replaceChildren();
+  for(const v of demandChoices(key)){const o=dom('option');o.value=v;list.append(o);}
+ }
+}
+function field(title,value,onChange,options={}){
+ const wrap=dom('div'),label=dom('label',title),input=dom('input');
+ input.value=String(value??'');input.type=options.number?'number':'text';
+ input.autocomplete='off';input.setAttribute('aria-label',title);
+ if(options.number){input.min='1';input.max=String(options.max||12);input.step='1';}
+ if(options.list)input.setAttribute('list',options.list);
+ input.addEventListener('input',()=>{onChange(input.value,false);invalidateTimetable();});
+ input.addEventListener('change',()=>onChange(input.value,true));
+ wrap.append(label,input);return wrap;
+}
+function renderDemands(){
+ suggest();const list=$('demandsEditor');list.replaceChildren();
+ if(!editor.demands.length)list.append(dom('p','Click + Add Subject to get started.','tt-help'));
+ for(const d of editor.demands){
+  const line=dom('div',undefined,'tt-formrow');
+  line.append(
+   field('Class / section',d.class,(v,done)=>{d.class=v;if(done){suggest();renderTeachers();}},{list:'ttClassesList'}),
+   field('Subject',d.subject,(v,done)=>{d.subject=v;if(done){suggest();renderTeachers();}},{list:'ttSubjectsList'}),
+   field('Periods / week',d.periods,v=>{d.periods=v;},{number:true,max:60})
+  );
+  const btn=dom('button','Remove','danger');btn.type='button';
+  btn.setAttribute('aria-label','Remove subject '+d.subject+' for '+d.class);
+  btn.addEventListener('click',()=>{
+   editor.demands=editor.demands.filter(x=>x.id!==d.id);
+   renderDemands();renderTeachers();invalidateTimetable();
+  });line.append(btn);list.append(line);
+ }
+}
+function checkChoices(card,title,values,choices){
+ card.append(dom('span',title,'tt-small-label'));
+ const row=dom('div',undefined,'tt-checkrow');
+ for(const choice of choices){
+  const lab=dom('label'),c=dom('input');c.type='checkbox';c.value=choice;
+  c.checked=values.some(x=>x.toLowerCase()===choice.toLowerCase());
+  c.addEventListener('change',()=>{
+   const index=values.findIndex(x=>x.toLowerCase()===choice.toLowerCase());
+   if(c.checked&&index<0)values.push(choice);
+   if(!c.checked&&index>=0)values.splice(index,1);
+   invalidateTimetable();
+  });
+  lab.append(c,dom('span',choice));row.append(lab);
+ }
+ if(!choices.length)row.append(dom('span','Add class and subject rows above first.','tt-help'));
+ card.append(row);
+}
+function renderTeachers(){
+ const root=$('teachersEditor');root.replaceChildren();
+ const subjects=demandChoices('subject'),classes=demandChoices('class');
+ if(!editor.teachers.length)root.append(dom('p','Click + Add Teacher to begin.','tt-help'));
+ for(const teacher of editor.teachers){
+  const card=dom('article',undefined,'tt-teacher'),top=dom('div',undefined,'tt-teacher-header');
+  top.append(field('Teacher name',teacher.name,v=>{teacher.name=v;}),
+    field('Max periods/day',teacher.maxdaily,v=>{teacher.maxdaily=v;},{number:true,max:12}));
+  const remove=dom('button','Remove','danger');remove.type='button';
+  remove.setAttribute('aria-label','Remove teacher '+teacher.name);
+  remove.addEventListener('click',()=>{
+   editor.teachers=editor.teachers.filter(x=>x.id!==teacher.id);
+   renderTeachers();invalidateTimetable();
+  });
+  top.append(remove);card.append(top);
+  checkChoices(card,'SUBJECTS',teacher.subjects,subjects);
+  checkChoices(card,'CLASSES',teacher.classes,classes);
+  const unavailable=dom('div',undefined,'tt-unavailable');
+  unavailable.append(field('Unavailable slots (optional, Mon-1; Tue-2)',teacher.unavailable,v=>{teacher.unavailable=v;}));
+  card.append(unavailable);root.append(card);
+ }
+}
+function renderEditor(){renderDemands();renderTeachers();}
+function loadEditorCsv(teacherCsv,demandCsv){
+ const rawTeachers=E.canonical(E.parseCsv(teacherCsv),'teachers').records;
+ const rawDemands=parseDemandCsv(demandCsv);
+ if(!rawDemands.length)throw Error('No valid class-subject requirements found.');
+ if(rawTeachers.length>200||rawDemands.length>200)throw Error('Maximum 200 rows each.');
+ const t=rawTeachers.map(r=>({id:uid(),name:r.teacher,subjects:skills(r.subjects),
+   classes:skills(r.classes),maxdaily:Number(r.maxdaily||6),unavailable:r.unavailable||''}));
+ const d=rawDemands.map(r=>({id:uid(),class:r.class,subject:r.subject,periods:Number(r.periods)}));
+ editor.teachers=t;editor.demands=d;
+ $('teachersCsv').value=teacherCsv;$('demandsCsv').value=demandCsv;
+ renderEditor();invalidateTimetable();
+}
+function validatedTimetableInputs(){
+ if(!editor.demands.length||!editor.teachers.length)throw Error('Add teachers and weekly subject requirements.');
+ const seen=new Set(),demands=[];
+ for(const d of editor.demands){
+  const cls=String(d.class||'').trim(),subject=String(d.subject||'').trim(),periods=Number(d.periods);
+  if(!cls||!subject||!Number.isInteger(periods)||periods<1||periods>60)throw Error('Complete all class, subject and weekly periods (1–60).');
+  const k=(cls+'|'+subject).toLowerCase();
+  if(seen.has(k))throw Error('Duplicate class/subject: '+cls+' / '+subject);
+  seen.add(k);demands.push({class:cls,subject,periods});
+ }
+ const usedNames=new Set(),teachers=[],allSubs=demandChoices('subject'),allClasses=demandChoices('class');
+ for(const t of editor.teachers){
+  const name=String(t.name||'').trim(),maxdaily=Number(t.maxdaily);
+  if(!name||usedNames.has(name.toLowerCase()))throw Error(name?'Duplicate teacher: '+name:'Teacher name missing.');
+  usedNames.add(name.toLowerCase());
+  if(!Number.isInteger(maxdaily)||maxdaily<1||maxdaily>12)throw Error('Max periods/day must be 1–12 for '+name);
+  const subjects=t.subjects.filter(x=>allSubs.includes(x)),classes=t.classes.filter(x=>allClasses.includes(x));
+  if(!subjects.length||!classes.length)throw Error('Select subjects and classes for '+name);
+  teachers.push({teacher:name,subjects:subjects.join(';'),classes:classes.join(';'),
+    maxdaily,unavailable:String(t.unavailable||'').trim()});
+ }
+ return {teachers,demands};
+}
+
 function runTimetable(){
  clear();
- const teachers=loadDataset('teachers',$('teachersCsv').value).records;
- const demands=parseDemandCsv($('demandsCsv').value);
+ const {teachers,demands}=validatedTimetableInputs();
  if(!demands.length)throw Error('Class requirement rows were not recognized. Use class,subject,periods.');
  const days=Number($('daysSelect').value)===6?['Mon','Tue','Wed','Thu','Fri','Sat']:['Mon','Tue','Wed','Thu','Fri'];
  state.plan=E.schedule({teachers,demands,days,periods:Number($('periodsSelect').value)});
