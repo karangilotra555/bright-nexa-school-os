@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
-const cloudUrl='https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-teacher-app';
+const portalUrl='https://bright-nexa-school-os.onrender.com/teacher-access.html';
 
 test('teacher portal has cloud login, admin rights and school-class controls',()=>{
  const html=read('teacher-access.html'),js=read('teacher-access.js');
@@ -29,18 +29,22 @@ test('GitHub Pages mirrors teacher login site',()=>{
 test('School OS navigation opens actual cloud teacher portal',()=>{
  for(const file of ['parents-download-menu.js','docs/parents-download-menu.js']){
   const s=read(file);
-  assert.ok(s.includes(cloudUrl));
+  assert.ok(s.includes(portalUrl));
   assert.match(s,/bn-teacher-access-nav/);
   assert.match(s,/bn-teacher-access-top/);
   assert.doesNotThrow(()=>new Function(s));
  }
 });
-test('public Edge portal contains no privileged server secrets or DB writes',()=>{
+test('Supabase Edge only redirects and Render is the actual HTML host',()=>{
  const edge=read('supabase/functions/school-teacher-app/index.ts');
- assert.match(edge,/Public assets only/);
- assert.match(edge,/school-teacher-app/);
- assert.match(edge,/text\/html/);
- assert.doesNotMatch(edge,/SUPABASE_SERVICE_ROLE_KEY/);
+ assert.match(edge,/302/);
+ assert.ok(edge.includes(portalUrl));
+ assert.doesNotMatch(edge,/SUPABASE_SERVICE_ROLE_KEY|<!doctype html>/i);
+ for(const name of ['teacher-access.html','docs/teacher-access.html']){
+   const html=read(name);
+   assert.match(html,/style-src 'self' 'unsafe-inline'/);
+   assert.match(html,/teacher-access\.js/);
+ }
 });
 test('staff invitation function verifies actual Auth identity and admin membership',()=>{
  const fn=read('supabase/functions/school-invite-staff/index.ts');
