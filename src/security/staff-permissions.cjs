@@ -121,7 +121,7 @@ function filterAuthorizedRecords(actor, action, rows, resolveScope) {
   // NEVER build record scope from user-supplied filters.
   return rows.filter(row => {
     const scope = resolveScope(row);
-    return scope && authorizeStaff(actor, { action, ...scope }).allowed;
+    return scope && authorizeStaff(actor, { ...scope, action }).allowed;
   });
 }
 
