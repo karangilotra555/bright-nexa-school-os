@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#061a36"><meta name="description" content="Bright Nexa Parents — school updates, attendance, fees and homework in one place.">
+<link rel="manifest" href="/parents.webmanifest"><title>Bright Nexa Parents</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#102640;background:#f3f7fb;font-synthesis:none}*{box-sizing:border-box}
+body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #138ed8;outline-offset:2px}
+.phone{margin:auto;max-width:520px;min-height:100dvh;background:#f3f7fb;box-shadow:0 12px 40px #061a361a;position:relative;padding-bottom:96px}
+.top{background:radial-gradient(circle at 100% 0%,#138ed841,transparent 55%),linear-gradient(135deg,#061a36,#0b315e);padding:25px 21px 27px;border-radius:0 0 30px 30px;color:#fff}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.logo{background:#ffffff2c;border:1px solid #ffffff48;width:47px;height:47px;border-radius:16px;display:grid;place-items:center;font-size:25px}
+.brandName{font-weight:800;font-size:17px;letter-spacing:-.4px}.eyebrow{font-size:12px;opacity:.85}
+.welcome{margin-top:25px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.welcome h1{font-size:24px;line-height:1.2;margin:6px 0}.welcome p{font-size:13px;margin:0;opacity:.9}
+.avatar{width:62px;height:62px;border-radius:23px;background:#fff2;display:grid;place-items:center;border:2px solid #ffffff65;font-size:27px;font-weight:800}
+main{padding:22px 17px}
+h2{font-size:18px;letter-spacing:-.3px;margin:7px 0 13px}
+.section{margin-bottom:27px}.sub{font-size:12px;color:#64758a}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.metric{border-radius:19px;background:white;padding:16px;min-height:132px;box-shadow:0 3px 15px #07305610;border:1px solid #dce6ef}
+.icon{width:39px;height:39px;border-radius:13px;background:#e7f3ff;display:grid;place-items:center;font-size:20px;margin-bottom:10px}
+.metric:nth-child(2) .icon{background:#fff2df}.metric:nth-child(3) .icon{background:#e9f0ff}.metric:nth-child(4) .icon{background:#f7e9f8}
+.metric b{display:block;font-size:26px;letter-spacing:-1px;margin-bottom:3px}.metric small{font-size:12px;color:#64758a}
+.panel{background:#fff;border:1px solid #dce6ef;box-shadow:0 4px 17px #0730560c;border-radius:21px;padding:16px;margin:11px 0}
+.panelHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.panelHead h2{margin:0}.pill{background:#e7f3ff;color:#0b6bac;border-radius:40px;padding:6px 10px;font-size:11px;font-weight:700}
+.feedItem{padding:13px 0;border-top:1px solid #edf2f8}.feedItem:first-child{border:0}.feedItem h3{font-size:14px;margin:0 0 4px}.feedItem p{font-size:13px;color:#34455e;margin:0;line-height:1.5}.feedItem time{font-size:11px;color:#64758a}
+.empty{font-size:13px;color:#64758a;line-height:1.6;padding:14px 5px}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);background:#fffffff5;backdrop-filter:blur(14px);border-top:1px solid #dce6ef;display:flex;padding:12px 6px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -5px 25px #07305614;z-index:5}
+.nav button{width:25%;background:none;border:0;color:#64758a;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px}
+.nav button span{font-size:23px}.nav button.active{color:#138ed8;font-weight:800;border-top:2px solid #ff7818}
+.primary{background:#138ed8;border:0;color:white;font-weight:800;padding:14px 16px;border-radius:13px}
+.secondary{background:#eaf4ff;border:1px solid #c5e0f4;color:#0b315e;font-weight:700;padding:11px 15px;border-radius:13px}
+.wide{width:100%}.field{display:block;font-size:12px;font-weight:700;color:#34455e;margin:12px 0 6px}
+input,textarea{width:100%;background:#fff;border:1px solid #dce6ef;border-radius:13px;padding:13px 14px;color:#102640}
+textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;min-height:17px;margin:10px 0}.success{color:#138ed8;font-size:12px;min-height:17px;margin:10px 0}
+.gate{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:32px 22px;gap:15px}
+.gate h1{font-size:29px;margin:0}.gate p{color:#64758a;line-height:1.5;margin:0;font-size:14px}.gate .logo{background:#e7f3ff;font-size:31px;width:64px;height:64px}
+.profileRow{display:flex;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid #edf1f7;font-size:14px}
+.profileRow span{color:#64758a}.profileRow b{text-align:right;max-width:65%;overflow-wrap:anywhere}
+.status{font-size:12px;color:#0b315e;background:#e7f3ff;padding:5px 9px;border-radius:12px}
+.hidden{display:none!important}#loading{position:absolute;inset:0;background:#f3f7fb;display:grid;place-items:center;z-index:8;color:#138ed8;font-weight:800}
+.notice{font-size:12px;color:#64758a;line-height:1.5}
+@media(min-width:700px){.phone{margin-top:14px;margin-bottom:14px;min-height:calc(100dvh - 28px);border-radius:25px;overflow:hidden}.nav{border-radius:0 0 25px 25px}}
+</style></head>
+<body>
+<div class="phone">
+<div id="loading">Loading Bright Nexa…</div>
+<section id="gate" class="gate hidden" aria-label="Parent login">
+  <div class="logo" aria-hidden="true">🎓</div>
+  <h1>School updates,<br>closer to you.</h1>
+  <p>Welcome to <strong>Bright Nexa Parents</strong>. Log in to see your child's published school information.</p>
+  <form id="loginForm">
+    <label class="field" for="adm">Student admission number</label><input id="adm" name="adm" autocomplete="username" required placeholder="Enter admission number">
+    <label class="field" for="dob">Student date of birth</label><input id="dob" name="dob" type="date" autocomplete="bday" required>
+    <div id="loginError" class="error" role="alert"></div>
+    <button class="primary wide" type="submit">Continue securely →</button>
+  </form>
+  <p class="notice">Pilot version: admission number + date of birth login is for internal testing only. School deployment requires verified guardian authentication.</p>
+</section>
+<div id="app" class="hidden">
+ <header class="top">
+  <div class="brand"><div style="display:flex;gap:11px;align-items:center"><div class="logo" aria-hidden="true">🎓</div><div><div class="brandName">Bright Nexa <span style="font-weight:500">Parents</span></div><div class="eyebrow" id="schoolShort">School portal</div></div></div><div aria-label="School portal" style="font-size:23px">✦</div></div>
+  <div class="welcome"><div><p>Your child's school, in your pocket</p><h1>Hi, welcome! 👋</h1><p id="childSummary">Student overview</p></div><div id="avatar" class="avatar">BN</div></div>
+ </header>
+ <main>
+  <div data-view="home">
+   <section class="section"><h2>Overview</h2>
+    <div class="grid">
+      <div class="metric"><div class="icon">📅</div><b id="attendancePercent">—</b><small>Attendance</small></div>
+      <div class="metric"><div class="icon">₹</div><b id="feeDue">—</b><small>Fee dues</small></div>
+      <div class="metric"><div class="icon">📚</div><b id="homeworkCount">0</b><small>Homework posts</small></div>
+      <div class="metric"><div class="icon">📣</div><b id="noticeCount">0</b><small>School notices</small></div>
+    </div>
+   </section>
+   <section class="section panel"><div class="panelHead"><h2>Latest notices</h2><span class="pill">School updates</span></div><div id="homeNotices"></div></section>
+   <section class="section panel"><div class="panelHead"><h2>Homework</h2><span class="pill">Class updates</span></div><div id="homeHomework"></div></section>
+  </div>
+  <div data-view="activity" class="hidden">
+    <h2>Attendance & activities</h2><div class="panel"><div class="panelHead"><h2>Recorded attendance</h2><span id="attendanceCount" class="pill"></span></div><div id="attendanceList"></div></div>
+    <div class="panel"><div class="panelHead"><h2>Leave requests</h2><span class="pill">Parent → school</span></div><div id="leaveList"></div></div>
+    <div class="panel"><h2>Apply for leave</h2><form id="leaveForm"><label class="field" for="leaveFrom">From</label><input required type="date" id="leaveFrom"><label class="field" for="leaveTo">To</label><input required type="date" id="leaveTo"><label class="field" for="leaveReason">Reason</label><textarea id="leaveReason" minlength="5" maxlength="500" required placeholder="Reason for leave"></textarea><div id="leaveResult" class="success" role="status"></div><button class="primary wide" type="submit">Send leave request</button></form></div>
+  </div>
+  <div data-view="messages" class="hidden">
+    <h2>School messages</h2><p class="sub">Notices published by your school</p><div id="allNotices" class="panel"></div>
+  </div>
+  <div data-view="profile" class="hidden">
+    <h2>Student profile</h2><div class="panel">
+      <div class="profileRow"><span>Name</span><b id="studentName"></b></div>
+      <div class="profileRow"><span>Admission no.</span><b id="studentAdm"></b></div>
+      <div class="profileRow"><span>Class / Section</span><b id="studentClass"></b></div>
+      <div class="profileRow"><span>Roll number</span><b id="studentRoll"></b></div>
+      <div class="profileRow"><span>Guardian</span><b id="studentGuardian"></b></div>
+      <div class="profileRow"><span>Bus stop</span><b id="studentBus"></b></div>
+      <div class="profileRow"><span>School session</span><b id="schoolSession"></b></div>
+    </div>
+    <div class="panel"><p class="notice">Only school-published records are displayed. If details are incorrect, contact your school's administration.</p><button class="secondary wide" id="refresh" type="button">↻ Refresh from school</button></div>
+    <button class="secondary wide" id="logout" type="button">Log out</button>
+  </div>
+ </main>
+ <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages"><span>✉</span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
+</div>
+</div>
+<script>
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const find=s=>document.querySelector(s);
+const TOKEN_KEY='bn_parents_session';
+let token=sessionStorage.getItem(TOKEN_KEY), data=null;
+function setText(id,value){$(id).textContent=value==null||value===''?'—':String(value)}
+function show(id){$('loading').classList.add('hidden');$('gate').classList.toggle('hidden',id!=='gate');$('app').classList.toggle('hidden',id!=='app')}
+function money(n){return n==null?'—':'₹'+Number(n).toLocaleString('en-IN')}
+function day(x){if(!x)return '';const d=new Date(x);return Number.isNaN(d.getTime())?String(x):d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
+function item(root,title,body,meta){const e=document.createElement('div');e.className='feedItem';const h=document.createElement('h3');h.textContent=title;e.append(h);if(body){const p=document.createElement('p');p.textContent=body;e.append(p)}if(meta){const t=document.createElement('time');t.textContent=meta;e.append(t)}root.append(e)}
+function items(target,rows,empty,make){const root=$(target);root.replaceChildren();if(!rows.length){const p=document.createElement('p');p.className='empty';p.textContent=empty;root.append(p);return}rows.forEach(r=>make(root,r))}
+function authHeader(){return {Authorization:'Bearer '+token}}
+async function json(res){const p=await res.json().catch(()=>({}));if(!res.ok)throw Error(p.error||'Request failed');return p}
+function setTab(tab){document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('hidden',el.dataset.view!==tab));document.querySelectorAll('[data-tab]').forEach(el=>{el.classList.toggle('active',el.dataset.tab===tab);el.setAttribute('aria-current',el.dataset.tab===tab?'page':'false')});window.scrollTo(0,0)}
+function render(p){
+ data=p;const s=p.student||{},a=p.attendance||{},f=p.fees||{};
+ setText('schoolShort',p.school?.name||'School portal');setText('childSummary',[s.name,s.className,s.section].filter(Boolean).join(' · '));
+ setText('avatar',(s.name||'BN').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase());
+ setText('attendancePercent',a.percent===null||a.percent===undefined?'—':a.percent+'%');
+ setText('attendanceCount',(a.recordedDays||0)+' days recorded');
+ setText('feeDue',money(f.dueRupees));
+ setText('homeworkCount',(p.homework||[]).length);setText('noticeCount',(p.notices||[]).length);
+ const notices=p.notices||[],homework=p.homework||[];
+ const drawNotice=(root,n)=>item(root,n.title,n.body,day(n.published_at));
+ items('homeNotices',notices.slice(0,3),'No notices published yet.',drawNotice);
+ items('allNotices',notices,'No school messages published yet.',drawNotice);
+ items('homeHomework',homework.slice(0,5),'No homework published for this class yet.',(root,h)=>item(root,h.subject,h.title,h.due_date?'Due '+day(h.due_date):''));
+ items('attendanceList',a.recent||[],'Attendance is not yet published by the school.',(root,r)=>item(root,day(r.day),r.status,''));
+ items('leaveList',p.leaves||[],'No leave requests yet.',(root,r)=>item(root,day(r.from_day)+' – '+day(r.to_day),r.reason,r.status));
+ setText('studentName',s.name);setText('studentAdm',s.admissionNumber);setText('studentClass',[s.className,s.section].filter(Boolean).join(' - '));setText('studentRoll',s.rollNumber);setText('studentGuardian',s.fatherName);setText('studentBus',s.busStop);setText('schoolSession',p.school?.session);
+}
+async function refresh(){if(!token){show('gate');return}try{const p=await json(await fetch('/api/parent/dashboard',{headers:authHeader(),cache:'no-store'}));render(p);show('app')}catch(e){if(/401|log in/i.test(e.message)){logout();return}show('app');alert('Unable to load school data: '+e.message)}}
+function logout(){token=null;data=null;sessionStorage.removeItem(TOKEN_KEY);show('gate')}
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;$('loginError').textContent='';try{const res=await json(await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admissionNumber:$('adm').value.trim(),dob:$('dob').value})}));token=res.token;sessionStorage.setItem(TOKEN_KEY,token);await refresh()}catch(err){$('loginError').textContent=err.message}finally{button.disabled=false}});
+$('leaveForm').addEventListener('submit',async e=>{e.preventDefault();$('leaveResult').textContent='';const button=e.target.querySelector('button');button.disabled=true;try{await json(await fetch('/api/parent/leave',{method:'POST',headers:{...authHeader(),'Content-Type':'application/json'},body:JSON.stringify({fromDay:$('leaveFrom').value,toDay:$('leaveTo').value,reason:$('leaveReason').value.trim()})}));$('leaveResult').textContent='Request submitted to school.';e.target.reset();await refresh();setTab('activity')}catch(err){$('leaveResult').textContent='Unable to submit: '+err.message}finally{button.disabled=false}});
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+$('logout').addEventListener('click',logout);$('refresh').addEventListener('click',refresh);
+refresh();
+})();
+</script>
+</body></html>

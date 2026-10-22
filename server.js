@@ -348,6 +348,11 @@ function verifyAdminAuth(req) {
 // ==========================================
 // HTTP SERVER & ROUTING ENGINE
 // ==========================================
+// Parent portal uses the existing signed student session and admin sync key.
+const handleParentApi = require('./parent-portal.cjs')({
+  db, getInstitution, verifySessionToken, verifyAdminAuth, parseJsonBody, sendJson, logAudit
+});
+
 const server = http.createServer(async (req, res) => {
   // CORS Preflight
   if (req.method === 'OPTIONS') {
@@ -364,6 +369,11 @@ const server = http.createServer(async (req, res) => {
   const clientIp = getClientIp(req);
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
+
+  // Parent portal: scoped student reads, leave requests, admin publishing.
+  if (pathname.startsWith('/api/parent/')) {
+    return await handleParentApi(req, res, pathname, clientIp);
+  }
 
   // -------------------------------------------------------------
   // 1. Health & Security Status

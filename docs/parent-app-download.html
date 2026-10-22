@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#061a36">
+<title>Bright Nexa Parents App — Download & Share</title>
+<style>
+:root{font-family:"Segoe UI",system-ui,sans-serif;color:#102640;background:#f3f7fb}*{box-sizing:border-box}
+body{margin:0;min-height:100vh}main{max-width:720px;margin:auto;padding:20px}
+header{background:linear-gradient(115deg,#061a36,#0b315e);color:#fff;padding:23px 20px 28px}
+.brand{max-width:720px;margin:auto;font-size:21px;font-weight:800}
+.brand span{font-weight:400;color:#ade7ff}.eyebrow{color:#bed9e9;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+h1{margin:6px 0 10px;font-size:30px;letter-spacing:-.03em}h2{font-size:18px;margin:0 0 10px}
+p{line-height:1.55;color:#475b75}.hero p{color:#d7e9f6}
+.card{border:1px solid #dce6ef;background:white;border-radius:18px;box-shadow:0 8px 30px #061a360a;padding:22px;margin-bottom:16px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.button{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-radius:11px;border:0;padding:13px 17px;font-size:15px;font-weight:750;cursor:pointer}
+.primary{background:#138ed8;color:white}.secondary{background:#e9f4ff;color:#0b315e;border:1px solid #c3e0f5}.button:hover{filter:brightness(.96)}
+.demo{background:#fff6eb;border-left:4px solid #ff7818;border-radius:9px;padding:13px 15px;color:#744b16;font-size:13px}
+.badge{display:inline-block;color:#145d91;background:#e8f5ff;font-size:11px;border-radius:30px;padding:5px 10px;font-weight:800}
+.features{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+.feature{border:1px solid #e7eef4;background:#f9fbfe;border-radius:10px;padding:13px;font-size:13px;color:#30435b}
+footer{font-size:12px;color:#6c7c90;padding:14px 3px}
+a{color:#116fae}#message{min-height:24px;font-size:13px;color:#235d87}
+@media(max-width:480px){h1{font-size:25px}.button{width:100%}.features{grid-template-columns:1fr}.card{padding:17px}}
+</style></head>
+<body>
+<header><div class="brand">Bright Nexa <span>Parents</span></div></header>
+<main>
+  <div class="card hero">
+    <span class="badge">ANDROID · TEST VERSION</span>
+    <p class="eyebrow">School–Parent Connection</p>
+    <h1>Bright Nexa Parents App</h1>
+    <p>Attendance, homework, notices and school information — ek hi app mein. School system ke saath sync ka demo yahan test kar sakte hain.</p>
+    <div class="demo"><strong>Demo build only.</strong> App mein sample data hai. School desktop se automatic live sync aur parent verification abhi complete nahi hain. Real student records ke liye use na karein.</div>
+    <div class="actions">
+      <a class="button primary" id="apk" href="https://github.com/karangilotra555/bright-nexa-school-os/releases/download/parents-demo-v0.3.0/Bright-Nexa-Parents-Demo-v0.3.0.apk" target="_blank" rel="noopener noreferrer">⬇ Download Demo APK</a>
+      <button class="button secondary" type="button" id="share">↗ Share download link</button>
+      <button class="button secondary" type="button" id="copy">⧉ Copy link</button>
+    </div>
+    <p id="message" role="status" aria-live="polite"></p>
+  </div>
+  <div class="card">
+    <h2>Parents ko kya dikhega?</h2>
+    <div class="features"><div class="feature">📅 Attendance</div><div class="feature">₹ Fee dues</div><div class="feature">📚 Homework</div><div class="feature">📣 School notices</div><div class="feature">👤 Student profile</div><div class="feature">✉ Leave requests (school connection required)</div></div>
+    <h2>School software se kaise judega?</h2>
+    <p>School admin student, attendance, fees aur homework records publish karega → secure school server par sync honge → verified parent ko apne bachche ka data dikhega. Parent ki leave request school admin inbox mein jayegi. Yeh full automatic workflow abhi development mein hai.</p>
+    <p><strong>School admins:</strong> APK link parents ko tabhi distribute karein jab verified login aur school setup complete ho jaye. Abhi sirf internal demo use karein.</p>
+  </div>
+  <footer>Bright Nexa School OS · Prototype distribution · <a href="./index.html">Back to School OS</a></footer>
+</main>
+<script>
+(function(){
+'use strict';
+const url=document.querySelector('#apk').href,msg=document.querySelector('#message');
+document.querySelector('#copy').addEventListener('click',async()=>{
+try{await navigator.clipboard.writeText(url);msg.textContent='Download link copied.';}
+catch(e){msg.textContent='Copy the download address from the Download button.';}
+});
+document.querySelector('#share').addEventListener('click',async()=>{
+try{
+ if(navigator.share){await navigator.share({title:'Bright Nexa Parents demo',text:'Bright Nexa Parents Android demo (testing only):',url});msg.textContent='Share dialog opened.';return;}
+ await navigator.clipboard.writeText(url);msg.textContent='Share not available; download link copied.';
+}catch(e){if(e.name!=='AbortError')msg.textContent='Share unavailable. Use Copy link instead.';}
+});
+})();
+</script>
+</body></html>

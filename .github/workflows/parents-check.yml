@@ -1,0 +1,26 @@
+name: Parents portal checks
+on:
+  pull_request:
+    paths:
+      - 'parent-portal.cjs'
+      - 'parents.html'
+      - 'parents.webmanifest'
+      - 'server.js'
+      - 'tests/parent-portal.test.cjs'
+      - '.github/workflows/parents-check.yml'
+  workflow_dispatch:
+jobs:
+  parent-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse JavaScript
+        run: |
+          node --check server.js
+          node --check parent-portal.cjs
+          node --check tests/parent-portal.test.cjs
+      - name: Run Parent API tests
+        run: node --test tests/parent-portal.test.cjs

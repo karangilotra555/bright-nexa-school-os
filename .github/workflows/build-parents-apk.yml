@@ -1,0 +1,54 @@
+name: Build Parents Android APK
+on:
+  pull_request:
+    paths:
+      - 'android-parents/**'
+      - '.github/workflows/build-parents-apk.yml'
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Prepare Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" || true
+          if [ ! -d "$ANDROID_HOME/platforms/android-35" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35'
+          fi
+          if [ ! -d "$ANDROID_HOME/build-tools/35.0.0" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.0'
+          fi
+      - name: Build demo APK
+        working-directory: android-parents
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Upload installable demo APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bright-Nexa-Parents-demo-APK
+          path: android-parents/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Publish shareable GitHub pre-release APK
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/parents-pwa-phase1-20261022' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag='parents-demo-v0.3.0'
+          file='android-parents/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$file"
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" "$file#Bright-Nexa-Parents-Demo-v0.3.0.apk" --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$tag" "$file#Bright-Nexa-Parents-Demo-v0.3.0.apk" --repo "${{ github.repository }}" --target "${{ github.event.pull_request.head.sha }}" --prerelease --title 'Bright Nexa Parents Demo v0.3' --notes 'Demo/testing only. Fictional student data. No automatic live school sync or verified parent authentication yet. Not for production parents.'
+          fi
