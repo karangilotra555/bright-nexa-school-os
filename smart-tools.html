@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#061a36">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Smart School Tools — Bright Nexa</title>
+<style>
+:root{font-family:Inter,system-ui,"Segoe UI",Arial,sans-serif;background:#f3f7fb;color:#102640}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}
+header{background:radial-gradient(circle at 95% 15%,#1568a266,transparent 45%),linear-gradient(110deg,#061a36,#0b315e);color:white;padding:22px 0}
+.head{max-width:1200px;margin:auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.brand{font-size:22px;font-weight:850;letter-spacing:-.5px}.brand small{display:block;color:#c1d9ed;font-size:12px;font-weight:500;margin-top:3px}
+.head a{color:white;border:1px solid #5896bc;padding:9px 15px;border-radius:10px;text-decoration:none;font-size:13px}
+main{max-width:1200px;margin:auto;padding:23px 18px 70px}
+h1{font-size:25px;letter-spacing:-.03em;margin:0 0 9px}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:0 0 7px}p{color:#576a84;line-height:1.55}
+.intro{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:15px}
+.pill{display:inline-block;background:#e5f3fe;border:1px solid #c3e2f8;color:#0d608d;padding:6px 11px;border-radius:25px;font-size:11px;font-weight:800}
+.banner{background:#fff8ed;border:1px solid #ffe1a5;border-left:4px solid #ff7818;border-radius:12px;padding:13px 16px;margin-bottom:15px;color:#754912;font-size:13px;line-height:1.55}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}
+.tabs button{font:inherit;border:1px solid #dce6ef;background:white;padding:11px 14px;border-radius:11px;color:#405770;font-weight:750;font-size:13px;cursor:pointer}
+.tabs button.active{background:#0b315e;color:white;border-color:#0b315e}
+.card{border:1px solid #dce6ef;background:white;border-radius:17px;padding:22px;margin-bottom:16px;box-shadow:0 6px 22px #061a3609}
+label{display:block;color:#3a4f68;font-size:12px;font-weight:750;margin-bottom:6px}
+textarea,select,input{font:inherit;width:100%;background:white;border:1px solid #cbdde9;color:#102640;padding:10px 11px;border-radius:9px;min-height:42px}
+textarea{resize:vertical;line-height:1.45;font-size:12px;min-height:145px}
+input[type=file]{font-size:12px}
+button,.btn{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 16px;font-weight:760}
+.primary{background:#138ed8;color:white}.secondary{background:#e7f2fc;color:#0b315e;border:1px solid #c3ddec}.light{background:#f5f7fb;color:#26496e;border:1px solid #dce6ef}.danger{background:#fff2f2;color:#ad3140;border:1px solid #f7d2d7}
+button:disabled{cursor:not-allowed;opacity:.5}:focus-visible{outline:3px solid #ff7818;outline-offset:2px}
+.actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.small{font-size:12px;color:#66788c}.sub{margin-top:0;font-size:13px}
+.notice{background:#e8f4ff;border-radius:9px;color:#174977;padding:12px;font-size:13px;line-height:1.4}
+.status{background:#e9f5ff;color:#0c4e81;border-radius:10px;padding:12px 13px;margin-bottom:16px;font-size:13px;white-space:pre-line}
+.status.bad{background:#fff0f0;color:#9b2433}
+.hidden{display:none!important}
+.tablewrap{overflow:auto;max-height:490px;border:1px solid #e7edf4;border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12px;min-width:580px}td,th{padding:9px 11px;border-bottom:1px solid #e9edf4;text-align:left;vertical-align:top;white-space:pre-wrap}th{background:#f3f7fb;color:#40566b;position:sticky;top:0;z-index:1}
+.tag{font-size:11px;display:inline-block;padding:4px 8px;border-radius:30px;background:#e7f4fe;color:#156592;font-weight:750}.tag.error{background:#fff0f0;color:#a62635}.tag.warn{background:#fff4e5;color:#9e6211}
+.metric{background:#f7faff;border:1px solid #e0ebf6;border-radius:12px;padding:16px}.metric strong{font-size:26px;display:block;margin-top:5px;color:#0b315e}.metric span{font-size:12px;color:#708196}
+.hint{border-left:3px solid #138ed8;padding:8px 11px;color:#436079;background:#f4f9fe;border-radius:6px;font-size:12px}
+footer{font-size:12px;color:#8090a2;text-align:center;margin-top:25px}
+@media(max-width:680px){.two,.three{grid-template-columns:1fr}.card{padding:16px}h1{font-size:22px}.head{padding:0 14px}.tabs button{font-size:12px;padding:10px}.intro{display:block}}
+@media print{header,.tabs,.actions,.banner,.hint,footer,input,textarea,select{display:none!important}main{padding:0}.card{box-shadow:none;border:none}.tablewrap{max-height:none;overflow:visible}table{font-size:9pt}}
+</style>
+<script src="./smart-tools-engine.js" defer></script>
+<script src="./smart-tools-ui.js" defer></script>
+</head><body>
+<header><div class="head"><div class="brand">Bright Nexa <span style="color:#ff9b49">✦</span> Smart Tools<small>School Intelligence · No paid AI API</small></div><a href="./index.html">← School OS</a></div></header>
+<main>
+<div class="intro"><div><h1>5 Practical Smart School Tools</h1><p class="sub">Timetable, substitute teachers, student performance, Excel import and error detection — deterministic algorithms, no LLM calls.</p></div><span class="pill">100% API-FREE ENGINE</span></div>
+<div class="banner"><b>Private analysis workspace:</b> Files are processed inside your browser, not uploaded to Bright Nexa or any AI provider. Nothing is automatically saved or synced to the school's database. Use a trusted device; review every result before official decisions. This is a pilot toolkit, not a replacement for school-approved records.</div>
+<div id="status" class="status hidden" role="status" aria-live="polite"></div>
+<nav class="tabs" aria-label="Smart features">
+<button type="button" class="active" data-tab="timetable">📅 Timetable</button>
+<button type="button" data-tab="substitute">👩‍🏫 Substitute</button>
+<button type="button" data-tab="performance">📈 Performance</button>
+<button type="button" data-tab="import">📂 Excel Import</button>
+<button type="button" data-tab="errors">🛡️ Error Detector</button>
+</nav>
+<section class="card" data-view="timetable">
+<h2>Smart Timetable Generator</h2><p class="sub">Teacher assignments aur class-wise weekly requirements se clash-free timetable generate karo. Browser ke andar free scheduler chalega. Unfillable periods aur shortages separately dikhenge.</p>
+<div class="two">
+<div><label for="teachersCsv">Teachers CSV — teacher, subjects (; separated), classes (; separated), maxdaily, unavailable (Mon-1; Tue-2)</label><textarea id="teachersCsv" spellcheck="false"></textarea></div>
+<div><label for="demandsCsv">Class Subject Requirements CSV — class, subject, periods (per week)</label><textarea id="demandsCsv" spellcheck="false"></textarea></div>
+</div>
+<div class="three" style="margin-top:13px">
+<div><label for="daysSelect">Working days</label><select id="daysSelect"><option value="5">5 days · Mon–Fri</option><option value="6">6 days · Mon–Sat</option></select></div>
+<div><label for="periodsSelect">Periods / day</label><select id="periodsSelect"><option value="4">4 periods</option><option value="5">5 periods</option><option selected value="6">6 periods</option><option value="7">7 periods</option><option value="8">8 periods</option></select></div>
+<div><label for="timetableFilter">Display class</label><select id="timetableFilter"><option value="all">All classes</option></select></div>
+</div>
+<div class="actions"><button id="generateTimetable" class="primary" type="button">Generate Timetable</button><button id="sampleTimetable" class="secondary" type="button">Load Sample</button><button id="exportTimetable" class="light" type="button" disabled>Export CSV</button><button id="printTimetable" class="light" type="button" disabled>Print</button></div>
+<div id="scheduleSummary" class="small"></div><div id="scheduleTable" class="tablewrap hidden"></div>
+</section>
+<section class="card hidden" data-view="substitute">
+<h2>Smart Substitute Teacher</h2><p class="sub">Generated timetable se free, subject-qualified teachers suggest honge. Existing assignment, leave aur same-period clashes ko avoid karega.</p>
+<div class="three">
+<div><label for="absentTeacher">Absent teacher</label><select id="absentTeacher"></select></div>
+<div><label for="absenceDay">Day</label><select id="absenceDay"></select></div>
+<div><label for="absencePeriod">Specific period</label><select id="absencePeriod"><option value="all">All affected periods</option></select></div>
+</div>
+<div class="actions"><button id="findSubstitutes" class="primary" type="button">Find Substitutes</button><button id="exportSubstitute" class="light" type="button" disabled>Export Suggestions</button></div>
+<div class="hint">Substitute is a suggestion, not automatic allocation. Principal / timetable in-charge approval required.</div>
+<div id="substituteTable" class="tablewrap hidden" style="margin-top:13px"></div>
+</section>
+<section class="card hidden" data-view="performance">
+<h2>Student Performance Analyzer</h2><p class="sub">Marks CSV or XLSX import karne par subject-wise percentages, improvement aur below-threshold subjects niklenge. Ye student ki ability ka prediction ya diagnosis nahi karta.</p>
+<div class="two">
+<div><label for="threshold">Review threshold</label><select id="threshold"><option value="35">Below 35%</option><option value="40" selected>Below 40%</option><option value="50">Below 50%</option><option value="60">Below 60%</option></select></div>
+<div><label>Required columns in Marks file</label><div class="hint">student_id, student_name, subject, marks, max_marks; optional previous_marks, attendance_percent</div></div>
+</div>
+<div class="actions"><button id="analyzeMarks" class="primary" type="button">Analyze Imported Marks</button><button id="sampleMarks" class="secondary" type="button">Load Demo Marks</button><button id="exportAnalysis" class="light" type="button" disabled>Export Analysis</button></div>
+<div id="performanceMetrics" class="three" style="margin-bottom:14px"></div><div id="performanceTable" class="tablewrap hidden"></div>
+</section>
+<section class="card hidden" data-view="import">
+<h2>Smart Excel / CSV Import</h2>
+<p class="sub">School ke old records ki CSV ya XLSX file choose karo. Common column names automatically map honge, data preview hoga aur errors check honge. Browser mein processing hogi; cloud database ko direct write nahi karenge.</p>
+<div class="two">
+<div><label for="datasetType">Data type</label><select id="datasetType"><option value="students">Students / Admissions</option><option value="teachers">Teachers</option><option value="fees">Fee Ledger</option><option value="attendance">Attendance</option><option value="marks">Exam Marks</option></select></div>
+<div><label for="importFile">CSV / XLSX file · max 4MB</label><input type="file" id="importFile" accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>
+</div>
+<div class="actions"><button id="importSample" class="secondary" type="button">Load Sample CSV</button><button id="downloadTemplate" class="light" type="button">Download Template</button><button id="exportClean" class="light" type="button" disabled>Export Mapped CSV</button><button id="clearImports" class="danger" type="button">Clear Browser Data</button></div>
+<div id="importStats" class="three"></div>
+<div id="importMapping" class="small" style="margin:12px 0"></div><div id="importPreview" class="tablewrap hidden"></div>
+</section>
+<section class="card hidden" data-view="errors">
+<h2>School Error Detector</h2><p class="sub">Imported datasets par rule-based checks: duplicate admissions/receipts, missing data, fee mismatches, marks out of range, attendance duplicates. Automatic deletion ya correction nahi hoti.</p>
+<div class="actions"><button id="runAudit" class="primary" type="button">Run Data Audit</button><button id="sampleErrors" class="secondary" type="button">Load Sample Errors</button><button id="exportFindings" class="light" type="button" disabled>Export Findings</button></div>
+<div id="auditStats" class="three"></div><div id="auditTable" class="tablewrap hidden"></div>
+</section>
+<footer>Bright Nexa School OS · Smart Tools pilot · Algorithms, not generative AI · No paid API required</footer>
+</main></body></html>

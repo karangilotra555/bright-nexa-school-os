@@ -36,6 +36,15 @@
       const label=document.createElement('span');label.textContent='Teachers · Online Access';
       link.append(icon,label);nav.appendChild(link);
     }
+    if(nav && !document.getElementById('bn-smart-tools-nav')){
+      const link=document.createElement('a');
+      link.id='bn-smart-tools-nav';link.className='nav-item';
+      link.href='./smart-tools.html';link.title='No-API timetable, substitutes, analysis, import and audit';
+      link.style.textDecoration='none';link.style.display='flex';link.style.alignItems='center';
+      const icon=document.createElement('span');icon.textContent='🧠';icon.setAttribute('aria-hidden','true');icon.style.fontSize='17px';
+      const label=document.createElement('span');label.textContent='Smart Tools · No API';
+      link.append(icon,label);nav.appendChild(link);
+    }
     const actions=document.querySelector('.topbar-actions');
     if(actions && !document.getElementById(topId)){
       const link=document.createElement('a');
@@ -58,9 +67,22 @@
       actions.insertBefore(teacher,actions.firstChild);
     }
   }
-  const observer=new MutationObserver(mount);
+  // The header may mount before/after React's navigation.
+  function mountSmartTop(){
+    const actions=document.querySelector('.topbar-actions');
+    if(!actions||document.getElementById('bn-smart-tools-top'))return;
+    const link=document.createElement('a');
+    link.id='bn-smart-tools-top';link.className='secondary-button compact';
+    link.href='./smart-tools.html';link.textContent='🧠 Smart Tools';
+    link.title='API-free school management tools';link.style.textDecoration='none';
+    link.style.whiteSpace='nowrap';link.style.display='inline-flex';link.style.alignItems='center';
+    actions.insertBefore(link,actions.firstChild);
+  }
+  const originalMount=mount;
+  function mountCombined(){originalMount();mountSmartTop();}
+  const observer=new MutationObserver(mountCombined);
   function start(){
-    mount();
+    mountCombined();
     observer.observe(document.body,{subtree:true,childList:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
