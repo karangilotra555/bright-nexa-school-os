@@ -83,6 +83,7 @@ tr td select{padding:7px;min-width:115px}
     <button data-tab="attendance" type="button">Attendance</button>
     <button data-tab="homework" type="button">Homework</button>
     <button id="adminTab" data-tab="admin" class="hidden" type="button">Roles & Permissions</button>
+    <button data-tab="account" type="button">🔐 My Account</button>
   </div>
   <div data-view="classes" class="panel"><div class="row"><h2>My accessible classes</h2><button class="ghost" id="reload" type="button">↻ Refresh</button></div><div id="classesList"></div></div>
   <div data-view="attendance" class="panel hidden">
@@ -104,6 +105,19 @@ tr td select{padding:7px;min-width:115px}
       <div class="inputgroup"><label for="homeworkTitle">Task</label><input id="homeworkTitle" required maxlength="150" placeholder="Complete pages 12–14"></div>
       <div class="inputgroup" style="margin:11px 0"><label for="homeworkInstructions">Instructions</label><textarea id="homeworkInstructions" maxlength="2000"></textarea></div>
       <button class="primary" type="submit">Publish homework</button>
+    </form>
+  </div>
+  <div data-view="account" class="panel hidden">
+    <h2>Change Password</h2>
+    <p class="sub">Change your own staff login password. You must confirm your current password. School admin approval is not required.</p>
+    <form id="changePasswordForm" autocomplete="off">
+      <div class="formgrid">
+        <div class="inputgroup"><label for="currentStaffPassword">Current password</label><input type="password" id="currentStaffPassword" name="current-password" autocomplete="current-password" required></div>
+        <div class="inputgroup"><label for="nextStaffPassword">New password (12+ characters)</label><input type="password" id="nextStaffPassword" name="new-password" autocomplete="new-password" minlength="12" maxlength="256" required></div>
+        <div class="inputgroup"><label for="confirmStaffPassword">Confirm new password</label><input type="password" id="confirmStaffPassword" name="confirm-password" autocomplete="new-password" minlength="12" maxlength="256" required></div>
+      </div>
+      <button class="primary" id="changePasswordButton" type="submit">Update my password</button>
+      <p class="muted">For your security, you will be signed out after a successful change. Sign in again with the new password.</p>
     </form>
   </div>
   <div data-view="admin" class="hidden">

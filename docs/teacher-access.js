@@ -215,10 +215,52 @@
     display('activation',false);notify('Password set. You can now sign in.');
     await load();
   })});
-  async function apiAuthUserUpdate(password){
+  async function apiAuthUserUpdate(password,currentPassword,accessToken){
     await ensureToken();
-    return responseJson(await fetch(BASE+'/auth/v1/user',{method:'PUT',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({password})}));
+    return responseJson(await fetch(BASE+'/auth/v1/user',{method:'PUT',headers:{apikey:APIKEY,Authorization:'Bearer '+(accessToken||session.access_token),'Content-Type':'application/json'},body:JSON.stringify(currentPassword?{password,current_password:currentPassword}:{password})}));
   }
+  // Staff self-service password change. Authenticate the CURRENT password
+  // with Supabase Auth, then use that freshly authenticated short-lived session
+  // to perform the update. Roles and class permissions are not changed here.
+  $('changePasswordForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
+    const button=$('changePasswordButton'),form=e.currentTarget;
+    if(button.disabled)return;
+    button.disabled=true;
+    let freshToken=null;
+    try{
+      if(!me || !identity || !session)throw new Error('You must sign in before changing your password.');
+      const current=$('currentStaffPassword').value;
+      const next=$('nextStaffPassword').value;
+      const confirm=$('confirmStaffPassword').value;
+      if(!current || next.length<12 || next.length>256)throw new Error('New password must be 12–256 characters.');
+      if(next!==confirm)throw new Error('New passwords do not match.');
+      if(next===current)throw new Error('Choose a different password.');
+      let verified;
+      try{
+        verified=await authRequest('token?grant_type=password',{email:identity.email,password:current});
+      }catch(_){
+        throw new Error('Current password is incorrect. Please try again.');
+      }
+      freshToken=verified.access_token;
+      if(!freshToken || verified.user?.id!==identity.id){
+        throw new Error('Account verification failed. Sign out and sign in again.');
+      }
+      const result=await apiAuthUserUpdate(next,current,freshToken);
+      if(result.id!==identity.id)throw new Error('Password update confirmation failed. Contact your school admin.');
+      // Revoke fresh and original sessions after a successful change.
+      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
+      freshToken=null;
+      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
+      dropSession();
+      notify('Password changed successfully. Please sign in again with your new password.');
+    }finally{
+      if(freshToken){
+        await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
+      }
+      form.reset();
+      button.disabled=false;
+    }
+  })});
   $('logout').addEventListener('click',()=>{run(async()=>{
     if(session?.access_token)await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
     dropSession();notify('Signed out.');
