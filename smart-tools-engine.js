@@ -193,6 +193,22 @@
       else attendance.add(k);
       if(r.status&&!['present','absent','late','excused','p','a','l'].includes(key(r.status)))push('attendance','warning',r._row,'Unexpected attendance status.');
     }
+    // Attendance coverage check: for the dates present in an imported attendance
+    // sheet, flag enrolled/imported students without a row. Holidays and section
+    // calendars are unknown; label these as review suggestions, never absence.
+    const knownDates=[...new Set(list('attendance').map(r=>norm(r.date)).filter(Boolean))];
+    const uniqueStudents=[...new Map(students.filter(r=>r.id).map(r=>[key(r.id),r])).values()];
+    if(knownDates.length && uniqueStudents.length){
+      let checked=0;
+      for(const date of knownDates){
+        for(const student of uniqueStudents){
+          if(++checked>20000)break;
+          if(!attendance.has(key(student.id)+'|'+date))
+            push('attendance','warning',student._row,'No attendance row for '+student.id+' on '+date+' (check holiday/class calendar).');
+        }
+        if(checked>20000)break;
+      }
+    }
     for(const r of list('marks')){
       const val=number(r.marks),max=number(r.max);
       if(!finite(val)||!finite(max)||max<=0||val<0||val>max)push('marks','error',r._row,'Marks outside 0 to maximum range.');
