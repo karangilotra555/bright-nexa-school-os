@@ -9,7 +9,7 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -38,3 +38,17 @@ jobs:
           name: Bright-Nexa-Parents-demo-APK
           path: android-parents/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      - name: Publish shareable GitHub pre-release APK
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/parents-pwa-phase1-20261022' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag='parents-demo-v0.3.0'
+          file='android-parents/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$file"
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" "$file#Bright-Nexa-Parents-Demo-v0.3.0.apk" --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$tag" "$file#Bright-Nexa-Parents-Demo-v0.3.0.apk" --repo "${{ github.repository }}" --target "${{ github.event.pull_request.head.sha }}" --prerelease --title 'Bright Nexa Parents Demo v0.3' --notes 'Demo/testing only. Fictional student data. No automatic live school sync or verified parent authentication yet. Not for production parents.'
+          fi
