@@ -26,12 +26,13 @@ test('GitHub Pages mirrors teacher login site',()=>{
  assert.equal(read('teacher-access.html'),read('docs/teacher-access.html'));
  assert.equal(read('teacher-access.js'),read('docs/teacher-access.js'));
 });
-test('School OS navigation opens actual cloud teacher portal',()=>{
+test('School OS navigation opens the hosted teacher portal on the same origin',()=>{
  for(const file of ['parents-download-menu.js','docs/parents-download-menu.js']){
   const s=read(file);
-  assert.ok(s.includes(portalUrl));
-  assert.match(s,/bn-teacher-access-nav/);
-  assert.match(s,/bn-teacher-access-top/);
+  assert.ok(s.includes('teacher-access.html'));
+  assert.match(s,/bn-teacher-access/);
+  assert.ok(s.includes('window.location.assign'));
+  assert.ok(s.includes("window.addEventListener('click', directNavigate, true)"));
   assert.doesNotThrow(()=>new Function(s));
  }
 });

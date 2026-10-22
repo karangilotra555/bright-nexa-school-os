@@ -1,90 +1,104 @@
-/* Bright Nexa School OS: non-invasive Parents App navigation.
- * The school UI is precompiled; this mounts alongside React and does not touch
- * student records, admin data or authentication/session state.
+/* Bright Nexa: direct-links to tools outside the React SPA router.
+ * These are independent static HTML pages, not React "screens".
+ * This file is a navigation shim only; it never touches school data.
  */
 (() => {
   'use strict';
-  const target = './parent-app-download.html';
-  const navId = 'bn-parents-app-nav';
-  const topId = 'bn-parents-app-top';
-  function mount(){
-    const nav = document.querySelector('.navigation');
-    if(nav && !document.getElementById(navId)){
-      const link=document.createElement('a');
-      link.id=navId;
-      link.className='nav-item';
-      link.href=target;
-      link.title='Download or share Bright Nexa Parents App';
-      link.style.textDecoration='none';
-      link.style.display='flex';
-      link.style.alignItems='center';
-      const icon=document.createElement('span');
-      icon.textContent='📱';
-      icon.setAttribute('aria-hidden','true');
-      icon.style.fontSize='17px';
-      const label=document.createElement('span');
-      label.textContent='Parents App · Download';
-      link.append(icon,label);
-      nav.appendChild(link);
-    }
-    if(nav && !document.getElementById('bn-teacher-access-nav')){
-      const link=document.createElement('a');
-      link.id='bn-teacher-access-nav'; link.className='nav-item';
-      link.href='https://bright-nexa-school-os.onrender.com/teacher-access.html';link.title='Teacher and staff online access';
-      link.style.textDecoration='none';link.style.display='flex';link.style.alignItems='center';
-      const icon=document.createElement('span');icon.textContent='👩‍🏫';icon.style.fontSize='17px';
-      const label=document.createElement('span');label.textContent='Teachers · Online Access';
-      link.append(icon,label);nav.appendChild(link);
-    }
-    if(nav && !document.getElementById('bn-smart-tools-nav')){
-      const link=document.createElement('a');
-      link.id='bn-smart-tools-nav';link.className='nav-item';
-      link.href='./smart-tools.html';link.title='No-API timetable, substitutes, analysis, import and audit';
-      link.style.textDecoration='none';link.style.display='flex';link.style.alignItems='center';
-      const icon=document.createElement('span');icon.textContent='🧠';icon.setAttribute('aria-hidden','true');icon.style.fontSize='17px';
-      const label=document.createElement('span');label.textContent='Smart Tools · No API';
-      link.append(icon,label);nav.appendChild(link);
-    }
-    const actions=document.querySelector('.topbar-actions');
-    if(actions && !document.getElementById(topId)){
-      const link=document.createElement('a');
-      link.id=topId;
-      link.className='secondary-button compact';
-      link.href=target;
-      link.textContent='📱 Parents App';
-      link.title='Parents App download and share';
-      link.style.textDecoration='none';
-      link.style.whiteSpace='nowrap';
-      link.style.display='inline-flex';
-      link.style.alignItems='center';
-      link.style.justifyContent='center';
-      actions.insertBefore(link,actions.firstChild);
-      const teacher=document.createElement('a');
-      teacher.id='bn-teacher-access-top';teacher.className='secondary-button compact';
-      teacher.href='https://bright-nexa-school-os.onrender.com/teacher-access.html';teacher.textContent='👩‍🏫 Teachers';
-      teacher.title='Teacher & staff online portal';teacher.style.textDecoration='none';
-      teacher.style.whiteSpace='nowrap';teacher.style.display='inline-flex';teacher.style.alignItems='center';
-      actions.insertBefore(teacher,actions.firstChild);
-    }
+
+  const destinations = Object.freeze({
+    parents: {path:'parent-app-download.html', icon:'📱', title:'Parents App · Download', tooltip:'Download or share the parents app'},
+    teachers: {path:'teacher-access.html', icon:'👩‍🏫', title:'Teachers · Online Access', tooltip:'Teacher and staff secure login'},
+    smart: {path:'smart-tools.html', icon:'🧠', title:'Smart Tools · No API', tooltip:'Timetable, substitutes, performance and audits'}
+  });
+
+  // Stable IDs are part of the existing app's navigation contract.
+  const linkIds=Object.freeze({
+    parents:{nav:'bn-parents-app-nav',top:'bn-parents-app-top'},
+    teachers:{nav:'bn-teacher-access-nav',top:'bn-teacher-access-top'},
+    smart:{nav:'bn-smart-tools-nav',top:'bn-smart-tools-top'}
+  });
+  const elementId = (type, place) => linkIds[type]?.[place] || '';
+  // App-internal React navigation can intercept ordinary <a> clicks at the
+  // root capture/bubble phase. Capture at window and perform real page
+  // navigation before the SPA can swallow or prevent the click.
+  function directNavigate(event) {
+    if (event.defaultPrevented || (event.button !== undefined && event.button !== 0) ||
+        event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const target=event.target;
+    if (!target || typeof target.closest !== 'function') return;
+    const anchor=target.closest('a[data-bn-direct-link]');
+    if (!anchor) return;
+    const kind=anchor.dataset.bnDirectLink;
+    const spec=destinations[kind];
+    if (!spec) return;
+    if (anchor.hasAttribute('download') || (anchor.target && anchor.target !== '_self')) return;
+
+    // Ignore spoofed targets injected by other parts of the page.
+    const expected=new URL('./'+spec.path, document.baseURI);
+    const actual=new URL(anchor.href, document.baseURI);
+    if (actual.href !== expected.href || actual.origin !== window.location.origin) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    window.location.assign(expected.href);
   }
-  // The header may mount before/after React's navigation.
-  function mountSmartTop(){
-    const actions=document.querySelector('.topbar-actions');
-    if(!actions||document.getElementById('bn-smart-tools-top'))return;
+  window.addEventListener('click', directNavigate, true);
+
+  function appendLink(parent,kind,place) {
+    const spec=destinations[kind],id=elementId(kind,place);
+    if (!parent || document.getElementById(id)) return;
     const link=document.createElement('a');
-    link.id='bn-smart-tools-top';link.className='secondary-button compact';
-    link.href='./smart-tools.html';link.textContent='🧠 Smart Tools';
-    link.title='API-free school management tools';link.style.textDecoration='none';
-    link.style.whiteSpace='nowrap';link.style.display='inline-flex';link.style.alignItems='center';
-    actions.insertBefore(link,actions.firstChild);
+    link.id=id;
+    link.href='./'+spec.path;
+    link.dataset.bnDirectLink=kind;
+    link.title=spec.tooltip;
+    link.setAttribute('aria-label',spec.title);
+    link.className=place==='nav'?'nav-item':'secondary-button compact';
+    link.style.textDecoration='none';
+    link.style.display='inline-flex';
+    link.style.alignItems='center';
+    link.style.cursor='pointer';
+    link.style.pointerEvents='auto';
+    link.style.position='relative';
+    if(place==='nav'){
+      link.style.width='100%';
+      link.style.gap='12px';
+      link.style.zIndex='1';
+      const emoji=document.createElement('span');
+      emoji.textContent=spec.icon;
+      emoji.style.fontSize='17px';
+      emoji.setAttribute('aria-hidden','true');
+      const label=document.createElement('span');
+      label.textContent=spec.title;
+      link.append(emoji,label);
+      parent.append(link);
+    }else{
+      link.textContent=spec.icon+' '+(kind==='smart'?'Smart Tools':kind==='teachers'?'Teachers':'Parents App');
+      link.style.whiteSpace='nowrap';
+      link.style.justifyContent='center';
+      parent.insertBefore(link,parent.firstChild);
+    }
   }
-  const originalMount=mount;
-  function mountCombined(){originalMount();mountSmartTop();}
-  const observer=new MutationObserver(mountCombined);
+
+  let mounting=false;
+  function mount() {
+    if (mounting) return;
+    mounting=true;
+    try {
+      const nav=document.querySelector('.navigation');
+      const actions=document.querySelector('.topbar-actions');
+      for(const kind of Object.keys(destinations)){
+        appendLink(nav,kind,'nav');
+        appendLink(actions,kind,'top');
+      }
+    }finally{mounting=false;}
+  }
+  const observer=new MutationObserver(mount);
   function start(){
-    mountCombined();
+    mount();
     observer.observe(document.body,{subtree:true,childList:true});
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 })();
