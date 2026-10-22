@@ -28,7 +28,10 @@ test('Workbox SPA fallback excludes all three independent HTML pages',()=>{
  const {route,precached}=routeFromWorker(read('docs/sw.js'));
  assert.ok(route&&precached?.length,'Workbox route and precache must initialize');
  assert.equal(route.handler.url,'index.html');
- assert.ok(precached.some(e=>e.url==='index.html'&&e.revision==='20261022-pwa-three-shortcuts-navigation-fix'));
+ assert.ok(precached.some(e=>e.url==='index.html'&&e.revision==='20261022-workspace-isolation'));
+ for(const file of ['assets/workspace-storage.js','assets/workspace-storage-classic.js','portal.js','school-profile.json']){
+  assert.ok(precached.some(e=>e.url===file&&e.revision),'Missing versioned dependency '+file);
+ }
  const excluded=route.options.denylist;
  for(const p of standalone)assert.ok(excluded.some(x=>x.test('/'+p)),'SPA fallback would intercept '+p);
  for(const p of ['student-portal.html','id-card-a4.html','marksheet-a4.html']){
@@ -40,7 +43,7 @@ test('Workbox SPA fallback excludes all three independent HTML pages',()=>{
 test('Index HTML invalidates old cached shortcuts and includes new script version',()=>{
  for(const p of ['index.html','docs/index.html']){
   const html=read(p);
-  assert.match(html,/CACHE_VERSION = '20261022-sw-standalone-v7'/);
+  assert.match(html,/CACHE_VERSION = '20261022-workspace-v8'/);
   assert.match(html,/parents-download-menu\.js\?v=20261022-pwa-standalone-v7/);
   for(const route of ['parent-app-download','teacher-access','smart-tools']){
     assert.ok(html.includes("window.location.pathname.includes('"+route+"')"),route);

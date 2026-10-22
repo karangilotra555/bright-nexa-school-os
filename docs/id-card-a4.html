@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="./assets/workspace-storage-classic.js?v=20261022-isolation"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student ID Card Bulk Generator (A4 Print Sheets) — Bright Nexa School OS</title>
@@ -906,7 +907,7 @@
     function loadSchoolOSData() {
       try {
         // Read Institution Profile
-        const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
+        const snapRaw = window.BrightNexaWorkspace.workspaceStorage.getItem('bright-nexa-school-os:snapshot:v1');
         if (snapRaw) {
           const snap = JSON.parse(snapRaw);
           if (snap.institution) {
@@ -921,7 +922,7 @@
         }
 
         // Read Live Students (bright-nexa-school-os:students:v1)
-        const stdRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
+        const stdRaw = window.BrightNexaWorkspace.workspaceStorage.getItem('bright-nexa-school-os:students:v1');
         if (stdRaw) {
           const parsed = JSON.parse(stdRaw);
           if (Array.isArray(parsed) && parsed.length > 0) {

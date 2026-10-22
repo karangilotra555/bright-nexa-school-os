@@ -1,3 +1,4 @@
+import { workspaceStorage, workspaceDatabaseName, beginDemoWorkspace, endDemoWorkspace, isDemoWorkspace } from "./workspace-storage.js";
 var e = Object.create,
   t = Object.defineProperty,
   n = Object.getOwnPropertyDescriptor,
@@ -13580,7 +13581,7 @@ Error generating stack: ` +
   Et = 1;
 function Dt() {
   return new Promise((e, t) => {
-    let n = indexedDB.open(wt, Et);
+    let n = indexedDB.open(workspaceDatabaseName(wt), Et);
     ((n.onupgradeneeded = () => {
       let e = n.result;
       e.objectStoreNames.contains(Tt) || e.createObjectStore(Tt);
@@ -13622,9 +13623,9 @@ var jt = `bright-nexa-school-os:accounts:v1`,
   It = `bright-nexa-school-os:session:v2`;
 function Lt() {
   try {
-    let e = localStorage.getItem(jt);
+    let e = workspaceStorage.getItem(jt);
     if (e) return JSON.parse(e);
-    let t = localStorage.getItem(Mt);
+    let t = workspaceStorage.getItem(Mt);
     if (!t) return [];
     let n = JSON.parse(t),
       r = [
@@ -13650,7 +13651,7 @@ function Rt() {
 }
 function zt(e) {
   try {
-    localStorage.setItem(jt, JSON.stringify(e));
+    workspaceStorage.setItem(jt, JSON.stringify(e));
   } catch {}
   Ot(`accounts`, e).catch(() => void 0);
 }
@@ -13793,6 +13794,7 @@ function Qt() {
   }
 }
 function $t() {
+  endDemoWorkspace();
   sessionStorage.removeItem(It);
 }
 function en() {
@@ -13838,14 +13840,14 @@ async function on(e, t) {
 }
 function sn() {
   try {
-    return JSON.parse(localStorage.getItem(Nt) || `{}`);
+    return JSON.parse(workspaceStorage.getItem(Nt) || `{}`);
   } catch {
     return {};
   }
 }
 function cn(e) {
   try {
-    localStorage.setItem(Nt, JSON.stringify(e));
+    workspaceStorage.setItem(Nt, JSON.stringify(e));
   } catch {}
 }
 function ln(e) {
@@ -13857,7 +13859,7 @@ function un(e) {
 var dn = {
   welcome: `Good morning`,
   subtitle: `Today's institution operations, organised in one place.`,
-  localSafe: `Institutional data is fully secured and encrypted`,
+  localSafe: isDemoWorkspace() ? `Isolated demo — sample records only` : `Stored in this browser; not encrypted or cloud-synced`,
   offline: `Connected`,
   online: `Connected`,
   freeCore: `Lifetime Free Core`,
@@ -13872,7 +13874,7 @@ var dn = {
   lockedCost: `No provider call without credits`,
 };
 function fn(e) {
-  return dn;
+  return { ...dn, localSafe: isDemoWorkspace() ? `Isolated demo — sample records only` : `Stored in this browser; not encrypted or cloud-synced` };
 }
 function pn(e) {
   return mn(e);
@@ -14080,7 +14082,7 @@ function Cn(e) {
 }
 function wn() {
   try {
-    let e = window.localStorage.getItem(_n);
+    let e = workspaceStorage.getItem(_n);
     if (!e) return yn;
     let t = JSON.parse(e),
       n = (t.services ?? yn.services).map((e) =>
@@ -14101,7 +14103,7 @@ function wn() {
 function Tn(e) {
   let t = pn(e);
   try {
-    window.localStorage.setItem(_n, JSON.stringify(t));
+    workspaceStorage.setItem(_n, JSON.stringify(t));
   } catch {}
   Ot(`snapshot`, t).catch(() => void 0);
 }
@@ -14208,7 +14210,7 @@ var En = [
 ];
 function Dn() {
   try {
-    let e = window.localStorage.getItem(vn);
+    let e = workspaceStorage.getItem(vn);
     return e ? JSON.parse(e).map(Sn) : En;
   } catch {
     return En;
@@ -14217,7 +14219,7 @@ function Dn() {
 function On(e) {
   let t = pn(e);
   try {
-    window.localStorage.setItem(vn, JSON.stringify(t ?? []));
+    workspaceStorage.setItem(vn, JSON.stringify(t ?? []));
   } catch {}
   Ot(`students`, t ?? []).catch(() => void 0);
 }
@@ -20637,7 +20639,7 @@ var ki = {
 };
 function Ai() {
   try {
-    let e = window.localStorage.getItem(Di);
+    let e = workspaceStorage.getItem(Di);
     return e ? Ni(JSON.parse(e)) : structuredClone(ki);
   } catch {
     return structuredClone(ki);
@@ -20646,7 +20648,7 @@ function Ai() {
 function ji(e) {
   let t = pn(e);
   try {
-    window.localStorage.setItem(Di, JSON.stringify(t));
+    workspaceStorage.setItem(Di, JSON.stringify(t));
   } catch {}
   Ot(`operations`, t).catch(() => void 0);
 }
@@ -23130,7 +23132,7 @@ var ra = `bright-nexa-school-os:theme:v1`,
   ia = `bright-nexa-school-os:theme-change`;
 function aa() {
   try {
-    return window.localStorage.getItem(ra) === `dark` ? `dark` : `bright`;
+    return workspaceStorage.getItem(ra) === `dark` ? `dark` : `bright`;
   } catch {
     return `bright`;
   }
@@ -23145,7 +23147,7 @@ function sa() {
 }
 function ca(e) {
   try {
-    window.localStorage.setItem(ra, e);
+    workspaceStorage.setItem(ra, e);
   } catch {}
   (oa(e), window.dispatchEvent(new CustomEvent(ia, { detail: e })));
 }
@@ -25113,7 +25115,7 @@ function Ea() {
                               ...g,
                             ].slice(0, 30);
                             (_(t),
-                              localStorage.setItem(wa, JSON.stringify(t)),
+                              workspaceStorage.setItem(wa, JSON.stringify(t)),
                               h(`Template saved locally.`));
                           },
                           children: [
@@ -25189,7 +25191,7 @@ function Ea() {
 }
 function Da() {
   try {
-    let e = localStorage.getItem(wa);
+    let e = workspaceStorage.getItem(wa);
     return e ? JSON.parse(e) : [];
   } catch {
     return [];
@@ -34736,7 +34738,7 @@ function Ds() {
         let l = s.snapshot || e,
           u = s.students || n,
           d = c || i,
-          f = !window.localStorage.getItem(ms),
+          f = !workspaceStorage.getItem(ms),
           m = gs(u, d) || _s(u, d);
         if (f && m) {
           let e = vs(u, d, l.institution.session),
@@ -34754,14 +34756,14 @@ function Ds() {
             Tn(n),
             On(e.students),
             ji(e.operations),
-            window.localStorage.setItem(ms, `loaded`),
+            workspaceStorage.setItem(ms, `loaded`),
             p(
               `Ten linked student demonstrations and editable sample records were prepared across every operational module.`,
             ),
             window.setTimeout(() => p(``), 6500));
           return;
         }
-        (f && window.localStorage.setItem(ms, `skipped-existing-live-data`),
+        (f && workspaceStorage.setItem(ms, `skipped-existing-live-data`),
           t(l),
           r(u),
           a(d),
@@ -35819,6 +35821,7 @@ function Fs({ children: e }) {
     Ge = async () => {
       u(!0);
       try {
+        beginDemoWorkspace();
         (Tn(yn),
           On(En),
           ji(ki),
@@ -35981,10 +35984,10 @@ function Fs({ children: e }) {
             children: [
               (0, P.jsx)(`span`, { children: `By Bright Nexa` }),
               (0, P.jsx)(`h1`, {
-                children: `Transform every school into a smart, connected learning institution.`,
+                children: `Explore your school’s daily work in one place.`,
               }),
               (0, P.jsx)(`p`, {
-                children: `Run complete school operations securely on this device. The core system remains available without internet access or paid providers.`,
+                children: `Try admissions, attendance, fees and reports with sample data. This workspace saves records in this browser only; it does not sync with the teacher cloud pilot or other devices.`,
               }),
             ],
           }),
@@ -35996,9 +35999,9 @@ function Fs({ children: e }) {
                   (0, P.jsx)(yt, { size: 18 }),
                   (0, P.jsxs)(`span`, {
                     children: [
-                      (0, P.jsx)(`strong`, { children: `Offline-first` }),
+                      (0, P.jsx)(`strong`, { children: `Browser-local workspace` }),
                       (0, P.jsx)(`small`, {
-                        children: `Daily school work without internet`,
+                        children: `Keep backups; clearing browser data removes local records`,
                       }),
                     ],
                   }),
@@ -36009,9 +36012,9 @@ function Fs({ children: e }) {
                   (0, P.jsx)(nt, { size: 18 }),
                   (0, P.jsxs)(`span`, {
                     children: [
-                      (0, P.jsx)(`strong`, { children: `School-owned data` }),
+                      (0, P.jsx)(`strong`, { children: `Separate teacher cloud pilot` }),
                       (0, P.jsx)(`small`, {
-                        children: `No connected service can lock your records`,
+                        children: `Invited staff use Teachers; no automatic parent sync`,
                       }),
                     ],
                   }),
@@ -36022,9 +36025,9 @@ function Fs({ children: e }) {
                   (0, P.jsx)(Fe, { size: 18 }),
                   (0, P.jsxs)(`span`, {
                     children: [
-                      (0, P.jsx)(`strong`, { children: `Cost protected` }),
+                      (0, P.jsx)(`strong`, { children: `Try before onboarding` }),
                       (0, P.jsx)(`small`, {
-                        children: `No provider call without credits or BYOK`,
+                        children: `Demo is free; contact support for school onboarding`,
                       }),
                     ],
                   }),
@@ -36057,7 +36060,7 @@ function Fs({ children: e }) {
                     children: `Welcome to Bright Nexa`,
                   }),
                   (0, P.jsx)(`h2`, {
-                    children: `Start your institution workspace`,
+                    children: `Try the demo or create a local workspace`,
                   }),
                   (0, P.jsx)(`p`, {
                     children: `Create a school or coaching-centre workspace with clearly labelled, fully editable sample records that explain every major module.`,
@@ -36074,7 +36077,7 @@ function Fs({ children: e }) {
                     className: `secondary-button auth-secondary`,
                     disabled: l,
                     onClick: Ge,
-                    children: `Open demo school`,
+                    children: `Open isolated demo school`,
                   }),
                   (0, P.jsx)(`small`, {
                     children: `Starter records contain no real personal data. Edit or delete every record labelled “Sample” before live use.`,
@@ -36087,11 +36090,11 @@ function Fs({ children: e }) {
                   children: [
                     (0, P.jsx)(`span`, {
                       className: `auth-eyebrow`,
-                      children: `First-time secure setup`,
+                      children: `Browser-local setup`,
                     }),
                     (0, P.jsx)(`h2`, { children: `Register your institution` }),
                     (0, P.jsx)(`p`, {
-                      children: `Registration details will be saved to the Institution Profile. Fields marked * are required.`,
+                      children: `This creates a workspace on this browser, not an online school account. Use Teachers for the separate cloud pilot. Fields marked * are required.`,
                     }),
                     (0, P.jsxs)(`form`, {
                       onSubmit: We,
@@ -36680,7 +36683,7 @@ function Fs({ children: e }) {
                       children: [
                         (0, P.jsx)(`span`, {
                           className: `auth-eyebrow`,
-                          children: `Secure local login`,
+                          children: `Login on this browser`,
                         }),
                         (0, P.jsx)(`h2`, { children: Ze }),
                         (0, P.jsx)(`p`, {

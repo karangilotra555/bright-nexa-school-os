@@ -3,6 +3,7 @@ let activeStudent = null;
 let loginPending = false;
 let authGeneration = 0;
 let verificationGeneration = 0;
+let deploymentIsDemo = false;
 const $ = id => document.getElementById(id);
 const value = input => input == null || input === '' ? 'Not available' : String(input);
 const DEMO_STUDENT = Object.freeze({name:'DEMO STUDENT', admissionNumber:'DEMO-ONLY', className:'Sample class', section:'A'});
@@ -25,6 +26,7 @@ async function loadSchoolProfile() {
     catch (_) { profile = await api('school-profile.json'); }
     const {institution} = profile;
     const demoOnly = profile.deploymentMode === 'demo';
+    deploymentIsDemo = demoOnly;
     $('loginForm').hidden = demoOnly;
     $('loginTitle').textContent = demoOnly ? 'Explore the student portal' : 'Student & Parent Login';
     $('loginInfo').style.display = demoOnly ? 'block' : 'none';
@@ -34,7 +36,7 @@ async function loadSchoolProfile() {
     $('navSchoolName').textContent = institution.name;
     $('cardSchoolName').textContent = institution.name;
     $('cardSession').textContent = 'Session: ' + value(institution.session);
-    $('schoolStatus').textContent = demoOnly ? 'Published school information • Demo portal. Contact the school to confirm current details.' : '';
+    $('schoolStatus').textContent = demoOnly ? 'Demo portal • Profile details are not verified. Confirm current contacts and school information with the school office.' : '';
   } catch (_) { $('schoolStatus').textContent = 'School details are unavailable. Please try again later.'; }
 }
 function routePortal() {
@@ -58,7 +60,10 @@ function initPortal() {
   routePortal();
   return loadSchoolProfile();
 }
-function showLoginScreen() { showView('loginView'); }
+function showLoginScreen() {
+  showView('loginView');
+  $('loginInfo').style.display = deploymentIsDemo ? 'block' : 'none';
+}
 function showLoginFromVerification(adm) {
   verificationGeneration++;
   window.location.hash = '#/login';

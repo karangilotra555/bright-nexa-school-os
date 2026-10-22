@@ -12,7 +12,7 @@ if (window.location.pathname.includes('marksheet') || window.location.pathname.i
     });
   }
 }
-const CACHE_VERSION = '20261022-sw-standalone-v7';
+const CACHE_VERSION = '20261022-workspace-v8';
 if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACHE_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -31,9 +31,9 @@ if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACH
     <meta name="description" content="Bright Nexa — schools ko smart, digital aur opportunity-connected banane ka complete system." />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <title>Bright Nexa</title>
-    <script type="module" crossorigin src="./assets/index-brightnexa-v2.js?v=20261021-idcard-security"></script>
+    <script type="module" crossorigin src="./assets/index-brightnexa-v2.js?v=20261022-workspace-isolation"></script>
     <script defer src="./parents-download-menu.js?v=20261022-pwa-standalone-v7"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-C1ADVAqn.css?v=20261021-idcard-security">
+    <link rel="stylesheet" crossorigin href="./assets/index-C1ADVAqn.css?v=20261022-workspace-isolation">
   <link rel="manifest" href="./manifest.webmanifest"></head>
   <body>
     <div id="root"></div>

@@ -13,6 +13,13 @@ function portal(fetchImpl = async () => { throw new Error('offline'); }) {
   vm.runInContext(source,context);
   return {context,element,values,run:s=>vm.runInContext(s,context)};
 }
+test('demo explanation remains visible after logout and login navigation',async()=>{
+ const p=portal(async()=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>({deploymentMode:'demo',institution:{name:'Sample School'}})}));
+ await p.run('initPortal()');p.run('demoLogin();handleLogout();showLoginScreen()');
+ assert.equal(p.element('loginForm').hidden,true);
+ assert.equal(p.element('loginInfo').style.display,'block');
+ assert.match(p.element('loginInfo').textContent,/not connected/);
+});
 test('demo cannot select a live student stored in the browser',async()=>{ const p=portal(); await p.run('initPortal()'); p.run('demoLogin()'); assert.match(p.element('dashStudentName').textContent,/DEMO/); assert.equal(p.values.has('bn_portal_token'),false); });
 test('logout removes the session token and clears DOB',()=>{const p=portal();p.element('dobInput').value='01-01-2010';p.run('handleLogout()');assert.equal(p.values.has('bn_portal_token'),false);assert.equal(p.element('dobInput').value,'');});
 test('API failure cannot authenticate a matching local record',async()=>{const p=portal();await p.run('initPortal()');p.element('admInput').value='LIVE';p.element('dobInput').value='01-01-2010';await p.run('handleLogin({preventDefault(){}})');assert.notEqual(p.element('dashboardView').style.display,'block');assert.equal(p.values.has('bn_portal_token'),false);assert.match(p.element('loginAlert').textContent,/unavailable/i);});
