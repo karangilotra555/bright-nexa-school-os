@@ -34,9 +34,25 @@ public final class MainActivity extends Activity {
 
     private int dp(float value) { return (int) (getResources().getDisplayMetrics().density * value + .5f); }
 
+    private TextView makeToolbarChip(String label) {
+        TextView v = new TextView(this);
+        v.setText(label);
+        v.setTextSize(12);
+        v.setTypeface(null,Typeface.BOLD);
+        v.setTextColor(Color.WHITE);
+        v.setGravity(Gravity.CENTER);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(Color.rgb(14,62,107));
+        bg.setCornerRadius(dp(11));
+        bg.setStroke(dp(1),Color.rgb(43,125,190));
+        v.setBackground(bg);
+        v.setContentDescription(label.equals("Demo") ? "Open demo preview" : "Connect to school");
+        return v;
+    }
+
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(Color.rgb(41,121,80));
+        getWindow().setStatusBarColor(Color.rgb(6,26,54));
         getWindow().setNavigationBarColor(Color.rgb(255,255,255));
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         SharedPreferences preferences = getSharedPreferences(STORAGE, MODE_PRIVATE);
@@ -49,22 +65,28 @@ public final class MainActivity extends Activity {
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(13), dp(8), dp(10), dp(8));
-        toolbar.setBackgroundColor(Color.rgb(55,150,99));
+        toolbar.setPadding(dp(14), dp(7), dp(13), dp(7));
+        toolbar.setBackgroundColor(Color.rgb(6,26,54));
         TextView heading = new TextView(this);
-        heading.setText("🎓  Bright Nexa Parents");
+        heading.setText("Bright Nexa");
+        heading.setContentDescription("Bright Nexa Parents");
         heading.setTextColor(Color.WHITE);
-        heading.setTextSize(17);
+        heading.setTextSize(18);
+        heading.setSingleLine(true);
+        heading.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        heading.setGravity(Gravity.CENTER_VERTICAL);
         heading.setTypeface(null, Typeface.BOLD);
-        toolbar.addView(heading, new LinearLayout.LayoutParams(0, dp(42), 1));
-        Button preview = new Button(this);
-        preview.setAllCaps(false);
-        preview.setText("Demo");
-        toolbar.addView(preview);
-        Button settings = new Button(this);
-        settings.setAllCaps(false);
-        settings.setText("Connect");
-        toolbar.addView(settings);
+        toolbar.addView(heading, new LinearLayout.LayoutParams(0, dp(40), 1));
+
+        // Compact branded actions instead of oversized Android default buttons.
+        TextView preview = makeToolbarChip("Demo");
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dp(61),dp(36));
+        previewParams.leftMargin=dp(6);
+        toolbar.addView(preview,previewParams);
+        TextView settings = makeToolbarChip("Connect");
+        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(dp(84),dp(36));
+        settingsParams.leftMargin=dp(7);
+        toolbar.addView(settings,settingsParams);
         root.addView(toolbar);
 
         status = new TextView(this);
@@ -107,6 +129,7 @@ public final class MainActivity extends Activity {
     }
     private void openPreview() {
         liveHost = "";
+        status.setVisibility(View.GONE);
         status.setText("DEMO MODE • Fictional student data • Not synced");
         try (InputStream in = getAssets().open("demo.html")) {
             byte[] bytes = in.readAllBytes();
@@ -133,7 +156,8 @@ public final class MainActivity extends Activity {
         else path += "parents.html";
         configuredUrl = "https://" + liveHost;
         getSharedPreferences(STORAGE, MODE_PRIVATE).edit().putString(KEY_URL, configuredUrl).apply();
-        status.setText("CONNECTED MODE • " + liveHost + " • Requires an activated school account");
+        status.setVisibility(View.VISIBLE);
+        status.setText("SCHOOL PORTAL • " + liveHost + " • Testing only");
         web.loadUrl(path);
     }
     private void configureSchool() {
