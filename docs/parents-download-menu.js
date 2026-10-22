@@ -21,6 +21,22 @@
   // App-internal React navigation can intercept ordinary <a> clicks at the
   // root capture/bubble phase. Capture at window and perform real page
   // navigation before the SPA can swallow or prevent the click.
+  // Legacy Workbox NavigationRoute used to serve index.html for these URLs.
+  // Unregister the controller scoped to these pages before navigating. The
+  // revised service worker also excludes these paths, so fresh installations
+  // keep working without a reset. Never touch registrations for other origins.
+  function navigateOutsideSpa(url) {
+    if(typeof navigator !== 'undefined' && navigator.serviceWorker?.controller
+       && typeof navigator.serviceWorker.getRegistration === 'function') {
+      Promise.resolve()
+        .then(() => navigator.serviceWorker.getRegistration(url))
+        .then(reg => reg && typeof reg.unregister==='function' ? reg.unregister() : undefined)
+        .catch(() => undefined)
+        .then(() => window.location.assign(url));
+      return;
+    }
+    window.location.assign(url);
+  }
   function directNavigate(event) {
     if (event.defaultPrevented || (event.button !== undefined && event.button !== 0) ||
         event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
@@ -41,7 +57,7 @@
     event.preventDefault();
     event.stopPropagation();
     if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-    window.location.assign(expected.href);
+    navigateOutsideSpa(expected.href);
   }
   window.addEventListener('click', directNavigate, true);
 
