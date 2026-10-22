@@ -44,3 +44,13 @@ resources/elevate.exe
 resources/source_code/
 index-mBkIV49_.js
 vk_swiftshader_icd.json
+
+# Student data exports / DB connection credentials: NEVER commit
+*.school-export.json
+*.school-export.json.gz
+*.school-export.sql
+.backups/
+backups/
+.env
+.env.*
+!.env.example
