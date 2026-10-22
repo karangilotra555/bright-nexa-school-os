@@ -11,11 +11,13 @@
     smart: {path:'smart-tools.html', icon:'🧠', title:'Smart Tools · No API', tooltip:'Timetable, substitutes, performance and audits'}
   });
 
-  // Keep the original IDs; existing CSS/tests and UI shortcuts rely on them.
-  const elementId = (type, place) => {
-    const stem={parents:'parents-app',teachers:'teacher-access',smart:'smart-tools'}[type];
-    return stem?'bn-'+stem+'-'+place:'';
-  };
+  // Stable IDs are part of the existing app's navigation contract.
+  const linkIds=Object.freeze({
+    parents:{nav:'bn-parents-app-nav',top:'bn-parents-app-top'},
+    teachers:{nav:'bn-teacher-access-nav',top:'bn-teacher-access-top'},
+    smart:{nav:'bn-smart-tools-nav',top:'bn-smart-tools-top'}
+  });
+  const elementId = (type, place) => linkIds[type]?.[place] || '';
   // App-internal React navigation can intercept ordinary <a> clicks at the
   // root capture/bubble phase. Capture at window and perform real page
   // navigation before the SPA can swallow or prevent the click.
