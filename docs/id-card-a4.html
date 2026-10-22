@@ -740,7 +740,7 @@
           📜 TC Certificate
         </a>
 
-        <a href="student-portal.html" class="btn btn-gold" style="text-decoration:none;">
+        <a href="https://bright-nexa-school-os-api.onrender.com/student-portal.html" class="btn btn-gold" style="text-decoration:none;">
           📱 Student Portal
         </a>
 
@@ -839,134 +839,18 @@
     }
 
     // ==========================================
-    // 2. CRYPTOGRAPHIC HMAC-SHA256 SIGNATURE & GENUINE QR
-    // ==========================================
-    function normalizeDate(str) {
-      if (!str) return '';
-      const clean = String(str).trim();
-      const mIso = clean.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
-      if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
-      const mDmy = clean.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-      if (mDmy) return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
-      return clean;
-    }
+    // 2. STUDENT PORTAL QR — VERIFICATION REQUIRES SCHOOL-SIGNED ECDSA.
+    // Never produce a purportedly official signature from client JavaScript,
+    // localStorage or a hard-coded secret. The old local HMAC did not match
+    // the school API's ECDSA P-256 verifier and could be forged.
+    // This generator creates only an UNVERIFIED preview ID until the school's
+    // authenticated server-side signing workflow is connected.
+    const SCHOOL_VERIFICATION_PORTAL =
+      'https://bright-nexa-school-os-api.onrender.com/student-portal.html';
 
-    function sha256(ascii) {
-      function rightRotate(value, amount) {
-        return (value >>> amount) | (value << (32 - amount));
-      }
-      var mathPow = Math.pow;
-      var maxWord = mathPow(2, 32);
-      var lengthProperty = 'length';
-      var i, j;
-      var result = '';
-      var words = [];
-      var asciiBitLength = ascii[lengthProperty] * 8;
-      var hash = sha256.h = sha256.h || [];
-      var k = sha256.k = sha256.k || [];
-      var primeCounter = k[lengthProperty];
-      var isComposite = {};
-      for (var candidate = 2; primeCounter < 64; candidate++) {
-        if (!isComposite[candidate]) {
-          for (i = 0; i < 313; i += candidate) isComposite[i] = candidate;
-          hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
-          k[primeCounter++] = (mathPow(candidate, 1/3) * maxWord) | 0;
-        }
-      }
-      hash = hash.slice(0);
-      ascii += '\x80';
-      while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
-      for (i = 0; i < ascii[lengthProperty]; i++) {
-        j = ascii.charCodeAt(i);
-        words[i >> 2] |= j << ((3 - i) % 4) * 8;
-      }
-      words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
-      words[words[lengthProperty]] = (asciiBitLength | 0);
-      for (j = 0; j < words[lengthProperty];) {
-        var w = words.slice(j, j += 16);
-        var oldHash = hash;
-        hash = hash.slice(0, 8);
-        for (i = 0; i < 64; i++) {
-          var w15 = w[i - 15], w2 = w[i - 2];
-          var s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
-          var s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
-          var ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
-          var maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
-          var temp1 = hash[7] + (rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25)) + ch + k[i] + (w[i] = (i < 16) ? w[i] : (w[i - 16] + s0 + w[i - 7] + s1) | 0);
-          var temp2 = (rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22)) + maj;
-          hash = [(temp1 + temp2) | 0].concat(hash);
-          hash[4] = (hash[4] + temp1) | 0;
-        }
-        for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
-      }
-      for (i = 0; i < 8; i++) {
-        for (j = 3; j + 1; j--) {
-          var b = (hash[i] >> (j * 8)) & 255;
-          result += ((b < 16) ? 0 : '') + b.toString(16);
-        }
-      }
-      return result;
-    }
-
-    function hexToAscii(hex) {
-      var str = '';
-      for (var i = 0; i < hex.length; i += 2) {
-        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-      }
-      return str;
-    }
-
-    function hmacSha256(key, message) {
-      var blockSize = 64;
-      if (key.length > blockSize) key = sha256(key);
-      while (key.length < blockSize) key += '\x00';
-      var oKeyPad = '', iKeyPad = '';
-      for (var i = 0; i < blockSize; i++) {
-        var kByte = key.charCodeAt(i);
-        oKeyPad += String.fromCharCode(kByte ^ 0x5c);
-        iKeyPad += String.fromCharCode(kByte ^ 0x36);
-      }
-      return sha256(oKeyPad + hexToAscii(sha256(iKeyPad + message)));
-    }
-
-    const DEFAULT_INSTITUTION_KEY = 'bn_sec_key_7500058655_brightnexa_2026_cbse_v1';
-
-    function getSchoolSigningKey() {
-      const STORAGE_KEY = 'bright-nexa-school-os:signing-key:v1';
-      let key = localStorage.getItem(STORAGE_KEY);
-      if (!key || key.length < 32) {
-        try {
-          const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-          if (snapRaw) {
-            const snap = JSON.parse(snapRaw);
-            if (snap.institution && snap.institution.verificationSecretKey) {
-              key = snap.institution.verificationSecretKey;
-            }
-          }
-        } catch(e) {}
-      }
-      if (!key || key.length < 32) {
-        key = DEFAULT_INSTITUTION_KEY;
-        try {
-          localStorage.setItem(STORAGE_KEY, key);
-        } catch(e) {}
-      }
-      return key;
-    }
-
-    function computeStudentHMAC(st, inst) {
-      const key = getSchoolSigningKey();
-      const dobNorm = normalizeDate(st?.dob || st?.dateOfBirth || '');
-      const msg = `${inst?.name || 'Bright Nexa'}|${inst?.session || '2026-27'}|${st?.admissionNumber || ''}|${st?.rollNumber || ''}|${dobNorm}`;
-      return hmacSha256(key, msg).slice(0, 16).toUpperCase();
-    }
-
-    function getVerificationUrl(st, sig) {
-      const isWeb = window.location.protocol.startsWith('http');
-      const base = isWeb 
-        ? (window.location.origin + window.location.pathname.replace('id-card-a4.html', 'student-portal.html'))
-        : 'https://bright-nexa-school-os.onrender.com/student-portal.html';
-      return `${base}?action=verify&adm=${encodeURIComponent(st.admissionNumber)}&sig=${encodeURIComponent(sig)}`;
+    function getVerificationUrl(st) {
+      return SCHOOL_VERIFICATION_PORTAL
+        + '?action=verify&adm=' + encodeURIComponent(st.admissionNumber);
     }
 
     // Standard ISO/IEC 18004 QRCode Canvas renderer with error correction
@@ -1309,11 +1193,12 @@
           const photoSrc = sanitizeImageUrl(idPhotoOverrides.get(String(st.id)) || st.photoUrl, avatarSvg);
           const schoolLogoSrc = sanitizeImageUrl(institution.logoUrl, 'app-icon-512.png');
           
-          // Generate Cryptographic HMAC-SHA256 signature
-          const sig = computeStudentHMAC(st, institution);
+          // No client-side signatures: the school must issue its credential through the server.
 
           // Specimen watermark HTML for demo cards
-          const watermarkHtml = isDemoMode ? `<div class="watermark-specimen">SAMPLE SPECIMEN • NOT OFFICIAL</div>` : '';
+          const watermarkHtml = isDemoMode
+            ? `<div class="watermark-specimen">SAMPLE SPECIMEN • NOT OFFICIAL</div>`
+            : `<div class="watermark-specimen">UNVERIFIED PREVIEW • NOT OFFICIAL</div>`;
 
           const cardHtml = `
             <div class="id-card-vertical" id="card-${globalIdx}">
@@ -1389,9 +1274,9 @@
                   <div class="qr-container">
                     <canvas id="qr-${globalIdx}" class="qr-canvas"></canvas>
                     <div class="qr-text">
-                      <strong>DIGITAL CREDENTIAL</strong><br>
-                      Scan to verify student admission & institutional authenticity.
-                      <span class="qr-verify-code">HMAC SIG: ${escapeHtml(sig)}</span>
+                      <strong>STUDENT ID PREVIEW</strong><br>
+                      Scan to request school-server verification; this preview is not signed.
+                      <span class="qr-verify-code">SERVER SIGNATURE PENDING</span>
                     </div>
                   </div>
 
@@ -1403,7 +1288,7 @@
                 </div>
 
                 <div class="card-footer" style="background: #0f172a; color: #94a3b8; font-size: 3.6pt; justify-content: center; letter-spacing: 0.3px;">
-                  BRIGHT NEXA SCHOOL OS • DIGITALLY VERIFIED STUDENT PASS
+                  BRIGHT NEXA SCHOOL OS • SERVER VERIFICATION REQUIRED
                 </div>
               </div>
             </div>
@@ -1415,7 +1300,7 @@
           setTimeout(() => {
             const canvas = document.getElementById(`qr-${globalIdx}`);
             if (canvas) {
-              const verifyUrl = getVerificationUrl(st, sig);
+              const verifyUrl = getVerificationUrl(st);
               generateRealQRCode(canvas, verifyUrl);
             }
           }, 10);
