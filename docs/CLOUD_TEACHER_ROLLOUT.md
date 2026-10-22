@@ -3,10 +3,10 @@
 ## Deployment status
 
 **Supabase project:** `mrfvbwmyxndrakskqyas` — Bright Nexa School OS (ap-south-1).
-**Hosted teacher login:** https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-teacher-app
+**Hosted teacher login (HTML website on Render):** https://bright-nexa-school-os.onrender.com/teacher-access.html
 **Invite API:** `/functions/v1/school-invite-staff` — valid Supabase Auth JWT AND school_admin membership required.
 
-Existing School OS now links to the hosted teacher site through **Teachers · Online Access** in the nav/topbar. There is also a standalone HTML source at `teacher-access.html` and a copy under `docs/` for static hosting.
+Supabase Edge Functions force HTML pages to text/plain on shared hosts; the old Edge URL now redirects to Render's proper HTML static site. Existing School OS now links to the hosted teacher site through **Teachers · Online Access** in the nav/topbar. There is also a standalone HTML source at `teacher-access.html` and a copy under `docs/` for static hosting.
 
 Both Supabase Edge functions are deployed; versions and migration history are managed in the linked Supabase project. The public teacher page is intentionally accessible without login, but all school-specific queries use authenticated JWTs and database RLS.
 
