@@ -27,6 +27,15 @@
       link.append(icon,label);
       nav.appendChild(link);
     }
+    if(nav && !document.getElementById('bn-teacher-access-nav')){
+      const link=document.createElement('a');
+      link.id='bn-teacher-access-nav'; link.className='nav-item';
+      link.href='./teacher-access.html';link.title='Teacher and staff online access';
+      link.style.textDecoration='none';link.style.display='flex';link.style.alignItems='center';
+      const icon=document.createElement('span');icon.textContent='👩‍🏫';icon.style.fontSize='17px';
+      const label=document.createElement('span');label.textContent='Teachers · Online Access';
+      link.append(icon,label);nav.appendChild(link);
+    }
     const actions=document.querySelector('.topbar-actions');
     if(actions && !document.getElementById(topId)){
       const link=document.createElement('a');
@@ -41,6 +50,12 @@
       link.style.alignItems='center';
       link.style.justifyContent='center';
       actions.insertBefore(link,actions.firstChild);
+      const teacher=document.createElement('a');
+      teacher.id='bn-teacher-access-top';teacher.className='secondary-button compact';
+      teacher.href='./teacher-access.html';teacher.textContent='👩‍🏫 Teachers';
+      teacher.title='Teacher & staff online portal';teacher.style.textDecoration='none';
+      teacher.style.whiteSpace='nowrap';teacher.style.display='inline-flex';teacher.style.alignItems='center';
+      actions.insertBefore(teacher,actions.firstChild);
     }
   }
   const observer=new MutationObserver(mount);
