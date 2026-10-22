@@ -30,7 +30,7 @@
     if(nav && !document.getElementById('bn-teacher-access-nav')){
       const link=document.createElement('a');
       link.id='bn-teacher-access-nav'; link.className='nav-item';
-      link.href='https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-teacher-app';link.title='Teacher and staff online access';
+      link.href='https://bright-nexa-school-os.onrender.com/teacher-access.html';link.title='Teacher and staff online access';
       link.style.textDecoration='none';link.style.display='flex';link.style.alignItems='center';
       const icon=document.createElement('span');icon.textContent='👩‍🏫';icon.style.fontSize='17px';
       const label=document.createElement('span');label.textContent='Teachers · Online Access';
@@ -52,7 +52,7 @@
       actions.insertBefore(link,actions.firstChild);
       const teacher=document.createElement('a');
       teacher.id='bn-teacher-access-top';teacher.className='secondary-button compact';
-      teacher.href='https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-teacher-app';teacher.textContent='👩‍🏫 Teachers';
+      teacher.href='https://bright-nexa-school-os.onrender.com/teacher-access.html';teacher.textContent='👩‍🏫 Teachers';
       teacher.title='Teacher & staff online portal';teacher.style.textDecoration='none';
       teacher.style.whiteSpace='nowrap';teacher.style.display='inline-flex';teacher.style.alignItems='center';
       actions.insertBefore(teacher,actions.firstChild);
