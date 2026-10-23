@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#061a36">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <title>Smart School Tools — Bright Nexa</title>
 <style>
 :root{font-family:Inter,system-ui,"Segoe UI",Arial,sans-serif;background:#f3f7fb;color:#102640}
@@ -76,12 +76,18 @@ footer{font-size:12px;color:#8090a2;text-align:center;margin-top:25px}
 @media print{.tt-editor,.tt-step,.tt-advanced{display:none!important}#scheduleTable{display:block!important;border:0}.tt-result-class{break-inside:avoid;page-break-inside:avoid}.tt-result-table{min-width:0}}
 @media(max-width:680px){.two,.three{grid-template-columns:1fr}.card{padding:16px}h1{font-size:22px}.head{padding:0 14px}.tabs button{font-size:12px;padding:10px}.intro{display:block}}
 @media print{header,.tabs,.actions,.banner,.hint,footer,input,textarea,select{display:none!important}main{padding:0}.card{box-shadow:none;border:none}.tablewrap{max-height:none;overflow:visible}table{font-size:9pt}}
+body:not(.bn-smart-ready)>header,body:not(.bn-smart-ready)>main{display:none!important}
+#accessNotice{max-width:540px;margin:12vh auto;padding:24px;background:white;border:1px solid #dce6ef;border-radius:16px;color:#102640;box-shadow:0 6px 22px #061a3609}
+#accessNotice a{color:#0b5386;font-weight:750}
 </style>
+<script src="./smart-tools-access.js?v=20261023-dashboard-gate" defer></script>
 <script src="./smart-tools-engine.js" defer></script>
 <script src="./smart-tools-ui.js" defer></script>
 </head><body>
+<div id="accessNotice" role="status" aria-live="polite">Checking school access…</div>
 <header><div class="head"><div class="brand">Bright Nexa <span style="color:#ff9b49">✦</span> Smart Tools<small>School Intelligence · No paid AI API</small></div><a id="backToSchoolOs" href="./index.html" aria-label="Back to School OS">← Back to School OS</a></div></header>
 <main>
+<p id="accessMode" class="small" role="status"></p>
 <div class="intro"><div><h1>5 Practical Smart School Tools</h1><p class="sub">Timetable, substitute teachers, student performance, Excel import and error detection — deterministic algorithms, no LLM calls.</p></div><span class="pill">100% API-FREE ENGINE</span></div>
 <div class="banner"><b>Private School Tools:</b> Data is processed only in this browser, not uploaded. Review generated timetables before publishing; this pilot does not auto-save changes to school records.</div>
 <div id="status" class="status hidden" role="status" aria-live="polite"></div>

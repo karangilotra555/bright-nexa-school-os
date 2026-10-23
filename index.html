@@ -60,7 +60,7 @@ tr td select{padding:7px;min-width:115px}
 <script src="./entry-sw-reset.js" defer></script><script src="./parents-download-menu.js?v=20261022-pwa-standalone-v7" defer></script><script src="./teacher-access.js" defer></script>
 </head>
 <body>
-<header><div class="bar"><div class="brand">Bright Nexa <span style="color:#ff9f52">•</span> School OS<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a class="header-back" id="backToSchoolOs" href="./school-preview.html" aria-label="Preview sample features">Preview features (sample)</a><a href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><a id="ownerDemoLink" class="header-back hidden" href="./school-demo.html">Owner demo (sample only)</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
+<header><div class="bar"><div class="brand">Bright Nexa <span style="color:#ff9f52">•</span> School OS<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
 <main>
 <section id="loginSection" class="panel login">
   <h1>School Login</h1>
@@ -103,6 +103,13 @@ tr td select{padding:7px;min-width:115px}
 
 <section id="portalSection" class="hidden">
   <div class="row"><div><h1 id="hello">School workspace</h1><p class="sub" id="membership"></p></div><span class="pill" id="rolePill">VERIFIED ROLE</span></div>
+  <section id="smartToolsCard" class="panel hidden" aria-label="School Smart Tools">
+    <div class="row">
+      <div><h2>🧠 Smart Tools</h2><p class="sub" style="margin:0">Timetable, Substitute Teacher, Student Performance, Excel Import and Error Detector. Browser-only tools; no automatic writes to school records.</p></div>
+      <a class="header-back" href="./smart-tools.html" style="background:#0b315e;color:white">Open Smart Tools →</a>
+    </div>
+    <a id="ownerDemoLink" class="ghost hidden" href="./school-demo.html" style="display:inline-block;text-decoration:none;margin-top:12px;font-size:12px">Open sample School OS dashboard</a>
+  </section>
   <div class="notice">Cloud portal: only permissions allowed for your verified role and school are accessible. Owner demo is a separate sample workspace, NOT a live student/fees database. Full School OS cloud integration and parent sync are still pending.</div>
   <div class="cards">
     <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>
