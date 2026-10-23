@@ -65,7 +65,7 @@
   function dropSession(){
     session=null;me=null;identity=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);
-    display('portalSection',false);display('loginSection',true);display('logout',false);
+    display('portalSection',false);display('loginSection',true);display('logout',false);display('ownerDemoLink',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   function tab(name){
@@ -90,6 +90,7 @@
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     display('loginSection',false);display('portalSection',true);display('logout',true);
     display('adminTab',isAdmin());
+    display('ownerDemoLink',isAdmin());
     document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
     document.querySelector('[data-tab="homework"]').classList.toggle('hidden',!canAcademic());
     await reload();tab('classes');

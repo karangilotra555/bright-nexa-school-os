@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+if (window.location.pathname.includes('marksheet') || window.location.pathname.includes('id-card') || window.location.pathname.includes('tc-certificate') || window.location.pathname.includes('student-portal') || window.location.pathname.includes('parent-app-download') || window.location.pathname.includes('teacher-access') || window.location.pathname.includes('smart-tools')) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      if (regs.length > 0) {
+        for (let r of regs) r.unregister();
+        window.location.reload();
+      }
+    });
+  }
+}
+const CACHE_VERSION = '20261023-unified-roles';
+if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACHE_VERSION) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      for (let registration of registrations) registration.unregister();
+    });
+  }
+  if ('caches' in window) {
+    caches.keys().then(function(names) { for (let name of names) caches.delete(name); });
+  }
+  try { window.localStorage.setItem('bn_sw_cleared', CACHE_VERSION); } catch(e){}
+}
+</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b2447" />
+    <meta name="description" content="Bright Nexa — schools ko smart, digital aur opportunity-connected banane ka complete system." />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <title>Bright Nexa | Owner Sample Workspace</title>
+    <script src="./school-demo-gate.js?v=20261023-unified-roles" defer></script>
+    <script defer src="./parents-download-menu.js?v=20261022-pwa-standalone-v7"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-C1ADVAqn.css?v=20261022-workspace-isolation">
+  <link rel="manifest" href="./manifest.webmanifest"></head>
+  <body>
+    <div id="sampleBanner" hidden role="status" style="position:sticky;top:0;z-index:2147483647;background:#fff3d9;border-bottom:2px solid #da9118;padding:10px 18px;font:700 14px system-ui;color:#58340c">SAMPLE OWNER WORKSPACE — fictional data only. Changes here are local browser demo, not real school records. <a href="./index.html" style="color:#095392">Go to School Login</a></div><div id="entryStatus" role="status" style="padding:35px;max-width:580px;margin:auto;font:16px system-ui">Checking your authorised school access…</div><div id="root"></div>
+  </body>
+</html>

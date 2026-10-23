@@ -1,43 +1,180 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <script>
-if (window.location.pathname.includes('marksheet') || window.location.pathname.includes('id-card') || window.location.pathname.includes('tc-certificate') || window.location.pathname.includes('student-portal') || window.location.pathname.includes('parent-app-download') || window.location.pathname.includes('teacher-access') || window.location.pathname.includes('smart-tools')) {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(regs) {
-      if (regs.length > 0) {
-        for (let r of regs) r.unregister();
-        window.location.reload();
-      }
-    });
-  }
-}
-const CACHE_VERSION = '20261022-workspace-v8';
-if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACHE_VERSION) {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(registrations) {
-      for (let registration of registrations) registration.unregister();
-    });
-  }
-  if ('caches' in window) {
-    caches.keys().then(function(names) { for (let name of names) caches.delete(name); });
-  }
-  try { window.localStorage.setItem('bn_sw_cleared', CACHE_VERSION); } catch(e){}
-}
-</script>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b2447" />
-    <meta name="description" content="Bright Nexa — schools ko smart, digital aur opportunity-connected banane ka complete system." />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self'" />
-    <title>Bright Nexa</title>
-    <script defer src="./online-positioning.js?v=20261022-honest-copy"></script>
-    <script defer src="./dashboard-id-card-shortcut.js?v=20261021"></script>
-    <script type="module" crossorigin src="./assets/index-brightnexa-v2.js?v=20261022-workspace-isolation"></script>
-    <script defer src="./parents-download-menu.js?v=20261022-pwa-standalone-v7"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-C1ADVAqn.css?v=20261022-workspace-isolation">
-  <link rel="manifest" href="./manifest.webmanifest"></head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#061a36">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Bright Nexa | Secure School Login</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#102640;background:#f3f7fb;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;min-height:100dvh}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+:focus-visible{outline:3px solid #ff7818;outline-offset:2px}
+.hidden{display:none!important}
+header{background:linear-gradient(112deg,#061a36,#0b315e);color:white;padding:20px 0}
+.bar{max-width:1180px;margin:auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-size:20px;font-weight:850;letter-spacing:-.4px}.brand small{display:block;color:#b7d3ea;font-size:12px;font-weight:500}
+button.light{border:1px solid #5d93bd;background:#0c3968;color:white;border-radius:10px;padding:9px 14px}
+.header-back{display:inline-flex;align-items:center;justify-content:center;min-height:40px;border:1px solid #6697bd;border-radius:10px;padding:9px 13px;background:#0c3968;color:white;text-decoration:none;font-size:13px;font-weight:750;white-space:nowrap}
+.header-back:hover,.header-back:focus-visible{background:#175087;color:white}
+@media(max-width:620px){.bar{flex-wrap:wrap}.header-back{order:0}}
+
+main{max-width:1180px;margin:auto;padding:21px 17px 90px}
+h1{font-size:25px;margin:0 0 8px;letter-spacing:-.6px}h2{font-size:19px;margin:0 0 14px}h3{font-size:15px;margin:14px 0 9px}
+p{color:#526681;line-height:1.5}
+.panel{background:white;border:1px solid #dce6ef;border-radius:17px;padding:21px;margin-bottom:17px;box-shadow:0 6px 22px #061a3609}
+.login{max-width:470px;margin:35px auto}.sub{font-size:13px;color:#64758a;margin-bottom:15px}
+label{display:block;font-size:12px;font-weight:750;color:#30455b;margin-bottom:5px}
+input,select,textarea{border:1px solid #d6e2ed;border-radius:10px;background:#fff;width:100%;padding:11px 12px;color:#102640;min-height:42px}
+textarea{min-height:85px;resize:vertical}button.primary{background:#138ed8;color:#fff;border:0;border-radius:11px;padding:12px 18px;font-weight:800}
+button.ghost{background:#e9f5ff;color:#0b315e;border:1px solid #c8e2f4;border-radius:10px;padding:10px 14px;font-weight:700}
+button.danger{color:#a82b3f;background:#fff2f3;border:1px solid #f6c8d0;border-radius:10px;padding:8px 12px}
+.formgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:end;margin-bottom:15px}
+.formgrid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.inputgroup{min-width:0}
+#status{padding:11px 13px;border-radius:10px;background:#e9f5ff;color:#0b315e;margin:12px 0;font-size:13px;white-space:pre-wrap}
+#status.error{background:#ffeff0;color:#8d2434}
+#status.ok{background:#e8f6ef;color:#156348}
+.pill{font-size:11px;padding:5px 9px;border-radius:40px;background:#eaf4fe;color:#136798;font-weight:800}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:14px 0 22px}
+.card{background:white;border:1px solid #dce6ef;border-radius:16px;padding:19px}
+.card b{display:block;font-size:27px;color:#0b315e}.card small{font-size:12px;color:#697b90}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:19px}
+.tabs button{border:1px solid #d6e6f0;background:white;border-radius:10px;color:#475c78;padding:10px 14px;font-size:13px;font-weight:750}
+.tabs button.active{background:#0b315e;border-color:#0b315e;color:white}
+.assignment{padding:12px 0;border-top:1px solid #e6edf5}.assignment:first-child{border-top:0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.flex{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.rowlist{padding:10px 0;border-bottom:1px solid #e9edf4;display:flex;align-items:center;justify-content:space-between;gap:11px;flex-wrap:wrap}
+.muted{font-size:12px;color:#6d8194}
+.checks{display:flex;gap:13px;flex-wrap:wrap;margin:14px 0}.checks label{font-size:13px;color:#234366;display:flex;align-items:center;gap:6px}
+.checks input{width:16px;min-height:16px;height:16px}
+.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{padding:11px;text-align:left;border-bottom:1px solid #e6ebf0;font-size:13px}th{color:#64758a}
+tr td select{padding:7px;min-width:115px}
+.footer{font-size:12px;color:#78879a;text-align:center}
+.notice{border-left:4px solid #ff7818;background:#fff7ed;padding:11px 13px;border-radius:8px;font-size:13px;color:#82511b;margin-bottom:16px}
+@media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
+@media(max-width:470px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
+</style>
+<script src="./teacher-access.js" defer></script>
+</head>
+<body>
+<header><div class="bar"><div class="brand">Bright Nexa <span style="color:#ff9f52">•</span> School OS<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a class="header-back" id="backToSchoolOs" href="./school-preview.html" aria-label="Preview sample features">Preview features (sample)</a><a href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><a id="ownerDemoLink" class="header-back hidden" href="./school-demo.html">Owner demo (sample only)</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
+<main>
+<section id="loginSection" class="panel login">
+  <h1>School Login</h1>
+  <p class="sub">Owner, principal, teacher and other invited staff use one secure login. Your school role determines which records and actions you can access.</p>
+  <form id="loginForm">
+    <div class="inputgroup"><label for="loginEmail">School account email</label><input type="email" id="loginEmail" autocomplete="username" required></div>
+    <div class="inputgroup" style="margin:12px 0"><label for="loginPassword">Password</label><input type="password" id="loginPassword" autocomplete="current-password" required minlength="8"></div>
+    <button type="submit" class="primary">Sign in securely</button>
+  </form>
+  <div id="activation" class="hidden"><h3>Activate invited account</h3><p>Set your new password to activate school access.</p><form id="activateForm"><label for="newPassword">New password (minimum 12 characters)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required><button class="primary" type="submit" style="margin-top:11px">Activate account</button></form></div>
+  <p class="muted">No public sign-up. School staff must be invited by their school administrator. The full School OS sample is not connected to cloud school records.</p>
+</section>
+<div id="status" class="hidden" role="status" aria-live="polite"></div>
+<section id="portalSection" class="hidden">
+  <div class="row"><div><h1 id="hello">School workspace</h1><p class="sub" id="membership"></p></div><span class="pill" id="rolePill">VERIFIED ROLE</span></div>
+  <div class="notice">Cloud portal: only permissions allowed for your verified role and school are accessible. Owner demo is a separate sample workspace, NOT a live student/fees database. Full School OS cloud integration and parent sync are still pending.</div>
+  <div class="cards">
+    <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>
+    <div class="card"><b id="countStudents">0</b><small>Accessible students</small></div>
+    <div class="card"><b id="countHomework">0</b><small>Homework posts</small></div>
+  </div>
+  <div class="tabs" role="navigation">
+    <button class="active" data-tab="classes" type="button">Classes</button>
+    <button data-tab="attendance" type="button">Attendance</button>
+    <button data-tab="homework" type="button">Homework</button>
+    <button id="adminTab" data-tab="admin" class="hidden" type="button">Roles & Permissions</button>
+    <button data-tab="account" type="button">🔐 My Account</button>
+  </div>
+  <div data-view="classes" class="panel"><div class="row"><h2>My accessible classes</h2><button class="ghost" id="reload" type="button">↻ Refresh</button></div><div id="classesList"></div></div>
+  <div data-view="attendance" class="panel hidden">
+    <h2>Class attendance</h2><div class="formgrid two">
+      <div><label for="attendanceClass">Class</label><select id="attendanceClass"></select></div>
+      <div><label for="attendanceDate">Day</label><input id="attendanceDate" type="date"></div>
+    </div><button class="ghost" id="loadAttendance">Load class roster</button><div id="rosterList" style="margin:15px 0"></div>
+    <button class="primary hidden" id="saveAttendance">Save attendance</button>
+  </div>
+  <div data-view="homework" class="panel hidden">
+    <h2>Class homework</h2><div id="homeworkList"></div>
+    <form id="homeworkForm">
+      <h3>Publish homework</h3>
+      <div class="formgrid">
+        <div><label for="homeworkClass">Class</label><select id="homeworkClass" required></select></div>
+        <div><label for="homeworkSubject">Subject</label><input id="homeworkSubject" required maxlength="80" placeholder="e.g. Mathematics"></div>
+        <div><label for="homeworkDate">Due date (optional)</label><input id="homeworkDate" type="date"></div>
+      </div>
+      <div class="inputgroup"><label for="homeworkTitle">Task</label><input id="homeworkTitle" required maxlength="150" placeholder="Complete pages 12–14"></div>
+      <div class="inputgroup" style="margin:11px 0"><label for="homeworkInstructions">Instructions</label><textarea id="homeworkInstructions" maxlength="2000"></textarea></div>
+      <button class="primary" type="submit">Publish homework</button>
+    </form>
+  </div>
+  <div data-view="account" class="panel hidden">
+    <h2>Change Password</h2>
+    <p class="sub">Change your own staff login password. You must confirm your current password. School admin approval is not required.</p>
+    <form id="changePasswordForm" autocomplete="off">
+      <div class="formgrid">
+        <div class="inputgroup"><label for="currentStaffPassword">Current password</label><input type="password" id="currentStaffPassword" name="current-password" autocomplete="current-password" required></div>
+        <div class="inputgroup"><label for="nextStaffPassword">New password (12+ characters)</label><input type="password" id="nextStaffPassword" name="new-password" autocomplete="new-password" minlength="12" maxlength="256" required></div>
+        <div class="inputgroup"><label for="confirmStaffPassword">Confirm new password</label><input type="password" id="confirmStaffPassword" name="confirm-password" autocomplete="new-password" minlength="12" maxlength="256" required></div>
+      </div>
+      <button class="primary" id="changePasswordButton" type="submit">Update my password</button>
+      <p class="muted">For your security, you will be signed out after a successful change. Sign in again with the new password.</p>
+    </form>
+  </div>
+  <div data-view="admin" class="hidden">
+    <div class="panel">
+      <h2>Invite school staff</h2>
+      <form id="inviteForm" class="formgrid">
+        <div><label for="inviteEmail">Email</label><input type="email" id="inviteEmail" required placeholder="teacher@school.in"></div>
+        <div><label for="inviteRole">Base role</label><select id="inviteRole"><option value="teacher">Teacher</option><option value="principal">Principal</option><option value="accountant">Accountant</option><option value="receptionist">Reception</option><option value="transport_staff">Transport</option></select></div>
+        <button class="primary" type="submit">Email invitation</button>
+      </form>
+      <p class="muted">Invitation creates a staff identity in your school only. Login works after email activation.</p>
+    </div>
+    <div class="panel"><h2>Staff accounts & access</h2><div class="tablewrap"><table><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="staffTable"></tbody></table></div></div>
+    <div class="panel">
+      <h2>Create class / section</h2>
+      <form id="classForm" class="formgrid">
+        <div><label for="className">Class name</label><input id="className" placeholder="Class VI" required></div>
+        <div><label for="classSection">Section</label><input id="classSection" placeholder="A" required></div>
+        <div><label for="classYear">Academic session</label><input id="classYear" placeholder="2026-2027" required></div>
+        <button class="primary" type="submit">Add class</button>
+      </form>
+    </div>
+    <div class="panel">
+      <h2>Assign class & individual rights</h2>
+      <form id="assignmentForm">
+        <div class="formgrid">
+          <div><label for="assignTeacher">Teacher</label><select id="assignTeacher" required></select></div>
+          <div><label for="assignClass">Class</label><select id="assignClass" required></select></div>
+          <div><label for="assignType">Assignment</label><select id="assignType"><option value="class_teacher">Class Teacher</option><option value="subject_teacher">Subject Teacher</option></select></div>
+        </div>
+        <div class="inputgroup"><label for="assignSubject">Subject (required only for subject teacher)</label><input id="assignSubject" placeholder="e.g. Mathematics"></div>
+        <div class="checks">
+          <label><input id="permRoster" type="checkbox" checked> View roster</label>
+          <label><input id="permAttendance" type="checkbox" checked> Mark attendance</label>
+          <label><input id="permHomework" type="checkbox" checked> Assign homework</label>
+          <label><input id="permMarks" type="checkbox"> Enter marks (future module)</label>
+        </div>
+        <button class="primary" type="submit">Save assignment</button>
+      </form>
+      <h3>Existing assignments</h3><div id="assignmentsList"></div>
+    </div>
+    <div class="panel">
+      <h2>Add test student to an assigned class</h2>
+      <p class="muted">For internal testing only. Do not add real student information until your institution has been securely onboarded.</p>
+      <form id="studentForm" class="formgrid">
+        <div><label for="studentClass">Class</label><select id="studentClass" required></select></div>
+        <div><label for="studentName">Name</label><input id="studentName" required placeholder="Test Student"></div>
+        <div><label for="studentAdm">Admission no.</label><input id="studentAdm" required placeholder="TEST-001"></div>
+        <button type="submit" class="primary">Add test student</button>
+      </form>
+    </div>
+  </div>
+</section>
+<div class="footer">Bright Nexa School OS · Verified school roles &amp; class-scoped access · © 2026</div>
+</main>
+</body></html>

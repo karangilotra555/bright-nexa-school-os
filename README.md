@@ -23,8 +23,10 @@ Bright Nexa is a cloud-first school management platform under active development
 ## 🚀 Live Web Access
 
 Current test portals:
-- School OS static demo: https://bright-nexa-school-os.onrender.com (demo content; not yet end-to-end cloud synced).
-- Teacher and Staff Portal: https://bright-nexa-school-os.onrender.com/teacher-access.html (Supabase Auth + RLS; verified school onboarding required).
+- Secure School Login (owner + staff, one entry): https://bright-nexa-school-os.onrender.com/ (verified cloud school role required; no public owner dashboard).
+- Read-only product sample: https://bright-nexa-school-os.onrender.com/school-preview.html (fictional data only).
+- Owner-only interactive sample: https://bright-nexa-school-os.onrender.com/school-demo.html (signed-in cloud school_admin only; still not production school data).
+- Teacher and Staff Portal legacy link: https://bright-nexa-school-os.onrender.com/teacher-access.html (same Supabase Auth + RLS as School Login; verified school onboarding required).
 - Parents Android App: demo APK downloadable via School OS link. Verified guardian login is pending before real use.
 
 See [teacher onboarding](docs/CLOUD_TEACHER_ROLLOUT.md) and [security review](docs/SECURITY_REVIEW_20261022.md) before connecting real records.

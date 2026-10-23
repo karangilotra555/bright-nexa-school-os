@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
-const standalone=['parent-app-download.html','teacher-access.html','smart-tools.html'];
+const standalone=['parent-app-download.html','teacher-access.html','smart-tools.html','school-demo.html','school-preview.html'];
 
 function routeFromWorker(script){
  let route=null,precached=null;
@@ -28,7 +28,7 @@ test('Workbox SPA fallback excludes all three independent HTML pages',()=>{
  const {route,precached}=routeFromWorker(read('docs/sw.js'));
  assert.ok(route&&precached?.length,'Workbox route and precache must initialize');
  assert.equal(route.handler.url,'index.html');
- assert.ok(precached.some(e=>e.url==='index.html'&&e.revision==='20261022-workspace-isolation'));
+ assert.ok(precached.some(e=>e.url==='index.html'&&e.revision==='20261023-unified-roles'));
  for(const file of ['assets/workspace-storage.js','assets/workspace-storage-classic.js','portal.js','school-profile.json']){
   assert.ok(precached.some(e=>e.url===file&&e.revision),'Missing versioned dependency '+file);
  }
@@ -37,17 +37,22 @@ test('Workbox SPA fallback excludes all three independent HTML pages',()=>{
  for(const p of ['student-portal.html','id-card-a4.html','marksheet-a4.html']){
   assert.ok(excluded.some(x=>x.test('/'+p)),'Existing exception lost for '+p);
  }
- assert.ok(!excluded.some(x=>x.test('/dashboard')),'Main app route must still be served by SPA');
+ assert.ok(!excluded.some(x=>x.test('/dashboard')),'Unknown routes should return the secure login entry');
 });
 
-test('Index HTML invalidates old cached shortcuts and includes new script version',()=>{
+test('Public default index is school login, not an automatically-loaded owner dashboard',()=>{
  for(const p of ['index.html','docs/index.html']){
   const html=read(p);
-  assert.match(html,/CACHE_VERSION = '20261022-workspace-v8'/);
-  assert.match(html,/parents-download-menu\.js\?v=20261022-pwa-standalone-v7/);
-  for(const route of ['parent-app-download','teacher-access','smart-tools']){
-    assert.ok(html.includes("window.location.pathname.includes('"+route+"')"),route);
-  }
+  assert.match(html,/id="loginForm"/);
+  assert.match(html,/teacher-access\\.js/);
+  assert.doesNotMatch(html,/src="\\.\\/assets\\/index-brightnexa-v2\\.js/);
+  assert.match(html,/School Login/);
+  assert.match(html,/school-preview\\.html/);
+ }
+ for(const p of ['school-demo.html','docs/school-demo.html']){
+  const html=read(p);
+  assert.match(html,/school-demo-gate\\.js/);
+  assert.doesNotMatch(html,/script type="module" crossorigin src="\\.\\/assets\\/index-brightnexa-v2/);
  }
 });
 
