@@ -70,10 +70,36 @@ tr td select{padding:7px;min-width:115px}
     <div class="inputgroup" style="margin:12px 0"><label for="loginPassword">Password</label><input type="password" id="loginPassword" autocomplete="current-password" required minlength="8"></div>
     <button type="submit" class="primary">Sign in securely</button>
   </form>
+  <div style="margin-top:17px;border-top:1px solid #dce6ef;padding-top:15px">
+    <button id="toggleSchoolRegistration" type="button" class="ghost" aria-expanded="false" aria-controls="createSchoolSignup">+ Create School (New Owner)</button>
+    <div id="createSchoolSignup" class="hidden" style="padding-top:16px">
+      <h2>Register a new school</h2>
+      <p class="sub">For the school's owner or authorised administrator. Verify your email first; your school is created only after secure sign-in.</p>
+      <form id="registerSchoolForm">
+        <label for="signupSchoolName">School name</label><input id="signupSchoolName" required minlength="3" maxlength="120" autocomplete="organization" placeholder="e.g. Sunrise Public School">
+        <label for="signupOwnerEmail" style="margin-top:12px">Owner email</label><input id="signupOwnerEmail" type="email" autocomplete="email" required>
+        <label for="signupOwnerPassword" style="margin-top:12px">Create password (12+ characters)</label><input id="signupOwnerPassword" type="password" minlength="12" maxlength="256" autocomplete="new-password" required>
+        <label for="signupOwnerPasswordConfirm" style="margin-top:12px">Confirm password</label><input id="signupOwnerPasswordConfirm" type="password" minlength="12" maxlength="256" autocomplete="new-password" required>
+        <button id="submitRegisterSchool" type="submit" class="primary" style="margin-top:15px">Verify email &amp; continue</button>
+      </form>
+      <p class="muted">An unverified email cannot become school admin. This is a trial workspace; verified ownership of the institution is a separate approval step.</p>
+    </div>
+  </div>
   <div id="activation" class="hidden"><h3>Activate invited account</h3><p>Set your new password to activate school access.</p><form id="activateForm"><label for="newPassword">New password (minimum 12 characters)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required><button class="primary" type="submit" style="margin-top:11px">Activate account</button></form></div>
-  <p class="muted">No public sign-up. School staff must be invited by their school administrator. The full School OS sample is not connected to cloud school records. <a href="./parent-app-download.html">Parents App demo download</a>.</p>
+  <p class="muted">School owners can create a school above. Staff members must be invited by their school administrator. The full School OS sample is not connected to cloud school records. <a href="./parent-app-download.html">Parents App demo download</a>.</p>
 </section>
 <div id="status" class="hidden" role="status" aria-live="polite"></div>
+<section id="registrationSection" class="panel login hidden">
+  <h1>Create your school</h1>
+  <p class="sub">Your account is signed in, but is not assigned to a school. School owners can register here. Invited teachers must sign in with their school-invited email.</p>
+  <form id="newSchoolForm">
+    <label for="newSchoolName">Official school name</label>
+    <input id="newSchoolName" required minlength="3" maxlength="120" autocomplete="organization" placeholder="School name">
+    <button id="provisionSchoolButton" type="submit" class="primary" style="margin-top:14px">Create School &amp; Owner Workspace</button>
+  </form>
+  <p class="muted">Server checks verified email and one school per owner account. Creation starts a trial workspace; real school data needs the school's authorisation.</p>
+</section>
+
 <section id="portalSection" class="hidden">
   <div class="row"><div><h1 id="hello">School workspace</h1><p class="sub" id="membership"></p></div><span class="pill" id="rolePill">VERIFIED ROLE</span></div>
   <div class="notice">Cloud portal: only permissions allowed for your verified role and school are accessible. Owner demo is a separate sample workspace, NOT a live student/fees database. Full School OS cloud integration and parent sync are still pending.</div>

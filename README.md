@@ -33,6 +33,15 @@ See [teacher onboarding](docs/CLOUD_TEACHER_ROLLOUT.md) and [security review](do
 
 ---
 
+## 🏫 Create your first school
+
+1. Open the secure login, choose **Create School (New Owner)**, enter the official school name, owner email and a strong password.
+2. Verify the email via the Supabase Auth message, then return to the site and sign in (teacher/staff cannot self-assign to an existing school).
+3. Confirm the school name in **Create your school**. The protected `register_first_school` RPC checks that the Auth email is verified, the account has no other school membership, and creates the school + admin membership + audit entry in one transaction.
+4. Invite staff and assign class permissions using the school admin portal. The old React owner dashboard remains a fictional sample and is **not** connected to the live school database.
+
+**Deployment prerequisite:** In Supabase Auth URL Configuration add `https://bright-nexa-school-os.onrender.com/teacher-access.html` as an approved redirect (and the site root, if the Site URL is used). Enable email verification and protect public email signup with rate limits/CAPTCHA for production. This establishes a trial account, **not proof of legal ownership of a school**.
+
 ## 🛠️ Technology Stack
 
 - **Frontend**: React 19, Vanilla CSS (Modern Design System), Lucide Icons, ExcelJS

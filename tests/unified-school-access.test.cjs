@@ -34,6 +34,26 @@ test('teachers do not receive an owner sample dashboard from the shared login',(
  assert.doesNotThrow(()=>new Function(code));
  assert.doesNotThrow(()=>new Function(sample));
 });
+test('school owner self-registration is visible and can only provision through verified RPC',()=>{
+ for(const file of ['index.html','docs/index.html','teacher-access.html','docs/teacher-access.html']){
+   const html=read(file);
+   for(const marker of ['toggleSchoolRegistration','registerSchoolForm','newSchoolForm','signupOwnerEmail','signupOwnerPassword','newSchoolName']){
+     assert.ok(html.includes('id="'+marker+'"'),file+' missing '+marker);
+   }
+ }
+ const script=read('teacher-access.js');
+ assert.ok(script.includes('signup?redirect_to='));
+ assert.ok(script.includes('rpc/register_first_school'));
+ assert.ok(script.includes('PENDING_SCHOOL'));
+ assert.ok(script.includes("display('registrationSection',true)"));
+ assert.doesNotThrow(()=>new Function(script));
+ const migration=read('supabase/migrations/20261023064331_verified_first_school_self_registration.sql');
+ assert.ok(migration.includes('email_confirmed_at is not null'));
+ assert.ok(migration.includes('pg_advisory_xact_lock'));
+ assert.ok(migration.includes("values(v_school, v_actor, v_email, 'school_admin', 'active')"));
+ assert.ok(migration.includes('revoke all on function public.register_first_school(text) from public, anon, authenticated'));
+ assert.ok(migration.includes('grant execute on function public.register_first_school(text) to authenticated'));
+});
 test('public feature preview is informational only and does not run the app',()=>{
  const html=read('school-preview.html');
  assert.ok(html.includes('READ-ONLY PRODUCT PREVIEW'));
