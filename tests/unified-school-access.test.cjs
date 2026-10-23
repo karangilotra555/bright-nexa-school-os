@@ -9,8 +9,11 @@ test('one school login from the public entry, teacher alias and an admin-only sa
  for(const file of ['index.html','docs/index.html','teacher-access.html','docs/teacher-access.html']){
   const html=read(file);
   assert.ok(html.includes('id="loginForm"'),file);
-  assert.ok(html.includes('school-preview.html'),file);
-  assert.ok(html.includes('id="ownerDemoLink" class="header-back hidden"'),file);
+  assert.ok(html.includes('id="smartToolsCard" class="panel hidden"'),file);
+  assert.ok(html.includes('id="ownerDemoLink" class="ghost hidden"'),file);
+  assert.ok(!html.includes('Preview features (sample)'),file);
+  assert.ok(!html.includes('href="./school-preview.html"'),file);
+  assert.ok(!html.includes('href="./smart-tools.html" class="light"'),file);
   assert.ok(html.includes('teacher-access.js'),file);
  }
  assert.equal(read('index.html'),read('docs/index.html'));

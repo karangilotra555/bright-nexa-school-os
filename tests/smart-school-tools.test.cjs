@@ -100,7 +100,13 @@ test('All five tools and CSV/XLSX selectors are present; no external AI APIs',()
  }
  assert.match(h,/\.xlsx/);
  assert.match(ui,/DecompressionStream/);
- assert.match(h,/connect-src 'none'/);
+ assert.match(h,/connect-src 'self' https:\/\/mrfvbwmyxndrakskqyas\.supabase\.co/);
+ assert.match(h,/smart-tools-access\.js/);
+ assert.match(h,/bn-smart-ready/);
+ const access=source('smart-tools-access.js');
+ assert.equal(access,source('docs/smart-tools-access.js'));
+ for(const marker of ['school_users?','auth/v1/user','institutions?','school_admin','principal','teacher']) assert.ok(access.includes(marker),marker);
+ assert.doesNotThrow(()=>new Function(access));
  assert.doesNotMatch(ui,/openai\.com|generativelanguage\.googleapis|api\.groq\.com|https:\/\//);
  assert.doesNotThrow(()=>new Function(ui));
  assert.doesNotThrow(()=>new Function(eng));

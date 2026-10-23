@@ -60,7 +60,7 @@ tr td select{padding:7px;min-width:115px}
 <script src="./teacher-access.js" defer></script>
 </head>
 <body>
-<header><div class="bar"><div class="brand">Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a class="header-back" id="backToSchoolOs" href="./index.html" aria-label="Back to School OS Login">← Back to School OS Login</a><a href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><a id="ownerDemoLink" class="header-back hidden" href="./school-demo.html">Owner demo (sample only)</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
+<header><div class="bar"><div class="brand">Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a class="header-back" id="backToSchoolOs" href="./index.html" aria-label="Back to School OS Login">← School Login</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
 <main>
 <section id="loginSection" class="panel login">
   <h1>Teacher & Staff Login</h1>
@@ -87,7 +87,7 @@ tr td select{padding:7px;min-width:115px}
     </div>
   </div>
   <div id="activation" class="hidden"><h3>Activate invited account</h3><p>Set your new password to activate school access.</p><form id="activateForm"><label for="newPassword">New password (minimum 12 characters)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required><button class="primary" type="submit" style="margin-top:11px">Activate account</button></form></div>
-  <p class="muted">School owners can create a school above; teachers must be invited and assigned by the school admin. <a href="./school-preview.html">View read-only product preview</a>.</p>
+  <p class="muted">School owners can create a school above; teachers must be invited and assigned by the school admin.</p>
 </section>
 <div id="status" class="hidden" role="status" aria-live="polite"></div>
 <section id="registrationSection" class="panel login hidden">
@@ -103,6 +103,13 @@ tr td select{padding:7px;min-width:115px}
 
 <section id="portalSection" class="hidden">
   <div class="row"><div><h1 id="hello">School workspace</h1><p class="sub" id="membership"></p></div><span class="pill" id="rolePill">VERIFIED ROLE</span></div>
+  <section id="smartToolsCard" class="panel hidden" aria-label="School Smart Tools">
+    <div class="row">
+      <div><h2>🧠 Smart Tools</h2><p class="sub" style="margin:0">Timetable, Substitute Teacher, Student Performance, Excel Import and Error Detector. Browser-only tools; no automatic writes to school records.</p></div>
+      <a class="header-back" href="./smart-tools.html" style="background:#0b315e;color:white">Open Smart Tools →</a>
+    </div>
+    <a id="ownerDemoLink" class="ghost hidden" href="./school-demo.html" style="display:inline-block;text-decoration:none;margin-top:12px;font-size:12px">Open sample School OS dashboard</a>
+  </section>
   <div class="notice">Verified staff permissions are enforced by Supabase Row Level Security. Owner demo is a separate sample, NOT live school records. Full School OS cloud integration and parent sync are still pending.</div>
   <div class="cards">
     <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>

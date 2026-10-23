@@ -49,7 +49,9 @@ test('Public default index is school login, never auto-running the owner app bun
   assert.ok(html.includes('entry-sw-reset.js'));
   assert.ok(!html.includes('src="./assets/index-brightnexa-v2.js'));
   assert.ok(html.includes('School Login'));
-  assert.ok(html.includes('school-preview.html'));
+  assert.ok(html.includes('id="smartToolsCard" class="panel hidden"'));
+  assert.ok(!html.includes('Preview features (sample)'));
+  assert.ok(!html.includes('href="./school-preview.html"'));
  }
  for(const p of ['school-demo.html','docs/school-demo.html']){
   const html=read(p);
