@@ -40,19 +40,21 @@ test('Workbox SPA fallback excludes all three independent HTML pages',()=>{
  assert.ok(!excluded.some(x=>x.test('/dashboard')),'Unknown routes should return the secure login entry');
 });
 
-test('Public default index is school login, not an automatically-loaded owner dashboard',()=>{
+test('Public default index is school login, never auto-running the owner app bundle',()=>{
  for(const p of ['index.html','docs/index.html']){
   const html=read(p);
-  assert.match(html,/id="loginForm"/);
-  assert.match(html,/teacher-access\\.js/);
-  assert.doesNotMatch(html,/src="\\.\\/assets\\/index-brightnexa-v2\\.js/);
-  assert.match(html,/School Login/);
-  assert.match(html,/school-preview\\.html/);
+  assert.ok(html.includes('id="loginForm"'));
+  assert.ok(html.includes('teacher-access.js'));
+  assert.ok(html.includes('parents-download-menu.js'));
+  assert.ok(html.includes('entry-sw-reset.js'));
+  assert.ok(!html.includes('src="./assets/index-brightnexa-v2.js'));
+  assert.ok(html.includes('School Login'));
+  assert.ok(html.includes('school-preview.html'));
  }
  for(const p of ['school-demo.html','docs/school-demo.html']){
   const html=read(p);
-  assert.match(html,/school-demo-gate\\.js/);
-  assert.doesNotMatch(html,/script type="module" crossorigin src="\\.\\/assets\\/index-brightnexa-v2/);
+  assert.ok(html.includes('school-demo-gate.js'));
+  assert.ok(!html.includes('script type="module" crossorigin src="./assets/index-brightnexa-v2'));
  }
 });
 

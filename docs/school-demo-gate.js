@@ -46,6 +46,9 @@
         show('Only a verified School Admin can open the editable owner sample. Teachers and other staff must use their own role-based cloud workspace.');
         return;
       }
+      // The legacy React bundle must NEVER read/write real school localStorage or IndexedDB keys.
+      // This is an isolated browser-local sample even for a signed-in admin.
+      sessionStorage.setItem('bright-nexa-school-os:demo-mode:v1','true');
       document.getElementById('sampleBanner').hidden=false;
       status.remove();
       const script=document.createElement('script');
