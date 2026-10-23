@@ -54,6 +54,26 @@ test('school owner self-registration is visible and can only provision through v
  assert.ok(migration.includes('revoke all on function public.register_first_school(text) from public, anon, authenticated'));
  assert.ok(migration.includes('grant execute on function public.register_first_school(text) to authenticated'));
 });
+test('demo/demo enters only browser-isolated sample and never requests Supabase login',()=>{
+  for(const path of ['index.html','docs/index.html','teacher-access.html','docs/teacher-access.html']){
+    const html=read(path);
+    assert.ok(html.includes('ID <code>demo</code> · Password <code>demo</code>'));
+    assert.ok(html.includes('id="loginEmail"'));
+    assert.ok(html.includes('minlength="4"'));
+  }
+  const login=read('teacher-access.js'),gate=read('school-demo-gate.js');
+  assert.ok(login.includes("if(id==='demo' && password==='demo')"));
+  assert.ok(login.includes("window.location.assign('./school-demo.html')"));
+  assert.ok(gate.includes('const isLocalDemo=localDemoAccess()'));
+  assert.ok(gate.includes("sessionStorage.setItem('bright-nexa-school-os:demo-mode:v1','true')"));
+  assert.ok(gate.includes('if(!isLocalDemo && !await authorisedOwner())'));
+  assert.ok(gate.includes('Exit demo'));
+  assert.ok(gate.includes('MutationObserver'));
+  assert.ok(gate.includes("script.src='./assets/index-brightnexa-v2.js"));
+  assert.doesNotThrow(()=>new Function(login));
+  assert.doesNotThrow(()=>new Function(gate));
+  assert.equal(gate,read('docs/school-demo-gate.js'));
+});
 test('public feature preview is informational only and does not run the app',()=>{
  const html=read('school-preview.html');
  assert.ok(html.includes('READ-ONLY PRODUCT PREVIEW'));

@@ -33,6 +33,13 @@ See [teacher onboarding](docs/CLOUD_TEACHER_ROLLOUT.md) and [security review](do
 
 ---
 
+## Demo login (fictional school only)
+
+On the School Login screen, use **ID: demo** and **Password: demo**.
+This opens the isolated, locally simulated School OS dashboard. The demo marker
+does not issue a Supabase Auth session, grant privileges, or access real school
+data. Real staff must sign in with their invited email and password.
+
 ## 🏫 Create your first school
 
 1. Open the secure login, choose **Create School (New Owner)**, enter the official school name, owner email and a strong password.
