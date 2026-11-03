@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
-<title>Bright Nexa — School Cloud Operations</title>
+<title>Bright Nexa — Real Test School Operations</title>
 <style>
 :root{font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#173352;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}
 header{background:linear-gradient(110deg,#081c3a,#0d4a83);color:white;padding:24px max(20px,calc((100vw - 1070px)/2))}
@@ -17,18 +17,55 @@ button:disabled{opacity:.6;cursor:not-allowed}.ghost{background:#e5f1fb;color:#1
 table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid #e6edf4;vertical-align:top}th{background:#edf4fb}.scroll{overflow-x:auto}.subheading{margin:10px 0 0}
 @media(max-width:700px){.cols{grid-template-columns:1fr}.card{padding:16px}main{padding:0 12px}.scroll{max-width:100%}}
 </style>
-<script src="./school-operations.js?v=20261103" defer></script>
+<script src="./school-operations.js?v=20261103-real-school" defer></script>
 </head><body>
-<header><h1>Bright Nexa ✦ Cloud Operations</h1><p id="currentSchool">Verifying your school access…</p><a href="./index.html">← Back to School OS</a></header>
+<header><h1>Bright Nexa ✦ Real School Workspace</h1><p id="currentSchool">Verifying your school access…</p><a href="./index.html">← Back to School OS</a></header>
 <main>
-<div class="notice">This is the real Supabase school workspace, not the sample dashboard. All actions use your verified role and school-wise database permissions. Parent links require a verified guardian email and school-admin approval.</div>
+<div class="notice">TEST SCHOOL — This is a real, school-isolated Supabase database workspace. Enter only fictional test names until the school authorises real data. Class admissions, attendance, employment, fees and guardian links must work through verified accounts. No sample data is automatically inserted.</div>
 <div id="status" class="hidden status" role="alert" aria-live="polite"></div>
 <div id="noAccess" class="card hidden"><h2>Sign in as school staff first</h2><p>Use the main School Login page, then return to Cloud Operations. Only school admins, principals and accountants can manage these records. School admissions require admin or principal access.</p><a href="./index.html">Open School Login</a></div>
 <div id="opsApp" class="hidden">
 <div class="card row"><div><h2 id="schoolName">School</h2><p id="staffRole" class="muted"></p></div><button class="ghost" id="opsRefresh" type="button">↻ Refresh</button></div>
+<section id="staffSection" class="hidden">
+ <div class="card"><div class="row"><h2>Teachers & real staff identities</h2><a href="./index.html">← Roles & Permissions / Invite staff</a></div>
+  <p class="muted">Invite teacher emails using School Login → Roles & Permissions first. Give each teacher explicit class and attendance/homework rights there. Employment profiles here are linked to those same staff identities; creating a name alone never grants login access.</p>
+  <form id="staffProfileForm">
+   <div class="cols">
+    <div><label for="staffProfileUser">Invited staff member</label><select id="staffProfileUser" required></select></div>
+    <div><label for="staffDisplayName">Full name</label><input id="staffDisplayName" minlength="2" maxlength="150" required placeholder="Teacher name"></div>
+    <div><label for="staffDesignation">Designation</label><input id="staffDesignation" maxlength="100" placeholder="PGT Mathematics"></div>
+    <div><label for="staffEmploymentType">Employment type</label><select id="staffEmploymentType"><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part-time</option><option value="visiting">Visiting</option></select></div>
+   </div>
+   <div id="staffContractFields" class="hidden"><label for="staffContractEnd">Contract end date (required)</label><input id="staffContractEnd" type="date"></div>
+   <div id="staffPartTimeFields" class="cols hidden">
+    <div><label for="staffDaysWeek">Working days per week</label><input id="staffDaysWeek" type="number" min="1" max="7"></div>
+    <div><label for="staffHoursDay">Hours per working day</label><input id="staffHoursDay" type="number" min="0.5" max="12" step="0.5"></div>
+   </div>
+   <div id="staffVisitingFields" class="hidden"><label for="staffVisitsMonth">Expected visits per month</label><input id="staffVisitsMonth" type="number" min="1" max="31"></div>
+   <label for="staffNotes">Employment notes (optional)</label><input id="staffNotes" maxlength="500" placeholder="Authorised notes — no bank details">
+   <button type="submit">Save linked staff profile</button>
+  </form>
+ </div>
+ <div class="card"><h2>Staff directory & role overview</h2><div class="scroll"><table><thead><tr><th>Teacher / Account</th><th>Role</th><th>Employment</th><th>Class permissions</th></tr></thead><tbody id="staffDirectoryRows"></tbody></table></div></div>
+ <div class="card"><h2>Daily staff attendance</h2><p class="muted">Unmarked is NOT Absent. Each day must be explicitly recorded.</p>
+  <form id="staffAttendanceForm" class="cols">
+   <div><label for="staffAttendanceMember">Staff member</label><select id="staffAttendanceMember" required></select></div>
+   <div><label for="staffAttendanceDate">Date</label><input id="staffAttendanceDate" type="date" required></div>
+   <div><label for="staffAttendanceStatus">Status</label><select id="staffAttendanceStatus"><option value="">Select status</option><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="leave">Leave</option></select></div>
+   <div><label for="staffAttendanceNotes">Notes (optional)</label><input id="staffAttendanceNotes" maxlength="250" placeholder="Optional reason"></div>
+   <div><button type="submit">Save staff attendance</button></div>
+  </form>
+ </div>
+</section>
+<section id="attendanceReportSection" class="hidden card">
+ <div class="row"><div><h2>Actual monthly attendance — Students & Staff</h2><p class="muted">Reports count only explicitly marked days; unmarked days are not assumed absent. No synthetic figures.</p></div><div><label for="reportMonth">Report month</label><input id="reportMonth" type="month"><button type="button" id="refreshAttendanceReports" class="ghost">Load monthly reports</button></div></div>
+ <p id="attendanceReportSummary" class="muted"></p>
+ <h3>Student attendance</h3><div class="scroll"><table><thead><tr><th>Student / Admission</th><th>Class</th><th>Marked</th><th>Present</th><th>Absent</th><th>Late</th><th>Excused</th><th>% of marked</th></tr></thead><tbody id="studentReportRows"></tbody></table></div>
+ <h3>Staff attendance</h3><div class="scroll"><table><thead><tr><th>Staff / Role</th><th>Marked</th><th>Present</th><th>Absent</th><th>Late</th><th>Leave</th><th>% of marked</th></tr></thead><tbody id="staffReportRows"></tbody></table></div>
+</section>
 <section id="admissionsSection" class="hidden">
  <div class="card"><h2>Real Cloud Admissions & Classes</h2>
-  <p class="muted">Saved to the verified institution database, not the fictional demo. Do not enter actual children's personal information until your school has authorized the rollout.</p>
+  <p class="muted">Saved to the verified test school database. Every student must be registered through this form; never infer enrolment from a local demo.</p>
   <div class="cols">
    <form id="opsClassForm">
     <h3>Add a school class</h3>
