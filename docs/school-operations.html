@@ -18,7 +18,7 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
 @media(max-width:700px){.cols{grid-template-columns:1fr}.card{padding:16px}main{padding:0 12px}.scroll{max-width:100%}}
 </style>
 <script src="./school-operations.js?v=20261103-real-school" defer></script>
-<script src="./real-school-staff.js?v=20261103" defer></script>
+<script src="./real-school-staff.js?v=20261103-directory2" defer></script>
 </head><body>
 <header><h1>Bright Nexa ✦ Real School Workspace</h1><p id="currentSchool">Verifying your school access…</p><a href="./index.html">← Back to School OS</a></header>
 <main>
@@ -28,13 +28,16 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
 <div id="opsApp" class="hidden">
 <div class="card row"><div><h2 id="schoolName">School</h2><p id="staffRole" class="muted"></p></div><button class="ghost" id="opsRefresh" type="button">↻ Refresh</button></div>
 <section id="staffSection" class="hidden">
- <div class="card"><div class="row"><h2>Teachers & real staff identities</h2><a href="./index.html">← Roles & Permissions / Invite staff</a></div>
-  <p class="muted">Invite teacher emails using School Login → Roles & Permissions first. Give each teacher explicit class and attendance/homework rights there. Employment profiles here are linked to those same staff identities; creating a name alone never grants login access.</p>
+ <div class="card"><div class="row"><h2>Real Staff Directory — Teachers & Housekeeping</h2><a href="./index.html">← Roles & Permissions / Invite staff</a></div>
+  <p class="muted">These are real TEST-school database records, including teachers and housekeeping. A directory profile does NOT grant login. Invite a teacher by email at School Login → Roles & Permissions, then grant explicit class rights. Housekeeping has no access to children or fee data.</p>
   <form id="staffProfileForm">
    <div class="cols">
-    <div><label for="staffProfileUser">Invited staff member</label><select id="staffProfileUser" required></select></div>
+    <div><label for="staffProfileUser">Staff directory record (optional — leave blank for new)</label><select id="staffProfileUser"></select></div>
     <div><label for="staffDisplayName">Full name</label><input id="staffDisplayName" minlength="2" maxlength="150" required placeholder="Teacher name"></div>
-    <div><label for="staffDesignation">Designation</label><input id="staffDesignation" maxlength="100" placeholder="PGT Mathematics"></div>
+    <div><label for="staffDesignation">Designation</label><input id="staffDesignation" maxlength="100" placeholder="English Teacher / Housekeeping"></div>
+    <div><label for="staffCategory">Staff category</label><select id="staffCategory"><option value="teaching">Teaching</option><option value="housekeeping">Housekeeping (no school data login)</option></select></div>
+    <div><label for="staffContactEmail">Contact email (optional; invite teacher separately)</label><input id="staffContactEmail" type="email" maxlength="254" autocomplete="off"></div>
+    <div><label for="staffContactMobile">Mobile (optional)</label><input id="staffContactMobile" inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" autocomplete="off"></div>
     <div><label for="staffEmploymentType">Employment type</label><select id="staffEmploymentType"><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part-time</option><option value="visiting">Visiting</option></select></div>
    </div>
    <div id="staffContractFields" class="hidden"><label for="staffContractEnd">Contract end date (required)</label><input id="staffContractEnd" type="date"></div>
@@ -47,8 +50,8 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
    <button type="submit">Save linked staff profile</button>
   </form>
  </div>
- <div class="card"><h2>Staff directory & role overview</h2><div class="scroll"><table><thead><tr><th>Teacher / Account</th><th>Role</th><th>Employment</th><th>Class permissions</th></tr></thead><tbody id="staffDirectoryRows"></tbody></table></div></div>
- <div class="card"><h2>Daily staff attendance</h2><p class="muted">Unmarked is NOT Absent. Each day must be explicitly recorded.</p>
+ <div class="card"><h2>Staff directory, invitations & permission status</h2><div class="scroll"><table><thead><tr><th>Staff name</th><th>Category</th><th>Employment</th><th>Login & class rights</th></tr></thead><tbody id="staffDirectoryRows"></tbody></table></div></div>
+ <div class="card"><h2>Daily staff attendance</h2><p class="muted">Teachers and housekeeping can be marked even before an email invitation. Unmarked is NOT Absent. Each day must be explicitly recorded.</p>
   <form id="staffAttendanceForm" class="cols">
    <div><label for="staffAttendanceMember">Staff member</label><select id="staffAttendanceMember" required></select></div>
    <div><label for="staffAttendanceDate">Date</label><input id="staffAttendanceDate" type="date" required></div>
@@ -62,7 +65,7 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
  <div class="row"><div><h2>Actual monthly attendance — Students & Staff</h2><p class="muted">Reports count only explicitly marked days; unmarked days are not assumed absent. No synthetic figures.</p></div><div><label for="reportMonth">Report month</label><input id="reportMonth" type="month"><button type="button" id="refreshAttendanceReports" class="ghost">Load monthly reports</button></div></div>
  <p id="attendanceReportSummary" class="muted"></p>
  <h3>Student attendance</h3><div class="scroll"><table><thead><tr><th>Student / Admission</th><th>Class</th><th>Marked</th><th>Present</th><th>Absent</th><th>Late</th><th>Excused</th><th>% of marked</th></tr></thead><tbody id="studentReportRows"></tbody></table></div>
- <h3>Staff attendance</h3><div class="scroll"><table><thead><tr><th>Staff / Role</th><th>Marked</th><th>Present</th><th>Absent</th><th>Late</th><th>Leave</th><th>% of marked</th></tr></thead><tbody id="staffReportRows"></tbody></table></div>
+ <h3>Staff attendance (teachers + housekeeping)</h3><div class="scroll"><table><thead><tr><th>Staff / Role</th><th>Marked</th><th>Present</th><th>Absent</th><th>Late</th><th>Leave</th><th>% of marked</th></tr></thead><tbody id="staffReportRows"></tbody></table></div>
 </section>
 <section id="admissionsSection" class="hidden">
  <div class="card"><h2>Real Cloud Admissions & Classes</h2>

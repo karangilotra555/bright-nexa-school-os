@@ -94,6 +94,11 @@
     const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status',auth_user_id:eq(identity.id)}));
     me=memberships.find(x=>x.auth_user_id===identity.id&&x.status==='active')||null;
     if(!me){
+      // A TEST school may have been provisioned for this exact, verified owner email.
+      // This RPC checks email confirmation + private claim server-side; never trusts
+      // browser-supplied school IDs, phone numbers or local/demo records.
+      const claimed=await api('rpc/claim_prepared_test_school','','POST',{});
+      if(claimed){ await load(); return; }
       display('portalSection',false);display('loginSection',false);display('registrationSection',true);
       display('logout',true);display('cloudOperationsLink',false);
       put('schoolLabel','Create your school');

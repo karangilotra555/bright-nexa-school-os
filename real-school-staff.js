@@ -6,7 +6,7 @@
  const $=id=>document.getElementById(id);
  const choices=(id,items,label)=>{
   const select=$(id);select.replaceChildren();
-  const empty=document.createElement('option');empty.value='';empty.textContent='Select invited staff';
+  const empty=document.createElement('option');empty.value='';empty.textContent='Add new staff / Choose existing';
   select.append(empty);
   for(const item of items){const o=document.createElement('option');o.value=item.id;o.textContent=label(item);select.append(o)}
  };
@@ -39,9 +39,8 @@
   return parse(await fetch(ROOT+'/rest/v1/'+table+'?'+qs(filters),
      {method,headers,body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'}));
  }
- const activeStaff=()=>staff.filter(u=>u.status==='active'&&u.role!=='school_admin');
- const profileFor=id=>profiles.find(p=>p.school_user_id===id);
- const staffTitle=u=>profileFor(u.id)?.display_name||u.email;
+ const directory=()=>profiles;
+ const staffTitle=p=>p.display_name;
  function fieldVisibility(){
   const type=$('staffEmploymentType').value;
   hide('staffContractFields',type==='contract');
@@ -52,10 +51,12 @@
   $('staffVisitsMonth').required=type==='visiting';
  }
  function selectedProfile(){
-  const u=activeStaff().find(x=>x.id===$('staffProfileUser').value);
-  const p=u&&profileFor(u.id);
-  $('staffDisplayName').value=p?.display_name||u?.email?.split('@')[0]||'';
+  const p=profiles.find(x=>x.id===$('staffProfileUser').value);
+  $('staffDisplayName').value=p?.display_name||'';
   $('staffDesignation').value=p?.designation||'';
+  $('staffCategory').value=p?.staff_category||'teaching';
+  $('staffContactEmail').value=p?.contact_email||'';
+  $('staffContactMobile').value=p?.contact_mobile||'';
   $('staffEmploymentType').value=p?.employment_type||'permanent';
   $('staffContractEnd').value=p?.contract_end_on||'';
   $('staffDaysWeek').value=p?.days_per_week??'';
@@ -65,30 +66,37 @@
   fieldVisibility();
  }
  function staffDirectory(){
-  choices('staffProfileUser',activeStaff(),u=>u.email+' · '+u.role);
-  choices('staffAttendanceMember',activeStaff(),u=>u.email+' · '+u.role);
+  choices('staffProfileUser',directory(),p=>p.display_name+' · '+p.staff_category);
+  choices('staffAttendanceMember',directory(),p=>p.display_name+' · '+p.staff_category);
   const tbody=$('staffDirectoryRows');tbody.replaceChildren();
-  for(const u of activeStaff()){
-   const p=profileFor(u.id),a=assignments.filter(x=>x.school_user_id===u.id&&x.active);
-   const flags=a.map(item=>{
-     const c=classes.find(x=>x.id===item.class_id);
+  for(const p of directory()){
+   const linked=p.school_user_id && staff.find(u=>u.id===p.school_user_id&&u.status==='active');
+   const rights=linked?assignments.filter(x=>x.school_user_id===linked.id&&x.active):[];
+   const flags=rights.map(item=>{
+     const cls=classes.find(c=>c.id===item.class_id);
      const permissions=['roster','attendance','homework','marks'].filter((_,i)=>
        [item.can_view_roster,item.can_take_attendance,item.can_assign_homework,item.can_enter_marks][i]);
-     return (c?c.name+' '+c.section:'Class')+' ('+permissions.join(', ')+')';
+     return (cls?cls.name+' '+cls.section:'Class')+' ('+permissions.join(', ')+')';
    }).join('; ');
+   const access=p.staff_category==='housekeeping'?
+     'No student/finance login (housekeeping)':
+     linked?(flags||'Invited · no class permissions yet'):
+     'Directory only · invitation pending';
    const row=document.createElement('tr');
-   [staffTitle(u),u.role.replaceAll('_',' '),humanType[p?.employment_type]||'Not configured',
-    flags||'No class permissions'].forEach(v=>cell(row,v));tbody.append(row);
+   [p.display_name+(p.contact_email?' · '+p.contact_email:''),
+    p.staff_category==='teaching'?'Teacher':'Housekeeping',
+    humanType[p.employment_type]||'Not configured',access].forEach(v=>cell(row,v));
+   tbody.append(row);
   }
-  if(!activeStaff().length){const row=document.createElement('tr');
-   const td=document.createElement('td');td.colSpan=4;td.textContent='Invite teacher accounts first in Roles & Permissions on School Login.';row.append(td);tbody.append(row)}
+  if(!directory().length){const row=document.createElement('tr');
+   const td=document.createElement('td');td.colSpan=4;td.textContent='No staff profiles. Add a directory record; login permissions require a separate invitation.';row.append(td);tbody.append(row)}
   selectedProfile();
  }
  async function refreshStaff(){
   const id=eq(me.institution_id);
   [staff,profiles,assignments,students,classes]=await Promise.all([
    api('school_users',{select:'id,email,role,status,institution_id',institution_id:id,limit:'500'}),
-   api('school_staff_profiles',{select:'id,school_user_id,display_name,designation,employment_type,contract_end_on,days_per_week,hours_per_day,visits_per_month,notes,institution_id',institution_id:id,limit:'500'}),
+   api('school_staff_profiles',{select:'id,school_user_id,display_name,designation,staff_category,contact_email,contact_mobile,employment_type,contract_end_on,days_per_week,hours_per_day,visits_per_month,notes,institution_id',institution_id:id,limit:'500'}),
    api('school_teacher_assignments',{select:'school_user_id,class_id,active,can_view_roster,can_take_attendance,can_assign_homework,can_enter_marks',institution_id:id,limit:'1000'}),
    api('school_students',{select:'id,name,admission_number,class_id,status',institution_id:id,status:'eq.active',limit:'1000'}),
    api('school_classes',{select:'id,name,section',institution_id:id,limit:'500'})
@@ -116,7 +124,7 @@
   const period='(day.gte.'+start+',day.lt.'+end+')';
   const [studentMarks,staffMarks]=await Promise.all([
    api('school_attendance',{select:'student_id,day,status',institution_id:tenant,and:period,limit:'10000'}),
-   api('school_staff_attendance',{select:'school_user_id,day,status',institution_id:tenant,and:period,limit:'10000'})
+   api('school_staff_directory_attendance',{select:'staff_profile_id,day,status',institution_id:tenant,and:period,limit:'10000'})
   ]);
   const studentRows=$('studentReportRows');studentRows.replaceChildren();
   for(const s of students){
@@ -125,13 +133,13 @@
     t.marked,t.present,t.absent,t.late,t.excused,t.marked?Math.round(100*t.present/t.marked)+'%':'Not marked']);
   }
   const staffRows=$('staffReportRows');staffRows.replaceChildren();
-  for(const u of activeStaff()){
-   const t=tally(staffMarks,'school_user_id',u.id);
-   reportLine(staffRows,[staffTitle(u)+' · '+u.role,t.marked,t.present,t.absent,t.late,t.leave,
+  for(const p of directory()){
+   const t=tally(staffMarks,'staff_profile_id',p.id);
+   reportLine(staffRows,[p.display_name+' · '+p.staff_category,t.marked,t.present,t.absent,t.late,t.leave,
     t.marked?Math.round(100*t.present/t.marked)+'%':'Not marked']);
   }
   if(!students.length)reportLine(studentRows,['No students registered','—','—','—','—','—','—','—']);
-  if(!activeStaff().length)reportLine(staffRows,['No invited staff','—','—','—','—','—','—']);
+  if(!directory().length)reportLine(staffRows,['No staff directory profiles','—','—','—','—','—','—']);
   $('attendanceReportSummary').textContent=$('reportMonth').value+': '+
     studentMarks.length+' student marks, '+staffMarks.length+' staff marks. No assumed absences.'+
     ((studentMarks.length===10000||staffMarks.length===10000)?' WARNING: result limit reached — totals may be incomplete.':'');
@@ -143,10 +151,14 @@
   });
  };
  bind('staffProfileForm',async()=>{
-  const u=activeStaff().find(x=>x.id===$('staffProfileUser').value);
-  if(!u)throw Error('Select an invited active teacher or staff member.');
+  const old=profiles.find(p=>p.id===$('staffProfileUser').value);
   const type=$('staffEmploymentType').value,name=$('staffDisplayName').value.trim();
-  if(name.length<2||name.length>150)throw Error('Name must be 2–150 characters.');
+  const category=$('staffCategory').value, email=$('staffContactEmail').value.trim().toLowerCase(),
+    mobile=$('staffContactMobile').value.trim();
+  if(name.length<2||name.length>150)throw Error('Staff name must be 2–150 characters.');
+  if(!['teaching','housekeeping'].includes(category))throw Error('Choose staff category.');
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw Error('Enter a valid staff email.');
+  if(mobile && !/^[6-9]\d{9}$/.test(mobile))throw Error('Mobile must be a valid 10-digit Indian number.');
   if(!Object.hasOwn(humanType,type))throw Error('Choose employment type.');
   const end=$('staffContractEnd').value,days=Number($('staffDaysWeek').value),
    hours=Number($('staffHoursDay').value),visits=Number($('staffVisitsMonth').value);
@@ -154,29 +166,34 @@
   if(type==='part_time'&&(!Number.isInteger(days)||days<1||days>7||hours<.5||hours>12))
     throw Error('Part-time requires 1–7 days/week and 0.5–12 hours/day.');
   if(type==='visiting'&&(!Number.isInteger(visits)||visits<1||visits>31))
-    throw Error('Visiting teachers require 1–31 visits per month.');
-  const values={institution_id:me.institution_id,school_user_id:u.id,display_name:name,
-    designation:$('staffDesignation').value.trim(),employment_type:type,
+    throw Error('Visiting staff require 1–31 visits per month.');
+  const invited=category==='teaching'&&email?
+    staff.find(u=>u.status==='active'&&u.role==='teacher'&&u.email.toLowerCase()===email):null;
+  const link=old?.school_user_id||invited?.id||null;
+  if(category==='housekeeping'&&link)throw Error('Linked teacher account cannot become housekeeping.');
+  const values={institution_id:me.institution_id,school_user_id:link,display_name:name,
+    designation:$('staffDesignation').value.trim(),staff_category:category,
+    contact_email:email||null,contact_mobile:mobile||null,employment_type:type,
     contract_end_on:type==='contract'?end:null,days_per_week:type==='part_time'?days:null,
     hours_per_day:type==='part_time'?hours:null,visits_per_month:type==='visiting'?visits:null,
     notes:$('staffNotes').value.trim()};
-  const old=profileFor(u.id);
   if(old)await api('school_staff_profiles',{id:eq(old.id),institution_id:eq(me.institution_id)},'PATCH',values);
   else await api('school_staff_profiles',{},'POST',values);
-  await refreshStaff();note('Verified school staff profile saved. Class permissions are separate in Roles & Permissions.');
+  await refreshStaff();await reports();
+  note('Staff directory profile saved to Supabase. Only invited teachers can receive separate class/login permissions.');
  });
  bind('staffAttendanceForm',async()=>{
-  const u=activeStaff().find(x=>x.id===$('staffAttendanceMember').value);
+  const p=directory().find(x=>x.id===$('staffAttendanceMember').value);
   const day=$('staffAttendanceDate').value,status=$('staffAttendanceStatus').value;
-  if(!u||!day||!['present','absent','late','leave'].includes(status))
-    throw Error('Select a staff member, date and attendance status.');
-  const existing=await api('school_staff_attendance',{select:'id',school_user_id:eq(u.id),
+  if(!p||!day||!['present','absent','late','leave'].includes(status))
+    throw Error('Select a directory staff member, date and attendance status.');
+  const existing=await api('school_staff_directory_attendance',{select:'id',staff_profile_id:eq(p.id),
     institution_id:eq(me.institution_id),day:eq(day),limit:'1'});
-  const row={institution_id:me.institution_id,school_user_id:u.id,day,status,recorded_by:me.id,
+  const row={institution_id:me.institution_id,staff_profile_id:p.id,day,status,recorded_by:me.id,
     notes:$('staffAttendanceNotes').value.trim()};
-  if(existing.length)await api('school_staff_attendance',{id:eq(existing[0].id),institution_id:eq(me.institution_id)},'PATCH',row);
-  else await api('school_staff_attendance',{},'POST',row);
-  await reports();note('Staff attendance saved to real school records and report updated.');
+  if(existing.length)await api('school_staff_directory_attendance',{id:eq(existing[0].id),institution_id:eq(me.institution_id)},'PATCH',row);
+  else await api('school_staff_directory_attendance',{},'POST',row);
+  await reports();note('Staff attendance saved to real school records and monthly report updated.');
  });
  $('staffProfileUser').addEventListener('change',selectedProfile);
  $('staffEmploymentType').addEventListener('change',fieldVisibility);

@@ -38,7 +38,7 @@ test('real school staff data stored in RLS Supabase, no local fake data',()=>{
   'staffAttendanceMember','staffAttendanceStatus','attendanceReportSection','reportMonth',
   'studentReportRows','staffReportRows'])assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(js,/school_staff_profiles/);
- assert.match(js,/school_staff_attendance/);
+ assert.match(js,/school_staff_directory_attendance/);
  assert.match(js,/school_students/);
  assert.match(js,/school_attendance/);
  assert.match(js,/school_teacher_assignments/);
