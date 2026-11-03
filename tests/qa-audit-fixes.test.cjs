@@ -20,7 +20,7 @@ test('school accounts stay separate from the demo and registration validates bef
  assert.match(login,/requireField\('newSchoolName'/);
  assert.match(login,/requireField\('studentName'/);
  assert.match(login,/Admission number already exists in this school/);
- assert.match(login,/No attendance records selected/);
+ assert.match(login,/No attendance marked/);
  assert.doesNotMatch(login,/service_role|sb_secret_/i);
 });
 test('sample-only demo controls do not write records and handle silent form actions',()=>{
