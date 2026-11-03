@@ -8,7 +8,8 @@
  const nav=Array.from(app.querySelectorAll('[data-ops-open]'));
  const url=new URL(window.location.href);
  const wanted=url.searchParams.get('section');
- let current=views.has(wanted)?wanted:'home';
+ const requested=views.has(wanted)?wanted:'home';
+ let current='home';
  const safeText=(id,text)=>{const el=document.getElementById(id);if(el&&el.textContent!==String(text))el.textContent=String(text);};
  const authorised=key=>{
    const panel=views.get(key);
@@ -111,9 +112,8 @@
  // only after authenticated modules have loaded and authorised that section.
  open('home',{updateURL:false});
  refreshRole();refreshStats();
- if(current!=='home'){
-   const initial=current;
-   current='home';
+ if(requested!=='home'){
+   const initial=requested;
    const tryOpen=()=>{
      if(authorised(initial))open(initial,{updateURL:false});
    };
