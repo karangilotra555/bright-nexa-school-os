@@ -4,7 +4,7 @@
  const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
  const STORE='bn_school_staff_session_v1';
  const $=id=>document.getElementById(id);
- let session=null,user=null,me=null,school=null,students=[],allGuardians=[],links=[];
+ let session=null,user=null,me=null,school=null,students=[],rosterAll=[],classes=[],allGuardians=[],links=[];
  const show=(id,on)=>$(id).classList.toggle('hidden',!on);
  const word=(id,value)=>$(id).textContent=value==null?'':String(value);
  const node=(name,text)=>{const e=document.createElement(name);if(text!==undefined)e.textContent=String(text);return e};
@@ -44,6 +44,7 @@
  const canFinance=()=>['school_admin','accountant'].includes(me.role);
  const canNotice=()=>['school_admin','principal'].includes(me.role);
  const canGuardian=()=>me.role==='school_admin';
+ const canAdmission=()=>['school_admin','principal'].includes(me.role);
  const studentName=id=>students.find(s=>s.id===id)?.name||'Unavailable student';
  function choices(id){
   const element=$(id);element.replaceChildren();
@@ -63,14 +64,56 @@
   const found=await api('institutions',{select:'id,name,status',id:eq(me.institution_id),limit:'1'});
   school=found[0];if(!school||!['active','trial'].includes(school.status))throw Error('Institution is not active.');
   show('noAccess',false);show('opsApp',true);
-  for(const id of ['financeSection','guardianSection','noticeSection','leavesSection'])show(id,false);
-  show('financeSection',canFinance());show('guardianSection',canGuardian());show('noticeSection',canNotice());show('leavesSection',canNotice());
+  for(const id of ['financeSection','guardianSection','noticeSection','leavesSection','admissionsSection'])show(id,false);
+  show('financeSection',canFinance());show('guardianSection',canGuardian());show('noticeSection',canNotice());show('leavesSection',canNotice());show('admissionsSection',canAdmission());
   word('schoolName',school.name);word('currentSchool',school.name);
   word('staffRole',me.role.replace('_',' ')+' · School status: '+school.status);
-  students=await api('school_students',{select:'id,institution_id,name,admission_number,class_id,status',institution_id:eq(me.institution_id),status:'eq.active',order:'name.asc',limit:'1000'});
+  if(canAdmission()){
+    [classes,rosterAll]=await Promise.all([
+      api('school_classes',{select:'id,name,section,academic_year,institution_id',
+        institution_id:eq(me.institution_id),order:'name.asc',limit:'500'}),
+      api('school_students',{select:'id,institution_id,name,admission_number,class_id,dob,status',
+        institution_id:eq(me.institution_id),order:'name.asc',limit:'1000'})
+    ]);
+    students=rosterAll.filter(s=>s.status==='active');
+    renderAdmissionForm();
+    renderRoster();
+  }else{
+    students=await api('school_students',{select:'id,institution_id,name,admission_number,class_id,status',
+       institution_id:eq(me.institution_id),status:'eq.active',order:'name.asc',limit:'1000'});
+  }
   if(canFinance()){choices('feeStudent');await loadFees()}
   if(canGuardian()){choices('guardianStudent');await loadGuardianLinks()}
   if(canNotice()){await Promise.all([loadNotices(),loadLeaves()])}
+ }
+ function renderAdmissionForm(){
+   const select=$('admissionClass');select.replaceChildren();
+   const placeholder=node('option',classes.length?'Select a class':'Create a class first');
+   placeholder.value='';select.append(placeholder);
+   for(const cls of classes){
+     const option=node('option',cls.name+' '+cls.section+' · '+cls.academic_year);
+     option.value=cls.id;select.append(option);
+   }
+ }
+ function renderRoster(){
+   if(!canAdmission())return;
+   const term=$('studentSearch').value.trim().toLocaleLowerCase();
+   const filtered=rosterAll.filter(s=>(s.name+' '+s.admission_number).toLocaleLowerCase().includes(term));
+   const tbody=$('admissionRows');tbody.replaceChildren();
+   for(const student of filtered.slice(0,100)){
+     const cls=classes.find(c=>c.id===student.class_id);
+     const row=node('tr');
+     for(const value of [
+       student.admission_number,student.name,
+       cls?cls.name+' '+cls.section:'Unassigned',student.dob||'—',student.status
+     ])row.append(node('td',value));
+     tbody.append(row);
+   }
+   if(!filtered.length){
+     const row=node('tr'),cell=node('td','No matching students.');
+     cell.colSpan=5;row.append(cell);tbody.append(row);
+   }
+   word('admissionCount',filtered.length+' matching of '+rosterAll.length+' loaded · showing first '+Math.min(filtered.length,100));
  }
  async function loadFees(){
   const [entries,summary]=await Promise.all([
@@ -136,6 +179,42 @@
   }
   if(!rows.length){const tr=node('tr'),td=node('td','No parent leave requests');td.colSpan=5;tr.append(td);tbody.append(tr)}
  }
+ $('studentSearch').addEventListener('input',()=>{if(me&&canAdmission())renderRoster()});
+ $('opsClassForm').addEventListener('submit',busy('opsClassForm',async()=>{
+   if(!canAdmission())throw Error('Only school admins and principals can add classes.');
+   const name=$('opsClassName').value.trim().replace(/\s+/g,' ');
+   const section=$('opsClassSection').value.trim().replace(/\s+/g,' ');
+   const academic_year=$('opsClassYear').value.trim();
+   const yr=/^(20\d{2})-(20\d{2})$/.exec(academic_year);
+   if(!name||name.length>80||!section||section.length>30||!yr||Number(yr[2])!==Number(yr[1])+1)
+     throw Error('Provide class, section and an academic year like 2026-2027.');
+   if(classes.some(c=>c.name.toLowerCase()===name.toLowerCase()
+       && c.section.toLowerCase()===section.toLowerCase() && c.academic_year===academic_year))
+     throw Error('This class/section already exists for the academic year.');
+   await api('school_classes',{},'POST',{institution_id:me.institution_id,name,section,academic_year});
+   $('opsClassForm').reset();
+   await load();notify('Cloud class saved. You can now register a student in this class.');
+ }));
+ $('admissionForm').addEventListener('submit',busy('admissionForm',async()=>{
+   if(!canAdmission())throw Error('School admin or principal access required.');
+   const cls=classes.find(c=>c.id===$('admissionClass').value);
+   const admission_number=$('admissionNumber').value.trim();
+   const name=$('admissionName').value.trim().replace(/\s+/g,' ');
+   const dob=$('admissionDOB').value;
+   if(!cls)throw Error('Select an existing class.');
+   if(!admission_number||admission_number.length>60||!name||name.length>180)
+     throw Error('Enter a valid admission number and student name.');
+   if(rosterAll.some(st=>st.admission_number.toLocaleLowerCase()===admission_number.toLocaleLowerCase()))
+     throw Error('This admission number is already used in your school.');
+   if(dob&&(!/^\d{4}-\d{2}-\d{2}$/.test(dob)||dob>new Date().toISOString().slice(0,10)))
+     throw Error('Date of birth must be a valid past date.');
+   await api('school_students',{},'POST',{
+      institution_id:me.institution_id,class_id:cls.id,name,admission_number,dob:dob||null,status:'active'
+   });
+   $('admissionForm').reset();
+   await load();
+   notify('Student enrolled in the verified cloud roster. Parent access is separate and requires verified email linking.');
+ }));
  $('feeForm').addEventListener('submit',busy('feeForm',async()=>{
   if(!canFinance())throw Error('School finance permission required.');
   const chosen=students.find(s=>s.id===$('feeStudent').value);

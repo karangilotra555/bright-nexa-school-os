@@ -238,7 +238,7 @@
       window.location.assign('./school-demo.html');
       return;
     }
-    if(!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(id))throw Error('Enter a valid school email, or demo / demo for the sample.');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id))throw Error('Enter a valid school email, or demo / demo for the sample.');
     if(password.length<8)throw Error('School password must have at least 8 characters.');
     const btn=e.submitter;btn.disabled=true;
     try{const tokens=await authRequest('token?grant_type=password',{email:id,password});saveSession(tokens);await load()}
@@ -254,7 +254,8 @@
     const btn=$('submitRegisterSchool');
     if(btn.disabled)return;
     const name=requireField('signupSchoolName','Enter a school name (at least 3 characters).',3).replace(/\s+/g,' ');
-    const email=requireField('signupOwnerEmail','Enter the owner email address.');
+    const email=requireField('signupOwnerEmail','Enter the owner email address.').toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))fieldError('signupOwnerEmail','Enter a valid email address.');
     const password=$('signupOwnerPassword').value;
     if(!password)fieldError('signupOwnerPassword','Create a password with at least 12 characters.');
     if(name.length<3||name.length>120)throw Error('School name must be 3 to 120 characters.');
