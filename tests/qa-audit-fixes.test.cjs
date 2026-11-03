@@ -13,9 +13,9 @@ test('QA patches mirror published docs and remain syntactically valid',()=>{
 });
 test('school accounts stay separate from the demo and registration validates before writing',()=>{
  const login=read('teacher-access.js'),index=read('index.html');
- assert.match(index,/Separate sample mode/);
- assert.match(index,/isolated browser-only demonstration/);
- assert.match(login,/id==='demo' && password==='demo'/);
+ assert.match(index,/REAL TEST SCHOOL MODE/);
+ assert.doesNotMatch(index,/isolated browser-only demonstration/);
+ assert.doesNotMatch(login,/id==='demo' && password==='demo'/);
  assert.match(login,/requireField\('signupSchoolName'/);
  assert.match(login,/requireField\('newSchoolName'/);
  assert.match(login,/requireField\('studentName'/);
@@ -25,7 +25,7 @@ test('school accounts stay separate from the demo and registration validates bef
 });
 test('sample-only demo controls do not write records and handle silent form actions',()=>{
  const code=read('demo-qa-fixes.js'),html=read('school-demo.html');
- assert.match(html,/demo-qa-fixes\.js/);
+ assert.doesNotMatch(html,/demo-qa-fixes\.js/);
  assert.match(code,/Save Student/);
  assert.match(code,/Save Marked Records/);
  assert.match(code,/No attendance selected/);
@@ -81,7 +81,7 @@ test('demo Student Profile parent phone is redacted without touching noncontact 
  assert.equal(value.textContent,'987*****10');
  assert.equal(otherValue.textContent,'2026110310');
  assert.equal(mask('987*****10'),'987*****10');
- assert.match(read('school-demo.html'),/demo-qa-fixes\.js\?v=20261103-profile-fee2/);
+ assert.doesNotMatch(read('school-demo.html'),/demo-qa-fixes\.js/);
 });
 test('fee Save Payment is blocked for blank or whitespace cashier before React receives the click',()=>{
  const code=read('demo-qa-fixes.js');
