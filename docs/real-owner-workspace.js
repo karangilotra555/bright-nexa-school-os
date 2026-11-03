@@ -7,7 +7,7 @@ const TOKEN='bn_school_staff_session_v1';
 const $=id=>document.getElementById(id);
 const menus=['Dashboard','School Profile','Students','Teachers','Non-Teaching Staff','Transport & Routes','Infrastructure & Assets','Class & Section Setup','Attendance','Fees','Expenses & Budget','Exams & Marks','Report Cards','Homework & Notices','Parent Messages','AI Teacher Tools','Opportunity Desk','Growth Passport','School Quality Score','Contact & Support','Settings','Parents App','Teachers Online Access','Smart Tools'];
 const available=new Set(['Dashboard','School Profile','Students','Teachers','Non-Teaching Staff','Class & Section Setup','Attendance','Fees','Homework & Notices','Settings','Smart Tools','Parents App','Teachers Online Access']);
-const state={session:null,me:null,school:null,classes:[],students:[],staff:[],fees:[],attendance:[],notices:[]};
+const state={session:null,me:null,school:null,authUserId:null,classes:[],students:[],staff:[],fees:[],attendance:[],notices:[],extra:[]};
 let active='Dashboard';
 const safe=x=>String(x??'');
 const node=(tag,value)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=safe(value);return e};
@@ -124,6 +124,7 @@ function renderSection(title){
  else if(title==='Parents App'){location.assign('./parents-cloud.html')}
  else if(title==='Smart Tools'){location.assign('./smart-tools.html')}
  else if(title==='Settings'){body.append(link('Manage account and school roles','./index.html?view=roles'))}
+ else if(window.BrightNexaOwnerExtra?.render({title,body,state,req,reload,open,error})){}
  else {
    desc.textContent='This module is not connected to the cloud database yet. Existing historical local demonstration functionality is not being presented as real school records.';body.append(desc);
  }
@@ -137,15 +138,16 @@ function open(name){
 }
 async function reload(){
  $('message').classList.add('hidden');
- const [classes,students,staff,fees,attendance,notices]=await Promise.all([
+ const [classes,students,staff,fees,attendance,notices,extra]=await Promise.all([
  inSchool('school_classes','id,name,section,academic_year',{limit:'500'}),
  inSchool('school_students','id,name,admission_number,class_id,status',{status:'eq.active',limit:'1000'}),
  inSchool('school_staff_profiles','id,display_name,designation,employment_type,staff_category',{limit:'500'}),
  inSchool('school_fee_entries','id,student_id,kind,amount_rupees,description,occurred_on',{limit:'1000'}),
  inSchool('school_attendance','id,student_id,day,status',{order:'day.desc',limit:'200'}),
- inSchool('school_notices','id,title,body,created_at',{order:'created_at.desc',limit:'100'})
+ inSchool('school_notices','id,title,body,created_at',{order:'created_at.desc',limit:'100'}),
+ inSchool('school_module_records','id,module,title,details,created_at',{order:'created_at.desc',limit:'1000'})
  ]);
- Object.assign(state,{classes,students,staff,fees,attendance,notices});
+ Object.assign(state,{classes,students,staff,fees,attendance,notices,extra});
  $('studentsCount').textContent=students.length;
  $('teachersCount').textContent=staff.filter(s=>s.staff_category==='teaching').length;
  $('classesCount').textContent=classes.length;
@@ -158,6 +160,7 @@ async function start(){
   if(!state.session?.access_token){location.replace('./index.html');return}
   const jwt=await token();
   const identity=await parse(await fetch(BASE+'/auth/v1/user',{headers:{apikey:KEY,Authorization:'Bearer '+jwt},cache:'no-store'}));
+  state.authUserId=identity.id;
   const members=await req(filt('school_users',{select:'id,institution_id,role,status',auth_user_id:'eq.'+identity.id,status:'eq.active'}));
   state.me=members.find(x=>x.role==='school_admin');
   if(!state.me)throw Error('Owner account required. Please log in as school administrator.');
