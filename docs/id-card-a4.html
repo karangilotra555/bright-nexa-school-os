@@ -751,19 +751,47 @@
       </div>
     </div>
 
+    <!-- Bulk workflow: pick all photo files once, auto match by student/admission name, review unmatched -->
+    <section class="photo-upload-controls" aria-label="Bulk student ID card photos" style="display:flex;flex-direction:column;gap:10px;margin:12px 0 14px;padding:16px;border:2px solid #89b8dc;border-radius:12px;background:#f1f8ff;">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
+        <div>
+          <strong style="font-size:16px;color:#123b64;">📸 Bulk Photos — All Student ID Cards</strong>
+          <div class="photo-upload-hint">Select multiple photos together. Filename should match <b>student name</b> or <b>admission number</b> (for example AARAV SHARMA.jpg or DEMO-2026-001.png). Unmatched files can be assigned manually.</div>
+        </div>
+        <label class="btn btn-primary" for="idBulkPhotoFiles" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">📁 Choose Multiple Photos</label>
+        <input id="idBulkPhotoFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple aria-label="Select many student photos" style="max-width:290px;">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" type="button" id="idPreviewAllCardsBtn" onclick="previewAllIdCards()">👁 Preview All Cards</button>
+        <button class="btn btn-secondary" type="button" id="idPrintAllCardsBtn" onclick="printAllIdCards()">🖨 Print All A4 Cards</button>
+        <button class="btn btn-secondary" type="button" id="idClearAllPhotosBtn" onclick="clearAllIdPhotos()">Remove All Photos</button>
+      </div>
+      <div id="idBatchPhotoSummary" role="status" aria-live="polite" style="font-size:13px;font-weight:700;color:#154d74;">No photos assigned yet.</div>
+      <div id="idUnmatchedPhotoPanel" style="display:none;background:white;border:1px solid #b7cbe1;border-radius:10px;padding:12px;">
+        <strong style="color:#9a4b04">Photos needing manual assignment</strong>
+        <p class="photo-upload-hint">These filenames did not uniquely identify a student. Choose the correct student for each photo, then select Assign. Photos never auto-match by position or guessing.</p>
+        <div id="idUnmatchedPhotoRows" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+    </section>
+
+    <details style="width:210mm;max-width:100%;margin:0 0 12px;background:#f8fafc;border:1px solid #d7e4f1;border-radius:10px;padding:10px 12px;">
+      <summary style="cursor:pointer;font-weight:700;color:#345875;font-size:13px;">Individual photo / replace one student's photo (optional)</summary>
     <div class="photo-upload-controls" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:#f0f7ff;border:1px solid #d9e9f8;">
       <label class="photo-upload-label" for="idPhotoStudent">Student photo:</label>
       <select id="idPhotoStudent" aria-label="Choose student for photo"><option value="">Select student</option></select>
       <input id="idPhotoFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose student portrait" style="max-width:220px">
       <button class="btn btn-primary" type="button" id="idPhotoPreviewBtn" onclick="previewSelectedPhotoCard()">Preview on Card</button>
       <button class="btn btn-secondary" type="button" onclick="clearIdPhoto()">Remove photo</button>
-      <span class="photo-upload-hint">JPG/PNG/WebP up to 8 MB. Photo applies automatically; Preview on Card jumps to the student's print sheet. No upload to server or permanent save.</span>
+      <span class="photo-upload-hint">Single photo: select one student, then choose a JPG/PNG/WebP (up to 8 MB). Photo updates the printable card without hiding the other students. Use Bulk Photos for the whole class. No upload to server or permanent save; photos stay only in this browser tab.</span>
       <div id="idPhotoFeedback" role="status" aria-live="polite" style="flex-basis:100%;font-size:13px;font-weight:600;color:#254d74;">Select a student, then choose a photo. It will appear here and on the card automatically.</div>
       <div id="idPhotoPreview" style="display:none;align-items:center;gap:12px;flex-basis:100%;padding:9px;background:#ffffff;border:1px solid #c7dbef;border-radius:9px;">
         <img id="idPhotoThumbnail" alt="Selected student's photo preview" style="width:65px;height:78px;object-fit:cover;border-radius:6px;border:1px solid #9bb9d7;">
         <span id="idPhotoPreviewLabel" style="font-size:13px;color:#17375a;font-weight:700;"></span>
       </div>
     </div>
+
+
+    </details>
 
     <!-- Filters & Search Bar Row -->
     <div class="filter-bar-row">
@@ -990,6 +1018,8 @@
       renderCards();
       photoFeedback(isDemoMode ? 'Sample mode: photo previews are temporary and not school records.' :
         'Live mode: choose a student and a photo; this is still only a local print preview.');
+      renderUnmatchedPhotoRows();
+      updateBatchPhotoSummary();
     }
 
     function updateSourceUI() {
@@ -1099,6 +1129,7 @@
       for (const st of activeStudents) picker.add(new Option(st.name + ' · ' + st.className, String(st.id)));
       if ([...picker.options].some(o => o.value === previous)) picker.value = previous;
       updatePhotoThumbnail();
+      updateBatchPhotoSummary();
     }
     function updatePhotoThumbnail() {
       const studentId=document.getElementById('idPhotoStudent')?.value || '';
@@ -1190,7 +1221,7 @@
         idPhotoOverrides.set(key,image);
         updatePhotoThumbnail();
         photoFeedback('Photo applied for '+selected.name+'. Preview updated below; this is NOT saved to school records.');
-        previewSelectedPhotoCard();
+        renderCards(); // Bulk workflow: adding one photo must not filter out other cards.
       };
       reader.onerror=()=>{
         if(uploadId===idPhotoReadId)
@@ -1198,6 +1229,202 @@
       };
       reader.readAsDataURL(file);
     });
+
+    // ---------- True multi-student photo import (browser memory only) ----------
+    const batchPendingPhotos=[];
+    let bulkPhotoImportBusy=false;
+    let bulkPhotoQueueId=0;
+    const maxBatchPhotos=50;
+    function photoFileIdentifier(fileName) {
+      return String(fileName||'')
+        .split(/[\\/]/).pop().replace(/\.(jpg|jpeg|png|webp)$/i,'')
+        .replace(/\s*[\[(]\s*[0-9]+\s*[\])]\s*$/,'')
+        .replace(/\b(?:photo|portrait|passport|picture|image|img|pic|student)\b/gi,' ')
+        .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().replace(/[^a-z0-9]/g,'');
+    }
+    function matchPhotoFileToStudent(fileName, students) {
+      const stem=photoFileIdentifier(fileName);
+      if(stem.length<3) return {student:null, reason:'Filename too short to identify a student'};
+      const matches=students.filter(student => [
+        student.name,student.admissionNumber,student.id,
+        (student.name||'')+' '+(student.className||''),
+        (student.admissionNumber||'')+' '+(student.name||'')
+      ].some(candidate=>candidate && photoFileIdentifier(candidate)===stem));
+      if(matches.length===1)return {student:matches[0],reason:''};
+      return {student:null,reason:matches.length>1?'More than one student matched':'No unique name/admission match'};
+    }
+    function optimizedPhotoData(file) {
+      // Cap stored JPEG dimensions to avoid crashing the browser with 50 huge portraits.
+      return new Promise((resolve,reject)=>{
+        const url=URL.createObjectURL(file);
+        const image=new Image();
+        let finished=false;
+        const finish=(error,data)=>{
+          if(finished)return;
+          finished=true;URL.revokeObjectURL(url);
+          if(error)reject(error);else resolve(data);
+        };
+        image.onerror=()=>finish(new Error('Invalid or unreadable photo'));
+        image.onload=()=>{
+          try{
+            const width=image.naturalWidth,height=image.naturalHeight;
+            if(!width||!height)throw Error('Image has no dimensions');
+            const scale=Math.min(1,900/width,1100/height);
+            const canvas=document.createElement('canvas');
+            canvas.width=Math.max(1,Math.round(width*scale));
+            canvas.height=Math.max(1,Math.round(height*scale));
+            const ctx=canvas.getContext('2d');
+            if(!ctx)throw Error('Image processing unavailable');
+            ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+            ctx.drawImage(image,0,0,canvas.width,canvas.height);
+            finish(null,canvas.toDataURL('image/jpeg',0.86));
+          }catch(error){finish(error);}
+        };
+        image.src=url;
+      });
+    }
+    function updateBatchPhotoSummary(message) {
+      const el=document.getElementById('idBatchPhotoSummary');
+      if(!el)return;
+      const ready=activeStudents.filter(st=>idPhotoOverrides.has(idPhotoKey(st.id))).length;
+      const missing=activeStudents.length-ready;
+      const review=batchPendingPhotos.filter(item=>item.mode===(isDemoMode?'demo:':'live:')).length;
+      const remaining=activeStudents.filter(st=>!idPhotoOverrides.has(idPhotoKey(st.id)))
+        .slice(0,5).map(st=>st.name);
+      const missNames=remaining.length ? ' · Missing: '+remaining.join(', ')+(missing>5?'…':'') : '';
+      el.textContent=(message?message+' · ':'')+ready+'/'+activeStudents.length+
+        ' student photos ready · '+missing+' without photos · '+review+' files need review'+missNames;
+      el.style.color=review?'#9a4b04':'#155c43';
+    }
+    function renderUnmatchedPhotoRows() {
+      const panel=document.getElementById('idUnmatchedPhotoPanel');
+      const rows=document.getElementById('idUnmatchedPhotoRows');
+      if(!panel||!rows)return;
+      rows.replaceChildren();
+      const mode=isDemoMode?'demo:':'live:';
+      const pending=batchPendingPhotos.filter(item=>item.mode===mode);
+      panel.style.display=pending.length?'block':'none';
+      for(const item of pending){
+        const row=document.createElement('div');
+        row.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #e1e9f2;padding:8px 0;';
+        const label=document.createElement('span');
+        label.textContent=item.name+' — '+item.reason;
+        label.style.cssText='min-width:170px;flex:1;font-size:12px;overflow-wrap:anywhere;';
+        const select=document.createElement('select');
+        select.setAttribute('aria-label','Assign '+item.name+' to student');
+        select.style.cssText='max-width:250px;min-height:34px;';
+        select.add(new Option('Choose correct student',''));
+        for(const st of activeStudents)select.add(new Option(st.name+' · '+st.admissionNumber, String(st.id)));
+        const button=document.createElement('button');
+        button.type='button';button.className='btn btn-secondary';
+        button.textContent='Assign';
+        button.addEventListener('click',()=>{
+          const selected=activeStudents.find(st=>String(st.id)===select.value);
+          if(!selected){photoFeedback('Choose a student for '+item.name+'.',true);return;}
+          const key=mode+String(selected.id);
+          if(idPhotoOverrides.has(key) &&
+             !window.confirm('Replace the existing preview photo for '+selected.name+'?'))return;
+          idPhotoOverrides.set(key,item.data);
+          const idx=batchPendingPhotos.indexOf(item);
+          if(idx>=0)batchPendingPhotos.splice(idx,1);
+          document.getElementById('idPhotoStudent').value=String(selected.id);
+          renderCards();
+          renderUnmatchedPhotoRows();
+          updateBatchPhotoSummary('Assigned '+item.name+' to '+selected.name);
+          photoFeedback('Assigned photo to '+selected.name+'. All cards are still in the preview.');
+        });
+        row.append(label,select,button);
+        rows.append(row);
+      }
+    }
+    async function importBatchIdPhotos(files) {
+      const input=document.getElementById('idBulkPhotoFiles');
+      const selectedFiles=Array.from(files||[]);
+      if(bulkPhotoImportBusy){photoFeedback('Another bulk import is still running.',true);return;}
+      if(!activeStudents.length){photoFeedback('No students found. Load students or choose sample cards first.',true);return;}
+      if(!selectedFiles.length)return;
+      if(selectedFiles.length>maxBatchPhotos){
+        photoFeedback('Select up to '+maxBatchPhotos+' photos at a time to protect browser memory.',true);
+        return;
+      }
+      bulkPhotoImportBusy=true;
+      if(input)input.disabled=true;
+      const mode=isDemoMode?'demo:':'live:';
+      const roster=[...activeStudents];
+      const used=new Set();
+      let applied=0,review=0,invalid=0;
+      try{
+        for(let i=0;i<selectedFiles.length;i++){
+          const file=selectedFiles[i];
+          updateBatchPhotoSummary('Reading photo '+(i+1)+' of '+selectedFiles.length);
+          if(!['image/jpeg','image/png','image/webp'].includes(file.type) ||
+             !file.size || file.size>8*1024*1024){invalid++;continue;}
+          let data;
+          try{data=await optimizedPhotoData(file);}
+          catch(error){invalid++;continue;}
+          const match=matchPhotoFileToStudent(file.name,roster);
+          const key=match.student?mode+String(match.student.id):'';
+          if(match.student && !used.has(key)){
+            used.add(key);
+            idPhotoOverrides.set(key,data);applied++;
+          }else{
+            batchPendingPhotos.push({
+              id:++bulkPhotoQueueId,mode,name:file.name,data,
+              reason:match.student?'Multiple files matched this student':match.reason
+            });
+            review++;
+          }
+        }
+        renderCards();
+        renderUnmatchedPhotoRows();
+        const details=applied+' photos auto-matched, '+review+' need manual assignment, '+invalid+' invalid';
+        updateBatchPhotoSummary(details);
+        photoFeedback(details+'. Preview All Cards to check and print the complete batch.',invalid>0);
+      }finally{
+        bulkPhotoImportBusy=false;
+        if(input){input.disabled=false;input.value='';}
+      }
+    }
+    function previewAllIdCards() {
+      const classPicker=document.getElementById('classFilter');
+      if(classPicker)classPicker.value='ALL';
+      const search=document.getElementById('searchInput');
+      if(search)search.value='';
+      const searchClear=document.getElementById('searchClearBtn');
+      if(searchClear)searchClear.style.display='none';
+      filterStudents(); // restores "All in Filter" and re-renders every student.
+      renderCards();
+      const page=document.getElementById('pagesContainer');
+      if(page)requestAnimationFrame(()=>page.scrollIntoView({behavior:'smooth',block:'start'}));
+      updateBatchPhotoSummary('Showing all '+activeStudents.length+' ID cards');
+    }
+    function printAllIdCards() {
+      previewAllIdCards();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>handlePrint()));
+    }
+    function clearAllIdPhotos() {
+      const mode=isDemoMode?'demo:':'live:';
+      const count=[...idPhotoOverrides.keys()].filter(key=>key.startsWith(mode)).length;
+      if(!count && !batchPendingPhotos.some(item=>item.mode===mode)){
+        photoFeedback('There are no temporary photos to remove.');
+        return;
+      }
+      if(!window.confirm('Remove '+count+' temporary photo previews for this '+(isDemoMode?'demo':'live')+' batch?'))return;
+      for(const key of idPhotoOverrides.keys())if(key.startsWith(mode))idPhotoOverrides.delete(key);
+      for(let i=batchPendingPhotos.length-1;i>=0;i--)if(batchPendingPhotos[i].mode===mode)batchPendingPhotos.splice(i,1);
+      idPhotoReadId++;
+      const file=document.getElementById('idPhotoFile');
+      if(file)file.value='';
+      renderCards();renderUnmatchedPhotoRows();
+      updateBatchPhotoSummary('Cleared this batch');
+      photoFeedback('All temporary photos removed. No school records changed.');
+    }
+    document.addEventListener('change',event=>{
+      if(event.target?.id==='idBulkPhotoFiles')importBatchIdPhotos(event.target.files);
+    });
+
     function renderCards() {
       syncIdPhotoStudents();
       const query = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
