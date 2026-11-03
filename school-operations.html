@@ -16,19 +16,82 @@ button:disabled{opacity:.6;cursor:not-allowed}.ghost{background:#e5f1fb;color:#1
 .muted{font-size:13px;color:#61768c}.notice{border-left:4px solid #e99b23;background:#fff8e8;border-radius:8px;padding:11px}
 table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid #e6edf4;vertical-align:top}th{background:#edf4fb}.scroll{overflow-x:auto}.subheading{margin:10px 0 0}
 @media(max-width:700px){.cols{grid-template-columns:1fr}.card{padding:16px}main{padding:0 12px}.scroll{max-width:100%}}
+.ops-collapsed{display:none!important}
+.ops-navigation{position:sticky;top:0;z-index:8;background:#f4f7fbe8;backdrop-filter:blur(10px);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #dce5ef}
+.ops-navigation button{margin:0;border:1px solid #cfdfed;background:white;color:#174466;border-radius:10px;padding:9px 12px;font-size:13px}
+.ops-navigation button[aria-current="page"]{background:#075b9e;color:#fff;border-color:#075b9e}
+.ops-navigation button:focus-visible,.dashboard-actions button:focus-visible{outline:3px solid #efab34;outline-offset:2px}
+.owner-welcome{background:linear-gradient(117deg,#0b2f58,#12649a);color:white;border-radius:18px;padding:22px 24px;margin-top:16px}
+.owner-welcome h2{font-size:23px;margin:0 0 5px;color:white}
+.owner-welcome p{margin:0;color:#e8f4ff}
+.owner-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:17px 0}
+.owner-kpi{background:white;border:1px solid #d8e5f3;border-radius:14px;padding:18px}
+.owner-kpi strong{display:block;font-size:28px;color:#0e508d;font-variant-numeric:tabular-nums}
+.owner-kpi span{font-size:13px;color:#61768c}
+.dashboard-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dashboard-actions button{margin:0;background:white;color:#153d60;border:1px solid #d8e5f3;border-radius:14px;text-align:left;min-height:103px;padding:17px}
+.dashboard-actions button:hover{border-color:#117dc6;background:#f0f8ff}
+.dashboard-actions strong{display:block;font-size:16px;margin-bottom:5px}
+.dashboard-actions span{font-size:12px;font-weight:400;color:#58748d}
+.dashboard-actions a{display:block;text-decoration:none;color:#153d60;background:white;border:1px solid #d8e5f3;border-radius:14px;padding:17px}
+.dashboard-actions a strong{display:block}
+.dashboard-actions a span{font-size:12px;color:#58748d}
+.owner-secondary{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap}
+.owner-secondary a{font-size:13px;font-weight:700}
+@media(max-width:720px){.owner-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.ops-navigation{position:static}}
+@media(max-width:430px){.dashboard-actions{grid-template-columns:1fr}}
 </style>
 <script src="./school-operations.js?v=20261103-real-school" defer></script>
 <script src="./real-school-staff-directory-v2.js?v=20261103-hps-v1" defer></script>
+<script src="./school-owner-dashboard-v1.js?v=20261103-owner1" defer></script>
 </head><body>
-<header><h1>Bright Nexa ✦ Real School Workspace</h1><p id="currentSchool">Verifying your school access…</p><a href="./index.html">← Back to School OS</a></header>
+<header><h1>Bright Nexa ✦ School OS</h1><p id="currentSchool">Verifying your school access…</p><a href="./index.html?view=roles">Manage Roles & Account</a></header>
 <main>
-<div class="notice">TEST SCHOOL — This is a real, school-isolated Supabase database workspace. Enter only fictional test names until the school authorises real data. Class admissions, attendance, employment, fees and guardian links must work through verified accounts. No sample data is automatically inserted.</div>
+<div class="notice">TEST SCHOOL · Live, school-isolated data. Use fictional students unless authorised. All updates are saved to Supabase, not a browser-only sample.</div>
 <div id="status" class="hidden status" role="alert" aria-live="polite"></div>
 <div id="noAccess" class="card hidden"><h2>Sign in as school staff first</h2><p>Use the main School Login page, then return to Cloud Operations. Only school admins, principals and accountants can manage these records. School admissions require admin or principal access.</p><a href="./index.html">Open School Login</a></div>
 <div id="opsApp" class="hidden">
 <div class="card row"><div><h2 id="schoolName">School</h2><p id="staffRole" class="muted"></p></div><button class="ghost" id="opsRefresh" type="button">↻ Refresh</button></div>
-<section id="staffSection" class="hidden">
- <div class="card"><div class="row"><h2>Real Staff Directory — Teachers & Housekeeping</h2><a href="./index.html">← Roles & Permissions / Invite staff</a></div>
+
+<nav class="ops-navigation" id="opsMainNav" aria-label="School workspace sections">
+ <button type="button" data-ops-open="home" aria-current="page">⌂ Dashboard</button>
+ <button type="button" data-ops-open="students">Students & Classes</button>
+ <button type="button" data-ops-open="staff">Teachers & Staff</button>
+ <button type="button" data-ops-open="attendance">Attendance Reports</button>
+ <button type="button" data-ops-open="fees">Fees & Payments</button>
+ <button type="button" data-ops-open="parents">Parents</button>
+ <button type="button" data-ops-open="notices">Notices</button>
+ <button type="button" data-ops-open="leaves">Leave Requests</button>
+</nav>
+<section id="ownerDashboard" data-ops-panel="home">
+ <div class="owner-welcome">
+  <h2 id="ownerDashboardHeading">School Owner Dashboard</h2>
+  <p>Manage your entire test school from one place. Your existing records are kept unchanged.</p>
+ </div>
+ <div class="owner-kpis" aria-label="School records summary">
+  <div class="owner-kpi"><strong id="ownerStatClasses">—</strong><span>Classes (LKG–12)</span></div>
+  <div class="owner-kpi"><strong id="ownerStatStudents">—</strong><span>Active students</span></div>
+  <div class="owner-kpi"><strong id="ownerStatTeachers">—</strong><span>Teachers</span></div>
+  <div class="owner-kpi"><strong id="ownerStatHousekeeping">—</strong><span>Housekeeping staff</span></div>
+ </div>
+ <div class="card">
+  <h2>School Management</h2>
+  <div class="dashboard-actions">
+   <button type="button" data-ops-open="students"><strong>🎒 Students & Admissions</strong><span>Student roster, new admissions and classes</span></button>
+   <button type="button" data-ops-open="staff"><strong>👩‍🏫 Teachers & Staff</strong><span>Profiles, employment, staff daily attendance</span></button>
+   <button type="button" data-ops-open="attendance"><strong>📊 Attendance Reports</strong><span>Student and staff Present / Absent / Leave</span></button>
+   <button type="button" data-ops-open="fees"><strong>₹ Fees & Payments</strong><span>Charges, receipts and school fee ledger</span></button>
+   <button type="button" data-ops-open="parents"><strong>👨‍👩‍👧 Parents & Guardians</strong><span>Verified parent access and student linking</span></button>
+   <button type="button" data-ops-open="notices"><strong>📣 School Notices</strong><span>Send notices to verified parent accounts</span></button>
+   <a href="./index.html?view=roles"><strong>🔐 Roles & Permissions</strong><span>Invite teachers and set class-specific access</span></a>
+   <a href="./index.html?view=attendance"><strong>✅ Mark Student Attendance</strong><span>Mark attendance in the real school class register</span></a>
+   <a href="./index.html?view=homework"><strong>📚 Homework</strong><span>Assign and review class homework</span></a>
+  </div>
+  <div class="owner-secondary"><a href="./parents-cloud.html">Parent Portal</a><a href="./index.html?view=roles">School account & Logout</a></div>
+ </div>
+</section>
+<section id="staffSection" data-ops-panel="staff" class="hidden ops-collapsed">
+ <div class="card"><div class="row"><h2>Real Staff Directory — Teachers & Housekeeping</h2><a href="./index.html?view=roles">← Roles & Permissions / Invite staff</a></div>
   <p class="muted">These are real TEST-school database records, including teachers and housekeeping. A directory profile does NOT grant login. Invite a teacher by email at School Login → Roles & Permissions, then grant explicit class rights. Housekeeping has no access to children or fee data.</p>
   <form id="staffProfileForm">
    <div class="cols">
@@ -61,13 +124,13 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
   </form>
  </div>
 </section>
-<section id="attendanceReportSection" class="hidden card">
+<section id="attendanceReportSection" data-ops-panel="attendance" class="hidden ops-collapsed card">
  <div class="row"><div><h2>Actual monthly attendance — Students & Staff</h2><p class="muted">Reports count only explicitly marked days; unmarked days are not assumed absent. No synthetic figures.</p></div><div><label for="reportMonth">Report month</label><input id="reportMonth" type="month"><button type="button" id="refreshAttendanceReports" class="ghost">Load monthly reports</button></div></div>
  <p id="attendanceReportSummary" class="muted"></p>
  <h3>Student attendance</h3><div class="scroll"><table><thead><tr><th>Student / Admission</th><th>Class</th><th>Marked</th><th>Present</th><th>Absent</th><th>Late</th><th>Excused</th><th>% of marked</th></tr></thead><tbody id="studentReportRows"></tbody></table></div>
  <h3>Staff attendance (teachers + housekeeping)</h3><div class="scroll"><table><thead><tr><th>Staff / Role</th><th>Marked</th><th>Present</th><th>Absent</th><th>Late</th><th>Leave</th><th>% of marked</th></tr></thead><tbody id="staffReportRows"></tbody></table></div>
 </section>
-<section id="admissionsSection" class="hidden">
+<section id="admissionsSection" data-ops-panel="students" class="hidden ops-collapsed">
  <div class="card"><h2>Real Cloud Admissions & Classes</h2>
   <p class="muted">Saved to the verified test school database. Every student must be registered through this form; never infer enrolment from a local demo.</p>
   <div class="cols">
@@ -97,7 +160,7 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
    <div class="scroll"><table><thead><tr><th>Admission no.</th><th>Student</th><th>Class</th><th>Date of birth</th><th>Status</th></tr></thead><tbody id="admissionRows"></tbody></table></div>
  </div>
 </section>
-<div id="financeSection" class="cols hidden">
+<div id="financeSection" data-ops-panel="fees" class="cols hidden ops-collapsed">
  <section class="card">
   <h2>School fees & payments</h2>
   <p class="muted">Append-only ledger. Corrections must be a new reversing entry, not deletion.</p>
@@ -113,7 +176,7 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
  </section>
  <section class="card"><h2>Ledger history</h2><p id="ledgerTotal" class="muted"></p><div class="scroll"><table><thead><tr><th>Date</th><th>Student</th><th>Kind</th><th>₹ Amount</th><th>Reference</th></tr></thead><tbody id="feeRows"></tbody></table></div></section>
 </div>
-<div id="guardianSection" class="cols hidden">
+<div id="guardianSection" data-ops-panel="parents" class="cols hidden ops-collapsed">
  <section class="card"><h2>Verified parent access</h2><p class="muted">Guardian must first register at <a href="./parents-cloud.html">Parent Cloud Portal</a> and verify email. Linking grants ONLY the chosen child's records.</p>
  <form id="guardianForm">
   <label for="guardianStudent">Student</label><select id="guardianStudent" required></select>
@@ -123,7 +186,7 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
  </form></section>
  <section class="card"><h2>Parent-child access grants</h2><div class="scroll"><table><thead><tr><th>Student</th><th>Guardian</th><th>Relationship</th><th>Revoke</th></tr></thead><tbody id="guardianRows"></tbody></table></div></section>
 </div>
-<div id="noticeSection" class="cols hidden">
+<div id="noticeSection" data-ops-panel="notices" class="cols hidden ops-collapsed">
  <section class="card"><h2>Publish school notice</h2><form id="noticeForm">
  <label for="noticeTitle">Title</label><input id="noticeTitle" minlength="3" maxlength="180" required>
  <label for="noticeBody">Notice message</label><textarea id="noticeBody" minlength="3" maxlength="2500" required></textarea>
@@ -131,6 +194,6 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
  </form></section>
  <section class="card"><h2>Published notices</h2><div id="noticeRows"></div></section>
 </div>
-<div id="leavesSection" class="card hidden"><h2>Parent leave requests</h2><div class="scroll"><table><thead><tr><th>Student</th><th>Dates</th><th>Reason</th><th>Status</th><th>Decision</th></tr></thead><tbody id="leaveRows"></tbody></table></div></div>
+<div id="leavesSection" data-ops-panel="leaves" class="card hidden ops-collapsed"><h2>Parent leave requests</h2><div class="scroll"><table><thead><tr><th>Student</th><th>Dates</th><th>Reason</th><th>Status</th><th>Decision</th></tr></thead><tbody id="leaveRows"></tbody></table></div></div>
 </div>
 </main></body></html>
