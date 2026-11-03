@@ -112,7 +112,7 @@
     // Explicit cloud tools deep-links remain accessible when deliberately selected.
     const requestedView=new URLSearchParams(location.search).get('view');
     if(isAdmin() && !['roles','attendance','homework','classes','account'].includes(requestedView)){
-      location.replace('./school-demo.html');
+      location.replace('./real-owner-workspace.html');
       return;
     }
     put('schoolLabel',school.name);
