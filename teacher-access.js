@@ -108,6 +108,13 @@
     if(!school||!['active','trial'].includes(school.status)){
       dropSession();notify('Institution is inactive. Contact school administration.',true);return;
     }
+    // Preserve the familiar full School OS dashboard as the owner's landing page.
+    // Explicit cloud tools deep-links remain accessible when deliberately selected.
+    const requestedView=new URLSearchParams(location.search).get('view');
+    if(isAdmin() && !['roles','attendance','homework','classes','account'].includes(requestedView)){
+      location.replace('./school-demo.html');
+      return;
+    }
     put('schoolLabel',school.name);
     put('membership',school.name+' · '+me.email+' · '+me.role.replaceAll('_',' '));
     put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
