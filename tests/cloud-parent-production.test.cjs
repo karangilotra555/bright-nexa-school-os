@@ -80,3 +80,18 @@ test('staff-only operations require role checks and make fee ledger append-only'
  assert.doesNotMatch(js,/school_fee_entries',\{\},'DELETE'/);
  assert.match(html,/Append-only ledger/);
 });
+
+test('full-ledger balance and suspended-school guard use invoker security',()=>{
+ const view=read('supabase/migrations/20261103123903_rls_invoker_exact_school_fee_balances.sql');
+ const total=read('supabase/migrations/20261103124104_role_scoped_exact_school_fee_summary.sql');
+ const active=read('supabase/migrations/20261103124308_block_suspended_school_academic_and_parent_access.sql');
+ assert.match(view,/security_invoker=true/);
+ assert.match(view,/FROM public\.school_fee_entries/);
+ assert.match(total,/SECURITY INVOKER/);
+ assert.match(total,/school_private\.has_role/);
+ for(const fn of ['has_role','teacher_can','parent_of','parent_in_school','parent_has_class'])
+   assert.match(active,new RegExp('CREATE OR REPLACE FUNCTION school_private\\.'+fn));
+ assert.match(active,/i\.status IN \('trial','active'\)/);
+ assert.match(read('school-operations.js'),/rpc\/school_fee_summary/);
+ assert.match(read('parents-cloud.js'),/school_fee_balances/);
+});
