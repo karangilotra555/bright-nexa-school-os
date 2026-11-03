@@ -236,15 +236,8 @@
     try{clearNotice();await task()}catch(e){notify(e.message||'Operation could not be completed.',true)}
   }
   $('loginForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
-    const id=requireField('loginEmail','Enter your school email or demo ID.'),password=$('loginPassword').value;
+    const id=requireField('loginEmail','Enter your school email or owner username.'),password=$('loginPassword').value;
     if(!password)fieldError('loginPassword','Enter your password.');
-    if(id==='demo' && password==='demo'){
-      // Browser-local sample, never a school-admin Auth token or database grant.
-      sessionStorage.setItem(LOCAL_DEMO_KEY,String(Date.now()));
-      sessionStorage.setItem('bright-nexa-school-os:demo-mode:v1','true');
-      window.location.assign('./school-demo.html');
-      return;
-    }
     // Convenience alias only: Supabase still verifies the real owner's password.
     // Never grant real-school access based on a browser-side demo code.
     const loginEmail=id.toLowerCase()==='yrskaran'?'yrskaran@gmail.com':id;
