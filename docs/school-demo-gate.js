@@ -59,6 +59,7 @@
     try{
       const isLocalDemo=localDemoAccess();
       const isOwner=await authorisedOwner();
+      if(isOwner){location.replace('./real-owner-workspace.html');return;}
       if(!isLocalDemo && !isOwner){
         show('Sign in as demo / demo to explore the sample School OS. Staff accounts use their own secure cloud workspace.');
         return;
