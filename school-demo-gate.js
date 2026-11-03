@@ -58,7 +58,8 @@
   async function main(){
     try{
       const isLocalDemo=localDemoAccess();
-      if(!isLocalDemo && !await authorisedOwner()){
+      const isOwner=await authorisedOwner();
+      if(!isLocalDemo && !isOwner){
         show('Sign in as demo / demo to explore the sample School OS. Staff accounts use their own secure cloud workspace.');
         return;
       }
@@ -66,8 +67,8 @@
       // This is an isolated browser-local sample even for a signed-in admin.
       sessionStorage.setItem('bright-nexa-school-os:demo-mode:v1','true');
       const banner=document.getElementById('sampleBanner');
-      banner.hidden=false;
-      if(isLocalDemo){
+      banner.hidden=!isLocalDemo || isOwner;
+      if(isLocalDemo && !isOwner){
         banner.firstChild.textContent='PUBLIC DEMO — fictional school records only. No real school data or cloud permissions. ';
         const leave=document.createElement('button');
         leave.type='button';leave.textContent='Exit demo';
@@ -78,7 +79,14 @@
       const script=document.createElement('script');
       script.type='module';script.src='./assets/index-brightnexa-v2.js?v=20261022-workspace-isolation';
       script.crossOrigin='anonymous';document.head.append(script);
-      if(isLocalDemo){
+      if(isOwner){
+        // Presentation styling affects only the verified owner's browser view.
+        // Never change the browser-local data store or imply it is Supabase-backed.
+        const presentation=document.createElement('script');
+        presentation.src='./owner-presentation.js?v=20261104-haridwar1';
+        document.head.append(presentation);
+      }
+      if(isLocalDemo || isOwner){
         // Existing sample UI has its own demo entry on a clean browser.
         // Activate it once if the bundle doesn't restore a demo session itself.
         let clicked=false;
