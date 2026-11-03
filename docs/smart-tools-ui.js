@@ -64,7 +64,17 @@ function showImport(kind){
  if(!info){$('exportClean').disabled=true;return;}
  stats.classList.remove('hidden');
  metric(stats,'Records read',info.count);metric(stats,'Recognized fields',Object.values(info.mapping).filter(Boolean).length);
- metric(stats,'Possible issues',E.detect({[kind]:info.records}).length);
+ const issues=E.detect({[kind]:info.records});
+ metric(stats,'Possible issues',issues.length);
+ const review=$('importIssueReview');review.replaceChildren();
+ for(const issue of issues.slice(0,100)){
+   const line=dom('p','Row '+issue.row+' · '+issue.severity.toUpperCase()+' · '+issue.message,'small');
+   review.append(line);
+ }
+ if(issues.length>100)review.append(dom('p','Showing first 100 issues. Export a review copy for full inspection.','small'));
+ if(!issues.length)review.append(dom('p','No issues found in this dataset.','small'));
+ $('excludeInvalid').disabled=!issues.length;
+ review.classList.remove('hidden');
  const assignments=Object.entries(info.mapping).map(([k,v])=>k+' ← '+(v||'not found')).join('  |  ');
  mapping.textContent='Detected columns: '+assignments;mapping.classList.remove('hidden');
  const fields=Object.keys(info.mapping).filter(k=>info.mapping[k]);
@@ -440,10 +450,24 @@ $('exportClean').addEventListener('click',()=>task(()=>{
  const kind=$('datasetType').value,records=state.datasets[kind];if(!records)return;
  const cols=Object.keys(E.mapColumns([],kind));download('bright-nexa-'+kind+'-mapped.csv',E.toCsv(records,cols));
 }));
-$('clearImports').addEventListener('click',()=>{
+$('excludeInvalid').addEventListener('click',()=>task(()=>{
+ const kind=$('datasetType').value,info=state.imports[kind];if(!info)return;
+ const issues=E.detect({[kind]:info.records});
+ const reject=new Set(issues.filter(i=>i.severity==='error'||/Student name missing|Class missing|Student ID missing/i.test(i.message)).map(i=>Number(i.row)));
+ // Keep the earliest record for duplicate IDs; duplicates in earlier rows are retained for review if needed.
+ const cleaned=info.records.filter(r=>!reject.has(Number(r._row)));
+ const removed=info.records.length-cleaned.length;
+ if(!removed){msg('No invalid rows can be excluded automatically. Review the warnings below.');return;}
+ const original=info.records.length;
+ state.datasets[kind]=cleaned;
+ state.imports[kind]={...info,records:cleaned,count:cleaned.length};
+ showImport(kind);
+ msg('Review copy: excluded '+removed+' invalid row(s) from '+original+'. Original file unchanged; export mapped CSV to keep the clean copy.');
+ }));
+ $('clearImports').addEventListener('click',()=>{
  state.datasets={};state.imports={};state.analysis=null;state.findings=null;
- $('importFile').value='';wipe('importStats');wipe('importPreview');wipe('importMapping');wipe('auditTable');wipe('auditStats');wipe('performanceTable');wipe('performanceMetrics');
- $('exportClean').disabled=true;$('exportFindings').disabled=true;$('exportAnalysis').disabled=true;
+ $('importFile').value='';wipe('importStats');wipe('importPreview');wipe('importMapping');wipe('importIssueReview');wipe('auditTable');wipe('auditStats');wipe('performanceTable');wipe('performanceMetrics');
+ $('exportClean').disabled=true;$('excludeInvalid').disabled=true;$('exportFindings').disabled=true;$('exportAnalysis').disabled=true;
  msg('All imported browser data cleared from this page.');
 });
 $('runAudit').addEventListener('click',()=>task(audit));
