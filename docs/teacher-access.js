@@ -81,7 +81,7 @@
   function dropSession(){
     session=null;me=null;identity=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);
-    display('portalSection',false);display('registrationSection',false);display('loginSection',true);display('logout',false);display('ownerDemoLink',false);display('smartToolsCard',false);
+    display('portalSection',false);display('registrationSection',false);display('loginSection',true);display('logout',false);display('ownerDemoLink',false);display('cloudOperationsLink',false);display('smartToolsCard',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   function tab(name){
@@ -96,7 +96,7 @@
     me=memberships.find(x=>x.auth_user_id===identity.id&&x.status==='active')||null;
     if(!me){
       display('portalSection',false);display('loginSection',false);display('registrationSection',true);
-      display('logout',true);display('ownerDemoLink',false);
+      display('logout',true);display('ownerDemoLink',false);display('cloudOperationsLink',false);
       put('schoolLabel','Create your school');
       const pending=sessionStorage.getItem(PENDING_SCHOOL);
       if(pending&&!$('newSchoolName').value)$('newSchoolName').value=pending;
@@ -115,6 +115,7 @@
     display('loginSection',false);display('registrationSection',false);display('portalSection',true);display('logout',true);
     display('adminTab',isAdmin());
     display('ownerDemoLink',isAdmin());
+    display('cloudOperationsLink',['school_admin','principal','accountant'].includes(me.role));
     display('smartToolsCard',canAcademic());
     document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
     document.querySelector('[data-tab="homework"]').classList.toggle('hidden',!canAcademic());
