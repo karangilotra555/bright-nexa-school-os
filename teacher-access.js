@@ -237,7 +237,7 @@
       window.location.assign('./school-demo.html');
       return;
     }
-    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(id))throw Error('Enter a valid school email, or demo / demo for the sample.');
+    if(!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(id))throw Error('Enter a valid school email, or demo / demo for the sample.');
     if(password.length<8)throw Error('School password must have at least 8 characters.');
     const btn=e.submitter;btn.disabled=true;
     try{const tokens=await authRequest('token?grant_type=password',{email:id,password});saveSession(tokens);await load()}
@@ -252,7 +252,7 @@
   $('registerSchoolForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=$('submitRegisterSchool');
     if(btn.disabled)return;
-    const name=requireField('signupSchoolName','Enter a school name (at least 3 characters).',3).replace(/\\s+/g,' ');
+    const name=requireField('signupSchoolName','Enter a school name (at least 3 characters).',3).replace(/\s+/g,' ');
     const email=requireField('signupOwnerEmail','Enter the owner email address.');
     const password=$('signupOwnerPassword').value;
     if(!password)fieldError('signupOwnerPassword','Create a password with at least 12 characters.');
@@ -277,7 +277,7 @@
   $('newSchoolForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=$('provisionSchoolButton');
     if(btn.disabled)return;
-    const name=requireField('newSchoolName','Enter the official school name (at least 3 characters).',3).replace(/\\s+/g,' ');
+    const name=requireField('newSchoolName','Enter the official school name (at least 3 characters).',3).replace(/\s+/g,' ');
     if(name.length<3||name.length>120)throw Error('School name must be 3 to 120 characters.');
     btn.disabled=true;
     try{
@@ -361,7 +361,11 @@
       const line=dom('div',undefined,'rowlist');
       const left=dom('div');left.append(dom('strong',student.name));
       left.append(dom('small',student.admission_number,'muted'));
-      const select=newSelect(['present','absent','late','excused'],records.find(r=>r.student_id===student.id)?.status||'present');
+      const previous=records.find(r=>r.student_id===student.id)?.status||'';
+      const select=newSelect(['present','absent','late','excused'],previous);
+      const blank=dom('option','Not marked');blank.value='';blank.selected=!previous;
+      select.insertBefore(blank,select.firstChild);
+      select.dataset.originalStatus=previous;
       select.dataset.studentId=student.id;select.dataset.classId=cls;
       line.append(left,select);root.append(line);
     }
@@ -371,11 +375,15 @@
   $('saveAttendance').addEventListener('click',()=>run(async()=>{
     const cls=$('attendanceClass').value,day=$('attendanceDate').value;
     const selects=[...$('rosterList').querySelectorAll('select[data-student-id]')];
-    if(!selects.length)throw Error('No attendance records selected. Load the class roster and mark students first.');
+    if(!selects.length)throw Error('Load a class roster before saving attendance.');
+    if(!writableClasses('can_take_attendance').some(c=>c.id===cls))throw Error('You are not permitted to write attendance for this class.');
     if(selects.some(s=>s.dataset.classId!==cls))throw Error('Class changed. Reload roster.');
-    const records=selects.map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:me.institution_id,day,status:s.value,recorded_by:me.id}));
+    const marked=selects.filter(s=>['present','absent','late','excused'].includes(s.value));
+    if(!marked.length)throw Error('No attendance marked. Select Present, Absent, Late or Excused for at least one student.');
+    const records=marked.map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:me.institution_id,day,status:s.value,recorded_by:me.id}));
     await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=minimal');
-    notify('Attendance saved for '+records.length+' students.');
+    marked.forEach(s=>{s.dataset.originalStatus=s.value});
+    notify('Attendance saved for '+records.length+' explicitly marked student(s). '+(selects.length-marked.length)+' remain unmarked.');
   }));
   $('homeworkForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const class_id=$('homeworkClass').value;
