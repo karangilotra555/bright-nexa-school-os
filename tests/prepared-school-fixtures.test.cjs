@@ -30,6 +30,9 @@ test('staff directory includes uninvited teachers AND housekeeping, safely separ
  const js=read('docs/real-school-staff.js');
  assert.equal(html,read('school-operations.html'));
  assert.equal(js,read('real-school-staff.js'));
+ assert.match(html,/real-school-staff-directory-v2\.js/);
+ assert.equal(read('real-school-staff-directory-v2.js'),read('docs/real-school-staff-directory-v2.js'));
+ assert.match(read('docs/real-school-staff-directory-v2.js'),/staffContactEmail/);
  assert.doesNotThrow(()=>new vm.Script(js));
  for(const id of ['staffProfileUser','staffCategory','staffContactEmail','staffContactMobile','staffAttendanceMember','staffAttendanceDate','staffDirectoryRows','staffReportRows']){
   assert.ok(html.includes('id="'+id+'"'),id+' missing');
