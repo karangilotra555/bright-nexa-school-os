@@ -73,15 +73,17 @@
   if(canNotice()){await Promise.all([loadNotices(),loadLeaves()])}
  }
  async function loadFees(){
-  const entries=await api('school_fee_entries',{select:'id,student_id,kind,amount_rupees,description,reference,occurred_on',
-   institution_id:eq(me.institution_id),order:'occurred_on.desc',limit:'1000'});
+  const [entries,balances]=await Promise.all([
+  api('school_fee_entries',{select:'id,student_id,kind,amount_rupees,description,reference,occurred_on',
+   institution_id:eq(me.institution_id),order:'occurred_on.desc',limit:'1000'}),
+  api('school_fee_balances',{select:'student_id,balance_rupees,entry_count',institution_id:eq(me.institution_id),limit:'1000'})
+ ]);
   const tbody=$('feeRows');tbody.replaceChildren();
-  let total=0;
+  const total=balances.reduce((sum,row)=>sum+Number(row.balance_rupees||0),0);
   for(const entry of entries){
-   total+=entry.kind==='charge'?Number(entry.amount_rupees):-Number(entry.amount_rupees);
    const tr=node('tr');for(const txt of [entry.occurred_on,studentName(entry.student_id),entry.kind,money(entry.amount_rupees),entry.reference||entry.description||'—'])tr.append(node('td',txt));tbody.append(tr);
   }
-  word('ledgerTotal',entries.length+' entries · All-school recorded balance '+money(total)+' (limited to most recent 1000 entries)');
+  word('ledgerTotal',entries.length+' recent entries · All-school recorded balance '+money(total)+' (balance includes all ledger entries; history limited to 1000)');
  }
  async function loadGuardianLinks(){
   [allGuardians,links]=await Promise.all([
