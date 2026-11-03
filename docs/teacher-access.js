@@ -252,7 +252,7 @@
   $('registerSchoolForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=$('submitRegisterSchool');
     if(btn.disabled)return;
-    const name=$('signupSchoolName').value.trim().replace(/\\s+/g,' ');
+    const name=requireField('signupSchoolName','Enter a school name (at least 3 characters).',3).replace(/\\s+/g,' ');
     const email=requireField('signupOwnerEmail','Enter the owner email address.');
     const password=$('signupOwnerPassword').value;
     if(!password)fieldError('signupOwnerPassword','Create a password with at least 12 characters.');
@@ -277,7 +277,7 @@
   $('newSchoolForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=$('provisionSchoolButton');
     if(btn.disabled)return;
-    const name=$('newSchoolName').value.trim().replace(/\\s+/g,' ');
+    const name=requireField('newSchoolName','Enter the official school name (at least 3 characters).',3).replace(/\\s+/g,' ');
     if(name.length<3||name.length>120)throw Error('School name must be 3 to 120 characters.');
     btn.disabled=true;
     try{
@@ -423,8 +423,13 @@
   })});
   $('studentForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
+    const studentName=requireField('studentName','Enter the test student name.');
+    const admission=requireField('studentAdm','Enter an admission number.');
+    const selectedClass=$('studentClass').value;
+    if(!allClasses.some(c=>c.id===selectedClass))fieldError('studentClass','Select a valid class before saving.');
+    if(allStudents.some(s=>s.admission_number.toLowerCase()===admission.toLowerCase()))fieldError('studentAdm','Admission number already exists in this school.');
     await api('school_students','','POST',{institution_id:me.institution_id,
-      class_id:$('studentClass').value,name:$('studentName').value.trim(),admission_number:$('studentAdm').value.trim(),status:'active'});
+      class_id:selectedClass,name:studentName,admission_number:admission,status:'active'});
     e.target.reset();await reload();notify('Test student saved.');
   })});
   $('assignType').addEventListener('change',()=>{
