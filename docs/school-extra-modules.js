@@ -4,7 +4,7 @@
 const configs={
 'Transport & Routes':{key:'transport',noun:'route',fields:[['route','Route name','text',true],['vehicle','Vehicle / registration','text',false],['driver','Driver name','text',false],['stops','Stops / pickup points','text',false]]},
 'Infrastructure & Assets':{key:'assets',noun:'asset',fields:[['asset','Asset name','text',true],['category','Category','text',true],['quantity','Units','number',true],['condition','Condition','select:Working|Needs repair|Retired',true]]},
-'Expenses & Budget':{key:'expenses',noun:'expense',fields:[['expense','Description','text',true],['category','Category','text',true],['amount','Amount (₹)','number',true],['date','Expense date','date',true]]},
+'Expenses & Budget':{key:'expenses',noun:'expense / budget',fields:[['expense','Description','text',true],['category','Category','text',true],['kind','Entry type','select:Expense|Budget',true],['amount','Amount (₹)','number',true],['date','Entry date','date',true]]},
 'Exams & Marks':{key:'exams',noun:'exam mark',fields:[['student','Student','student',true],['exam','Exam name','text',true],['subject','Subject','text',true],['obtained','Marks scored','number',true],['maximum','Maximum marks','number',true]]},
 'Parent Messages':{key:'parent_messages',noun:'message draft',fields:[['recipient','Recipient / class','text',true],['subject','Subject','text',true],['message','Message draft (not sent)','textarea',true]]},
 'Opportunity Desk':{key:'opportunities',noun:'opportunity',fields:[['opportunity','Opportunity title','text',true],['category','Category','text',false],['deadline','Deadline','date',false],['url','Website URL','url',false]]},
@@ -29,6 +29,12 @@ async function renderGeneric(opts,config){
  const {body,state,req,open,reload,error}=opts;
  const heading=elt('p','All changes in this section are saved to the school database.');heading.className='muted';body.append(heading);
  if(config.key==='parent_messages'){const info=elt('p','Messages are saved as drafts only. No WhatsApp, SMS or email is sent from this screen.');info.className='notice';body.append(info)}
+ if(config.key==='expenses'){
+  const rows=state.extra.filter(r=>r.module==='expenses');
+  const spent=rows.filter(r=>r.details?.kind!=='Budget').reduce((t,r)=>t+Number(r.details?.amount||0),0);
+  const planned=rows.filter(r=>r.details?.kind==='Budget').reduce((t,r)=>t+Number(r.details?.amount||0),0);
+  const p=elt('p','Budget planned: ₹'+planned.toLocaleString('en-IN')+' · Expenses: ₹'+spent.toLocaleString('en-IN')+' · Remaining: ₹'+(planned-spent).toLocaleString('en-IN'));p.className='notice';body.append(p);
+ }
  const form=elt('form');form.className='form';const inputs={};for(const field of config.fields){const wrap=makeField(field,state);form.append(wrap);inputs[field[0]]=wrap.querySelector('input,textarea,select')}
  const save=elt('button','Save '+config.noun);save.className='primary';save.type='submit';form.append(save);
  const cancel=elt('button','Cancel edit');cancel.type='button';cancel.hidden=true;form.append(cancel);
