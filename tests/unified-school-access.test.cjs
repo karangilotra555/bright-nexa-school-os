@@ -5,12 +5,13 @@ const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
-test('one school login from the public entry, teacher alias and an admin-only sample',()=>{
+test('one real school login from public entry and teacher alias',()=>{
  for(const file of ['index.html','docs/index.html','teacher-access.html','docs/teacher-access.html']){
   const html=read(file);
   assert.ok(html.includes('id="loginForm"'),file);
   assert.ok(html.includes('id="smartToolsCard" class="panel hidden"'),file);
-  assert.ok(html.includes('id="ownerDemoLink" class="ghost hidden"'),file);
+  assert.ok(!html.includes('id="ownerDemoLink"'),file);
+  assert.ok(html.includes('id="cloudOperationsLink"'),file);
   assert.ok(!html.includes('Preview features (sample)'),file);
   assert.ok(!html.includes('href="./school-preview.html"'),file);
   assert.ok(!html.includes('href="./smart-tools.html" class="light"'),file);
@@ -20,10 +21,10 @@ test('one school login from the public entry, teacher alias and an admin-only sa
  assert.equal(read('teacher-access.html'),read('docs/teacher-access.html'));
  assert.equal(read('teacher-access.js'),read('docs/teacher-access.js'));
 });
-test('teachers do not receive an owner sample dashboard from the shared login',()=>{
+test('teacher login never links or authorises the retired sample dashboard',()=>{
  const code=read('teacher-access.js');
- assert.ok(code.includes("display('ownerDemoLink',isAdmin())"));
- assert.ok(code.includes("display('ownerDemoLink',false)"));
+ assert.ok(!code.includes("display('ownerDemoLink',isAdmin())"));
+ assert.ok(!code.includes("display('ownerDemoLink',false)"));
  assert.ok(!/SUPABASE_SERVICE_ROLE_KEY|sb_secret_/.test(code));
  const sample=read('school-demo-gate.js');
  for(const marker of ['school_admin','school_users?','auth/v1/user','institutions?']){
@@ -57,30 +58,24 @@ test('school owner self-registration is visible and can only provision through v
  assert.ok(migration.includes('revoke all on function public.register_first_school(text) from public, anon, authenticated'));
  assert.ok(migration.includes('grant execute on function public.register_first_school(text) to authenticated'));
 });
-test('demo/demo enters only browser-isolated sample and never requests Supabase login',()=>{
-  for(const path of ['index.html','docs/index.html','teacher-access.html','docs/teacher-access.html']){
-    const html=read(path);
-    assert.ok(html.includes('ID <code>demo</code> · Password <code>demo</code>'));
-    assert.ok(html.includes('id="loginEmail"'));
-    assert.ok(html.includes('minlength="4"'));
-  }
-  const login=read('teacher-access.js'),gate=read('school-demo-gate.js');
-  assert.ok(login.includes("if(id==='demo' && password==='demo')"));
-  assert.ok(login.includes("window.location.assign('./school-demo.html')"));
-  assert.ok(gate.includes('const isLocalDemo=localDemoAccess()'));
-  assert.ok(gate.includes("sessionStorage.setItem('bright-nexa-school-os:demo-mode:v1','true')"));
-  assert.ok(gate.includes('if(!isLocalDemo && !await authorisedOwner())'));
-  assert.ok(gate.includes('Exit demo'));
-  assert.ok(gate.includes('MutationObserver'));
-  assert.ok(gate.includes("script.src='./assets/index-brightnexa-v2.js"));
-  assert.doesNotThrow(()=>new Function(login));
-  assert.doesNotThrow(()=>new Function(gate));
-  assert.equal(gate,read('docs/school-demo-gate.js'));
+test('legacy demo is inaccessible from real login and direct route',()=>{
+ for(const path of ['index.html','docs/index.html','teacher-access.html','docs/teacher-access.html']){
+  const html=read(path);
+  assert.doesNotMatch(html,/ID <code>demo<\/code>|ownerDemoLink|href="\.\/school-demo\.html"/);
+  assert.match(html,/Create School \(New Owner\)/);
+ }
+ const script=read('teacher-access.js');
+ assert.doesNotMatch(script,/if\(id==='demo'|window\.location\.assign\('\.\/school-demo\.html'\)/);
+ assert.match(script,/token\?grant_type=password/);
+ const archive=read('school-demo.html');
+ assert.match(archive,/Legacy browser-only demo retired/);
+ assert.match(archive,/not been deleted/);
+ assert.doesNotMatch(archive,/index-brightnexa-v2\.js|school-demo-gate\.js/);
 });
-test('public feature preview is informational only and does not run the app',()=>{
+test('old preview does not run fake app or modify browser storage',()=>{
  const html=read('school-preview.html');
- assert.ok(html.includes('READ-ONLY PRODUCT PREVIEW'));
- assert.ok(!/script src=|script type=|<button|<form/i.test(html));
+ assert.match(html,/Legacy browser-only demo retired/);
+ assert.doesNotMatch(html,/index-brightnexa|<script|<form|localStorage\.clear/);
 });
 test('old service workers are cleaned up without erasing persisted school records',()=>{
  const code=read('entry-sw-reset.js');

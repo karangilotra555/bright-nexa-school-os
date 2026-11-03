@@ -66,10 +66,10 @@ tr td select{padding:7px;min-width:115px}
   <h1>Teacher & Staff Login</h1>
   <p class="sub">Only school-invited accounts can access records. Every class and role is checked in the cloud database.</p>
   <form id="loginForm">
-    <div class="inputgroup"><label for="loginEmail">School staff email</label><input type="text" id="loginEmail" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="School email or demo" required></div>
-    <div class="inputgroup" style="margin:12px 0"><label for="loginPassword">Password</label><input type="password" id="loginPassword" autocomplete="current-password" required minlength="4"></div>
+    <div class="inputgroup"><label for="loginEmail">School staff email</label><input type="text" id="loginEmail" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Verified school email" required></div>
+    <div class="inputgroup" style="margin:12px 0"><label for="loginPassword">Password</label><input type="password" id="loginPassword" autocomplete="current-password" required minlength="8"></div>
     <button type="submit" class="primary">Sign in securely</button>
-    <p class="muted" style="margin:12px 0 0"><strong>Try demo:</strong> ID <code>demo</code> · Password <code>demo</code>. Fictional sample data only.</p>
+
   </form>
   <div style="margin-top:17px;border-top:1px solid #dce6ef;padding-top:15px">
     <button id="toggleSchoolRegistration" type="button" class="ghost" aria-expanded="false" aria-controls="createSchoolSignup">+ Create School (New Owner)</button>
@@ -77,28 +77,28 @@ tr td select{padding:7px;min-width:115px}
       <h2>Register a new school</h2>
       <p class="sub">For the school's owner or authorised administrator. Verify your email first; your school is created only after secure sign-in.</p>
       <form id="registerSchoolForm">
-        <label for="signupSchoolName">School name</label><input id="signupSchoolName" required minlength="3" maxlength="120" autocomplete="organization" placeholder="e.g. Sunrise Public School">
+        <label for="signupSchoolName">School name</label><input id="signupSchoolName" required minlength="3" maxlength="120" autocomplete="organization" placeholder="e.g. Bright Nexa TEST School">
         <label for="signupOwnerEmail" style="margin-top:12px">Owner email</label><input id="signupOwnerEmail" type="email" autocomplete="email" required>
         <label for="signupOwnerPassword" style="margin-top:12px">Create password (12+ characters)</label><input id="signupOwnerPassword" type="password" minlength="12" maxlength="256" autocomplete="new-password" required>
         <label for="signupOwnerPasswordConfirm" style="margin-top:12px">Confirm password</label><input id="signupOwnerPasswordConfirm" type="password" minlength="12" maxlength="256" autocomplete="new-password" required>
         <button id="submitRegisterSchool" type="submit" class="primary" style="margin-top:15px">Verify email &amp; continue</button>
       </form>
-      <p class="muted">An unverified email cannot become school admin. This is a trial workspace; verified ownership of the institution is a separate approval step.</p>
+      <p class="muted">Email must be verified before creating a trial school. Its records are stored in the real database; school ownership needs separate verification.</p>
     </div>
   </div>
   <div id="activation" class="hidden"><h3>Activate invited account</h3><p>Set your new password to activate school access.</p><form id="activateForm"><label for="newPassword">New password (minimum 12 characters)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required><button class="primary" type="submit" style="margin-top:11px">Activate account</button></form></div>
-  <p class="muted">School owners can create a school above; teachers must be invited and assigned by the school admin.</p>
+  <p class="muted">Create a TEST school using verified email. Staff must be invited and assigned rights by the school admin. No fictional demo login.</p>
 </section>
 <div id="status" class="hidden" role="status" aria-live="polite"></div>
 <section id="registrationSection" class="panel login hidden">
   <h1>Create your school</h1>
   <p class="sub">Your account is signed in, but is not assigned to a school. School owners can register here. Invited teachers must sign in with their school-invited email.</p>
   <form id="newSchoolForm">
-    <label for="newSchoolName">Official school name</label>
-    <input id="newSchoolName" required minlength="3" maxlength="120" autocomplete="organization" placeholder="School name">
+    <label for="newSchoolName">TEST school name</label>
+    <input id="newSchoolName" required minlength="3" maxlength="120" autocomplete="organization" placeholder="Bright Nexa TEST School">
     <button id="provisionSchoolButton" type="submit" class="primary" style="margin-top:14px">Create School &amp; Owner Workspace</button>
   </form>
-  <p class="muted">Server checks verified email and one school per owner account. Creation starts a trial workspace; real school data needs the school's authorisation.</p>
+  <p class="muted">Only one trial school per verified owner. Test records are real database writes. Do not enter actual children’s details without authorisation.</p>
 </section>
 
 <section id="portalSection" class="hidden">
@@ -108,9 +108,9 @@ tr td select{padding:7px;min-width:115px}
       <div><h2>🧠 Smart Tools</h2><p class="sub" style="margin:0">Timetable, Substitute Teacher, Student Performance, Excel Import and Error Detector. Browser-only tools; no automatic writes to school records.</p></div>
       <a class="header-back" href="./smart-tools.html" style="background:#0b315e;color:white">Open Smart Tools →</a>
     </div>
-    <a id="ownerDemoLink" class="ghost hidden" href="./school-demo.html" style="display:inline-block;text-decoration:none;margin-top:12px;font-size:12px">Open sample School OS dashboard</a>
   </section>
-  <div class="notice">Verified staff permissions are enforced by Supabase Row Level Security. Owner demo is a separate sample, NOT live school records. Full School OS cloud integration and parent sync are still pending.</div>
+  <div><a id="cloudOperationsLink" class="header-back hidden" href="./school-operations.html">Open Real School Operations →</a></div>
+  <div class="notice">REAL TEST SCHOOL MODE — Access uses Supabase authentication and database Row Level Security. Only your verified school’s records appear. Unconnected sample modules are excluded.</div>
   <div class="cards">
     <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>
     <div class="card"><b id="countStudents">0</b><small>Accessible students</small></div>
