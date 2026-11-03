@@ -754,9 +754,15 @@
     <div class="photo-upload-controls" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:#f0f7ff;border:1px solid #d9e9f8;">
       <label class="photo-upload-label" for="idPhotoStudent">Student photo:</label>
       <select id="idPhotoStudent" aria-label="Choose student for photo"><option value="">Select student</option></select>
-      <input id="idPhotoFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload student portrait" style="max-width:220px">
+      <input id="idPhotoFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose student portrait" style="max-width:220px">
+      <button class="btn btn-primary" type="button" id="idPhotoPreviewBtn" onclick="previewSelectedPhotoCard()">Preview on Card</button>
       <button class="btn btn-secondary" type="button" onclick="clearIdPhoto()">Remove photo</button>
-      <span class="photo-upload-hint">Portrait JPG/PNG/WebP, max 3 MB. Preview and print only; photo is not uploaded or saved.</span>
+      <span class="photo-upload-hint">JPG/PNG/WebP up to 8 MB. Photo applies automatically; Preview on Card jumps to the student's print sheet. No upload to server or permanent save.</span>
+      <div id="idPhotoFeedback" role="status" aria-live="polite" style="flex-basis:100%;font-size:13px;font-weight:600;color:#254d74;">Select a student, then choose a photo. It will appear here and on the card automatically.</div>
+      <div id="idPhotoPreview" style="display:none;align-items:center;gap:12px;flex-basis:100%;padding:9px;background:#ffffff;border:1px solid #c7dbef;border-radius:9px;">
+        <img id="idPhotoThumbnail" alt="Selected student's photo preview" style="width:65px;height:78px;object-fit:cover;border-radius:6px;border:1px solid #9bb9d7;">
+        <span id="idPhotoPreviewLabel" style="font-size:13px;color:#17375a;font-weight:700;"></span>
+      </div>
     </div>
 
     <!-- Filters & Search Bar Row -->
@@ -972,9 +978,12 @@
       isDemoMode = !isDemoMode;
       activeStudents = isDemoMode ? SAMPLE_DEMO_STUDENTS : liveStudents;
       
+      document.getElementById('idPhotoFile').value = '';
       updateSourceUI();
       populateFilters();
       renderCards();
+      photoFeedback(isDemoMode ? 'Sample mode: photo previews are temporary and not school records.' :
+        'Live mode: choose a student and a photo; this is still only a local print preview.');
     }
 
     function updateSourceUI() {
@@ -1065,7 +1074,17 @@
       renderCards();
     }
 
+    // Preview-only images are kept in memory and separated between sample/live modes.
+    // No photo is sent to a server or persisted in localStorage.
     const idPhotoOverrides = new Map();
+    let idPhotoReadId = 0;
+    const idPhotoKey = studentId => (isDemoMode ? 'demo:' : 'live:') + String(studentId);
+    function photoFeedback(text, isError = false) {
+      const output=document.getElementById('idPhotoFeedback');
+      if (!output) return;
+      output.textContent=text;
+      output.style.color=isError ? '#b42318' : '#176239';
+    }
     function syncIdPhotoStudents() {
       const picker = document.getElementById('idPhotoStudent');
       if (!picker) return;
@@ -1073,26 +1092,104 @@
       picker.replaceChildren(new Option('Select student', ''));
       for (const st of activeStudents) picker.add(new Option(st.name + ' · ' + st.className, String(st.id)));
       if ([...picker.options].some(o => o.value === previous)) picker.value = previous;
+      updatePhotoThumbnail();
     }
-    function clearIdPhoto() {
-      const key = document.getElementById('idPhotoStudent')?.value;
-      if (!key) return alert('Choose a student first.');
-      idPhotoOverrides.delete(key);
-      document.getElementById('idPhotoFile').value = '';
-      renderCards();
+    function updatePhotoThumbnail() {
+      const studentId=document.getElementById('idPhotoStudent')?.value || '';
+      const selected=activeStudents.find(st => String(st.id)===studentId);
+      const image=studentId ? idPhotoOverrides.get(idPhotoKey(studentId)) : null;
+      const preview=document.getElementById('idPhotoPreview');
+      const thumbnail=document.getElementById('idPhotoThumbnail');
+      const caption=document.getElementById('idPhotoPreviewLabel');
+      if (!preview || !thumbnail || !caption) return;
+      preview.style.display=image ? 'flex' : 'none';
+      thumbnail.removeAttribute('src');
+      if (image) thumbnail.src=image;
+      caption.textContent=selected && image
+        ? selected.name + ' — photo ready for preview and A4 print (not saved)'
+        : '';
     }
-    document.addEventListener('change', async function(event) {
-      if (event.target?.id !== 'idPhotoFile') return;
-      const key = document.getElementById('idPhotoStudent')?.value;
-      const file = event.target.files?.[0];
-      if (!key || !file) { alert('Choose a student and photo first.'); return; }
-      if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 3 * 1024 * 1024) {
-        alert('Choose a JPG, PNG or WebP image smaller than 3 MB.');
-        event.target.value = '';
+    function previewSelectedPhotoCard() {
+      const key=document.getElementById('idPhotoStudent')?.value || '';
+      const selected=activeStudents.find(st=>String(st.id)===key);
+      if (!selected) {
+        photoFeedback('Choose a student before previewing the ID card.',true);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => { idPhotoOverrides.set(key, reader.result); renderCards(); };
+      // Filters may hide the student whose photograph was just selected.
+      const classFilter=document.getElementById('classFilter');
+      if (classFilter) classFilter.value='ALL';
+      const search=document.getElementById('searchInput');
+      if (search) search.value='';
+      const clearBtn=document.getElementById('searchClearBtn');
+      if (clearBtn) clearBtn.style.display='none';
+      filterStudents();
+      const studentFilter=document.getElementById('studentFilter');
+      if (studentFilter) studentFilter.value=key;
+      renderCards();
+      requestAnimationFrame(()=>{
+        const card=document.querySelector('#pagesContainer .id-card-vertical');
+        if(card) card.scrollIntoView({behavior:'smooth',block:'center'});
+      });
+    }
+    function clearIdPhoto() {
+      const studentId=document.getElementById('idPhotoStudent')?.value || '';
+      if (!studentId) {
+        photoFeedback('Choose the student whose photo you want to remove.',true);
+        return;
+      }
+      idPhotoReadId++;
+      idPhotoOverrides.delete(idPhotoKey(studentId));
+      const input=document.getElementById('idPhotoFile');
+      if(input) input.value='';
+      renderCards();
+      photoFeedback('Photo removed from this student’s print preview. No school record was changed.');
+    }
+    document.addEventListener('change', function(event) {
+      if (event.target?.id === 'idPhotoStudent') {
+        // The file picker must not misleadingly show the previous student's filename.
+        document.getElementById('idPhotoFile').value='';
+        updatePhotoThumbnail();
+        const key=document.getElementById('idPhotoStudent')?.value;
+        photoFeedback(key ? 'Choose a JPG, PNG or WebP photo for this student (8 MB maximum).' :
+          'Select a student first.');
+        return;
+      }
+      if (event.target?.id !== 'idPhotoFile') return;
+      const studentId=document.getElementById('idPhotoStudent')?.value || '';
+      const selected=activeStudents.find(st=>String(st.id)===studentId);
+      const file=event.target.files?.[0];
+      if (!selected || !file) {
+        photoFeedback('Select a student and then choose their photo.',true);
+        event.target.value='';
+        return;
+      }
+      if (!['image/jpeg','image/png','image/webp'].includes(file.type) ||
+          file.size===0 || file.size > 8*1024*1024) {
+        photoFeedback('Photo not applied. Choose a JPG, PNG or WebP smaller than 8 MB.',true);
+        event.target.value='';
+        return;
+      }
+      const uploadId=++idPhotoReadId;
+      const key=idPhotoKey(studentId);
+      photoFeedback('Reading '+file.name+' for '+selected.name+'…');
+      const reader=new FileReader();
+      reader.onload=()=>{
+        if(uploadId!==idPhotoReadId)return;
+        const image=reader.result;
+        if(typeof image!=='string' || !/^data:image\/(jpeg|png|webp);base64,/i.test(image)){
+          photoFeedback('Could not read this photo. Please choose a different JPG/PNG/WebP image.',true);
+          return;
+        }
+        idPhotoOverrides.set(key,image);
+        updatePhotoThumbnail();
+        photoFeedback('Photo applied for '+selected.name+'. Preview updated below; this is NOT saved to school records.');
+        previewSelectedPhotoCard();
+      };
+      reader.onerror=()=>{
+        if(uploadId===idPhotoReadId)
+          photoFeedback('Photo could not be read. Try a different image file.',true);
+      };
       reader.readAsDataURL(file);
     });
     function renderCards() {
@@ -1191,7 +1288,7 @@
           const globalIdx = p * chunkSize + idx;
           const cleanInitials = (st.name || 'ST').replace(/[^A-Za-z0-9 ]/g, '').split(' ').map(w => w[0]).slice(0, 2).join('');
           const avatarSvg = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120"><rect width="100" height="120" fill="#eaf2fb"/><circle cx="50" cy="42" r="21" fill="#9ebbd6"/><path d="M15 118v-17c0-21 17-34 35-34s35 13 35 34v17" fill="#18588f"/></svg>');
-          const photoSrc = sanitizeImageUrl(idPhotoOverrides.get(String(st.id)) || st.photoUrl, avatarSvg);
+          const photoSrc = sanitizeImageUrl(idPhotoOverrides.get(idPhotoKey(st.id)) || st.photoUrl, avatarSvg);
           const schoolLogoSrc = sanitizeImageUrl(institution.logoUrl, 'app-icon-512.png');
           
           // No client-side signatures: the school must issue its credential through the server.
