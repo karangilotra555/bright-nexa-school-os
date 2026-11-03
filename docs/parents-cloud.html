@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#09264c">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Bright Nexa Parents — Verified School Cloud</title>
+<style>
+:root{font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;color:#173252;background:#f2f6fb}
+*{box-sizing:border-box}body{margin:0}.top{background:linear-gradient(120deg,#061a36,#15548b);color:white;padding:23px max(20px,calc((100vw - 1050px)/2))}
+.top h1{margin:0;font-size:24px}.top p{margin:4px 0;color:#d4eaff}.top a{color:white;font-size:14px}
+main{max-width:1050px;margin:24px auto;padding:0 15px 70px}
+.card{background:white;border:1px solid #d9e5f0;box-shadow:0 5px 23px #102e4a0c;border-radius:16px;padding:22px;margin-bottom:16px}
+h2{font-size:19px;margin:0 0 10px}h3{font-size:16px;margin:0 0 8px}p{margin:5px 0 12px}.muted{color:#62758d;font-size:13px}.warning{border-left:4px solid #e49b22;background:#fff7e7;padding:13px;border-radius:8px;font-size:13px}
+label{display:block;font-size:13px;font-weight:700;margin:12px 0 5px}input,select,textarea{font:inherit;display:block;width:100%;border:1px solid #afc3d8;border-radius:9px;padding:10px;background:white;color:#183652}
+textarea{min-height:95px;resize:vertical}button{font:inherit;border:0;border-radius:10px;background:#1179c8;color:white;padding:11px 16px;font-weight:700;cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}.ghost{background:#e7f2fb;color:#194b77}.danger{background:#b42b43}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e58a16;outline-offset:2px}
+.hidden{display:none!important}.status{padding:11px 15px;border-radius:9px;margin:12px 0;background:#e7f5ed;color:#154e32}.status.error{background:#ffe8ea;color:#8f1d2d}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.list{list-style:none;margin:10px 0;padding:0}
+.list li{padding:13px 0;border-bottom:1px solid #e4ecf4}.list li:last-child{border-bottom:0}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #e4ecf4;padding:10px;text-align:left}th{background:#edf4fb}
+.stats{display:flex;gap:14px;flex-wrap:wrap}.metric{background:#eff6fd;border-radius:11px;padding:12px 16px;min-width:150px}.metric strong{display:block;font-size:20px;color:#0a4775}
+footer{text-align:center;color:#768ba2;font-size:12px;padding:12px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.top{padding:18px}.card{padding:16px}main{margin-top:14px}}
+</style>
+<script src="./parents-cloud.js?v=20261103" defer></script>
+</head><body>
+<header class="top"><h1>Bright Nexa <span style="color:#ffb45a">✦</span> Parents</h1><p>Verified school updates. Private to your linked children.</p><a href="./index.html">← School Login</a></header>
+<main>
+<div class="warning">Real cloud parent portal — no admission number + date-of-birth login. Register with your email, verify it, then ask the school admin to link your account to your child. This page does not show demo records.</div>
+<div id="status" role="status" aria-live="polite" class="hidden"></div>
+<section id="authPanel" class="grid">
+ <div class="card">
+  <h2>Parent sign-in</h2>
+  <form id="parentLoginForm">
+    <label for="parentEmail">Verified email</label><input id="parentEmail" type="email" autocomplete="username" required>
+    <label for="parentPassword">Password</label><input id="parentPassword" type="password" autocomplete="current-password" required>
+    <button type="submit" style="margin-top:14px">Sign in</button>
+  </form>
+ </div>
+ <div class="card">
+  <h2>First time? Verify your email</h2>
+  <p class="muted">Only a school administrator can link your verified account to a student. Registering does not grant access to school data.</p>
+  <form id="parentSignupForm">
+    <label for="registerEmail">Email</label><input id="registerEmail" type="email" autocomplete="email" required>
+    <label for="registerPassword">Create password (12+ characters)</label><input id="registerPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required>
+    <button type="submit" class="ghost" style="margin-top:14px">Send verification email</button>
+  </form>
+ </div>
+</section>
+<section id="parentPanel" class="hidden">
+ <div class="card row"><div><h2 id="schoolTitle">Your school</h2><p id="guardianStatus" class="muted"></p></div><button class="ghost" id="parentLogout" type="button">Sign out</button></div>
+ <div id="noGuardianLink" class="card hidden"><h2>Awaiting school approval</h2><p>Your email is verified, but no school has linked it to a student yet. Contact the school administrator and provide the exact email you used to sign in. No student data is available until approval.</p></div>
+ <div id="parentData" class="hidden">
+  <div class="card row"><div><label for="childSelector" style="margin-top:0">Select linked child</label><select id="childSelector" aria-label="Select child"></select></div><button class="ghost" type="button" id="refreshParent">↻ Refresh</button></div>
+  <section class="grid">
+   <div class="card"><h2>Student profile</h2><div id="childProfile"></div></div>
+   <div class="card"><h2>Attendance</h2><div class="stats"><div class="metric">Marked days<strong id="attendanceCount">—</strong></div><div class="metric">Present + Late<strong id="attendancePercent">—</strong></div></div><ul id="attendanceList" class="list"></ul></div>
+   <div class="card"><h2>Fees & payments</h2><div class="metric">Recorded balance<strong id="feeBalance">—</strong></div><p class="muted">School-recorded ledger only. Balance includes all entries; the table shows the latest 500. No payment gateway.</p><div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Details</th></tr></thead><tbody id="feeList"></tbody></table></div></div>
+   <div class="card"><h2>Homework</h2><ul class="list" id="homeworkList"></ul></div>
+   <div class="card"><h2>School notices</h2><ul class="list" id="noticesList"></ul></div>
+   <div class="card"><h2>Leave request</h2><form id="leaveRequestForm">
+     <label for="leaveFrom">From</label><input type="date" id="leaveFrom" required>
+     <label for="leaveTo">To</label><input type="date" id="leaveTo" required>
+     <label for="leaveReason">Reason (5–500 characters)</label><textarea id="leaveReason" minlength="5" maxlength="500" required></textarea>
+     <button type="submit" style="margin-top:13px">Submit leave request</button>
+   </form><h3 style="margin-top:20px">Previous requests</h3><ul class="list" id="leaveList"></ul></div>
+  </section>
+ </div>
+</section>
+</main>
+<footer>Bright Nexa School OS · Access is verified by Supabase Auth + database Row-Level Security · © 2026</footer>
+</body></html>
