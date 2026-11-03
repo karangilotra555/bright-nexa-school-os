@@ -40,7 +40,9 @@
       const unfilled = fields.filter(field => !String(field.value || '').trim());
       // Intercept the known silent all-blank submit. The original form remains responsible
       // for valid submissions, keeping React state and validation unchanged.
-      if (fields.length && unfilled.length === fields.length) {
+      const textFields=fields.filter(field=>field.matches('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),textarea'));
+      const blankInputs=textFields.length && textFields.every(field => !String(field.value || '').trim());
+      if (blankInputs) {
         event.preventDefault();
         event.stopImmediatePropagation();
         message(saveStudent, 'Student not saved. Complete the required student and parent fields before saving.');
@@ -64,47 +66,69 @@
   const PAGE_SIZE = 10;
   let page = 0;
   let knownSignature = '';
+  function studentTable() {
+    // Works with the actual rendered table; no reliance on framework-specific CSS classes.
+    return [...root.querySelectorAll('table')].find(t => {
+      const headings=[...t.querySelectorAll('thead th')].map(h => h.textContent.trim().toLowerCase());
+      return headings.some(h => h.includes('student')) &&
+             headings.some(h => h.includes('admission')) &&
+             headings.some(h => h.includes('parent') || h.includes('guardian'));
+    }) || null;
+  }
   function improveDemo() {
-    // Mask only displayed sample phone numbers, never modify source data.
-    for (const row of root.querySelectorAll('.student-row')) {
-      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
-      let node;
-      while ((node = walker.nextNode())) {
-        if (/\b[6-9]\d{9}\b/.test(node.nodeValue)) {
-          node.nodeValue = node.nodeValue.replace(/\b([6-9]\d{2})\d{5}(\d{2})\b/g, '$1*****$2');
+    const table=studentTable();
+    if (!table) { knownSignature=''; return; }
+    const tbody=table.tBodies && table.tBodies[0] || table.querySelector('tbody');
+    if (!tbody) return;
+    const rows=[...tbody.querySelectorAll(':scope > tr')];
+    if (!rows.length) { knownSignature=''; return; }
+    const guardianHeading=[...table.querySelectorAll('thead th')].findIndex(h => /parent|guardian/i.test(h.textContent));
+    if (guardianHeading >= 0) {
+      // Public demo only. Mask display text; never alter school or demo records in storage.
+      for (const row of rows) {
+        const cell=row.cells && row.cells[guardianHeading];
+        if (!cell) continue;
+        const walker=document.createTreeWalker(cell,NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node=walker.nextNode())) {
+          if (/\\b[6-9]\\d{9}\\b/.test(node.nodeValue)) {
+            node.nodeValue=node.nodeValue.replace(/\\b([6-9]\\d{2})\\d{5}(\\d{2})\\b/g,'$1*****$2');
+          }
         }
       }
     }
-    const rows = [...root.querySelectorAll('.student-row')];
-    if (!rows.length) { knownSignature = ''; return; }
-    const parent = rows[0].parentElement;
-    if (!parent || !rows.every(row => row.parentElement === parent)) return;
-    const signature = String(rows.length) + ':' + rows.map(row => row.textContent.slice(0,32)).join('|');
-    if (signature !== knownSignature) { page = 0; knownSignature = signature; }
-    let pager = parent.nextElementSibling;
+    const signature=rows.length+':'+rows.map(row=>(row.cells?.[0]?.textContent||'').trim()).join('|');
+    if(signature!==knownSignature){page=0;knownSignature=signature;}
+    let pager=table.nextElementSibling;
     if (!pager || !pager.matches('[data-demo-qa-pager]')) {
-      pager = document.createElement('div');
-      pager.dataset.demoQaPager = 'true';
-      pager.style.cssText = 'display:flex;align-items:center;gap:12px;justify-content:flex-end;margin:12px 0;font-size:13px;';
-      parent.insertAdjacentElement('afterend', pager);
+      pager=document.createElement('div');
+      pager.dataset.demoQaPager='true';
+      pager.style.cssText='display:flex;align-items:center;gap:12px;justify-content:flex-end;margin:12px 0;font-size:13px;flex-wrap:wrap;';
+      table.insertAdjacentElement('afterend',pager);
     }
-    const max = Math.ceil(rows.length / PAGE_SIZE);
-    if (max <= 1) { pager.hidden = true; rows.forEach(row => { row.style.display = ''; }); return; }
-    pager.hidden = false;
-    page = Math.min(page, max - 1);
-    rows.forEach((row, index) => { row.style.display = index >= page * PAGE_SIZE && index < (page + 1) * PAGE_SIZE ? '' : 'none'; });
-    const renderKey = signature + ':' + page;
-    if (pager.dataset.renderKey === renderKey) return;
-    pager.dataset.renderKey = renderKey;
+    const max=Math.ceil(rows.length/PAGE_SIZE);
+    if (max<=1) {
+      pager.hidden=true; rows.forEach(row=>row.style.display='');
+      return;
+    }
+    pager.hidden=false;
+    page=Math.max(0,Math.min(page,max-1));
+    rows.forEach((row,index)=>{row.style.display=index>=page*PAGE_SIZE && index<(page+1)*PAGE_SIZE?'':'none';});
+    const renderKey=signature+':'+page;
+    if(pager.dataset.renderKey===renderKey) return;
+    pager.dataset.renderKey=renderKey;
     pager.replaceChildren();
-    const prev = document.createElement('button'), next = document.createElement('button'), text = document.createElement('span');
-    prev.type = next.type = 'button';
-    prev.textContent = 'Previous'; next.textContent = 'Next';
-    prev.disabled = page === 0; next.disabled = page >= max - 1;
-    text.textContent = 'Page ' + (page + 1) + ' of ' + max + ' · ' + rows.length + ' students';
-    prev.addEventListener('click', () => { page--; improveDemo(); });
-    next.addEventListener('click', () => { page++; improveDemo(); });
-    pager.append(prev, text, next);
+    const prev=document.createElement('button'),next=document.createElement('button'),count=document.createElement('span');
+    prev.type=next.type='button';
+    prev.textContent='Previous';next.textContent='Next';
+    prev.disabled=page===0;next.disabled=page===max-1;
+    count.textContent='Page '+(page+1)+' of '+max+' · '+rows.length+' students';
+    for(const button of [prev,next]){
+      button.style.cssText='background:#edf5fc;border:1px solid #95afc3;border-radius:8px;padding:7px 12px;color:#15385c;cursor:pointer;';
+    }
+    prev.addEventListener('click',()=>{page--;improveDemo();});
+    next.addEventListener('click',()=>{page++;improveDemo();});
+    pager.append(prev,count,next);
   }
   let pending = false;
   const observer = new MutationObserver(() => {
