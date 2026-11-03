@@ -96,11 +96,12 @@
  async function loadSelected(){
    const chosen=students.find(s=>s.id===$('childSelector').value);
    if(!chosen)throw Error('Choose one of your linked children.');
-   const [schools,classes,attendance,fees,homework,notices,leaves]=await Promise.all([
+   const [schools,classes,attendance,fees,exactBalances,homework,notices,leaves]=await Promise.all([
      data('institutions',{select:'id,name',id:eq(chosen.institution_id),limit:'1'}),
      chosen.class_id?data('school_classes',{select:'id,name,section,academic_year',id:eq(chosen.class_id),limit:'1'}):Promise.resolve([]),
      data('school_attendance',{select:'day,status',student_id:eq(chosen.id),order:'day.desc',limit:'100'}),
      data('school_fee_entries',{select:'id,kind,amount_rupees,description,reference,occurred_on',student_id:eq(chosen.id),order:'occurred_on.desc',limit:'500'}),
+     data('school_fee_balances',{select:'student_id,balance_rupees,entry_count',student_id:eq(chosen.id),limit:'1'}),
      chosen.class_id?data('school_homework',{select:'subject,title,instructions,due_on,created_at',class_id:eq(chosen.class_id),order:'created_at.desc',limit:'40'}):Promise.resolve([]),
      data('school_notices',{select:'title,body,created_at',institution_id:eq(chosen.institution_id),order:'created_at.desc',limit:'40'}),
      data('school_parent_leaves',{select:'from_on,to_on,reason,status,created_at',student_id:eq(chosen.id),parent_auth_user_id:eq(user.id),order:'created_at.desc',limit:'30'})
@@ -115,7 +116,7 @@
    const present=attendance.filter(x=>['present','late'].includes(x.status)).length;
    text('attendancePercent',attendance.length?Math.round(100*present/attendance.length)+'%':'Not recorded');
    list('attendanceList',attendance.slice(0,30),(li,x)=>addLine(li,x.day, x.status.toUpperCase()));
-   const balance=fees.reduce((sum,f)=>sum+(f.kind==='charge'?Number(f.amount_rupees):-Number(f.amount_rupees)),0);
+   const balance=Number(exactBalances[0]?.balance_rupees||0);
    text('feeBalance',money(balance));
    clear('feeList');
    if(!fees.length){const tr=el('tr'),td=el('td','No fee entries yet');td.colSpan=4;tr.append(td);$('feeList').append(tr)}
