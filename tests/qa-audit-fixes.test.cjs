@@ -44,3 +44,20 @@ test('Excel import flags errors and offers reviewed clean CSV without cloud writ
  assert.match(js,/Original file unchanged/);
  assert.match(js,/showImport\(kind\)/);
 });
+
+test('public demo masks sample contact numbers in profile dialogs without changing records',()=>{
+ const code=read('demo-qa-fixes.js');
+ assert.match(code,/function maskDemoProfiles\(\)/);
+ assert.match(code,/document\.body/);
+ assert.match(code,/profile-detail-grid-item/);
+ assert.match(code,/profile-detail-value/);
+ assert.match(code,/Student Profile/);
+ assert.doesNotMatch(code,/\\\\b/,'phone regex must have only one backslash per word boundary');
+ const from=code.indexOf('  function maskPhoneText(text) {');
+ const to=code.indexOf('  function maskDemoProfiles()',from);
+ assert.ok(from>=0 && to>from);
+ const mask=new Function(code.slice(from,to)+';return maskPhoneText;')();
+ assert.equal(mask('9876543210'),'987*****10');
+ assert.equal(mask('Phone 9812302001'),'Phone 981*****01');
+ assert.equal(mask('Already masked 987*****10'),'Already masked 987*****10');
+});

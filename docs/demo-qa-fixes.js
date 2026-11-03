@@ -75,6 +75,31 @@
              headings.some(h => h.includes('parent') || h.includes('guardian'));
     }) || null;
   }
+  function maskPhoneText(text) {
+    // Presentation-only redaction. Original sample data remains unchanged.
+    return String(text || '').replace(/\b([6-9]\d{2})\d{5}(\d{2})\b/g, '$1*****$2');
+  }
+  function maskDemoProfiles() {
+    // Student Profile is rendered by Material UI as a portal under document.body,
+    // not as a descendant of #root. Never touch editable forms or real school portal.
+    const dialogs = document.querySelectorAll('[role="dialog"],.MuiDialog-root');
+    for (const dialog of dialogs) {
+      if (!/\bStudent Profile\b/i.test(dialog.textContent || '')) continue;
+      for (const item of dialog.querySelectorAll('.profile-detail,.profile-detail-grid-item')) {
+        const title = item.querySelector('.profile-label,.profile-detail-label');
+        const value = item.querySelector('.profile-value,.profile-detail-value');
+        if (!title || !value) continue;
+        if (!/\b(mobile|phone|contact|whatsapp)\b/i.test(title.textContent || '')) continue;
+        if (value.querySelector('input,select,textarea,button,[contenteditable="true"]')) continue;
+        const walker = document.createTreeWalker(value, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          const safe = maskPhoneText(node.nodeValue);
+          if (node.nodeValue !== safe) node.nodeValue = safe;
+        }
+      }
+    }
+  }
   function improveDemo() {
     const table=studentTable();
     if (!table) { knownSignature=''; return; }
@@ -91,8 +116,8 @@
         const walker=document.createTreeWalker(cell,NodeFilter.SHOW_TEXT);
         let node;
         while ((node=walker.nextNode())) {
-          if (/\\b[6-9]\\d{9}\\b/.test(node.nodeValue)) {
-            node.nodeValue=node.nodeValue.replace(/\\b([6-9]\\d{2})\\d{5}(\\d{2})\\b/g,'$1*****$2');
+          if (/\b[6-9]\d{9}\b/.test(node.nodeValue)) {
+            node.nodeValue=node.nodeValue.replace(/\b([6-9]\d{2})\d{5}(\d{2})\b/g,'$1*****$2');
           }
         }
       }
@@ -134,8 +159,9 @@
   const observer = new MutationObserver(() => {
     if (pending) return;
     pending = true;
-    requestAnimationFrame(() => { pending = false; improveDemo(); });
+    requestAnimationFrame(() => { pending = false; improveDemo(); maskDemoProfiles(); });
   });
-  observer.observe(root, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   improveDemo();
+  maskDemoProfiles();
 })();
