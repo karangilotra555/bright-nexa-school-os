@@ -23,9 +23,39 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
 <main>
 <div class="notice">This is the real Supabase school workspace, not the sample dashboard. All actions use your verified role and school-wise database permissions. Parent links require a verified guardian email and school-admin approval.</div>
 <div id="status" class="hidden status" role="alert" aria-live="polite"></div>
-<div id="noAccess" class="card hidden"><h2>Sign in as school staff first</h2><p>Use the main School Login page, then return to Cloud Operations. Only school admins, principals and accountants can manage these records.</p><a href="./index.html">Open School Login</a></div>
+<div id="noAccess" class="card hidden"><h2>Sign in as school staff first</h2><p>Use the main School Login page, then return to Cloud Operations. Only school admins, principals and accountants can manage these records. School admissions require admin or principal access.</p><a href="./index.html">Open School Login</a></div>
 <div id="opsApp" class="hidden">
 <div class="card row"><div><h2 id="schoolName">School</h2><p id="staffRole" class="muted"></p></div><button class="ghost" id="opsRefresh" type="button">↻ Refresh</button></div>
+<section id="admissionsSection" class="hidden">
+ <div class="card"><h2>Real Cloud Admissions & Classes</h2>
+  <p class="muted">Saved to the verified institution database, not the fictional demo. Do not enter actual children's personal information until your school has authorized the rollout.</p>
+  <div class="cols">
+   <form id="opsClassForm">
+    <h3>Add a school class</h3>
+    <label for="opsClassName">Class name</label><input id="opsClassName" required maxlength="80" placeholder="e.g. Class VI">
+    <label for="opsClassSection">Section</label><input id="opsClassSection" required maxlength="30" placeholder="A">
+    <label for="opsClassYear">Academic year</label><input id="opsClassYear" required placeholder="2026-2027" maxlength="9" pattern="20[0-9]{2}-20[0-9]{2}">
+    <button type="submit">Add cloud class</button>
+   </form>
+   <form id="admissionForm">
+    <h3>Register student</h3>
+    <label for="admissionClass">Assigned class</label><select id="admissionClass" required></select>
+    <label for="admissionNumber">Admission number (unique per school)</label>
+    <input id="admissionNumber" required minlength="1" maxlength="60" autocomplete="off" placeholder="e.g. 2026-001">
+    <label for="admissionName">Student full name</label>
+    <input id="admissionName" required minlength="1" maxlength="180" autocomplete="off" placeholder="Student name">
+    <label for="admissionDOB">Date of birth (optional)</label><input id="admissionDOB" type="date">
+    <button type="submit">Save student securely</button>
+   </form>
+  </div>
+ </div>
+ <div class="card"><div class="row"><h2>Cloud student roster</h2><span id="admissionCount" class="muted">0 students</span></div>
+   <label for="studentSearch">Search by student name or admission number</label>
+   <input id="studentSearch" type="search" autocomplete="off" placeholder="Search students">
+   <p class="muted">Students are never permanently deleted from here. Archiving and data retention require school authorization.</p>
+   <div class="scroll"><table><thead><tr><th>Admission no.</th><th>Student</th><th>Class</th><th>Date of birth</th><th>Status</th></tr></thead><tbody id="admissionRows"></tbody></table></div>
+ </div>
+</section>
 <div id="financeSection" class="cols hidden">
  <section class="card">
   <h2>School fees & payments</h2>
