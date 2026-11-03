@@ -61,3 +61,45 @@ test('public demo masks sample contact numbers in profile dialogs without changi
  assert.equal(mask('Phone 9812302001'),'Phone 981*****01');
  assert.equal(mask('Already masked 987*****10'),'Already masked 987*****10');
 });
+
+test('demo Student Profile parent phone is redacted without touching noncontact fields',()=>{
+ const code=read('demo-qa-fixes.js');
+ const start=code.indexOf('  function maskPhoneText(text) {');
+ const end=code.indexOf('  function maskDemoProfiles()',start);
+ const mask=new Function(code.slice(start,end)+';return maskPhoneText;')();
+ const label={textContent:'Parent Mobile'};
+ const value={textContent:'9876543210',querySelector:()=>null};
+ const otherLabel={textContent:'Admission Number'};
+ const otherValue={textContent:'2026110310',querySelector:()=>null};
+ const cell=(caption,input)=>({querySelector:q=>q==='.profile-detail-label'?caption:q==='.profile-detail-value'?input:null});
+ const dialog={querySelectorAll:q=>q==='.profile-detail-grid-item'?[cell(label,value),cell(otherLabel,otherValue)]:[]};
+ const doc={querySelectorAll:q=>q.includes('student-profile-modal')?[dialog]:[]};
+ const from=code.indexOf('  function maskDemoProfiles() {');
+ const to=code.indexOf('  function prepareFeeDialog()',from);
+ const runMask=new Function('document','maskPhoneText',code.slice(from,to)+';return maskDemoProfiles;')(doc,mask);
+ runMask();
+ assert.equal(value.textContent,'987*****10');
+ assert.equal(otherValue.textContent,'2026110310');
+ assert.equal(mask('987*****10'),'987*****10');
+ assert.match(read('school-demo.html'),/demo-qa-fixes\.js\?v=20261103-profile-fee2/);
+});
+test('fee Save Payment is blocked for blank or whitespace cashier before React receives the click',()=>{
+ const code=read('demo-qa-fixes.js');
+ assert.match(code,/Cashier or authorised person/);
+ assert.match(code,/Received By is required/);
+ assert.match(code,/field\.required=true/);
+ assert.match(code,/document\.addEventListener\('submit',enforceFeeCashierOnSubmit,true\)/);
+ assert.match(code,/if \(feeButton\) enforceFeeCashierOnSubmit\(event\)/);
+ const from=code.indexOf('  function enforceFeeCashierOnSubmit(event) {');
+ const to=code.indexOf('  // Capture both click',from);
+ const calls={error:0};
+ const modal={}; const cashier={value:'  '};
+ const guard=new Function('feeDialogFrom','cashierField','cashierError',code.slice(from,to)+';return enforceFeeCashierOnSubmit;')(
+  ()=>modal,()=>cashier,()=>calls.error++
+ );
+ let prevented=0,stopped=0;
+ const e={target:{},preventDefault:()=>prevented++,stopImmediatePropagation:()=>stopped++};
+ guard(e);assert.equal(prevented,1);assert.equal(stopped,1);assert.equal(calls.error,1);
+ cashier.value='Test Cashier';
+ guard(e);assert.equal(prevented,1);assert.equal(calls.error,1);
+});

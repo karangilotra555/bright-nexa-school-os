@@ -22,6 +22,48 @@
     }
     box.textContent = text;
   }
+  function feeDialogFrom(element) {
+    return element?.closest?.('section.simple-modal[role="dialog"][aria-label="Receive Student Fee"]') || null;
+  }
+  function cashierField(dialog) {
+    if (!dialog) return null;
+    const byPlaceholder = dialog.querySelector('input[placeholder="Cashier or authorised person"]');
+    if (byPlaceholder) return byPlaceholder;
+    const label = [...dialog.querySelectorAll('label.form-field')]
+      .find(node => /^\s*Received By\s*$/i.test(node.querySelector('span')?.textContent || ''));
+    return label?.querySelector('input') || null;
+  }
+  function cashierError(dialog) {
+    const field = cashierField(dialog);
+    if (field) {
+      field.required = true;
+      field.setAttribute('aria-required','true');
+      field.setAttribute('aria-invalid','true');
+      field.focus();
+    }
+    const footer = dialog.querySelector('.modal-actions') || dialog;
+    let info = dialog.querySelector('[data-demo-cashier-error]');
+    if (!info) {
+      info = document.createElement('p');
+      info.dataset.demoCashierError = 'true';
+      info.setAttribute('role','alert');
+      info.style.cssText = 'color:#9d241f;border-left:3px solid #d45438;padding:8px 10px;font-size:13px;margin:8px 0;background:#fff0eb;';
+      footer.insertAdjacentElement('beforebegin',info);
+    }
+    info.textContent = 'Received By is required. Enter the cashier or authorised person before creating a fee receipt.';
+  }
+  function enforceFeeCashierOnSubmit(event) {
+    const dialog = feeDialogFrom(event.target);
+    if (!dialog) return;
+    const cashier = cashierField(dialog);
+    if (cashier && cashier.value.trim()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    cashierError(dialog);
+  }
+  // Capture both click (React handlers) and actual HTML form submit so blank cashier
+  // cannot generate even a browser-local demo receipt.
+  document.addEventListener('submit',enforceFeeCashierOnSubmit,true);
   function modalFor(button) {
     const direct = button.closest('[role="dialog"],.modal,.modal-content,[class*="modal"]');
     if (direct) return direct;
@@ -32,6 +74,8 @@
     return null;
   }
   document.addEventListener('click', event => {
+    const feeButton = findButton(event, 'Save Payment & Create Receipt');
+    if (feeButton) enforceFeeCashierOnSubmit(event);
     const saveStudent = findButton(event, 'Save Student');
     if (saveStudent) {
       const modal = modalFor(saveStudent);
@@ -80,24 +124,36 @@
     return String(text || '').replace(/\b([6-9]\d{2})\d{5}(\d{2})\b/g, '$1*****$2');
   }
   function maskDemoProfiles() {
-    // Student Profile is rendered by Material UI as a portal under document.body,
-    // not as a descendant of #root. Never touch editable forms or real school portal.
-    const dialogs = document.querySelectorAll('[role="dialog"],.MuiDialog-root');
+    // The real demo uses section.student-profile-modal in a portal beneath body.
+    // Redact only contact display values; never modify React form inputs or stored data.
+    const dialogs=document.querySelectorAll('section.student-profile-modal[role="dialog"], [role="dialog"][aria-label="Student Profile"]');
     for (const dialog of dialogs) {
-      if (!/\bStudent Profile\b/i.test(dialog.textContent || '')) continue;
-      for (const item of dialog.querySelectorAll('.profile-detail,.profile-detail-grid-item')) {
-        const title = item.querySelector('.profile-label,.profile-detail-label');
-        const value = item.querySelector('.profile-value,.profile-detail-value');
-        if (!title || !value) continue;
-        if (!/\b(mobile|phone|contact|whatsapp)\b/i.test(title.textContent || '')) continue;
+      const fields=dialog.querySelectorAll('.profile-detail-grid-item');
+      for (const field of fields) {
+        const caption=field.querySelector('.profile-detail-label');
+        const value=field.querySelector('.profile-detail-value');
+        if (!caption || !value) continue;
+        if (!/(?:parent|mother|father|guardian|student|emergency)?\s*(?:mobile|phone|contact|whatsapp)/i.test(caption.textContent || '')) continue;
         if (value.querySelector('input,select,textarea,button,[contenteditable="true"]')) continue;
-        const walker = document.createTreeWalker(value, NodeFilter.SHOW_TEXT);
-        let node;
-        while ((node = walker.nextNode())) {
-          const safe = maskPhoneText(node.nodeValue);
-          if (node.nodeValue !== safe) node.nodeValue = safe;
-        }
+        const safe=maskPhoneText(value.textContent);
+        if (value.textContent !== safe) value.textContent=safe;
       }
+    }
+  }
+  function prepareFeeDialog() {
+    for (const dialog of document.querySelectorAll('section.simple-modal[role="dialog"][aria-label="Receive Student Fee"]')) {
+      const field=cashierField(dialog);
+      if (!field) continue;
+      field.required=true;
+      field.setAttribute('aria-required','true');
+      if (field.dataset.demoFeeGuard==='1') continue;
+      field.dataset.demoFeeGuard='1';
+      field.addEventListener('input',()=>{
+        if (field.value.trim()) {
+          field.removeAttribute('aria-invalid');
+          dialog.querySelector('[data-demo-cashier-error]')?.remove();
+        }
+      });
     }
   }
   function improveDemo() {
@@ -159,9 +215,10 @@
   const observer = new MutationObserver(() => {
     if (pending) return;
     pending = true;
-    requestAnimationFrame(() => { pending = false; improveDemo(); maskDemoProfiles(); });
+    requestAnimationFrame(() => { pending = false; improveDemo(); maskDemoProfiles(); prepareFeeDialog(); });
   });
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   improveDemo();
   maskDemoProfiles();
+  prepareFeeDialog();
 })();
