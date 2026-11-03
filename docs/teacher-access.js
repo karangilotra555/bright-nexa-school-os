@@ -238,10 +238,13 @@
       window.location.assign('./school-demo.html');
       return;
     }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id))throw Error('Enter a valid school email, or demo / demo for the sample.');
+    // Convenience alias only: Supabase still verifies the real owner's password.
+    // Never grant real-school access based on a browser-side demo code.
+    const loginEmail=id.toLowerCase()==='yrskaran'?'yrskaran@gmail.com':id;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail))throw Error('Enter a valid school email or owner username.');
     if(password.length<8)throw Error('School password must have at least 8 characters.');
     const btn=e.submitter;btn.disabled=true;
-    try{const tokens=await authRequest('token?grant_type=password',{email:id,password});saveSession(tokens);await load()}
+    try{const tokens=await authRequest('token?grant_type=password',{email:loginEmail,password});saveSession(tokens);await load()}
     finally{btn.disabled=false}
   })});
   $('toggleSchoolRegistration').addEventListener('click',()=>{
