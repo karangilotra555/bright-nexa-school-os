@@ -71,9 +71,40 @@ function renderSection(title){
  }else if(title==='Teachers'||title==='Non-Teaching Staff'){
    const want=title==='Teachers'?'teaching':'housekeeping';
    const rows=state.staff.filter(s=>s.staff_category===want);
+   const form=node('form');form.className='form';
+   form.innerHTML='<label>Full name<input name="display_name" required minlength="2" maxlength="150"></label><label>Designation<input name="designation" required maxlength="120"></label><label>Employment<select name="employment_type"><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part-time</option><option value="visiting">Visiting</option></select></label><label id="staffExtras"></label><button class="primary" type="submit">Save staff profile</button>';
+   const extras=form.querySelector('#staffExtras');
+   form.elements.employment_type.addEventListener('change',()=>{
+     const v=form.elements.employment_type.value;extras.replaceChildren();
+     if(v==='contract')extras.innerHTML='Contract end date<input name="contract_end_on" type="date" required>';
+     else if(v==='part_time')extras.innerHTML='Days/week<input name="days_per_week" type="number" min="1" max="7" required><input name="hours_per_day" type="number" min=".5" max="12" step=".5" placeholder="Hours/day" required>';
+     else if(v==='visiting')extras.innerHTML='Visits/month<input name="visits_per_month" type="number" min="1" max="31" required>';
+   });
+   form.addEventListener('submit',async e=>{e.preventDefault();
+     const name=form.elements.display_name.value.trim(),designation=form.elements.designation.value.trim(),employment_type=form.elements.employment_type.value;
+     if(!name||!designation)return error(Error('Enter staff name and designation.'));
+     if(state.staff.some(x=>x.display_name.trim().toLowerCase()===name.toLowerCase()))return error(Error('This staff name already exists.'));
+     const row={institution_id:state.me.institution_id,display_name:name,designation,employment_type,staff_category:want,is_seeded_test:false};
+     if(employment_type==='contract')row.contract_end_on=form.elements.contract_end_on.value;
+     if(employment_type==='part_time'){row.days_per_week=Number(form.elements.days_per_week.value);row.hours_per_day=Number(form.elements.hours_per_day.value)}
+     if(employment_type==='visiting')row.visits_per_month=Number(form.elements.visits_per_month.value);
+     const btn=form.querySelector('button');btn.disabled=true;try{await req('school_staff_profiles',{method:'POST',body:row});await reload();open(title)}catch(e){error(e)}finally{btn.disabled=false}
+   });
+   body.append(form);
    body.append(table(['Name','Designation','Employment','Category'],rows.map(s=>[s.display_name,s.designation||'—',s.employment_type||'—',s.staff_category])));
-   desc.textContent='Staff profiles are stored in Supabase. Invited login access is managed separately.';body.append(desc);
+   desc.textContent='Adding a staff profile does not give login access. Invite staff under Roles & Permissions.';body.append(desc,link('Invite school staff and assign class rights','./index.html?view=roles'));
  }else if(title==='Class & Section Setup'){
+   const form=node('form');form.className='form';
+   form.innerHTML='<label>Class<select name="name" required></select></label><label>Section<input name="section" maxlength="12" required value="A"></label><label>Academic year<input name="academic_year" required value="2026-2027" pattern="[0-9]{4}-[0-9]{4}"></label><button class="primary" type="submit">Add class</button>';
+   const sel=form.elements.name;sel.append(new Option('Choose class',''));
+   for(const name of ['Nursery','LKG','UKG',...Array.from({length:12},(_,i)=>'Class '+(i+1))])sel.append(new Option(name,name));
+   form.addEventListener('submit',async e=>{e.preventDefault();
+     const name=sel.value,section=form.elements.section.value.trim().toUpperCase(),academic_year=form.elements.academic_year.value.trim();
+     if(!name||!section||!/^[0-9]{4}-[0-9]{4}$/.test(academic_year))return error(Error('Enter a valid class, section and academic year.'));
+     if(state.classes.some(c=>c.name===name&&c.section===section&&c.academic_year===academic_year))return error(Error('Class section already exists.'));
+     const btn=form.querySelector('button');btn.disabled=true;
+     try{await req('school_classes',{method:'POST',body:{institution_id:state.me.institution_id,name,section,academic_year}});await reload();open(title)}catch(e){error(e)}finally{btn.disabled=false}
+   });body.append(form);
    body.append(table(['Class','Section','Academic year','Students'],state.classes.map(c=>[c.name,c.section,c.academic_year,state.students.filter(s=>s.class_id===c.id).length])));
    body.append(link('Manage class assignments and rights','./index.html?view=roles'));
  }else if(title==='Attendance'){
