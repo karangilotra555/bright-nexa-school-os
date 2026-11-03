@@ -31,6 +31,10 @@ test('sample-only demo controls do not write records and handle silent form acti
  assert.match(code,/No attendance selected/);
  assert.match(code,/PAGE_SIZE = 10/);
  assert.match(code,/renderKey/);
+ assert.match(code,/function studentTable\(\)/);
+ assert.match(code,/querySelectorAll\('thead th'\)/);
+ assert.match(code,/querySelectorAll\(':scope > tr'\)/);
+ assert.doesNotMatch(code,/querySelectorAll\('\.student-row'\)/);
  assert.doesNotMatch(code,/fetch\(|localStorage\.|indexedDB\.|school_students|school_attendance/);
 });
 test('Excel import flags errors and offers reviewed clean CSV without cloud writes',()=>{
