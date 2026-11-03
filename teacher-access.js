@@ -16,6 +16,20 @@
     const e=$('status');e.textContent=msg;e.classList.remove('hidden','error','ok');e.classList.add(isError?'error':'ok');
   }
   function clearNotice(){ $('status').classList.add('hidden');$('status').textContent=''; }
+  function fieldError(id,message){
+    const field=$(id);
+    field.setAttribute('aria-invalid','true');
+    field.focus();
+    notify(message,true);
+    $('status').scrollIntoView({block:'nearest'});
+    throw new Error(message);
+  }
+  function requireField(id,message,min=1){
+    const field=$(id);
+    field.removeAttribute('aria-invalid');
+    if(field.value.trim().length<min)fieldError(id,message);
+    return field.value.trim();
+  }
   function put(id,value){$(id).textContent=values(value);}
   function dom(tag,text,cls){
     const e=document.createElement(tag); if(text!==undefined)e.textContent=values(text);if(cls)e.className=cls;return e;
@@ -214,7 +228,8 @@
     try{clearNotice();await task()}catch(e){notify(e.message||'Operation could not be completed.',true)}
   }
   $('loginForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
-    const id=$('loginEmail').value.trim(),password=$('loginPassword').value;
+    const id=requireField('loginEmail','Enter your school email or demo ID.'),password=$('loginPassword').value;
+    if(!password)fieldError('loginPassword','Enter your password.');
     if(id==='demo' && password==='demo'){
       // Browser-local sample, never a school-admin Auth token or database grant.
       sessionStorage.setItem(LOCAL_DEMO_KEY,String(Date.now()));
@@ -237,12 +252,13 @@
   $('registerSchoolForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=$('submitRegisterSchool');
     if(btn.disabled)return;
-    const name=$('signupSchoolName').value.trim().replace(/\\s+/g,' ');
-    const email=$('signupOwnerEmail').value.trim();
+    const name=requireField('signupSchoolName','Enter a school name (at least 3 characters).',3).replace(/\\s+/g,' ');
+    const email=requireField('signupOwnerEmail','Enter the owner email address.');
     const password=$('signupOwnerPassword').value;
+    if(!password)fieldError('signupOwnerPassword','Create a password with at least 12 characters.');
     if(name.length<3||name.length>120)throw Error('School name must be 3 to 120 characters.');
     if(password.length<12)throw Error('Choose a password with at least 12 characters.');
-    if(password!==$('signupOwnerPasswordConfirm').value)throw Error('Passwords do not match.');
+    if(password!==$('signupOwnerPasswordConfirm').value)fieldError('signupOwnerPasswordConfirm','Passwords do not match.');
     btn.disabled=true;
     try{
       const url='signup?redirect_to='+encodeURIComponent(location.origin+'/teacher-access.html');
@@ -261,7 +277,7 @@
   $('newSchoolForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=$('provisionSchoolButton');
     if(btn.disabled)return;
-    const name=$('newSchoolName').value.trim().replace(/\\s+/g,' ');
+    const name=requireField('newSchoolName','Enter the official school name (at least 3 characters).',3).replace(/\\s+/g,' ');
     if(name.length<3||name.length>120)throw Error('School name must be 3 to 120 characters.');
     btn.disabled=true;
     try{
@@ -355,7 +371,7 @@
   $('saveAttendance').addEventListener('click',()=>run(async()=>{
     const cls=$('attendanceClass').value,day=$('attendanceDate').value;
     const selects=[...$('rosterList').querySelectorAll('select[data-student-id]')];
-    if(!selects.length)throw Error('Load the roster first.');
+    if(!selects.length)throw Error('No attendance records selected. Load the class roster and mark students first.');
     if(selects.some(s=>s.dataset.classId!==cls))throw Error('Class changed. Reload roster.');
     const records=selects.map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:me.institution_id,day,status:s.value,recorded_by:me.id}));
     await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=minimal');
@@ -407,8 +423,13 @@
   })});
   $('studentForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
+    const studentName=requireField('studentName','Enter the test student name.');
+    const admission=requireField('studentAdm','Enter an admission number.');
+    const selectedClass=$('studentClass').value;
+    if(!allClasses.some(c=>c.id===selectedClass))fieldError('studentClass','Select a valid class before saving.');
+    if(allStudents.some(s=>s.admission_number.toLowerCase()===admission.toLowerCase()))fieldError('studentAdm','Admission number already exists in this school.');
     await api('school_students','','POST',{institution_id:me.institution_id,
-      class_id:$('studentClass').value,name:$('studentName').value.trim(),admission_number:$('studentAdm').value.trim(),status:'active'});
+      class_id:selectedClass,name:studentName,admission_number:admission,status:'active'});
     e.target.reset();await reload();notify('Test student saved.');
   })});
   $('assignType').addEventListener('change',()=>{
