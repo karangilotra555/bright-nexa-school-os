@@ -77,14 +77,47 @@ function renderSection(title){
    body.append(table(['Class','Section','Academic year','Students'],state.classes.map(c=>[c.name,c.section,c.academic_year,state.students.filter(s=>s.class_id===c.id).length])));
    body.append(link('Manage class assignments and rights','./index.html?view=roles'));
  }else if(title==='Attendance'){
+   desc.textContent='Mark individual attendance in the live school register.';body.append(desc);
+   const form=node('form');form.className='form';
+   form.innerHTML='<label>Student<select name="student_id" required></select></label><label>Date<input name="day" type="date" required></label><label>Status<select name="status"><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></select></label><button class="primary" type="submit">Save attendance</button>';
+   const sel=form.elements.student_id;sel.append(new Option('Choose student',''));
+   state.students.forEach(s=>sel.append(new Option(s.name+' · '+s.admission_number,s.id)));
+   form.elements.day.value=new Date().toLocaleDateString('en-CA');
+   form.addEventListener('submit',async ev=>{
+     ev.preventDefault();
+     const student=state.students.find(x=>x.id===sel.value),day=form.elements.day.value,status=form.elements.status.value;
+     if(!student||!day) return error(Error('Select student and date.'));
+     const b=form.querySelector('button');b.disabled=true;
+     try{
+       const prev=await inSchool('school_attendance','id',{student_id:'eq.'+student.id,day:'eq.'+day,limit:'1'});
+       const row={institution_id:state.me.institution_id,student_id:student.id,class_id:student.class_id,day,status,recorded_by:state.me.id};
+       if(prev.length)await req(filt('school_attendance',{id:'eq.'+prev[0].id,institution_id:'eq.'+state.me.institution_id}),{method:'PATCH',body:row});
+       else await req('school_attendance',{method:'POST',body:row});
+       await reload();open('Attendance');
+     }catch(e){error(e)}finally{b.disabled=false}
+   });body.append(form);
    body.append(table(['Date','Student','Status'],state.attendance.map(a=>[a.day,state.students.find(s=>s.id===a.student_id)?.name||'Student',a.status])));
-   body.append(link('Mark attendance for a class','./index.html?view=attendance'));
+   body.append(link('Mark full class attendance','./index.html?view=attendance'));
  }else if(title==='Fees'){
    const total=state.fees.reduce((sum,x)=>sum+(x.kind==='payment'?Number(x.amount_rupees):0),0);
    desc.textContent='Recorded payments total: ₹'+total.toLocaleString('en-IN')+'. Only saved fee entries are included.';body.append(desc);
+   const form=node('form');form.className='form';
+   form.innerHTML='<label>Student<select name="student_id" required></select></label><label>Type<select name="kind"><option value="payment">Payment received</option><option value="charge">Fee charged</option></select></label><label>Amount (₹)<input type="number" name="amount" min="1" max="100000000" required></label><label>Description<input name="description" maxlength="250" placeholder="e.g. Tuition fee"></label><button class="primary" type="submit">Save fee entry</button>';
+   const sel=form.elements.student_id;sel.append(new Option('Choose student',''));state.students.forEach(s=>sel.append(new Option(s.name+' · '+s.admission_number,s.id)));
+   form.addEventListener('submit',async ev=>{ev.preventDefault();const amount=Number(form.elements.amount.value);if(!sel.value||!Number.isSafeInteger(amount)||amount<1||amount>100000000)return error(Error('Choose a student and valid amount.'));
+    const b=form.querySelector('button');b.disabled=true;try{
+     await req('school_fee_entries',{method:'POST',body:{institution_id:state.me.institution_id,student_id:sel.value,kind:form.elements.kind.value,amount_rupees:amount,description:form.elements.description.value.trim(),created_by:state.me.id,occurred_on:new Date().toLocaleDateString('en-CA')}});
+     await reload();open('Fees');
+    }catch(e){error(e)}finally{b.disabled=false}
+   });body.append(form);
    body.append(table(['Date','Student','Kind','Amount (₹)','Description'],state.fees.map(f=>[f.occurred_on,state.students.find(s=>s.id===f.student_id)?.name||'Student',f.kind,f.amount_rupees,f.description||'—'])));
-   body.append(link('Open fee and receipt operations','./school-operations.html'));
+   body.append(link('Detailed fee and guardian operations','./school-operations.html'));
  }else if(title==='Homework & Notices'){
+   const form=node('form');form.className='form';
+   form.innerHTML='<label>Notice title<input name="title" minlength="3" maxlength="180" required></label><label>Message<input name="body" minlength="3" maxlength="2500" required></label><button class="primary" type="submit">Publish notice</button>';
+   form.addEventListener('submit',async ev=>{ev.preventDefault();const title=form.elements.title.value.trim(),body=form.elements.body.value.trim();if(title.length<3||body.length<3)return error(Error('Enter notice title and message.'));
+    const b=form.querySelector('button');b.disabled=true;try{await req('school_notices',{method:'POST',body:{institution_id:state.me.institution_id,title,body,created_by:state.me.id}});await reload();open('Homework & Notices')}catch(e){error(e)}finally{b.disabled=false}
+   });body.append(form);
    body.append(table(['Notice','Message','Created'],state.notices.map(n=>[n.title,n.body,n.created_at?.slice(0,10)])));
    body.append(link('Homework management','./index.html?view=homework'));
  }else if(title==='Teachers Online Access'){location.assign('./index.html?view=roles')}
