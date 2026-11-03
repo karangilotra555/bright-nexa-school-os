@@ -7,7 +7,6 @@
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
   const TOKEN_KEY='bn_school_staff_session_v1';
   const PENDING_SCHOOL='bn_pending_school_name_v1';
-  const LOCAL_DEMO_KEY='bn_school_local_demo_access_v1'; // demo only, NOT a Supabase session
   const ROLES=['school_admin','principal','teacher','accountant','receptionist','transport_staff'];
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[];
@@ -81,7 +80,7 @@
   function dropSession(){
     session=null;me=null;identity=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);
-    display('portalSection',false);display('registrationSection',false);display('loginSection',true);display('logout',false);display('ownerDemoLink',false);display('cloudOperationsLink',false);display('smartToolsCard',false);
+    display('portalSection',false);display('registrationSection',false);display('loginSection',true);display('logout',false);display('cloudOperationsLink',false);display('smartToolsCard',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   function tab(name){
@@ -96,11 +95,11 @@
     me=memberships.find(x=>x.auth_user_id===identity.id&&x.status==='active')||null;
     if(!me){
       display('portalSection',false);display('loginSection',false);display('registrationSection',true);
-      display('logout',true);display('ownerDemoLink',false);display('cloudOperationsLink',false);
+      display('logout',true);display('cloudOperationsLink',false);
       put('schoolLabel','Create your school');
       const pending=sessionStorage.getItem(PENDING_SCHOOL);
       if(pending&&!$('newSchoolName').value)$('newSchoolName').value=pending;
-      notify('Signed in. If you own a school, enter the official school name to create your trial workspace.');
+      notify('Verified login. Create a TEST school first; only your cloud school records will be used.');
       return;
     }
     const schoolRows=await api('institutions',query({select:'id,name,status',id:eq(me.institution_id)}));
@@ -110,11 +109,11 @@
     }
     put('schoolLabel',school.name);
     put('membership',school.name+' · '+me.email+' · '+me.role.replaceAll('_',' '));
-    put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
+    put('hello',me.role==='teacher'?'Teacher workspace':'Real School Workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     display('loginSection',false);display('registrationSection',false);display('portalSection',true);display('logout',true);
     display('adminTab',isAdmin());
-    display('ownerDemoLink',isAdmin());
+    
     display('cloudOperationsLink',['school_admin','principal','accountant'].includes(me.role));
     display('smartToolsCard',canAcademic());
     document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
@@ -229,16 +228,9 @@
     try{clearNotice();await task()}catch(e){notify(e.message||'Operation could not be completed.',true)}
   }
   $('loginForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
-    const id=requireField('loginEmail','Enter your school email or demo ID.'),password=$('loginPassword').value;
+    const id=requireField('loginEmail','Enter your verified school email.'),password=$('loginPassword').value;
     if(!password)fieldError('loginPassword','Enter your password.');
-    if(id==='demo' && password==='demo'){
-      // Browser-local sample, never a school-admin Auth token or database grant.
-      sessionStorage.setItem(LOCAL_DEMO_KEY,String(Date.now()));
-      sessionStorage.setItem('bright-nexa-school-os:demo-mode:v1','true');
-      window.location.assign('./school-demo.html');
-      return;
-    }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id))throw Error('Enter a valid school email, or demo / demo for the sample.');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id))throw Error('Enter a valid school email.');
     if(password.length<8)throw Error('School password must have at least 8 characters.');
     const btn=e.submitter;btn.disabled=true;
     try{const tokens=await authRequest('token?grant_type=password',{email:id,password});saveSession(tokens);await load()}
@@ -286,7 +278,7 @@
       await api('rpc/register_first_school','','POST',{p_school_name:name});
       sessionStorage.removeItem(PENDING_SCHOOL);
       await load();
-      notify('School trial workspace created. You are the verified school admin. Invite staff or add classes; real-school ownership and full School OS sync still need verification.');
+      notify('TEST school created in Supabase. You are school admin. Add classes and students, then invite teachers and set their rights. Do not enter real children\'s data until the school authorises use.');
     }finally{btn.disabled=false}
   })});
   $('activateForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
