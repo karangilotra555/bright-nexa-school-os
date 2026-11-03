@@ -158,9 +158,9 @@ body:not(.bn-smart-ready)>header,body:not(.bn-smart-ready)>main{display:none!imp
 <div><label for="datasetType">Data type</label><select id="datasetType"><option value="students">Students / Admissions</option><option value="teachers">Teachers</option><option value="fees">Fee Ledger</option><option value="attendance">Attendance</option><option value="marks">Exam Marks</option></select></div>
 <div><label for="importFile">CSV / XLSX file · max 4MB</label><input type="file" id="importFile" accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>
 </div>
-<div class="actions"><button id="importSample" class="secondary" type="button">Load Sample CSV</button><button id="downloadTemplate" class="light" type="button">Download Template</button><button id="exportClean" class="light" type="button" disabled>Export Mapped CSV</button><button id="clearImports" class="danger" type="button">Clear Browser Data</button></div>
+<div class="actions"><button id="importSample" class="secondary" type="button">Load Sample CSV</button><button id="downloadTemplate" class="light" type="button">Download Template</button><button id="exportClean" class="light" type="button" disabled>Export Mapped CSV</button><button id="excludeInvalid" class="light" type="button" disabled>Exclude Invalid Rows (Preview)</button><button id="clearImports" class="danger" type="button">Clear Browser Data</button></div>
 <div id="importStats" class="three"></div>
-<div id="importMapping" class="small" style="margin:12px 0"></div><div id="importPreview" class="tablewrap hidden"></div>
+<div id="importMapping" class="small" style="margin:12px 0"></div><div id="importIssueReview" class="hint hidden" role="status" aria-live="polite" style="margin:12px 0"></div><div id="importPreview" class="tablewrap hidden"></div>
 </section>
 <section class="card hidden" data-view="errors">
 <h2>School Error Detector</h2><p class="sub">Imported datasets par rule-based checks: duplicate admissions/receipts, missing data, fee mismatches, marks out of range, attendance duplicates. Automatic deletion ya correction nahi hoti.</p>
