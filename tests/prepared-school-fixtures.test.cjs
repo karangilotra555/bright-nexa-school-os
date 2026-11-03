@@ -58,4 +58,8 @@ test('private pending-owner and staff RLS; no anonymous directory or account byp
  assert.match(sql,/auth\.uid\(\)/);
  assert.match(sql,/school_staff_profiles ALTER COLUMN school_user_id DROP NOT NULL/);
  assert.match(sql,/NEW\.role = 'teacher'/);
+ const self=read('supabase/migrations/20261103174831_allow_teacher_read_own_staff_profile.sql');
+ assert.match(self,/school_staff_profiles_self_read/);
+ assert.match(self,/su\.auth_user_id=\(SELECT auth\.uid\(\)\)/);
+
 });
