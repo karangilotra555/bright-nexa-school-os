@@ -93,6 +93,9 @@
     pager.hidden = false;
     page = Math.min(page, max - 1);
     rows.forEach((row, index) => { row.style.display = index >= page * PAGE_SIZE && index < (page + 1) * PAGE_SIZE ? '' : 'none'; });
+    const renderKey = signature + ':' + page;
+    if (pager.dataset.renderKey === renderKey) return;
+    pager.dataset.renderKey = renderKey;
     pager.replaceChildren();
     const prev = document.createElement('button'), next = document.createElement('button'), text = document.createElement('span');
     prev.type = next.type = 'button';
