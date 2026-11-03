@@ -123,7 +123,19 @@
     display('smartToolsCard',canAcademic());
     document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
     document.querySelector('[data-tab="homework"]').classList.toggle('hidden',!canAcademic());
-    await reload();tab('classes');
+    // Verified owner/principal/accountant starts at the REAL school home,
+    // not at the staff directory or the teacher-only class list.
+    // Explicit ?view=roles|attendance|homework keeps access to those admin tools.
+    const requested=new URLSearchParams(window.location.search).get('view');
+    const stayOnAccess=['roles','attendance','homework','classes'].includes(requested);
+    if(['school_admin','principal','accountant'].includes(me.role)&&!stayOnAccess){
+      window.location.replace('./school-operations.html');
+      return;
+    }
+    await reload();
+    tab(requested==='roles'&&isAdmin()?'admin':
+        requested==='attendance'&&canAcademic()?'attendance':
+        requested==='homework'&&canAcademic()?'homework':'classes');
     clearNotice();
   }
   async function reload(){
