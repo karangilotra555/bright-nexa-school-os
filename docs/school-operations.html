@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Bright Nexa — School Cloud Operations</title>
+<style>
+:root{font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#173352;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}
+header{background:linear-gradient(110deg,#081c3a,#0d4a83);color:white;padding:24px max(20px,calc((100vw - 1070px)/2))}
+header h1{font-size:24px;margin:0}header a{color:#d3e9fc}header p{margin:4px 0;color:#d6e7fa}
+main{max-width:1070px;margin:23px auto;padding:0 18px 60px}.card{background:white;border:1px solid #dce5ef;border-radius:16px;padding:20px;margin:14px 0;box-shadow:0 6px 19px #0a2a490b}
+h2{font-size:19px;margin:0 0 10px}h3{font-size:16px}.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}label{font-size:12px;color:#37536c;font-weight:700;display:block;margin:13px 0 5px}
+input,select,textarea{display:block;font:inherit;color:#183a57;border:1px solid #afc6d9;border-radius:9px;width:100%;padding:10px;background:white}
+textarea{min-height:80px}button{font:inherit;color:white;background:#107bc9;border:0;border-radius:8px;padding:11px 14px;font-weight:700;cursor:pointer;margin:12px 0 0}
+button:disabled{opacity:.6;cursor:not-allowed}.ghost{background:#e5f1fb;color:#14456c}.danger{background:#a52b46}a{color:#0c5995}
+.hidden{display:none!important}.status{margin:15px 0;padding:13px;border-radius:8px;background:#e6f5ec;color:#15513c}.status.error{background:#fff0f0;color:#932e3e}
+.muted{font-size:13px;color:#61768c}.notice{border-left:4px solid #e99b23;background:#fff8e8;border-radius:8px;padding:11px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid #e6edf4;vertical-align:top}th{background:#edf4fb}.scroll{overflow-x:auto}.subheading{margin:10px 0 0}
+@media(max-width:700px){.cols{grid-template-columns:1fr}.card{padding:16px}main{padding:0 12px}.scroll{max-width:100%}}
+</style>
+<script src="./school-operations.js?v=20261103" defer></script>
+</head><body>
+<header><h1>Bright Nexa ✦ Cloud Operations</h1><p id="currentSchool">Verifying your school access…</p><a href="./index.html">← Back to School OS</a></header>
+<main>
+<div class="notice">This is the real Supabase school workspace, not the sample dashboard. All actions use your verified role and school-wise database permissions. Parent links require a verified guardian email and school-admin approval.</div>
+<div id="status" class="hidden status" role="alert" aria-live="polite"></div>
+<div id="noAccess" class="card hidden"><h2>Sign in as school staff first</h2><p>Use the main School Login page, then return to Cloud Operations. Only school admins, principals and accountants can manage these records.</p><a href="./index.html">Open School Login</a></div>
+<div id="opsApp" class="hidden">
+<div class="card row"><div><h2 id="schoolName">School</h2><p id="staffRole" class="muted"></p></div><button class="ghost" id="opsRefresh" type="button">↻ Refresh</button></div>
+<div id="financeSection" class="cols hidden">
+ <section class="card">
+  <h2>School fees & payments</h2>
+  <p class="muted">Append-only ledger. Corrections must be a new reversing entry, not deletion.</p>
+  <form id="feeForm">
+   <label for="feeStudent">Student</label><select id="feeStudent" required></select>
+   <label for="feeKind">Entry</label><select id="feeKind"><option value="charge">Fee charge</option><option value="payment">Payment received</option></select>
+   <label for="feeAmount">Amount in whole rupees</label><input id="feeAmount" type="number" min="1" max="100000000" step="1" required>
+   <label for="feeDate">Entry date</label><input id="feeDate" type="date" required>
+   <label for="feeReference">Receipt or transaction reference (optional, unique per school)</label><input id="feeReference" maxlength="100" placeholder="e.g. REC-2026-001">
+   <label for="feeDescription">Description (max 250)</label><input id="feeDescription" maxlength="250" placeholder="Tuition November">
+   <button type="submit">Record entry</button>
+  </form>
+ </section>
+ <section class="card"><h2>Ledger history</h2><p id="ledgerTotal" class="muted"></p><div class="scroll"><table><thead><tr><th>Date</th><th>Student</th><th>Kind</th><th>₹ Amount</th><th>Reference</th></tr></thead><tbody id="feeRows"></tbody></table></div></section>
+</div>
+<div id="guardianSection" class="cols hidden">
+ <section class="card"><h2>Verified parent access</h2><p class="muted">Guardian must first register at <a href="./parents-cloud.html">Parent Cloud Portal</a> and verify email. Linking grants ONLY the chosen child's records.</p>
+ <form id="guardianForm">
+  <label for="guardianStudent">Student</label><select id="guardianStudent" required></select>
+  <label for="guardianEmail">Guardian verified email</label><input id="guardianEmail" type="email" maxlength="254" required>
+  <label for="guardianRelation">Relationship</label><select id="guardianRelation"><option value="mother">Mother</option><option value="father">Father</option><option value="guardian">Guardian</option></select>
+  <button type="submit">Link verified guardian</button>
+ </form></section>
+ <section class="card"><h2>Parent-child access grants</h2><div class="scroll"><table><thead><tr><th>Student</th><th>Guardian</th><th>Relationship</th><th>Revoke</th></tr></thead><tbody id="guardianRows"></tbody></table></div></section>
+</div>
+<div id="noticeSection" class="cols hidden">
+ <section class="card"><h2>Publish school notice</h2><form id="noticeForm">
+ <label for="noticeTitle">Title</label><input id="noticeTitle" minlength="3" maxlength="180" required>
+ <label for="noticeBody">Notice message</label><textarea id="noticeBody" minlength="3" maxlength="2500" required></textarea>
+ <button type="submit">Publish notice</button>
+ </form></section>
+ <section class="card"><h2>Published notices</h2><div id="noticeRows"></div></section>
+</div>
+<div id="leavesSection" class="card hidden"><h2>Parent leave requests</h2><div class="scroll"><table><thead><tr><th>Student</th><th>Dates</th><th>Reason</th><th>Status</th><th>Decision</th></tr></thead><tbody id="leaveRows"></tbody></table></div></div>
+</div>
+</main></body></html>
