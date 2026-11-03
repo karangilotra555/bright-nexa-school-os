@@ -32,7 +32,7 @@ test('real school staff data stored in RLS Supabase, no local fake data',()=>{
  assert.equal(html,read('docs/school-operations.html'));
  assert.equal(js,read('docs/real-school-staff.js'));
  assert.doesNotThrow(()=>new vm.Script(js));
- assert.match(html,/real-school-staff\.js/);
+ assert.match(html,/real-school-staff-directory-v2\.js/);
  for(const id of ['staffProfileForm','staffProfileUser','staffEmploymentType','staffContractFields',
   'staffPartTimeFields','staffVisitingFields','staffDirectoryRows','staffAttendanceForm',
   'staffAttendanceMember','staffAttendanceStatus','attendanceReportSection','reportMonth',
