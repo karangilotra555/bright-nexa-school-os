@@ -751,21 +751,6 @@
       </div>
     </div>
 
-    <div class="photo-upload-controls" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:#f0f7ff;border:1px solid #d9e9f8;">
-      <label class="photo-upload-label" for="idPhotoStudent">Student photo:</label>
-      <select id="idPhotoStudent" aria-label="Choose student for photo"><option value="">Select student</option></select>
-      <input id="idPhotoFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose student portrait" style="max-width:220px">
-      <button class="btn btn-primary" type="button" id="idPhotoPreviewBtn" onclick="previewSelectedPhotoCard()">Preview on Card</button>
-      <button class="btn btn-secondary" type="button" onclick="clearIdPhoto()">Remove photo</button>
-      <span class="photo-upload-hint">Single photo: select one student, then choose a JPG/PNG/WebP (up to 8 MB). Photo updates the printable card without hiding the other students. Use Bulk Photos for the whole class. No upload to server or permanent save; photos stay only in this browser tab.</span>
-      <div id="idPhotoFeedback" role="status" aria-live="polite" style="flex-basis:100%;font-size:13px;font-weight:600;color:#254d74;">Select a student, then choose a photo. It will appear here and on the card automatically.</div>
-      <div id="idPhotoPreview" style="display:none;align-items:center;gap:12px;flex-basis:100%;padding:9px;background:#ffffff;border:1px solid #c7dbef;border-radius:9px;">
-        <img id="idPhotoThumbnail" alt="Selected student's photo preview" style="width:65px;height:78px;object-fit:cover;border-radius:6px;border:1px solid #9bb9d7;">
-        <span id="idPhotoPreviewLabel" style="font-size:13px;color:#17375a;font-weight:700;"></span>
-      </div>
-    </div>
-
-
     <!-- Bulk workflow: pick all photo files once, auto match by student/admission name, review unmatched -->
     <section class="photo-upload-controls" aria-label="Bulk student ID card photos" style="display:flex;flex-direction:column;gap:10px;margin:12px 0 14px;padding:16px;border:2px solid #89b8dc;border-radius:12px;background:#f1f8ff;">
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
@@ -788,6 +773,25 @@
         <div id="idUnmatchedPhotoRows" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
     </section>
+
+    <details style="width:210mm;max-width:100%;margin:0 0 12px;background:#f8fafc;border:1px solid #d7e4f1;border-radius:10px;padding:10px 12px;">
+      <summary style="cursor:pointer;font-weight:700;color:#345875;font-size:13px;">Individual photo / replace one student's photo (optional)</summary>
+    <div class="photo-upload-controls" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:#f0f7ff;border:1px solid #d9e9f8;">
+      <label class="photo-upload-label" for="idPhotoStudent">Student photo:</label>
+      <select id="idPhotoStudent" aria-label="Choose student for photo"><option value="">Select student</option></select>
+      <input id="idPhotoFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose student portrait" style="max-width:220px">
+      <button class="btn btn-primary" type="button" id="idPhotoPreviewBtn" onclick="previewSelectedPhotoCard()">Preview on Card</button>
+      <button class="btn btn-secondary" type="button" onclick="clearIdPhoto()">Remove photo</button>
+      <span class="photo-upload-hint">Single photo: select one student, then choose a JPG/PNG/WebP (up to 8 MB). Photo updates the printable card without hiding the other students. Use Bulk Photos for the whole class. No upload to server or permanent save; photos stay only in this browser tab.</span>
+      <div id="idPhotoFeedback" role="status" aria-live="polite" style="flex-basis:100%;font-size:13px;font-weight:600;color:#254d74;">Select a student, then choose a photo. It will appear here and on the card automatically.</div>
+      <div id="idPhotoPreview" style="display:none;align-items:center;gap:12px;flex-basis:100%;padding:9px;background:#ffffff;border:1px solid #c7dbef;border-radius:9px;">
+        <img id="idPhotoThumbnail" alt="Selected student's photo preview" style="width:65px;height:78px;object-fit:cover;border-radius:6px;border:1px solid #9bb9d7;">
+        <span id="idPhotoPreviewLabel" style="font-size:13px;color:#17375a;font-weight:700;"></span>
+      </div>
+    </div>
+
+
+    </details>
 
     <!-- Filters & Search Bar Row -->
     <div class="filter-bar-row">
