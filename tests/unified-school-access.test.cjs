@@ -10,7 +10,8 @@ test('one real school login from public entry and teacher alias',()=>{
   const html=read(file);
   assert.ok(html.includes('id="loginForm"'),file);
   assert.ok(html.includes('id="smartToolsCard" class="panel hidden"'),file);
-  assert.ok(!html.includes('id="ownerDemoLink"'),file);\n  assert.ok(html.includes('id="cloudOperationsLink"'),file);
+  assert.ok(!html.includes('id="ownerDemoLink"'),file);
+  assert.ok(html.includes('id="cloudOperationsLink"'),file);
   assert.ok(!html.includes('Preview features (sample)'),file);
   assert.ok(!html.includes('href="./school-preview.html"'),file);
   assert.ok(!html.includes('href="./smart-tools.html" class="light"'),file);
