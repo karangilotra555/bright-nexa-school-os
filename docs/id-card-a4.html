@@ -838,9 +838,15 @@
     function sanitizeImageUrl(url, fallback) {
       if (!url || typeof url !== 'string') return fallback || '';
       const trimmed = url.trim();
-      // Allow only safe data:image, blob, http(s), or safe local file paths
-      if (/^(data:image\/(png|jpeg|jpg|webp|svg\+xml);base64,|blob:|https?:\/\/|\.\/|[a-zA-Z0-9_\-\.\/]+\.(png|jpg|jpeg|svg|webp))/i.test(trimmed)) {
-        return trimmed.replace(/[<>"'`;]/g, '');
+      // FileReader emits data:image/jpeg;base64,... (with a REQUIRED semicolon).
+      // The old HTML sanitizer stripped that semicolon, invalidating uploaded photos.
+      // Permit only genuine base64 raster-image data URLs for local photo previews.
+      if (/^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(trimmed)) {
+        return trimmed;
+      }
+      // Preserve existing approved logo URLs, while blocking HTML-attribute delimiters.
+      if (/^(?:blob:|https?:\/\/|\.\/|[a-zA-Z0-9_\-\.\/]+\.(?:png|jpg|jpeg|svg|webp)(?:$|\?))/i.test(trimmed)) {
+        return trimmed.replace(/[<>"'\x60;]/g, '');
       }
       return fallback || '';
     }
