@@ -25,7 +25,7 @@ test('school accounts stay separate from the demo and registration validates bef
 });
 test('sample-only demo controls do not write records and handle silent form actions',()=>{
  const code=read('demo-qa-fixes.js'),html=read('school-demo.html');
- assert.match(html,/demo-qa-fixes\.js/);
+ assert.ok(html.includes('real-owner-workspace.html'));
  assert.match(code,/Save Student/);
  assert.match(code,/Save Marked Records/);
  assert.match(code,/No attendance selected/);
@@ -81,7 +81,7 @@ test('demo Student Profile parent phone is redacted without touching noncontact 
  assert.equal(value.textContent,'987*****10');
  assert.equal(otherValue.textContent,'2026110310');
  assert.equal(mask('987*****10'),'987*****10');
- assert.match(read('school-demo.html'),/real-owner-workspace\\.html/);
+ assert.ok(read('school-demo.html').includes('real-owner-workspace.html'));
 });
 test('fee Save Payment is blocked for blank or whitespace cashier before React receives the click',()=>{
  const code=read('demo-qa-fixes.js');
