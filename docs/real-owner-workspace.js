@@ -181,16 +181,44 @@ function renderSection(title){
    form.innerHTML='<label>Class<select name="name" required></select></label><label>Section<input name="section" maxlength="12" required value="A"></label><label>Academic year<input name="academic_year" required value="2026-2027" pattern="[0-9]{4}-[0-9]{4}"></label><button class="primary" type="submit">Add class</button>';
    const sel=form.elements.name;sel.append(new Option('Choose class',''));
    for(const name of ['Nursery','LKG','UKG',...Array.from({length:12},(_,i)=>'Class '+(i+1))])sel.append(new Option(name,name));
+   const save=form.querySelector('button[type="submit"]'),cancel=node('button','Cancel edit');cancel.type='button';cancel.hidden=true;form.append(cancel);
+   let editing=null;
+   function resetEdit(){editing=null;form.reset();save.textContent='Add class';cancel.hidden=true}
+   cancel.addEventListener('click',resetEdit);
    form.addEventListener('submit',async e=>{e.preventDefault();
      const name=sel.value,section=form.elements.section.value.trim().toUpperCase(),academic_year=form.elements.academic_year.value.trim();
-     if(!name||!section||!/^[0-9]{4}-[0-9]{4}$/.test(academic_year))return error(Error('Enter a valid class, section and academic year.'));
-     if(state.classes.some(c=>c.name===name&&c.section===section&&c.academic_year===academic_year))return error(Error('Class section already exists.'));
-     const btn=form.querySelector('button');btn.disabled=true;
-     try{await req('school_classes',{method:'POST',body:{institution_id:state.me.institution_id,name,section,academic_year}});await reload();open(title)}catch(e){error(e)}finally{btn.disabled=false}
+     const parts=academic_year.split('-').map(Number);
+     if(!name||!section||section.length>12||!/^[0-9]{4}-[0-9]{4}$/.test(academic_year)||parts[1]!==parts[0]+1)return error(Error('Enter a valid class, section and consecutive academic year.'));
+     if(state.classes.some(c=>c.id!==editing?.id&&c.name===name&&c.section===section&&c.academic_year===academic_year))return error(Error('Class section already exists.'));
+     save.disabled=true;
+     try{
+       if(editing){
+         const filters={id:'eq.'+editing.id,institution_id:'eq.'+state.me.institution_id,name:'eq.'+editing.name,section:'eq.'+editing.section,academic_year:'eq.'+editing.academic_year};
+         const rows=await req(filt('school_classes',filters),{method:'PATCH',body:{name,section,academic_year}});
+         window.BrightNexaSchoolAdmin.expectUpdated(rows,editing.id);
+       }else{
+         const rows=await req('school_classes',{method:'POST',body:{institution_id:state.me.institution_id,name,section,academic_year}});
+         if(!Array.isArray(rows)||rows.length!==1||!rows[0].id)throw Error('Class save was not confirmed. Refresh before retrying.');
+       }
+       resetEdit();await reload();open(title);
+     }catch(e){error(e)}finally{save.disabled=false}
    });body.append(form);
-   body.append(table(['Class','Section','Academic year','Students'],state.classes.map(c=>[c.name,c.section,c.academic_year,state.students.filter(s=>s.class_id===c.id).length])));
+   const wrap=node('div');wrap.className='data';const t=node('table'),h=node('tr');
+   ['Class','Section','Academic year','Active students','Actions'].forEach(x=>h.append(node('th',x)));
+   const thead=node('thead');thead.append(h);t.append(thead);const tbody=node('tbody');
+   for(const cl of state.classes){
+     const tr=node('tr');
+     [cl.name,cl.section,cl.academic_year,state.students.filter(s=>s.class_id===cl.id).length].forEach(x=>tr.append(node('td',x)));
+     const cell=node('td'),edit=node('button','Edit');edit.type='button';
+     edit.addEventListener('click',()=>{
+       editing=cl;sel.value=cl.name;form.elements.section.value=cl.section;form.elements.academic_year.value=cl.academic_year;
+       save.textContent='Save class changes';cancel.hidden=false;form.scrollIntoView({behavior:'smooth',block:'start'});
+     });
+     cell.append(edit);tr.append(cell);tbody.append(tr);
+   }
+   t.append(tbody);wrap.append(t);body.append(wrap);
    body.append(link('Manage class assignments and rights','./index.html?view=roles'));
- }else if(title==='Attendance'){
+  }else if(title==='Attendance'){
    desc.textContent='Mark individual attendance in the live school register.';body.append(desc);
    const form=node('form');form.className='form';
    form.innerHTML='<label>Student<select name="student_id" required></select></label><label>Date<input name="day" type="date" required></label><label>Status<select name="status"><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></select></label><button class="primary" type="submit">Save attendance</button>';
