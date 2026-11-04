@@ -13,7 +13,7 @@ const configs={
 };
 const elt=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);return n};
 const readable=(v,field,state)=>{
- if(field[2]==='student')return state.students.find(s=>s.id===v)?.name||'Student';
+ if(field[2]==='student')return [...state.students,...(state.formerStudents||[])].find(s=>s.id===v)?.name||'Student';
  return String(v??'—');
 };
 function makeField(field,state){
