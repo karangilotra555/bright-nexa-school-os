@@ -13,9 +13,9 @@ test('QA patches mirror published docs and remain syntactically valid',()=>{
 });
 test('school accounts stay separate from the demo and registration validates before writing',()=>{
  const login=read('teacher-access.js'),index=read('index.html');
- assert.match(index,/Separate sample mode/);
- assert.match(index,/isolated browser-only demonstration/);
- assert.match(login,/id==='demo' && password==='demo'/);
+ assert.match(index,/Secure School Login/);
+ assert.doesNotMatch(index,/Separate sample mode/);
+ assert.doesNotMatch(login,/id==='demo' && password==='demo'/);
  assert.match(login,/requireField\('signupSchoolName'/);
  assert.match(login,/requireField\('newSchoolName'/);
  assert.match(login,/requireField\('studentName'/);
@@ -81,7 +81,7 @@ test('demo Student Profile parent phone is redacted without touching noncontact 
  assert.equal(value.textContent,'987*****10');
  assert.equal(otherValue.textContent,'2026110310');
  assert.equal(mask('987*****10'),'987*****10');
- assert.match(read('school-demo.html'),/demo-qa-fixes\.js\?v=20261103-profile-fee2/);
+ assert.match(read('school-demo.html'),/real-owner-workspace\\.html/);
 });
 test('fee Save Payment is blocked for blank or whitespace cashier before React receives the click',()=>{
  const code=read('demo-qa-fixes.js');
