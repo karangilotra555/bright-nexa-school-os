@@ -168,3 +168,14 @@ test('readiness is never fabricated following a successful activate action',()=>
  assert.doesNotMatch(src,/displayReadiness\(\{\.\.\.data,invite_sent:true/);
  assert.match(src,/status\('onboardingActionStatus',successMessage\)/);
 });
+
+test('existing school-owner emails are blocked before sending an invitation',()=>{
+ const edge=read('supabase/functions/platform-school-onboarding/index.ts');
+ const start=edge.indexOf('if(raw.action==="invite")');
+ const check=edge.indexOf('admin.from("school_users")',start);
+ const invite=edge.indexOf('admin.auth.admin.inviteUserByEmail',start);
+ assert.ok(start>=0&&check>start&&invite>check,'linked-owner check must run BEFORE email invitation');
+ assert.match(edge,/if\(assigned\?\.length\)return send/);
+ const sql=read('supabase/migrations/20261104161500_phase_d2_school_onboarding.sql');
+ assert.match(sql,/lower\(email\)=v_request\.owner_email/i);
+});
