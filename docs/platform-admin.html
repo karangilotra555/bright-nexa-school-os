@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="robots" content="noindex,nofollow">
+<title>Bright Nexa | Platform Administration</title>
+<style>
+:root{font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;color:#162b40;background:#f3f6fa}
+*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}
+button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #4d9dcd;outline-offset:2px}
+.hidden{display:none!important}
+header{background:#081e37;color:#f1f8ff;padding:15px 28px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;border-bottom:3px solid #1a82b9}
+header .logo{font-size:20px;font-weight:850;letter-spacing:-.4px}
+header .logo span{display:block;color:#a8c6db;font-size:10px;text-transform:uppercase;letter-spacing:1.6px}
+header button{background:transparent;color:#fff;border:1px solid #54728c;border-radius:8px;padding:8px 15px}
+main{max-width:1380px;margin:0 auto;padding:25px 28px 65px}
+h1{font-size:27px;color:#11395d;margin:0 0 7px;letter-spacing:-.5px}
+h2{font-size:18px;color:#173d5c;margin:0 0 10px}
+h3{font-size:15px;color:#2a4b67;margin:6px 0 11px}
+p{margin:8px 0 15px}.muted{font-size:12.5px;color:#657b90;line-height:1.7}
+.panel{background:#fff;border:1px solid #dde7f0;border-radius:13px;box-shadow:0 4px 18px #092c4806;padding:22px;margin:0 0 17px;min-width:0}
+.login{max-width:450px;margin:42px auto}
+.login h1{font-size:24px}
+.login label,.form label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#3a5471}
+.login form{display:grid;gap:16px;margin-top:18px}
+input,select,textarea{background:#fff;border:1px solid #cad9e6;border-radius:9px;padding:10px 12px;color:#173851;min-width:0;width:100%}
+textarea{resize:vertical;min-height:65px}
+button.primary{background:#0b6fa8;color:#fff;border:1px solid #0b6fa8;border-radius:9px;padding:11px 14px;font-weight:700}
+button.secondary{background:#f6fafc;color:#174f79;border:1px solid #d2e1eb;border-radius:9px;padding:10px 13px;font-weight:700}
+.status{margin:13px 0;padding:12px;border-left:3px solid #5ca1b6;background:#f0f7fa;border-radius:5px;font-size:12px}
+.status.error{border-color:#bd403b;background:#fff2f0;color:#872d26}
+.warning{background:#fff9ee;border-left:3px solid #c1a048;padding:12px 16px;color:#725828;border-radius:6px;font-size:12px;margin:12px 0}
+.totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:15px 0 19px}
+.metric{border:1px solid #e0eaf1;background:#fff;border-radius:11px;padding:15px}
+.metric span{display:block;color:#688096;font-size:11px;font-weight:650}
+.metric strong{display:block;color:#123f60;font-size:26px;margin:4px 0}
+.layout{display:grid;grid-template-columns:minmax(300px,1.65fr) minmax(300px,1fr);gap:17px;align-items:start}
+.table-scroller{max-width:100%;overflow-x:auto;border:1px solid #e0e8f0;border-radius:9px}
+table{width:100%;min-width:650px;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:11px 13px;background:#f0f6fa;color:#27516d;font-size:11px}
+td{padding:10px 13px;border-top:1px solid #edf1f5;overflow-wrap:anywhere}
+tbody tr:hover{background:#f8fbff}
+tbody tr[data-current="true"]{background:#eaf6fc}
+td button{padding:7px 10px;border:1px solid #bad4e4;background:#fff;color:#0d577f;border-radius:7px}
+.tag{display:inline-block;background:#f0f5fa;border:1px solid #e0e9f0;color:#27516d;border-radius:6px;padding:2px 7px;font-weight:600;font-size:11px}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form label:has(textarea){grid-column:1/-1}
+.form button{grid-column:1/-1}
+.form .locked{font-size:11px;color:#668096;grid-column:1/-1}
+.actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+#schoolDetail{padding:12px 15px;background:#f3f8fc;border-radius:9px;margin:8px 0 14px}
+#schoolDetail strong{display:block;color:#164364;font-size:15px}
+#schoolDetail small{display:block;color:#57768d;overflow-wrap:anywhere}
+.audit{margin:10px 0;max-height:300px;overflow:auto}
+.audit-line{border-bottom:1px solid #e7eef4;padding:10px 0;font-size:12px}
+.audit-line strong{display:block;color:#2c5774}
+.audit-line small{display:block;color:#647c8f}
+footer{padding:18px;text-align:center;color:#8493a4;font-size:11px}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}.totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){main{padding:17px 12px 40px}.panel{padding:16px}.totals{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}header{padding:13px}.form{grid-template-columns:1fr}.login{margin:20px auto}h1{font-size:24px}}
+</style>
+<script src="./platform-admin-core.js?v=20261104-d1" defer></script>
+<script src="./platform-admin.js?v=20261104-d1" defer></script>
+</head>
+<body>
+<header>
+ <div class="logo">Bright Nexa <span>Platform Administration • Restricted</span></div>
+ <button id="logout" type="button" class="hidden">Sign out</button>
+</header>
+<main>
+ <section id="loginView" class="panel login">
+  <h1>Platform administrator sign in</h1>
+  <p class="muted">Use a separately approved Supabase Auth account. A normal school-owner account does not automatically grant platform-wide permissions.</p>
+  <form id="loginForm">
+   <label>Email address <input id="email" type="email" autocomplete="username" maxlength="254" required></label>
+   <label>Password <input id="password" type="password" autocomplete="current-password" minlength="8" required></label>
+   <button id="loginButton" type="submit" class="primary">Sign in securely</button>
+  </form>
+  <div id="loginStatus" class="status" role="status" aria-live="polite">Platform access is separately granted by a verified database administrator.</div>
+ </section>
+ <section id="platformView" class="hidden" aria-label="Platform administration">
+  <h1>School portfolio</h1>
+  <p class="muted">View verified tenant identifiers, institution status, assigned plan labels and subscription audit history. No private student, staff, parent or payment details are exposed.</p>
+  <div class="warning">Plan assignments are **administrative records only**. There is no gateway billing, payment settlement, quota enforcement, automatic suspension or tenant activation through this page.</div>
+  <div id="overviewStatus" class="status" role="status" aria-live="polite">Loading authorized school records…</div>
+  <div class="totals">
+   <div class="metric"><span>Schools in portfolio</span><strong id="totalSchools">—</strong></div>
+   <div class="metric"><span>Plans assigned</span><strong id="assignedSchools">—</strong></div>
+   <div class="metric"><span>Not enrolled in plan catalogue</span><strong id="unassignedSchools">—</strong></div>
+   <div class="metric"><span>Marked active administratively</span><strong id="activeSchools">—</strong></div>
+  </div>
+  <div class="layout">
+   <section class="panel">
+    <div class="actions"><h2 style="margin-right:auto">School tenants</h2><button class="secondary" type="button" id="refresh">Refresh</button></div>
+    <label class="muted" for="schoolFilter">Find a school by name or ID</label>
+    <input id="schoolFilter" type="search" autocomplete="off" maxlength="100" placeholder="Search tenants…">
+    <div id="schoolTable" class="table-scroller" style="margin-top:12px"></div>
+   </section>
+   <div>
+    <section class="panel">
+     <h2>Plan assignment</h2>
+     <p class="muted">Select a verified tenant. Changes require confirmation and are logged automatically by the database trigger.</p>
+     <div id="schoolDetail"><strong>No school selected</strong><small>Choose Manage in the school table.</small></div>
+     <form id="subscriptionForm" class="form hidden">
+      <label>Plan label <select id="plan" required></select></label>
+      <label>Administrative state
+       <select id="status" required>
+        <option value="trial">Trial</option><option value="active">Active (record only)</option>
+        <option value="paused">Paused (record only)</option><option value="ended">Ended (record only)</option>
+       </select>
+      </label>
+      <label>Start date <input id="startsOn" type="date" required></label>
+      <label>End date (optional) <input id="endsOn" type="date"></label>
+      <label>Internal note <textarea id="adminNote" maxlength="300" placeholder="Reason for plan assignment"></textarea></label>
+      <p class="locked">Subscription and institution identities cannot be reassigned. Changing a label will never change a school's actual access or billing.</p>
+      <button id="saveSubscription" type="submit" class="primary">Confirm plan assignment</button>
+     </form>
+     <div id="saveStatus" class="status" role="status" aria-live="polite">No changes have been made.</div>
+    </section>
+    <section class="panel">
+     <h2>Subscription change history</h2>
+     <p class="muted">Server-recorded changes for the selected school, excluding personal student data.</p>
+     <div id="auditLog" class="audit"><p class="muted">Select a school to view audit history.</p></div>
+    </section>
+   </div>
+  </div>
+ </section>
+</main>
+<footer>Bright Nexa School OS • Phase D1 administrative readiness • Not a payment or school provisioning system</footer>
+</body>
+</html>
