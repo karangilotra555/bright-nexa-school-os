@@ -150,3 +150,21 @@ test('D2 does not rewrite existing school owner modules, bypass backups or secre
  assert.ok(!owner.includes('BrightNexaPlatformOnboarding'));
  assert.ok(!sw.includes('platform-onboarding.js'));
 });
+
+test('2026 Supabase secret maps are read server-side and local admin API keys are not embedded',()=>{
+ const edge=read('supabase/functions/platform-school-onboarding/index.ts');
+ assert.match(edge,/defaultKey\("SUPABASE_SECRET_KEYS","SUPABASE_SECRET_KEY","SUPABASE_SERVICE_ROLE_KEY"\)/);
+ assert.match(edge,/defaultKey\("SUPABASE_PUBLISHABLE_KEYS","SUPABASE_PUBLISHABLE_KEY","SUPABASE_ANON_KEY"\)/);
+ assert.match(edge,/JSON\.parse\(raw\)/);
+ assert.match(edge,/auth\.auth\.getUser\(match\[1\]\)/);
+ const sql=read('supabase/migrations/20261104161500_phase_d2_school_onboarding.sql');
+ assert.match(sql,/grant select,insert,update on table public\.bn_school_onboarding_requests to service_role/i);
+ assert.match(sql,/grant select,insert on table public\.bn_school_onboarding_events to service_role/i);
+ assert.match(sql,/grant usage,select on sequence public\.bn_school_onboarding_events_id_seq to service_role/i);
+});
+test('readiness is never fabricated following a successful activate action',()=>{
+ const src=read('docs/platform-onboarding.js');
+ assert.match(src,/const actual=await call\('check',\{request_id:current\.id\}\)/);
+ assert.doesNotMatch(src,/displayReadiness\(\{\.\.\.data,invite_sent:true/);
+ assert.match(src,/status\('onboardingActionStatus',successMessage\)/);
+});
