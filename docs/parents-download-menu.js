@@ -7,15 +7,13 @@
 
   const destinations = Object.freeze({
     parents: {path:'parent-app-download.html', icon:'📱', title:'Parents App · Download', tooltip:'Download or share the parents app'},
-    teachers: {path:'teacher-access.html', icon:'👩‍🏫', title:'Teachers · Online Access', tooltip:'Teacher and staff secure login'},
-    smart: {path:'smart-tools.html', icon:'🧠', title:'Smart Tools · No API', tooltip:'Timetable, substitutes, performance and audits'}
+    teachers: {path:'teacher-access.html', icon:'👩‍🏫', title:'Teachers · Online Access', tooltip:'Teacher and staff secure login'}
   });
 
   // Stable IDs are part of the existing app's navigation contract.
   const linkIds=Object.freeze({
     parents:{nav:'bn-parents-app-nav',top:'bn-parents-app-top'},
-    teachers:{nav:'bn-teacher-access-nav',top:'bn-teacher-access-top'},
-    smart:{nav:'bn-smart-tools-nav',top:'bn-smart-tools-top'}
+    teachers:{nav:'bn-teacher-access-nav',top:'bn-teacher-access-top'}
   });
   const elementId = (type, place) => linkIds[type]?.[place] || '';
   // App-internal React navigation can intercept ordinary <a> clicks at the
@@ -74,7 +72,7 @@
       link.append(emoji,label);
       parent.append(link);
     }else{
-      link.textContent=spec.icon+' '+(kind==='smart'?'Smart Tools':kind==='teachers'?'Teachers':'Parents App');
+      link.textContent=spec.icon+' '+(kind==='teachers'?'Teachers':'Parents App');
       link.style.whiteSpace='nowrap';
       link.style.justifyContent='center';
       parent.insertBefore(link,parent.firstChild);
@@ -86,6 +84,8 @@
     if (mounting) return;
     mounting=true;
     try {
+      // Clean up legacy standalone Smart Tools shortcuts; the React sidebar now owns this module.
+      for(const id of ['bn-smart-tools-nav','bn-smart-tools-top'])document.getElementById(id)?.remove();
       const nav=document.querySelector('.navigation');
       const actions=document.querySelector('.topbar-actions');
       for(const kind of Object.keys(destinations)){
