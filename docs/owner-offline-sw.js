@@ -1,7 +1,7 @@
 /* Offline shell for school owner ONLY. Never cache Auth, REST, API or other users' pages.
    No student records in CacheStorage: sensitive records live encrypted in IndexedDB. */
 'use strict';
-const CACHE='bright-nexa-owner-shell-v1';
+const CACHE='bright-nexa-owner-shell-v2';
 const FILES=['real-owner-workspace.html','real-owner-workspace.js','school-extra-modules.js','school-admin-data.js','offline-vault.js','owner-offline-ui.js'];
 const allowed=new Set(FILES);
 self.addEventListener('install',event=>{
