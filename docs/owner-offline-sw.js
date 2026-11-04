@@ -2,7 +2,7 @@
    No student records in CacheStorage: sensitive records live encrypted in IndexedDB. */
 'use strict';
 const CACHE='bright-nexa-owner-shell-v1';
-const FILES=['real-owner-workspace.html','real-owner-workspace.js','school-extra-modules.js','offline-vault.js','owner-offline-ui.js'];
+const FILES=['real-owner-workspace.html','real-owner-workspace.js','school-extra-modules.js','school-admin-data.js','offline-vault.js','owner-offline-ui.js'];
 const allowed=new Set(FILES);
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
