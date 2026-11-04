@@ -122,6 +122,6 @@ test('live owner page contains folder picker, change folder, recovery key and sc
  assert.doesNotMatch(html,/backupDownload|Create backup passphrase|school-backup-ui\.js/);
  assert.doesNotMatch(ui,/passphraseDialog|prompt\(|localStorage\.setItem|service_role|sb_secret_/);
  for(const file of ['school-auto-backup.js','school-auto-backup-ui.js'])assert.ok(sw.includes(file));
- assert.match(sw,/bright-nexa-owner-shell-v5/);
+ assert.match(sw,/bright-nexa-owner-shell-v6/);
  for(const code of [js,ui,core])assert.doesNotThrow(()=>new vm.Script(code));
 });
