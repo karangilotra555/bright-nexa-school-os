@@ -5,12 +5,12 @@ const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
-test('one school login from the public entry, teacher alias and an admin-only sample',()=>{
+test('one real school login from the public entry without a sample bypass',()=>{
  for(const file of ['index.html','docs/index.html','teacher-access.html','docs/teacher-access.html']){
   const html=read(file);
   assert.ok(html.includes('id="loginForm"'),file);
   assert.ok(html.includes('id="smartToolsCard" class="panel hidden"'),file);
-  assert.ok(html.includes('id="ownerDemoLink" class="ghost hidden"'),file);
+  assert.ok(!html.includes('id="ownerDemoLink"'),file);
   assert.ok(!html.includes('Preview features (sample)'),file);
   assert.ok(!html.includes('href="./school-preview.html"'),file);
   assert.ok(!html.includes('href="./smart-tools.html" class="light"'),file);
@@ -20,22 +20,19 @@ test('one school login from the public entry, teacher alias and an admin-only sa
  assert.equal(read('teacher-access.html'),read('docs/teacher-access.html'));
  assert.equal(read('teacher-access.js'),read('docs/teacher-access.js'));
 });
-test('teachers do not receive an owner sample dashboard from the shared login',()=>{
- const code=read('teacher-access.js');
- assert.ok(code.includes("display('ownerDemoLink',isAdmin())"));
- assert.ok(code.includes("display('ownerDemoLink',false)"));
+test('teacher login does not expose fictional sample or owner preview route',()=>{
+ const code=read('teacher-access.js'),login=read('teacher-access.html');
+ const access=read('smart-tools-access.js'),smart=read('smart-tools.html');
+ assert.ok(!code.includes('ownerDemoLink'));
+ assert.ok(!login.includes('ownerDemoLink'));
+ assert.ok(!login.includes('Try demo:'));
+ assert.ok(!login.includes('ID <code>demo</code>'));
+ assert.ok(!access.includes('DEMO_KEY'));
+ assert.ok(!access.includes('SAMPLE MODE'));
+ for(const s of ['sampleTimetable','sampleMarks','importSample','sampleErrors'])assert.ok(!smart.includes('id="'+s+'"'));
+ assert.match(code,/token\\?grant_type=password/);
  assert.ok(!/SUPABASE_SERVICE_ROLE_KEY|sb_secret_/.test(code));
- const sample=read('school-demo-gate.js');
- for(const marker of ['school_admin','school_users?','auth/v1/user','institutions?']){
-  assert.ok(sample.includes(marker),'Required cloud authorisation: '+marker);
- }
- assert.ok(!/preview=|SUPABASE_SERVICE_ROLE_KEY|sb_secret_/.test(sample));
- assert.ok(sample.includes("sessionStorage.setItem('bright-nexa-school-os:demo-mode:v1','true')"),'Demo must be sandbox-isolated');
- assert.equal(sample,read('docs/school-demo-gate.js'));
- assert.equal(read('school-preview.html'),read('docs/school-preview.html'));
- assert.equal(read('school-demo.html'),read('docs/school-demo.html'));
  assert.doesNotThrow(()=>new Function(code));
- assert.doesNotThrow(()=>new Function(sample));
 });
 test('school owner self-registration is visible and can only provision through verified RPC',()=>{
  for(const file of ['index.html','docs/index.html','teacher-access.html','docs/teacher-access.html']){
