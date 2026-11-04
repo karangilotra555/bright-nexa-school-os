@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bright Nexa School OS</title>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    for (let registration of registrations) {
+      registration.unregister();
+    }
+  });
+}
+if ('caches' in window) {
+  caches.keys().then(function(names) {
+    for (let name of names) caches.delete(name);
+  });
+}
+location.replace('./index.html');
+</script>
+</head>
+<body>
+<p style="font-family:sans-serif;padding:24px;color:#0b2447">Loading Bright Nexa School OS...</p>
+</body>
+</html>
