@@ -298,6 +298,7 @@ function renderSection(title){
     body.append(form,status);
     body.append(table(['Date','Student','Kind','Amount (₹)','Reference'],state.fees.map(f=>[f.occurred_on,[...state.students,...state.formerStudents].find(s=>s.id===f.student_id)?.name||'Student',f.kind,f.amount_rupees,f.reference||'—'])));
     body.append(link('Detailed fee and guardian operations','./school-operations.html'));
+   window.BrightNexaPhaseAReports?.showFees({body,state,allSchool,error});
   }else if(title==='Homework & Notices'){
    const form=node('form');form.className='form';
    form.innerHTML='<label>Notice title<input name="title" minlength="3" maxlength="180" required></label><label>Message<input name="body" minlength="3" maxlength="2500" required></label><button class="primary" type="submit">Publish notice</button>';
