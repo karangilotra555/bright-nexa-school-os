@@ -15,7 +15,7 @@ test('D2 create request validation normalizes owner email, official name and opt
  assert.equal(core.requestInput({...payload,contact_phone:'',notes:''}).contact_phone,null);
  assert.throws(()=>core.requestInput({...payload,school_name:'N'}),/3–120/);
  assert.throws(()=>core.requestInput({...payload,owner_email:'not-an-email'}),/valid school owner email/);
- assert.throws(()=>core.requestInput({...payload,contact_phone:'111'}),/valid school contact phone/);
+ assert.throws(()=>core.requestInput({...payload,contact_phone:'111'}),/valid 10-digit Indian school contact phone/);
  assert.throws(()=>core.requestInput({...payload,notes:'x'.repeat(301)}),/300/);
 });
 test('only a confirmed valid onboarding response with matching values is accepted',()=>{
