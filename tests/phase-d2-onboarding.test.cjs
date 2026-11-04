@@ -105,7 +105,7 @@ test('Edge function verifies JWT and active platform membership before privilege
  assert.match(src,/\.from\("bn_platform_admins"\)/);
  assert.match(src,/\.eq\("active",true\)\.maybeSingle\(\)/);
  assert.match(src,/if\(membershipErr\|\|!membership/);
- assert.match(src,/Deno\.env\.get\("SUPABASE_SECRET_KEY"\)/);
+ assert.match(src,/defaultKey\("SUPABASE_SECRET_KEYS","SUPABASE_SECRET_KEY","SUPABASE_SERVICE_ROLE_KEY"\)/);
  assert.match(src,/createClient\(URL,PRIVILEGED_KEY/);
  assert.match(src,/ALLOWED_ORIGINS/);
  assert.match(src,/req\.method!=="POST"/);
