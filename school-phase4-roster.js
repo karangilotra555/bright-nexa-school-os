@@ -39,6 +39,8 @@
    }));
    const own=(Array.isArray(memberships)?memberships:[]).filter(m=>m.status==='active'&&['school_admin','principal'].includes(m.role));
    if(!own.length)throw Error('Only an active school admin or principal can load the full school roster.');
+   if(new Set(own.map(m=>m.institution_id)).size!==1)
+     throw Error('This login manages more than one school. Choose a specific school before importing its timetable roster.');
    const institution_id=own[0].institution_id;
    const institutions=await get(BASE+'/rest/v1/institutions?'+query({select:'id,status',id:'eq.'+institution_id,limit:'1'}));
    if(!Array.isArray(institutions)||!institutions.some(s=>s.id===institution_id&&['active','trial'].includes(s.status)))
