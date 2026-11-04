@@ -9,7 +9,8 @@ test('independent public demo phone guard is published and syntax-valid',()=>{
  const js=read('demo-phone-privacy.js');
  assert.equal(js,read('docs/demo-phone-privacy.js'));
  assert.equal(read('school-demo.html'),read('docs/school-demo.html'));
- assert.match(read('school-demo.html'),/demo-phone-privacy\.js\?v=20261103-v1/);
+ assert.match(read('school-demo.html'),/real-owner-workspace\\.html/);
+ assert.doesNotMatch(read('school-demo.html'),/demo-phone-privacy\\.js/);
  assert.doesNotThrow(()=>new vm.Script(js));
  assert.doesNotMatch(js,/fetch\(|localStorage\.|sessionStorage\.|service_role|sb_secret_/);
  assert.match(js,/new MutationObserver\(maskStudentProfiles\)/);
