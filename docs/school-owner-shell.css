@@ -147,3 +147,16 @@ main{margin-left:250px}
  body:has(#bnReceiptDialog[open]) #bnReceipt .phase-a-help{color:#333!important}
  .phase-a-report .phase-a-actions,.phase-a-report .phase-a-filters{display:none!important}
 }
+
+.phase-a-ops{margin:24px 0}
+.phase-a-ops h2{font-size:19px;font-weight:800;color:#0c3455;margin:0 0 7px}
+.phase-a-ops h3{font-size:15px;color:#234c6d;margin:0 0 8px}
+.phase-a-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin:15px 0}
+.phase-a-metric{background:#f9fbfd;border:1px solid #dfe9f1;border-radius:11px;padding:16px;display:flex;flex-direction:column;gap:6px;min-height:110px}
+.phase-a-metric>span{color:#61778a;font-size:11px;font-weight:700}
+.phase-a-metric>strong{color:#0f3656;font-size:23px;font-weight:800}
+.phase-a-metric>small{color:#687f92;font-size:11px;line-height:1.45}
+.phase-a-ops .phase-a-actions a{display:inline-flex;align-items:center;font-size:12px;border:1px solid #c4d9e8;border-radius:8px;padding:9px 13px;text-decoration:none;color:#165e8a;font-weight:700}
+.phase-a-attention{margin-top:16px;padding:16px;border-radius:9px;background:#fffaf0;border:1px solid #f1e5c5}
+.phase-a-attention ul{padding-left:18px;margin:8px 0}
+.phase-a-attention li{margin:6px 0;color:#6d542b;font-size:12px;line-height:1.6}
