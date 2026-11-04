@@ -22,7 +22,7 @@ button:disabled{opacity:.55;cursor:not-allowed}.ghost{background:#e7f2fb;color:#
 footer{text-align:center;color:#768ba2;font-size:12px;padding:12px}
 @media(max-width:700px){.grid{grid-template-columns:1fr}.top{padding:18px}.card{padding:16px}main{margin-top:14px}}
 </style>
-<script src="./parents-cloud.js?v=20261103" defer></script>
+<script src="./school-access-guard.js?v=20261104-phase3" defer></script><script src="./parents-cloud.js?v=20261104-phase3" defer></script>
 </head><body>
 <header class="top"><h1>Bright Nexa <span style="color:#ffb45a">✦</span> Parents</h1><p>Verified school updates. Private to your linked children.</p><a href="./index.html">← School Login</a></header>
 <main>
@@ -54,7 +54,7 @@ footer{text-align:center;color:#768ba2;font-size:12px;padding:12px}
   <div class="card row"><div><label for="childSelector" style="margin-top:0">Select linked child</label><select id="childSelector" aria-label="Select child"></select></div><button class="ghost" type="button" id="refreshParent">↻ Refresh</button></div>
   <section class="grid">
    <div class="card"><h2>Student profile</h2><div id="childProfile"></div></div>
-   <div class="card"><h2>Attendance</h2><div class="stats"><div class="metric">Marked days<strong id="attendanceCount">—</strong></div><div class="metric">Present + Late<strong id="attendancePercent">—</strong></div></div><ul id="attendanceList" class="list"></ul></div>
+   <div class="card"><h2>Attendance</h2><div class="stats"><div class="metric">Recent marked days (up to 100)<strong id="attendanceCount">—</strong></div><div class="metric">Present + Late in those days<strong id="attendancePercent">—</strong></div></div><ul id="attendanceList" class="list"></ul></div>
    <div class="card"><h2>Fees & payments</h2><div class="metric">Recorded balance<strong id="feeBalance">—</strong></div><p class="muted">School-recorded ledger only. Balance includes all entries; the table shows the latest 500. No payment gateway.</p><div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Details</th></tr></thead><tbody id="feeList"></tbody></table></div></div>
    <div class="card"><h2>Homework</h2><ul class="list" id="homeworkList"></ul></div>
    <div class="card"><h2>School notices</h2><ul class="list" id="noticesList"></ul></div>
