@@ -60,7 +60,7 @@ test('school owner self-registration is visible and can only provision through v
 test('legacy demo and preview URLs redirect to the verified real owner workspace',()=>{
  for(const path of ['school-demo.html','docs/school-demo.html','school-preview.html','docs/school-preview.html']){
   const html=read(path);
-  assert.match(html,/real-owner-workspace\\.html/);
+  assert.ok(html.includes('real-owner-workspace.html'));
   assert.doesNotMatch(html,/index-brightnexa-v2\\.js/);
  }
  const login=read('teacher-access.js');
