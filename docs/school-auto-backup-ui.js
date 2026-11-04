@@ -40,7 +40,7 @@
      const permission=await configured.directory.queryPermission({mode:'readwrite'});
      $('backupReauthorize').hidden=permission==='granted';
      if(permission!=='granted')show('Previous folder saved ('+configured.directory.name+'). Click Allow folder access to resume automatic backups; browser permission has expired.');
-     else if(!configured.lastBackupAt||Date.now()-configured.lastBackupAt>=PERIOD)await run('login');
+     else if(!configured.lastBackupAt||Date.now()-configured.lastBackupAt>=PERIOD)queueMicrotask(()=>void run('login').catch(e=>show(e.message)));
    }
    if(timer===null)timer=setInterval(()=>{
      if(document.visibilityState==='visible'&&navigator.onLine&&configured?.directory&&
