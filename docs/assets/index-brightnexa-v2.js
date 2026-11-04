@@ -37458,6 +37458,8 @@ function Ds() {
     _Component89,
     {
       tone: `green`,
+      destination: `Attendance`,
+      onClick: () => se(`Attendance`),
       title: `${E2.length} attendance records today`,
       detail: E2.length ? `${E2.filter((e3) => e3.status === `Present`).length} students marked present` : `No attendance marked today`
     }
@@ -37465,6 +37467,8 @@ function Ds() {
     _Component89,
     {
       tone: `navy`,
+      destination: `Fees`,
+      onClick: () => se(`Fees`),
       title: `${i2.feePayments.length} fee payments recorded`,
       detail: i2.feePayments.length ? `Receipts are available in the Fees module` : `No payments recorded`
     }
@@ -37472,6 +37476,8 @@ function Ds() {
     _Component89,
     {
       tone: `saffron`,
+      destination: `Exams & Marks`,
+      onClick: () => se(`Exams & Marks`),
       title: `${i2.marks.length} marks entries`,
       detail: i2.exams.length ? `${i2.exams.length} examinations configured` : `No examinations configured`
     }
@@ -37479,6 +37485,8 @@ function Ds() {
     _Component89,
     {
       tone: `purple`,
+      destination: `Growth Passport`,
+      onClick: () => se(`Growth Passport`),
       title: `${i2.achievements.length} student achievements`,
       detail: i2.achievements.length ? `Growth Passport records are available` : `No achievements recorded`
     }
@@ -37628,13 +37636,35 @@ function As({ icon: _Component100, label: t2, tone: n2, onClick: r2 }) {
   const Component2153 = `button`;
   return /* @__PURE__ */ w.createElement(Component2153, { className: `quick-action`, onClick: r2 }, /* @__PURE__ */ w.createElement(Component2151, { className: n2 }, /* @__PURE__ */ w.createElement(_Component100, { size: 21 })), /* @__PURE__ */ w.createElement(Component2152, null, t2), /* @__PURE__ */ w.createElement(_Component88, { size: 17 }));
 }
-function _Component89({ tone: e2, title: t2, detail: n2 }) {
+function _Component89({ tone: e2, title: t2, detail: n2, onClick: r2, destination: o2 }) {
   const Component2154 = `span`;
   const Component2155 = `strong`;
   const Component2156 = `span`;
   const Component2157 = `div`;
   const Component2158 = `div`;
-  return /* @__PURE__ */ w.createElement(Component2158, { className: `activity-row` }, /* @__PURE__ */ w.createElement(Component2154, { className: `activity-dot ${e2}` }), /* @__PURE__ */ w.createElement(Component2157, null, /* @__PURE__ */ w.createElement(Component2155, null, t2), /* @__PURE__ */ w.createElement(Component2156, null, n2)), /* @__PURE__ */ w.createElement(_Component88, { size: 17 }));
+  return /* @__PURE__ */ w.createElement(
+    Component2158,
+    {
+      className: `activity-row`,
+      role: `button`,
+      tabIndex: 0,
+      "aria-label": `Open ${o2}`,
+      title: `Open ${o2}`,
+      style: { cursor: `pointer` },
+      onClick: r2,
+      onKeyDown: (event) => {
+        if (event.key === `Enter` || event.key === ` `) {
+          event.preventDefault();
+          r2?.();
+        }
+      }
+    },
+    /* @__PURE__ */ w.createElement(Component2154, { className: `activity-dot ${e2}` }),
+    /* @__PURE__ */ w.createElement(Component2157, null,
+      /* @__PURE__ */ w.createElement(Component2155, null, t2),
+      /* @__PURE__ */ w.createElement(Component2156, null, n2)),
+    /* @__PURE__ */ w.createElement(_Component88, { size: 17 })
+  );
 }
 function Ms({ name: e2, onBack: t2 }) {
   const Component2159 = `div`;

@@ -41973,6 +41973,8 @@ function Ds() {
                     <Component2106 className={`activity-list`}>
                       <_Component89
                         tone={`green`}
+                        destination={`Attendance`}
+                        onClick={() => se(`Attendance`)}
                         title={`${E.length} attendance records today`}
                         detail={
                           E.length
@@ -41982,6 +41984,8 @@ function Ds() {
                       />
                       <_Component89
                         tone={`navy`}
+                        destination={`Fees`}
+                        onClick={() => se(`Fees`)}
                         title={`${i.feePayments.length} fee payments recorded`}
                         detail={
                           i.feePayments.length
@@ -41991,6 +41995,8 @@ function Ds() {
                       />
                       <_Component89
                         tone={`saffron`}
+                        destination={`Exams & Marks`}
+                        onClick={() => se(`Exams & Marks`)}
                         title={`${i.marks.length} marks entries`}
                         detail={
                           i.exams.length
@@ -42000,6 +42006,8 @@ function Ds() {
                       />
                       <_Component89
                         tone={`purple`}
+                        destination={`Growth Passport`}
+                        onClick={() => se(`Growth Passport`)}
                         title={`${i.achievements.length} student achievements`}
                         detail={
                           i.achievements.length
@@ -42298,14 +42306,28 @@ function As({ icon: _Component100, label: t, tone: n, onClick: r }) {
     </Component2153>
   );
 }
-function _Component89({ tone: e, title: t, detail: n }) {
+function _Component89({ tone: e, title: t, detail: n, onClick: r, destination: o }) {
   const Component2154 = `span`;
   const Component2155 = `strong`;
   const Component2156 = `span`;
   const Component2157 = `div`;
   const Component2158 = `div`;
   return (
-    <Component2158 className={`activity-row`}>
+    <Component2158
+      className={`activity-row`}
+      role={`button`}
+      tabIndex={0}
+      aria-label={`Open ${o}`}
+      title={`Open ${o}`}
+      style={{ cursor: `pointer` }}
+      onClick={r}
+      onKeyDown={(event) => {
+        if (event.key === `Enter` || event.key === ` `) {
+          event.preventDefault();
+          r?.();
+        }
+      }}
+    >
       <Component2154 className={`activity-dot ${e}`} />
       <Component2157>
         <Component2155>{t}</Component2155>
