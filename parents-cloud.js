@@ -4,8 +4,10 @@
  const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
  const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
  const SESSION='bn_parent_cloud_session_v1';
+ const guard=window.BrightNexaAccessGuard;
+ if(!guard)throw Error('Parent access checks did not load. Refresh the page.');
  const $=id=>document.getElementById(id);
- let session=null,user=null,students=[];
+ let session=null,user=null,students=[],selectionEpoch=0;
  const show=(id,value)=>$(id).classList.toggle('hidden',!value);
  const say=(text,error=false)=>{
    const box=$('status');box.textContent=text;box.className='status'+(error?' error':'');
@@ -48,10 +50,13 @@
  }
  function logout(){
    const prev=session?.access_token;
+   selectionEpoch++;
    session=null;user=null;students=[];
    sessionStorage.removeItem(SESSION);
    show('authPanel',true);show('parentPanel',false);show('noGuardianLink',false);show('parentData',false);
    $('parentLoginForm').reset();$('parentSignupForm').reset();
+   $('childSelector').replaceChildren();
+   for(const id of ['childProfile','attendanceList','feeList','homeworkList','noticesList','leaveList'])clear(id);
    if(prev)fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+prev}}).catch(()=>{});
  }
  function list(id,rows,format){
@@ -63,6 +68,7 @@
    root.append(el('strong',title),el('div',detail));
  }
  async function loadChildren(){
+   const requested=++selectionEpoch;
    await ensureToken();
    user=await readResponse(await fetch(BASE+'/auth/v1/user',{
       headers:{apikey:KEY,Authorization:'Bearer '+session.access_token},cache:'no-store'}));
@@ -70,8 +76,7 @@
    show('authPanel',false);show('parentPanel',true);
    const guardians=await data('school_guardians',{select:'id,institution_id,email,status',auth_user_id:eq(user.id),status:'eq.active'});
    text('guardianStatus',user.email||'Verified parent account');
-   const guardiansById=new Map(guardians.map(g=>[g.id,g]));
-   let links=[];
+    let links=[];
    if(guardians.length){
      const ids=guardians.map(g=>g.id);
      links=await data('school_guardian_students',{select:'guardian_id,student_id,institution_id',guardian_id:'in.('+ids.join(',')+')'});
@@ -84,18 +89,27 @@
    }
    const ids=[...new Set(links.map(l=>l.student_id))];
    const all=await data('school_students',{select:'id,institution_id,class_id,admission_number,name,status',id:'in.('+ids.join(',')+')',status:'eq.active',order:'name.asc',limit:'100'});
-   const linked=new Set(links.map(l=>l.student_id));
-   students=all.filter(s=>linked.has(s.id) && links.some(l=>l.student_id===s.id && guardiansById.has(l.guardian_id)));
+   if(requested!==selectionEpoch)return;
+   students=guard.linkedChildren(guardians,links,all);
    const select=$('childSelector');select.replaceChildren();
    for(const s of students){const opt=el('option',s.name+' · '+s.admission_number);opt.value=s.id;select.append(opt)}
-   show('noGuardianLink',students.length===0);show('parentData',students.length>0);
+   show('noGuardianLink',students.length===0);show('parentData',false);
    if(!students.length){text('schoolTitle','Parent account');return;}
-   await loadSelected();
-   say('Your school has verified this parent-child link. School-published data refreshed.');
+   const loaded=await loadSelected();
+   if(loaded)say('Your school has verified this parent-child link. School-published data refreshed.');
  }
  async function loadSelected(){
+   const requested=++selectionEpoch,actorId=user?.id;
    const chosen=students.find(s=>s.id===$('childSelector').value);
-   if(!chosen)throw Error('Choose one of your linked children.');
+   if(!chosen||!actorId)throw Error('Choose one of your linked children.');
+   show('parentData',false);
+   // A cached child selection does not prove that a guardian link remains active.
+   const [freshGuardians,freshLinks]=await Promise.all([
+     data('school_guardians',{select:'id,institution_id,status',auth_user_id:eq(actorId),status:'eq.active'}),
+     data('school_guardian_students',{select:'guardian_id,student_id,institution_id',student_id:eq(chosen.id),institution_id:eq(chosen.institution_id)})
+   ]);
+   if(requested!==selectionEpoch||user?.id!==actorId||$('childSelector').value!==chosen.id)return false;
+   if(!guard.linkedChildren(freshGuardians,freshLinks,[chosen]).length)throw Error('Parent-child access was removed. Contact the school administrator and refresh your account.');
    const [schools,classes,attendance,fees,exactBalances,homework,notices,leaves]=await Promise.all([
      data('institutions',{select:'id,name',id:eq(chosen.institution_id),limit:'1'}),
      chosen.class_id?data('school_classes',{select:'id,name,section,academic_year',id:eq(chosen.class_id),limit:'1'}):Promise.resolve([]),
@@ -106,6 +120,7 @@
      data('school_notices',{select:'title,body,created_at',institution_id:eq(chosen.institution_id),order:'created_at.desc',limit:'40'}),
      data('school_parent_leaves',{select:'from_on,to_on,reason,status,created_at',student_id:eq(chosen.id),parent_auth_user_id:eq(user.id),order:'created_at.desc',limit:'30'})
    ]);
+   if(requested!==selectionEpoch||user?.id!==actorId||$('childSelector').value!==chosen.id)return false;
    text('schoolTitle',schools[0]?.name||'Linked school');
    clear('childProfile');const cls=classes[0];
    for(const [name,value] of [['Name',chosen.name],['Admission number',chosen.admission_number],
@@ -124,6 +139,8 @@
    list('homeworkList',homework,(li,x)=>addLine(li,x.subject+' · '+x.title,(x.instructions||'')+(x.due_on?' · Due '+x.due_on:'')));
    list('noticesList',notices,(li,x)=>addLine(li,x.title,(x.body||'')+' · '+new Date(x.created_at).toLocaleDateString('en-IN')));
    list('leaveList',leaves,(li,x)=>addLine(li,x.from_on+' to '+x.to_on,'Status: '+x.status+' · '+x.reason));
+   show('parentData',true);
+   return true;
  }
  const withBusy=(form,fn)=>async e=>{
    e.preventDefault();const btn=form.querySelector('button[type="submit"]');
@@ -155,9 +172,11 @@
    if(!start||!end||start>end||reason.length<5||reason.length>500)throw Error('Enter valid leave dates and a reason (5–500 characters).');
    const days=(Date.parse(end)-Date.parse(start))/86400000;
    if(!Number.isFinite(days)||days>90)throw Error('Leave request cannot be more than 90 days.');
-   await data('school_parent_leaves',{},'POST',{institution_id:chosen.institution_id,student_id:chosen.id,
+   const submitted=await data('school_parent_leaves',{},'POST',{institution_id:chosen.institution_id,student_id:chosen.id,
      parent_auth_user_id:user.id,from_on:start,to_on:end,reason});
-   $('leaveRequestForm').reset();await loadSelected();say('Leave request submitted to the school.');
+   const saved=guard.confirmRow(submitted);
+   if(saved.institution_id!==chosen.institution_id||saved.student_id!==chosen.id||saved.parent_auth_user_id!==user.id||saved.status!=='pending')throw Error('Leave request confirmation failed. Refresh before submitting again.');
+   $('leaveRequestForm').reset();await loadSelected();say('Leave request submitted to the school and confirmed.');
  }));
  try{
    const fragment=new URLSearchParams(location.hash.slice(1));
