@@ -30,6 +30,15 @@ test('class/exam/subject uniqueness is detected by owner before save',()=>{
  assert.equal(E.planInput({...valid,subject:'Mathematics'},klass,[original],'plan-1').subject,'Mathematics');
  assert.equal(E.planInput({...valid,class_id:'class-2'},klass,[original]).class_id,'class-2');
 });
+test('class schedule blocks overlapping same-day subjects and midnight rollover',()=>{
+ const previous=plan('plan-1','Mathematics');
+ const conflict={...valid,exam:'Term 2',subject:'Science',starts_at:'10:00',duration_minutes:'60'};
+ assert.throws(()=>E.planInput(conflict,klass,[previous]),/overlaps another scheduled subject/);
+ assert.equal(E.planInput({...conflict,starts_at:'10:30'},klass,[previous]).subject,'Science');
+ assert.equal(E.planInput({...conflict,status:'draft'},klass,[previous]).status,'draft');
+ assert.equal(E.planInput({...conflict,class_id:'class-2'},klass,[previous]).class_id,'class-2');
+ assert.throws(()=>E.planInput({...valid,starts_at:'23:30',duration_minutes:'90'},klass),/same calendar day/);
+});
 test('school-defined grades require explicit zero boundary and unique intervals, no default is assumed',()=>{
  const input=E.schemeInput({academic_year:'2026-2027',name:'Annual grading',bands:'90,A1\n75,B\n0,C'},klass);
  assert.deepEqual(input.bands.map(x=>x.min),[90,75,0]);
