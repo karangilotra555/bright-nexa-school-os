@@ -56,8 +56,13 @@ alter table public.school_student_profiles enable row level security;
 alter table public.school_student_document_checks enable row level security;
 revoke all on table public.school_student_profiles from anon,authenticated;
 revoke all on table public.school_student_document_checks from anon,authenticated;
-grant select,insert,update on table public.school_student_profiles to authenticated;
-grant select,insert,update on table public.school_student_document_checks to authenticated;
+grant select,insert on table public.school_student_profiles to authenticated;
+grant update (guardian_name,guardian_relationship,guardian_phone,guardian_email,
+  alternate_contact_name,alternate_contact_phone,address_line,city,postal_code,admission_on,updated_at)
+  on table public.school_student_profiles to authenticated;
+grant select,insert on table public.school_student_document_checks to authenticated;
+grant update (status,notes,checked_by,checked_at,updated_at)
+  on table public.school_student_document_checks to authenticated;
 
 create policy bn_student_profiles_owner_read on public.school_student_profiles
   for select to authenticated
