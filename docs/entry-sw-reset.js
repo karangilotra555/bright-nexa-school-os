@@ -5,10 +5,10 @@
   const key='bn-secure-entry-sw-cleanup-20261023';
   async function retire(){
     if(!('serviceWorker' in navigator))return;
-    let controlled=Boolean(navigator.serviceWorker.controller);
+    let controlled=Boolean(navigator.serviceWorker.controller && !/\/owner-offline-sw\.js(?:$|\?)/.test(navigator.serviceWorker.controller.scriptURL));
     try{
       const regs=await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r=>r.unregister()));
+      await Promise.all(regs.filter(r=>!(/\/owner-offline-sw\.js(?:$|\?)/.test(r.active?.scriptURL||r.waiting?.scriptURL||r.installing?.scriptURL||''))).map(r=>r.unregister()));
       if('caches' in window){
         const names=await caches.keys();
         await Promise.all(names.filter(n=>n.includes('workbox-precache')).map(n=>caches.delete(n)));
