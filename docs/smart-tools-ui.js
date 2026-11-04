@@ -414,6 +414,21 @@ for(const btn of document.querySelectorAll('[data-tab]')){
   for(const view of document.querySelectorAll('[data-view]'))view.classList.toggle('hidden',view.dataset.view!==btn.dataset.tab);
  });
 }
+$('loadCloudRoster').addEventListener('click',()=>task(async()=>{
+ const button=$('loadCloudRoster');button.disabled=true;
+ try{
+  if(!window.BrightNexaSchoolRoster)throw Error('Cloud roster tool did not load. Refresh while online.');
+  const roster=await window.BrightNexaSchoolRoster.fetchRoster();
+  if(!roster.classes.length)throw Error('This school has no cloud classes. Create classes in your school dashboard first.');
+  // Replace all previous sample/editor entries; never merge fictional data into a real school plan.
+  editor.demands=roster.classes.map(c=>({id:uid(),class:c.label,subject:'',periods:4}));
+  editor.teachers=roster.teachers.map(t=>({id:uid(),name:t.name,subjects:[],classes:[],maxdaily:6,unavailable:''}));
+  renderEditor();invalidateTimetable();
+  const flagged=roster.teachers.filter(t=>t.needsReview).length;
+  msg('Loaded '+roster.classes.length+' real school class-sections and '+roster.teachers.length+' school staff profiles. Add subjects, weekly lesson counts and teacher qualifications; these are not automatically known.'+
+      (flagged?' '+flagged+' staff profile(s) are flagged for verification.':'')+' No cloud records were changed.');
+ }finally{button.disabled=false}
+}));
 $('sampleTimetable').addEventListener('click',()=>task(()=>{
  loadEditorCsv(DEMO.teachers,DEMO.demands);
  $('advancedTimetable').open=false;
@@ -473,6 +488,6 @@ $('excludeInvalid').addEventListener('click',()=>task(()=>{
 $('runAudit').addEventListener('click',()=>task(audit));
 $('sampleErrors').addEventListener('click',()=>task(()=>{for(const kind of ['students','fees','attendance','marks'])loadDataset(kind,DEMO[kind]);audit()}));
 $('exportFindings').addEventListener('click',()=>task(()=>download('bright-nexa-data-audit.csv',E.toCsv(state.findings,['kind','severity','row','message']))));
-loadEditorCsv(DEMO.teachers,DEMO.demands);
-msg('Smart Tools ready. Start with Generate Timetable, or choose Import to analyze your own CSV / XLSX. No external AI API is used.');
+renderEditor();
+msg('Timetable starts empty. Load your verified school roster or add teachers and weekly subjects manually. Example data is not loaded into real school planning automatically.');
 })();
