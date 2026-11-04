@@ -1,11 +1,10 @@
-/* Only signed-in academic roles (or isolated fictional demo) get the
+/* Only signed-in academic roles get the
  * browser-only Smart Tools UI. Backend data remains protected by Supabase RLS. */
 (() => {
   'use strict';
   const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
   const KEY='bn_school_staff_session_v1';
-  const DEMO_KEY='bn_school_local_demo_access_v1';
   const notice=document.getElementById('accessNotice');
   const mode=document.getElementById('accessMode');
   function deny(message){
@@ -23,12 +22,6 @@
   }
   async function verify(){
     try{
-      const timestamp=Number(sessionStorage.getItem(DEMO_KEY));
-      if(Number.isFinite(timestamp)&&timestamp>0&&Date.now()-timestamp<12*60*60*1000){
-        allow('SAMPLE MODE • Fictional data only. No cloud school records are connected.');
-        return;
-      }
-      sessionStorage.removeItem(DEMO_KEY);
       let session;try{session=JSON.parse(sessionStorage.getItem(KEY)||'null')}catch{}
       if(!session?.access_token)throw Error('Sign in with a school account first. Open Smart Tools from your dashboard.');
       if(Number(session.expires_at)<=Date.now()/1000+60){
