@@ -382,6 +382,7 @@ async function reload(){
  try {await window.BrightNexaOfflineUI?.save(state)}catch(e){const status=$('localStatus');if(status)status.textContent='Offline copy not saved: '+e.message;}
  if(!['Dashboard','Settings'].includes(active))renderSection(active);
  window.BrightNexaSettings?.refresh();
+ window.BrightNexaPhaseADashboard?.refresh({state,allSchool,open});
  window.BrightNexaAutoBackup?.afterReload?.();
 }
 async function start(){
