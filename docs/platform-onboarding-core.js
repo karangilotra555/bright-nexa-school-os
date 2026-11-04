@@ -14,15 +14,16 @@
  function requestInput(raw){
    const school_name=compact(raw?.school_name);
    const owner_email=email(raw?.owner_email);
-   const contact_phone=compact(raw?.contact_phone)||null;
+   const phoneText=compact(raw?.contact_phone);
+   const digits=phoneText.replace(/\D/g,'');
+   const contact_phone=!phoneText?null:(digits.length===12&&digits.startsWith('91')?digits.slice(2):digits);
    const notes=compact(raw?.notes)||null;
    if(school_name.length<3||school_name.length>120)
      throw Error('School name must have 3–120 characters.');
    if(owner_email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner_email))
      throw Error('Enter a valid school owner email.');
-   if(contact_phone&&(!/^\+?[0-9 ()-]{7,20}$/.test(contact_phone)||
-      contact_phone.replace(/\D/g,'').length<7))
-     throw Error('Enter a valid school contact phone.');
+   if(contact_phone&&!/^[6-9][0-9]{9}$/.test(contact_phone))
+     throw Error('Enter a valid 10-digit Indian school contact phone.');
    if(notes&&notes.length>300)throw Error('Administrative notes must be at most 300 characters.');
    return {school_name,owner_email,contact_phone,notes};
  }
