@@ -320,6 +320,7 @@ function bindInterface(){
  $('refresh').addEventListener('click',()=>{if(state.offlineReadOnly){location.assign('./index.html');return;}reload().catch(error)});
  $('logout').addEventListener('click',()=>{sessionStorage.removeItem(TOKEN);location.assign('./index.html')});
  window.BrightNexaOfflineUI?.attach(state);
+ window.BrightNexaBackup?.attach({state,allSchool,error});
 }
 async function restoreOffline(){
  const recovered=await window.BrightNexaOfflineUI.restore();
