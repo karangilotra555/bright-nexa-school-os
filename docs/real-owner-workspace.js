@@ -7,7 +7,7 @@ const TOKEN='bn_school_staff_session_v1';
 const $=id=>document.getElementById(id);
 const menus=['Dashboard','School Profile','Students','Teachers','Non-Teaching Staff','Transport & Routes','Infrastructure & Assets','Class & Section Setup','Attendance','Fees','Expenses & Budget','Exams & Marks','Report Cards','Homework & Notices','Parent Messages','AI Teacher Tools','Opportunity Desk','Growth Passport','School Quality Score','Contact & Support','Settings','Parents App','Teachers Online Access','Smart Tools'];
 const available=new Set(['Dashboard','School Profile','Students','Teachers','Non-Teaching Staff','Class & Section Setup','Attendance','Fees','Homework & Notices','Settings','Smart Tools','Parents App','Teachers Online Access']);
-const state={session:null,me:null,school:null,authUserId:null,classes:[],students:[],staff:[],fees:[],attendance:[],notices:[],extra:[]};
+const state={session:null,me:null,school:null,authUserId:null,offlineReadOnly:false,classes:[],students:[],staff:[],fees:[],attendance:[],notices:[],extra:[]};
 let active='Dashboard';
 const safe=x=>String(x??'');
 const node=(tag,value)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=safe(value);return e};
@@ -22,6 +22,7 @@ async function token(){
  sessionStorage.setItem(TOKEN,JSON.stringify(state.session));return state.session.access_token;
 }
 async function req(path,options={}){
+ if(state.offlineReadOnly)throw Error('Offline copy is read-only. Reconnect and sign in before editing records.');
  const jwt=await token();
  const r=await fetch(BASE+'/rest/v1/'+path,{method:options.method||'GET',headers:{apikey:KEY,Authorization:'Bearer '+jwt,'content-type':'application/json',...(options.method?{'Prefer':'return=representation'}:{})},body:options.body?JSON.stringify(options.body):undefined,cache:'no-store'});
  return parse(r);
@@ -167,6 +168,29 @@ function open(name){
  document.querySelectorAll('#menu button').forEach(b=>b.setAttribute('aria-current',b.dataset.section===name?'page':'false'));
  if(name!=='Dashboard'){view('section',true);$('sectionTitle').textContent=name;renderSection(name)}
 }
+function updateCounts(){
+ $('studentsCount').textContent=state.students.length;
+ $('teachersCount').textContent=state.staff.filter(s=>s.staff_category==='teaching').length;
+ $('classesCount').textContent=state.classes.length;
+ $('feesCount').textContent='₹'+state.fees.filter(x=>x.kind==='payment').reduce((t,x)=>t+Number(x.amount_rupees),0).toLocaleString('en-IN');
+}
+function bindInterface(){
+ renderMenu();
+ document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>open(b.dataset.open)));
+ $('refresh').addEventListener('click',()=>{if(state.offlineReadOnly){location.assign('./index.html');return;}reload().catch(error)});
+ $('logout').addEventListener('click',()=>{sessionStorage.removeItem(TOKEN);location.assign('./index.html')});
+ window.BrightNexaOfflineUI?.attach(state);
+}
+async function restoreOffline(){
+ const recovered=await window.BrightNexaOfflineUI.restore();
+ Object.assign(state,recovered.payload);
+ state.authUserId=recovered.userId;
+ state.offlineReadOnly=true;
+ $('topSchool').textContent=$('sideSchool').textContent=state.school.name;
+ bindInterface();updateCounts();open('Dashboard');
+ view('message',true);$('message').classList.add('warn');
+ $('message').textContent='Offline read-only copy (maximum 24 hours old). Data changes are blocked until internet and owner login are verified.';
+}
 async function reload(){
  $('message').classList.add('hidden');
  const [classes,students,staff,fees,attendance,notices,extra]=await Promise.all([
@@ -179,16 +203,14 @@ async function reload(){
  inSchool('school_module_records','id,module,title,details,created_at',{order:'created_at.desc',limit:'1000'})
  ]);
  Object.assign(state,{classes,students,staff,fees,attendance,notices,extra});
- $('studentsCount').textContent=students.length;
- $('teachersCount').textContent=staff.filter(s=>s.staff_category==='teaching').length;
- $('classesCount').textContent=classes.length;
- $('feesCount').textContent='₹'+fees.filter(x=>x.kind==='payment').reduce((t,x)=>t+Number(x.amount_rupees),0).toLocaleString('en-IN');
+ updateCounts();
+ try {await window.BrightNexaOfflineUI?.save(state)}catch(e){const status=$('localStatus');if(status)status.textContent='Offline copy not saved: '+e.message;}
  if(active!=='Dashboard')renderSection(active);
 }
 async function start(){
  try{
   state.session=JSON.parse(sessionStorage.getItem(TOKEN)||'null');
-  if(!state.session?.access_token){location.replace('./index.html');return}
+  if(!state.session?.access_token){if(!navigator.onLine){await restoreOffline();return;}location.replace('./index.html');return}
   const jwt=await token();
   const identity=await parse(await fetch(BASE+'/auth/v1/user',{headers:{apikey:KEY,Authorization:'Bearer '+jwt},cache:'no-store'}));
   state.authUserId=identity.id;
@@ -199,11 +221,14 @@ async function start(){
   state.school=schools.find(x=>['active','trial'].includes(x.status));
   if(!state.school)throw Error('School is not active.');
   $('topSchool').textContent=$('sideSchool').textContent=state.school.name;
-  renderMenu();document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>open(b.dataset.open)));
-  $('refresh').addEventListener('click',()=>reload().catch(error));
-  $('logout').addEventListener('click',()=>{sessionStorage.removeItem(TOKEN);location.assign('./index.html')});
+  bindInterface();
   await reload();open('Dashboard');
- }catch(e){error(e);$('subtitle').textContent='Cloud records are unavailable';}
+ }catch(e){
+   if(!state.offlineReadOnly && (!navigator.onLine || /Failed to fetch|NetworkError|Load failed|fetch failed/i.test(String(e?.message||e)))){
+     try {await restoreOffline();return;}catch(offlineError){error(offlineError);}
+   }else error(e);
+   $('subtitle').textContent='Cloud records are unavailable';
+ }
 }
 start();
 })();
