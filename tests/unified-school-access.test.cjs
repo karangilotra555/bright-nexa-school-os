@@ -57,19 +57,18 @@ test('school owner self-registration is visible and can only provision through v
  assert.ok(migration.includes('revoke all on function public.register_first_school(text) from public, anon, authenticated'));
  assert.ok(migration.includes('grant execute on function public.register_first_school(text) to authenticated'));
 });
-test('legacy demo and preview URLs redirect to the verified real owner workspace',()=>{
- for(const path of ['school-demo.html','docs/school-demo.html','school-preview.html','docs/school-preview.html']){
-  const html=read(path);
-  assert.ok(html.includes('real-owner-workspace.html'));
-  assert.doesNotMatch(html,/index-brightnexa-v2\\.js/);
+test('retired demo opens owner workspace while preview returns to secure login',()=>{
+ for(const p of ['school-demo.html','docs/school-demo.html']){
+  const html=read(p);assert.ok(html.includes('real-owner-workspace.html'));assert.ok(!html.includes('index-brightnexa-v2.js'));
+ }
+ for(const p of ['school-preview.html','docs/school-preview.html']){
+  const html=read(p);assert.ok(html.includes('./index.html'));assert.ok(!html.includes('index-brightnexa-v2.js'));
  }
  const login=read('teacher-access.js');
  assert.ok(login.includes("id.toLowerCase()==='yrskaran'"));
  assert.ok(login.includes('token?grant_type=password'));
- assert.doesNotMatch(login,/if\\(id==='demo' && password==='demo'\\)/);
- for(const path of ['index.html','docs/index.html']){
-  assert.ok(!read(path).includes('ID <code>demo</code> · Password <code>demo</code>'));
- }
+ assert.ok(!login.includes("if(id==='demo' && password==='demo')"));
+ for(const p of ['index.html','docs/index.html'])assert.ok(!read(p).includes('ID <code>demo</code> · Password <code>demo</code>'));
 });
 test('old service workers are cleaned up without erasing persisted school records',()=>{
  const code=read('entry-sw-reset.js');
