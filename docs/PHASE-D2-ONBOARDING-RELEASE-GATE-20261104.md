@@ -41,6 +41,14 @@ The **Activate verified school** action has a separate confirmation and rechecks
 - No robust invitation-delivery tracking or automated reissue: failed/repeated invites need controlled manual reconciliation.
 - No new backups, independent recovery drill or production multi-tenant security certification.
 
+
+## Supabase 2026 function configuration
+- Keep the default **user-JWT gateway verification enabled** for `platform-school-onboarding`; the browser sends a signed-in user's JWT in `Authorization: Bearer ...` and only its publishable key in `apikey`. The Edge handler then independently checks Auth and active platform-admin membership.
+- Hosted Supabase functions expose `SUPABASE_PUBLISHABLE_KEYS` and `SUPABASE_SECRET_KEYS` as JSON maps keyed by `default`. D2 reads those maps on the server; single-key and legacy environment names are fallbacks only. **Do not commit or display secret keys.**
+- In Supabase Auth URL settings, allow the exact invitation redirect `https://bright-nexa-school-os.onrender.com/index.html`. Confirm the real invited recipient lands on the existing password-activation form; otherwise invitation redirection can fall back to the configured Site URL.
+- Configure and test the actual Supabase Auth SMTP provider, rate limits and expiration window in staging before enabling invitation sends. A successful Auth API response is not confirmation that the recipient opened the email.
+- Apply both D1 and D2 SQL to staging, deploy the named Edge Function to staging, and verify returned RPC permissions. Do not run this flow against the real project until release gates pass.
+
 ## Mandatory release gates
 1. **Do not deploy the staged migration to the live Supabase project without prior isolated/staging tests.** D1 RLS and all earlier draft migrations must be installed first on staging.
 2. Create two disposable staging schools and three distinct verified identities: platform admin, School A owner, School B owner. Check school owner/teacher/parent/anonymous accounts cannot read platform onboarding, make requests, or invoke provisioning/activation RPC. Validate grants separately from RLS.
