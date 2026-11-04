@@ -3,6 +3,8 @@
  const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
  const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
  const STORE='bn_school_staff_session_v1';
+ const feeSafety=window.BrightNexaFeeLedger;
+ const feeDraft=feeSafety?.draft();
  const $=id=>document.getElementById(id);
  let session=null,user=null,me=null,school=null,students=[],rosterAll=[],classes=[],allGuardians=[],links=[];
  const show=(id,on)=>$(id).classList.toggle('hidden',!on);
@@ -37,7 +39,7 @@
   await ensure();
   return read(await fetch(BASE+'/rest/v1/'+table+'?'+query(params),{
    method,headers:{apikey:KEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',
-    Prefer:method==='POST'?'return=representation':'return=minimal'},
+    Prefer:method==='GET'?'return=minimal':'return=representation'},
    body:body==null?undefined:JSON.stringify(body),cache:'no-store'
   }));
  }
@@ -169,8 +171,9 @@
      const b=node('button',status);b.type='button';b.className=status==='rejected'?'danger':'ghost';
      b.addEventListener('click',async()=>{
       b.disabled=true;
-      try{await api('school_parent_leaves',{id:eq(leave.id),institution_id:eq(me.institution_id)},'PATCH',{status});
-       await loadLeaves();notify('Leave '+status+'.')}
+      try{const saved=await api('school_parent_leaves',{id:eq(leave.id),institution_id:eq(me.institution_id)},'PATCH',{status});
+       if(!Array.isArray(saved)||saved.length!==1||saved[0].id!==leave.id||saved[0].status!==status)throw Error('Leave status not confirmed. Refresh before retrying.');
+       await loadLeaves();notify('Leave '+status+' and confirmed.')}
       catch(e){notify(e.message,true)}finally{b.disabled=false}
      });td.append(b);
     }
@@ -221,10 +224,19 @@
   const kind=$('feeKind').value,amt=Number($('feeAmount').value),ref=$('feeReference').value.trim();
   if(!chosen||!['charge','payment'].includes(kind)||!Number.isSafeInteger(amt)||amt<1||amt>100000000)throw Error('Choose a student and valid whole-rupee amount.');
   if(ref.length>100)throw Error('Reference too long.');
-  await api('school_fee_entries',{},'POST',{institution_id:me.institution_id,student_id:chosen.id,kind,
-   amount_rupees:amt,occurred_on:$('feeDate').value||new Date().toISOString().slice(0,10),
-   created_by:me.id,description:$('feeDescription').value.trim(),reference:ref||null});
-  $('feeForm').reset();$('feeDate').value=new Date().toISOString().slice(0,10);await loadFees();notify('Fee ledger entry recorded securely.');
+  if(!feeSafety||!feeDraft)throw Error('Fee safety module failed to load. Refresh before recording money.');
+  const payload=feeDraft.prepare({institution_id:me.institution_id,student_id:chosen.id,kind,
+    amount_rupees:amt,occurred_on:$('feeDate').value||new Date().toISOString().slice(0,10),
+    created_by:me.id,description:$('feeDescription').value.trim()},ref);
+  const result=await feeSafety.save({
+    payload,
+    post:record=>api('school_fee_entries',{},'POST',record),
+    find:reference=>api('school_fee_entries',{select:'id,institution_id,student_id,kind,amount_rupees,occurred_on,reference',
+      institution_id:eq(me.institution_id),reference:eq(reference),limit:'2'})
+  });
+  feeDraft.clear();
+  $('feeForm').reset();$('feeDate').value=new Date().toISOString().slice(0,10);
+  await loadFees();notify('Fee entry confirmed. Reference '+result.record.reference+'.');
  }));
  $('guardianForm').addEventListener('submit',busy('guardianForm',async()=>{
   if(!canGuardian())throw Error('School admin permission required.');
