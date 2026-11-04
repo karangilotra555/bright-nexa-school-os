@@ -9,14 +9,15 @@
  function snapshot({students,staff,fees,classes},extra,{today,month}){
    const activeStudents=students.filter(s=>s.status==='active');
    const status=extra?.todayAttendance||[];
-   const unique=new Set(status.map(x=>x.student_id));
+   const activeIds=new Set(activeStudents.map(s=>s.id));
+   const unique=new Set(status.filter(x=>activeIds.has(x.student_id)).map(x=>x.student_id));
    const teacherLogins=(extra?.schoolUsers||[]).filter(x=>x.status==='active'&&x.role==='teacher');
    const assignments=(extra?.assignments||[]).filter(a=>a.active===true&&teacherLogins.some(t=>t.id===a.school_user_id));
    const parentIds=new Set((extra?.guardianLinks||[]).map(l=>l.guardian_id));
    const parents=(extra?.guardians||[]).filter(g=>g.status==='active');
    const outstanding=extra?.ledger||null;
    const pendingLeaves=(extra?.leaves||[]).filter(l=>l.status==='pending');
-   const marked=status.filter(s=>['present','absent','late','excused'].includes(s.status));
+   const marked=status.filter(s=>activeIds.has(s.student_id)&&['present','absent','late','excused'].includes(s.status));
    const alerts=[];
    if(staff.some(x=>x.staff_category==='teaching')&&!teacherLogins.length)alerts.push('Teacher profiles exist, but no active teacher login has been verified.');
    if(teacherLogins.length&&!assignments.length)alerts.push('Teacher login accounts exist, but no active class assignments have been saved.');
