@@ -6,7 +6,7 @@ const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 const TOKEN='bn_school_staff_session_v1';
 const $=id=>document.getElementById(id);
 const menus=['Dashboard','School Profile','Students','Teachers','Non-Teaching Staff','Transport & Routes','Infrastructure & Assets','Class & Section Setup','Attendance','Fees','Expenses & Budget','Exams & Marks','Report Cards','Homework & Notices','Parent Messages','AI Teacher Tools','Opportunity Desk','Growth Passport','School Quality Score','Contact & Support','Settings','Parents App','Teachers Online Access','Smart Tools'];
-const available=new Set(['Dashboard','School Profile','Students','Teachers','Non-Teaching Staff','Class & Section Setup','Attendance','Fees','Homework & Notices','Settings','Smart Tools','Parents App','Teachers Online Access']);
+const navigation=window.BrightNexaNavigation;
 const state={session:null,me:null,school:null,authUserId:null,offlineReadOnly:false,classes:[],students:[],formerStudents:[],staff:[],fees:[],attendance:[],notices:[],extra:[]};
 let active='Dashboard';
 const safe=x=>String(x??'');
@@ -32,13 +32,23 @@ async function req(path,options={}){
 const filt=(tbl,params)=>tbl+'?'+new URLSearchParams(params).toString();
 const inSchool=(table,select='*',more={})=>req(filt(table,{select,institution_id:'eq.'+state.me.institution_id,...more}));
 const allSchool=(table,select='*',more={})=>window.BrightNexaSchoolAdmin.allPages(inSchool,table,select,more);
-function renderMenu(){
- const nav=$('menu');nav.replaceChildren();
- for(const title of menus){
-   const b=node('button',title);b.type='button';b.dataset.section=title;
-   b.addEventListener('click',()=>open(title));nav.append(b);
+function renderMenu(search=''){
+ const list=$('menu');list.replaceChildren();
+ const groups=navigation?.matching(search)||[{title:'School',items:menus}];
+ if(!groups.length){const empty=node('p','No matching module. Try a different search.');empty.className='nav-empty';list.append(empty);return}
+ for(const group of groups){
+   const wrap=node('div');wrap.className='nav-group';
+   const heading=node('p',group.title);heading.className='nav-heading';wrap.append(heading);
+   const options=node('div');options.className='nav-group-list';
+   for(const title of group.items){
+     const item=node('button',title);item.type='button';item.dataset.section=title;
+     item.setAttribute('aria-current',title===active?'page':'false');
+     item.addEventListener('click',()=>open(title));options.append(item);
+   }
+   wrap.append(options);list.append(wrap);
  }
 }
+
 function table(headers,rows){
  const wrap=node('div');wrap.className='data';
  const t=node('table'),head=node('thead'),tr=node('tr');
@@ -297,18 +307,26 @@ function renderSection(title){
  }else if(title==='Teachers Online Access'){location.assign('./index.html?view=roles')}
  else if(title==='Parents App'){location.assign('./parents-cloud.html')}
  else if(title==='Smart Tools'){location.assign('./smart-tools.html')}
- else if(title==='Settings'){body.append(link('Manage account and school roles','./index.html?view=roles'))}
+ else if(title==='Settings'){window.BrightNexaSettings?.openTab('school')}
  else if(window.BrightNexaOwnerExtra?.render({title,body,state,req,reload,open,error})){}
  else {
    desc.textContent='This module is not connected to the cloud database yet. Only verified school records will be shown after setup.';body.append(desc);
  }
 }
 function open(name){
- active=name;view('dash',name==='Dashboard');view('section',name!=='Dashboard');
+ if(!menus.includes(name))return error(Error('Unknown school section.'));
+ active=name;
+ view('dash',name==='Dashboard');
+ view('section',name!=='Dashboard'&&name!=='Settings');
+ view('settingsWorkspace',name==='Settings');
  $('heading').textContent=name==='Dashboard'?state.school.name:name;
- $('subtitle').textContent=name==='Dashboard'?'School operations from verified cloud records':state.school.name+' · '+name;
- document.querySelectorAll('#menu button').forEach(b=>b.setAttribute('aria-current',b.dataset.section===name?'page':'false'));
- if(name!=='Dashboard'){view('section',true);$('sectionTitle').textContent=name;renderSection(name)}
+ $('subtitle').textContent=name==='Dashboard'?'School operations from verified cloud records':
+  name==='Settings'?'School identity, security, encrypted backups and preferences':state.school.name+' · '+name;
+ document.querySelectorAll('#menu button').forEach(button=>button.setAttribute('aria-current',button.dataset.section===name?'page':'false'));
+ if(name==='Settings')window.BrightNexaSettings?.openTab('school');
+ else if(name!=='Dashboard'){$('sectionTitle').textContent=name;renderSection(name)}
+ $('ownerSidebar').dataset.menuOpen='false';
+ $('mobileMenuToggle').setAttribute('aria-expanded','false');
 }
 function updateCounts(){
  $('studentsCount').textContent=state.students.length;
@@ -318,11 +336,20 @@ function updateCounts(){
 }
 function bindInterface(){
  renderMenu();
- document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>open(b.dataset.open)));
+ $('menuSearch').addEventListener('input',event=>renderMenu(event.target.value));
+ $('mobileMenuToggle').addEventListener('click',()=>{
+  const sidebar=$('ownerSidebar'),opened=sidebar.dataset.menuOpen!=='true';
+  sidebar.dataset.menuOpen=String(opened);
+  $('mobileMenuToggle').setAttribute('aria-expanded',String(opened));
+  if(opened)$('menuSearch').focus();
+ });
+ $('openSettings').addEventListener('click',()=>open('Settings'));
+ document.querySelectorAll('[data-open]').forEach(button=>button.addEventListener('click',()=>open(button.dataset.open)));
  $('refresh').addEventListener('click',()=>{if(state.offlineReadOnly){location.assign('./index.html');return;}reload().catch(error)});
  $('logout').addEventListener('click',()=>{sessionStorage.removeItem(TOKEN);location.assign('./index.html')});
  window.BrightNexaOfflineUI?.attach(state);
  window.BrightNexaAutoBackup?.attach({state,allSchool,error});
+ window.BrightNexaSettings?.attach({state,req,inSchool,reload,open,error});
 }
 async function restoreOffline(){
  const recovered=await window.BrightNexaOfflineUI.restore();
@@ -350,7 +377,8 @@ async function reload(){
  Object.assign(state,{classes,students,formerStudents,staff,fees,attendance,notices,extra});
  updateCounts();
  try {await window.BrightNexaOfflineUI?.save(state)}catch(e){const status=$('localStatus');if(status)status.textContent='Offline copy not saved: '+e.message;}
- if(active!=='Dashboard')renderSection(active);
+ if(!['Dashboard','Settings'].includes(active))renderSection(active);
+ window.BrightNexaSettings?.refresh();
  window.BrightNexaAutoBackup?.afterReload?.();
 }
 async function start(){
@@ -360,7 +388,7 @@ async function start(){
   const jwt=await token();
   const identity=await parse(await fetch(BASE+'/auth/v1/user',{headers:{apikey:KEY,Authorization:'Bearer '+jwt},cache:'no-store'}));
   state.authUserId=identity.id;
-  const members=await req(filt('school_users',{select:'id,institution_id,role,status',auth_user_id:'eq.'+identity.id,status:'eq.active'}));
+  const members=await req(filt('school_users',{select:'id,institution_id,email,role,status',auth_user_id:'eq.'+identity.id,status:'eq.active'}));
   state.me=members.find(x=>x.role==='school_admin');
   if(!state.me)throw Error('Owner account required. Please log in as school administrator.');
   const schools=await req(filt('institutions',{select:'id,name,status',id:'eq.'+state.me.institution_id}));
@@ -368,7 +396,7 @@ async function start(){
   if(!state.school)throw Error('School is not active.');
   $('topSchool').textContent=$('sideSchool').textContent=state.school.name;
   bindInterface();
-  await reload();open('Dashboard');
+  await reload();open(window.BrightNexaSettings?.landing()||'Dashboard');
  }catch(e){
    if(!state.offlineReadOnly && (!navigator.onLine || /Failed to fetch|NetworkError|Load failed|fetch failed/i.test(String(e?.message||e)))){
      try {await restoreOffline();return;}catch(offlineError){error(offlineError);}
