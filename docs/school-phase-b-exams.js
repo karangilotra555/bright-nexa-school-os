@@ -39,6 +39,9 @@
   const minutes=h=>Number(h.slice(0,2))*60+Number(h.slice(3,5));
   const start=minutes(starts_at),end=start+duration;
   if(end>1440)throw Error('An exam must end on the same calendar day.');
+  if(rows(allRows,'exam_plans').some(row=>row.id!==editingId&&
+      row.details?.class_id===classroom.id&&key(row.details.exam)===key(exam)&&key(row.details.subject)===key(subject)))
+    throw Error('An exam plan already exists for this class, exam and subject. Edit the existing plan.');
   if(status==='scheduled'){
     for(const row of rows(allRows,'exam_plans')){
       const d=row.details||{};
@@ -53,9 +56,7 @@
   }
   const details={class_id:classroom.id,academic_year:classroom.academic_year,exam,subject,
     maximum,scheduled_on,starts_at,duration_minutes:duration,status};
-  if(rows(allRows,'exam_plans').some(row=>row.id!==editingId&&
-      row.details?.class_id===classroom.id&&key(row.details.exam)===key(exam)&&key(row.details.subject)===key(subject)))
-    throw Error('An exam plan already exists for this class, exam and subject. Edit the existing plan.');
+
   return details;
  }
  function bandsInput(lines){
