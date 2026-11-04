@@ -94,7 +94,7 @@
          }else{
            result=await req('school_student_profiles',{method:'POST',body:{...payload,institution_id:schoolId}});
          }
-         data.profile=core.confirmRow(result,{student_id:student.id,institution_id:schoolId});
+         data.profile=core.confirmRow(result,{student_id:student.id,institution_id:schoolId,guardian_name:profile.guardian_name,guardian_phone:profile.guardian_phone,guardian_email:profile.guardian_email});
          profileStatus.className='phase-c-hint';profileStatus.textContent='Student contact details saved and confirmed in the school cloud.';
        }catch(err){profileStatus.className='phase-c-error';profileStatus.textContent=err.message;error(err)}
        finally{save.disabled=state.offlineReadOnly}
