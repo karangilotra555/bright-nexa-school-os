@@ -41,7 +41,10 @@ async function renderGeneric(opts,config){
  let editId=null;cancel.addEventListener('click',()=>{editId=null;form.reset();save.textContent='Save '+config.noun;cancel.hidden=true});
  form.addEventListener('submit',async e=>{
  e.preventDefault();const details={};for(const field of config.fields){const value=inputs[field[0]].value.trim();if(field[3]&&!value)return error(Error('Enter '+field[1]));details[field[0]]=value;}
- if(config.key==='exams'&&(Number(details.maximum)<=0||Number(details.obtained)<0||Number(details.obtained)>Number(details.maximum)))return error(Error('Marks must be between zero and maximum marks.'));
+ if(config.key==='exams'){
+  try{Object.assign(details,window.BrightNexaAcademics.markDetails(details,state.students,state.extra,editId));}
+  catch(e){return error(e)}
+ }
  if(config.key==='assets'&&Number(details.quantity)<=0)return error(Error('Units must be greater than zero.'));
  if(config.key==='expenses'&&Number(details.amount)<=0)return error(Error('Amount must be greater than zero.'));
  const title=String(details[config.fields[0][0]]||'Record').slice(0,180);
@@ -71,23 +74,67 @@ async function renderGeneric(opts,config){
  table.append(tbody);wrap.append(table);body.append(wrap);
 }
 function renderReportCards({body,state}){
- const marks=state.extra.filter(x=>x.module==='exams');
- const p=elt('p','Report cards use only the saved exam marks from this school. No predicted grades are generated.');p.className='muted';body.append(p);
- const sel=elt('select');sel.append(new Option('Select student',''));for(const s of state.students)sel.append(new Option(s.name+' · '+s.admission_number,s.id));
- const report=elt('div');body.append(sel,report);
- function show(){
- report.replaceChildren();if(!sel.value)return;
- const student=state.students.find(s=>s.id===sel.value);report.append(elt('h2',state.school.name+' — '+student.name));
- const rows=marks.filter(x=>x.details?.student===sel.value);
- const t=elt('table');const head=elt('tr');['Exam','Subject','Obtained','Maximum'].forEach(x=>head.append(elt('th',x)));t.append(head);
- let earned=0,max=0;
- for(const r of rows){const d=r.details;const tr=elt('tr');[d.exam,d.subject,d.obtained,d.maximum].forEach(v=>tr.append(elt('td',v)));t.append(tr);earned+=Number(d.obtained||0);max+=Number(d.maximum||0)}
- report.append(t);
- if(rows.length)report.append(elt('p','Total: '+earned+' / '+max+' ('+(max?Math.round(earned*10000/max)/100:0)+'%)'));else report.append(elt('p','No exam marks recorded for this student.'));
- const print=elt('button','Print report');print.type='button';print.className='primary';print.addEventListener('click',()=>window.print());report.append(print);
+ const engine=window.BrightNexaAcademics;
+ const p=elt('p','Only recorded marks from this school are used. Select one exam: marks from different exams are never added together. No school grading policy is configured, so no official grade is assigned.');
+ p.className='muted';body.append(p);
+ if(!engine){body.append(elt('p','Report tools could not load. Refresh while online.'));return}
+ const records=state.extra.filter(x=>x.module==='exams');
+ const students=[...state.students,...(state.formerStudents||[])];
+ const controls=elt('div');controls.className='form';
+ const studentSel=elt('select'),examSel=elt('select');
+ studentSel.setAttribute('aria-label','Select student for report card');
+ examSel.setAttribute('aria-label','Select exam for report card');
+ studentSel.append(new Option('Select student',''));
+ for(const student of students)studentSel.append(new Option(student.name+' · '+student.admission_number+(student.status==='active'?'':' ('+student.status+')'),student.id));
+ const studentWrap=elt('label','Student');studentWrap.append(studentSel);
+ const examWrap=elt('label','Exam');examWrap.append(examSel);
+ controls.append(studentWrap,examWrap);body.append(controls);
+ const result=elt('div');body.append(result);
+ function examsForSelected(){
+  examSel.replaceChildren();
+  examSel.append(new Option('Select exam',''));
+  for(const name of engine.examNames(records,studentSel.value))examSel.append(new Option(name,name));
  }
- sel.addEventListener('change',show);
+ function show(){
+  result.replaceChildren();
+  const student=students.find(s=>s.id===studentSel.value);
+  if(!student||!examSel.value)return;
+  const data=engine.report(records,student.id,examSel.value);
+  result.append(elt('h2',state.school.name+' — '+student.name));
+  const cl=state.classes.find(c=>c.id===student.class_id);
+  result.append(elt('p','Admission: '+student.admission_number+' · Class: '+(cl?cl.name+' '+cl.section:'Not assigned')+' · Exam: '+data.exam));
+  const table=elt('table');
+  const head=elt('tr');['Subject','Obtained','Maximum','Percentage'].forEach(v=>head.append(elt('th',v)));table.append(head);
+  for(const row of data.subjects){
+   const tr=elt('tr');
+   [row.subject,row.obtained,row.maximum,row.percent+'%'].forEach(v=>tr.append(elt('td',v)));
+   table.append(tr);
+  }
+  result.append(table);
+  if(!data.subjects.length){result.append(elt('p','No valid marks for this exam.'));return}
+  const sum=elt('p','Total: '+data.obtained+' / '+data.maximum+' ('+data.percent+'%). Percentage only; this is not an official pass/fail or grade decision.');
+  result.append(sum);
+  if(data.issues.length){
+   const warn=elt('p',data.issues.length+' invalid or duplicate subject entry/entries were excluded. Review Exams & Marks before publishing.');
+   warn.className='notice';result.append(warn);
+   return;
+  }
+  const print=elt('button','Print this exam report');print.type='button';print.className='primary';print.addEventListener('click',()=>window.print());
+  const exportBtn=elt('button','Export exam CSV');exportBtn.type='button';
+  exportBtn.addEventListener('click',()=>{
+   const csv=engine.csv(data.subjects.map(s=>({student:student.name,admission_number:student.admission_number,exam:data.exam,subject:s.subject,obtained:s.obtained,maximum:s.maximum,percentage:s.percent})),
+     ['student','admission_number','exam','subject','obtained','maximum','percentage']);
+   const url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+   const a=elt('a');a.download='bright-nexa-exam-report.csv';a.href=url;a.click();
+   setTimeout(()=>URL.revokeObjectURL(url),5000);
+  });
+  result.append(print,elt('span',' '),exportBtn);
+ }
+ studentSel.addEventListener('change',()=>{examsForSelected();show()});
+ examSel.addEventListener('change',show);
+ examsForSelected();
 }
+
 function renderScore({body,state}){
  const stats=[
  ['Active students',state.students.length],
