@@ -63,7 +63,7 @@
    if(!Object.hasOwn(STATUSES,status))throw Error('Unknown document status.');
    const notes=trimmed(raw?.notes);
    if(notes.length>300)throw Error('Document notes cannot exceed 300 characters.');
-   if(status==='verified'&&!/^[0-9a-f-]{36}$/i.test(String(authUserId||'')))
+   if(status==='verified'&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authUserId||'')))
      throw Error('A verified school owner login is required to mark a document checked.');
    return {student_id:studentId,document_type,status,notes:notes||null,
      checked_by:status==='verified'?authUserId:null,
