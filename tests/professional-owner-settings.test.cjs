@@ -88,7 +88,7 @@ test('settings and nav scripts load before owner, offline cache covers assets, a
  assert.ok(html.includes('school-owner-shell.css'));
  const serviceWorker=read('docs/owner-offline-sw.js');
  for(const item of ['school-owner-shell.css','school-owner-navigation.js','school-owner-settings.js'])assert.ok(serviceWorker.includes(item));
- assert.match(serviceWorker,/bright-nexa-owner-shell-v8/);
+ assert.match(serviceWorker,/bright-nexa-owner-shell-v9/);
  for(const source of [owner,settings,read('docs/school-owner-navigation.js')])assert.doesNotThrow(()=>new vm.Script(source));
 });
 test('profile update migration only exposes contact phone and name to verified owner, not status',()=>{
