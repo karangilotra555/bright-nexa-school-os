@@ -83,6 +83,8 @@ test('Phase 3 parent view revalidates links, prevents stale child render and con
  const p=read('parents-cloud.js');
  assert.match(p,/guard\.linkedChildren/);
  assert.match(p,/selectionEpoch/);
+ assert.match(p,/session\?\.access_token!==tokenAtStart/);
+ assert.match(p,/verifiedUser/);
  assert.match(p,/freshGuardians,freshLinks/);
  assert.match(p,/show\('parentData',false\)/);
  assert.match(p,/guard\.confirmRow\(submitted\)/);
