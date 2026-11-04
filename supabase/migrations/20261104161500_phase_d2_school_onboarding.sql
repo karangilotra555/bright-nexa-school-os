@@ -35,6 +35,8 @@ create index bn_onboarding_status_created on public.bn_school_onboarding_request
 alter table public.bn_school_onboarding_requests enable row level security;
 revoke all on table public.bn_school_onboarding_requests from public,anon,authenticated;
 grant select on table public.bn_school_onboarding_requests to authenticated;
+-- Edge service uses these rights via SECURITY INVOKER transactional functions.
+grant select,insert,update on table public.bn_school_onboarding_requests to service_role;
 create policy bn_onboarding_platform_read on public.bn_school_onboarding_requests
  for select to authenticated using(
   exists(select 1 from public.bn_platform_admins a where a.auth_user_id=(select auth.uid()) and a.active)
@@ -53,6 +55,8 @@ create index bn_onboarding_events_request_date
 alter table public.bn_school_onboarding_events enable row level security;
 revoke all on table public.bn_school_onboarding_events from public,anon,authenticated;
 grant select on table public.bn_school_onboarding_events to authenticated;
+grant select,insert on table public.bn_school_onboarding_events to service_role;
+grant usage,select on sequence public.bn_school_onboarding_events_id_seq to service_role;
 create policy bn_onboarding_events_platform_read on public.bn_school_onboarding_events
  for select to authenticated using(
   exists(select 1 from public.bn_platform_admins a where a.auth_user_id=(select auth.uid()) and a.active)
