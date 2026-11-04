@@ -50,3 +50,15 @@ test('phase2 admin modules are loaded before owner app, and dangerous delete sta
  assert.ok(!js.includes("school_students?method=DELETE"));
  assert.doesNotThrow(()=>new vm.Script(js));
 });
+
+test('class edits preserve school scope and module deletes require confirmed mutation',()=>{
+ const root=path.join(__dirname,'..');
+ const js=fs.readFileSync(path.join(root,'docs/real-owner-workspace.js'),'utf8');
+ const extra=fs.readFileSync(path.join(root,'docs/school-extra-modules.js'),'utf8');
+ assert.ok(js.includes("form.elements.academic_year.value=cl.academic_year"));
+ assert.ok(js.includes("school_classes',filters"));
+ assert.ok(js.includes("expectUpdated(rows,editing.id)"));
+ assert.ok(extra.includes("expectUpdated(removed,row.id)"));
+ assert.ok(extra.includes("expectUpdated(rows,editId)"));
+ assert.doesNotThrow(()=>new vm.Script(extra));
+});
