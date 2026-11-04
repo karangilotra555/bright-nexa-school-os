@@ -56,3 +56,12 @@ test('cloud class/staff picker exists in both Smart Tools page copies and starts
  assert.doesNotMatch(ui,/^loadEditorCsv\(DEMO\.teachers,DEMO\.demands\);/m);
  for(const s of ['school-phase4-roster.js','smart-tools-ui.js'])assert.doesNotThrow(()=>new vm.Script(read(s)));
 });
+
+test('multiple admin memberships must not silently select one school',async()=>{
+ const m=server();
+ const multi=async(url,opts)=>url.includes('/rest/v1/school_users')
+   ?response([{id:'one',role:'school_admin',institution_id:'school-A',status:'active'},
+              {id:'two',role:'school_admin',institution_id:'school-B',status:'active'}])
+   :m.request(url,opts);
+ await assert.rejects(()=>fetchRoster({storage:store,fetcher:multi,now:1000000000}),/more than one school/);
+});
