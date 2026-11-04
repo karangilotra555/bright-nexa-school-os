@@ -36966,12 +36966,20 @@ var Es = new Intl.NumberFormat(`en-IN`, {
   currency: `INR`,
   maximumFractionDigits: 0
 });
+// Keep the React section and browser hash history on the same route.
+function bnSectionSlug(label) {
+  return String(label).toLowerCase().replace(/&/g, ` `).replace(/[^a-z0-9]+/g, `-`).replace(/^-|-$/g, ``);
+}
+function bnSectionFromHash(hash, allowedSections) {
+  const slug = String(hash || ``).replace(/^#\/?/, ``).split(/[?&]/)[0].toLowerCase();
+  return allowedSections.find((section) => bnSectionSlug(section.label) === slug)?.label ?? `Dashboard`;
+}
 function Ds() {
   let [e2, t2] = (0, w.useState)(wn);
   let [n2, r2] = (0, w.useState)(Dn);
   let [i2, a2] = (0, w.useState)(Ai);
   let [o2, s2] = (0, w.useState)(false);
-  let [c2, l2] = (0, w.useState)(`Dashboard`);
+  let [c2, l2] = (0, w.useState)(() => bnSectionFromHash(window.location.hash, Ts.filter((section) => section.roles.includes(Qt?.role ?? wn.role))));
   let [u2, d2] = (0, w.useState)(false);
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
@@ -37003,6 +37011,20 @@ function Ds() {
     return n2;
   }, [g2?.linkedStudentId, g2?.linkedTeacherId, n2, i2.teachers, v2]);
   let b2 = (0, w.useMemo)(() => Ts.filter((e3) => e3.roles.includes(v2)), [v2]);
+  (0, w.useEffect)(() => {
+    const syncFromBrowserHistory = () => {
+      const section = bnSectionFromHash(window.location.hash, b2);
+      l2((previous) => previous === section ? previous : section);
+      s2(false);
+    };
+    window.addEventListener(`hashchange`, syncFromBrowserHistory);
+    window.addEventListener(`popstate`, syncFromBrowserHistory);
+    syncFromBrowserHistory();
+    return () => {
+      window.removeEventListener(`hashchange`, syncFromBrowserHistory);
+      window.removeEventListener(`popstate`, syncFromBrowserHistory);
+    };
+  }, [b2]);
   let x2 = e2.institution.institutionType === `Coaching Centre`;
   let S2 = {
     "School Profile": `Institute Profile`,
@@ -37086,6 +37108,9 @@ function Ds() {
     };
   }, []);
   let se = (e3) => {
+    if (!b2.some((section) => section.label === e3)) return;
+    const nextHash = `#/${bnSectionSlug(e3)}`;
+    if (window.location.hash !== nextHash) window.location.hash = nextHash;
     l2(e3);
     s2(false);
   };
@@ -37111,7 +37136,7 @@ function Ds() {
     a2(u3);
     ji(u3);
     d2(false);
-    l2(`Students`);
+    se(`Students`);
     p2(`${o3.name || o3.admissionNumber || `Student record`} added successfully`);
     window.setTimeout(() => p2(``), 3500);
   };
@@ -37322,8 +37347,7 @@ function Ds() {
     {
       className: `update-notice-button`,
       onClick: () => {
-        l2(`Settings`);
-        s2(false);
+        se(`Settings`);
       },
       title: `Version ${m2} is available`
     },
