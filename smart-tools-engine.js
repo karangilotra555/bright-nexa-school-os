@@ -139,6 +139,77 @@
       return {...slot,suggestions};
     });
   }
+  // Session-only daily planning: never edits the original weekly timetable.
+  const dailyIdentity=x=>norm(x).normalize('NFKC').toLowerCase().replace(/\s+/g,' ');
+  const dailySlotId=r=>JSON.stringify([r.day,Number(r.period),r.class]);
+  function dailySubstitutions(plan,{date,absentTeachers=[],assignments=[]}={}){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date)
+      throw Error('Choose a valid worksheet date.');
+    if(!plan||!Array.isArray(plan.rows)||!Array.isArray(plan.teachers)||!Array.isArray(plan.days))throw Error('Generate a valid timetable first.');
+    const day=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(date+'T00:00:00Z').getUTCDay()];
+    if(!plan.days.includes(day))throw Error('This date is not a working day in the generated timetable.');
+    if(!Array.isArray(absentTeachers)||!absentTeachers.length)throw Error('Select at least one absent teacher.');
+    if(!Array.isArray(assignments)||assignments.length>plan.rows.length)throw Error('Invalid worksheet confirmations.');
+    const roster=new Map();
+    for(const teacher of plan.teachers){
+      const id=dailyIdentity(teacher.name);
+      if(!id||roster.has(id))throw Error('Duplicate or ambiguous teacher name in timetable.');
+      if(!Array.isArray(teacher.subjects)||!Array.isArray(teacher.classes)||!Array.isArray(teacher.unavailable))throw Error('Invalid teacher qualifications.');
+      roster.set(id,teacher);
+    }
+    const absent=new Set(absentTeachers.map(dailyIdentity));
+    for(const name of absent)if(!roster.has(name))throw Error('Absent teacher is not in this timetable.');
+    const original=plan.rows.filter(r=>r.day===day),slots=new Set(),busy=new Set(),loads=new Map();
+    for(const row of original){
+      const slot=dailySlotId(row),period=Number(row.period),teacher=dailyIdentity(row.teacher);
+      if(slots.has(slot)||!Number.isInteger(period)||period<1||period>plan.periods)throw Error('Duplicate or invalid timetable slot.');
+      slots.add(slot);
+      if(teacher){
+        if(!roster.has(teacher))throw Error('Timetable teacher is missing from roster.');
+        const occupied=period+'|'+teacher;
+        if(busy.has(occupied))throw Error('Original timetable has a teacher clash. Review it before confirming covers.');
+        busy.add(occupied);loads.set(teacher,(loads.get(teacher)||0)+1);
+      }
+    }
+    const affected=original.filter(r=>r.teacher&&absent.has(dailyIdentity(r.teacher)));
+    const bySlot=new Map(affected.map(r=>[dailySlotId(r),r])),confirmed=new Map();
+    function eligible(teacher,row){
+      const id=dailyIdentity(teacher.name),limit=teacher.maxdaily==null?6:Number(teacher.maxdaily);
+      return !absent.has(id)&&!busy.has(Number(row.period)+'|'+id)&&Number.isFinite(limit)&&limit>=0&&(loads.get(id)||0)<limit
+        &&teacher.subjects.some(s=>dailyIdentity(s)===dailyIdentity(row.subject))
+        &&(!teacher.classes.length||teacher.classes.some(c=>dailyIdentity(c)===dailyIdentity(row.class)))
+        &&!teacher.unavailable.some(u=>key(u)===key(day+'-'+row.period));
+    }
+    for(const approval of assignments){
+      if(approval.date!==date)throw Error('Confirmation date does not match this worksheet.');
+      const row=bySlot.get(approval.slotId),teacher=roster.get(dailyIdentity(approval.teacher));
+      if(!row)throw Error('Confirmed period is no longer affected by these absences.');
+      if(confirmed.has(approval.slotId))throw Error('Duplicate confirmation for the same period.');
+      if(approval.originalTeacher!==row.teacher||!norm(approval.approvedBy))throw Error('Confirmation is stale or reviewer name is missing.');
+      if(!teacher||!eligible(teacher,row))throw Error('Confirmed substitute is no longer qualified, available or within daily capacity.');
+      confirmed.set(approval.slotId,{...approval,teacher:teacher.name});
+      const id=dailyIdentity(teacher.name);busy.add(Number(row.period)+'|'+id);loads.set(id,(loads.get(id)||0)+1);
+    }
+    const rows=affected.map(row=>{
+      const slotId=dailySlotId(row),approval=confirmed.get(slotId)||null;
+      const suggestions=approval?[]:plan.teachers.filter(t=>eligible(t,row))
+        .map(t=>({teacher:t.name,load:loads.get(dailyIdentity(t.name))||0}))
+        .sort((a,b)=>a.load-b.load||a.teacher.localeCompare(b.teacher));
+      return {...row,slotId,approval,suggestions};
+    });
+    return {date,day,rows,confirmed:confirmed.size,uncovered:rows.length-confirmed.size,
+      alreadyOpen:original.filter(r=>!r.teacher).length};
+  }
+  function confirmDailyCover(plan,options){
+    const reviewer=norm(options.approvedBy);
+    if(reviewer.length<2||reviewer.length>100)throw Error('Enter the reviewer name (2–100 characters).');
+    const sheet=dailySubstitutions(plan,options),row=sheet.rows.find(r=>r.slotId===options.slotId);
+    if(!row||row.approval)throw Error('This affected period is missing or already confirmed.');
+    const candidate=row.suggestions.find(t=>dailyIdentity(t.teacher)===dailyIdentity(options.teacher));
+    if(!candidate)throw Error('Selected teacher is not qualified, available or within daily capacity.');
+    return [...(options.assignments||[]),{date:options.date,slotId:row.slotId,teacher:candidate.teacher,
+      originalTeacher:row.teacher,approvedBy:reviewer}];
+  }
   function performance(records,weakThreshold=40){
     const groups=new Map(),issues=[];
     for(const r of records){
@@ -226,5 +297,5 @@
     };
     return [cols.map(escape).join(','),...rows.map(row=>cols.map(col=>escape(row[col])).join(','))].join('\r\n');
   }
-  return Object.freeze({parseCsv,mapColumns,canonical,schedule,substitutes,performance,detect,toCsv,DATASETS});
+  return Object.freeze({parseCsv,mapColumns,canonical,schedule,substitutes,dailySubstitutions,confirmDailyCover,performance,detect,toCsv,DATASETS});
 });
