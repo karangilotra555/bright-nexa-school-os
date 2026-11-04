@@ -34,14 +34,15 @@ const tidy=(x:unknown)=>String(x??"").trim().replace(/\s+/g," ");
 const normalizeEmail=(x:unknown)=>String(x??"").trim().toLowerCase();
 function validate(raw:OnboardingInput){
  const school_name=tidy(raw.school_name),owner_email=normalizeEmail(raw.owner_email);
- const contact_phone=tidy(raw.contact_phone)||null,notes=tidy(raw.notes)||null;
+ const rawPhone=tidy(raw.contact_phone),digits=rawPhone.replace(/\D/g,"");
+ const contact_phone=!rawPhone?null:(digits.length===12&&digits.startsWith("91")?digits.slice(2):digits);
+ const notes=tidy(raw.notes)||null;
  if(school_name.length<3||school_name.length>120)
    throw Error("School name must be 3–120 characters.");
  if(owner_email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(owner_email))
    throw Error("Enter a valid owner email.");
- if(contact_phone&&(!/^\+?[0-9 ()-]{7,20}$/.test(contact_phone)||
-     contact_phone.replace(/\D/g,"").length<7))
-   throw Error("Enter a valid contact number.");
+ if(contact_phone&&!/^[6-9][0-9]{9}$/.test(contact_phone))
+   throw Error("Enter a valid 10-digit Indian contact number.");
  if(notes&&notes.length>300)throw Error("Notes exceed 300 characters.");
  if(!uuid(raw.request_key))throw Error("A unique request identifier is required.");
  return {school_name,owner_email,contact_phone,notes,request_key:raw.request_key};
