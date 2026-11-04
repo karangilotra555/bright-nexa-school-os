@@ -44,7 +44,7 @@
      const original=fresh.find(x=>x.id===existingId&&x.module===module);
      if(!original)throw Error('This record changed or disappeared. Refresh before editing.');
      if(module==='exam_plans'){
-       const classStudents=new Set(state.students.filter(s=>s.class_id===original.details.class_id).map(s=>s.id));
+       const classStudents=new Set([...state.students,...(state.formerStudents||[])].filter(s=>s.class_id===original.details.class_id).map(s=>s.id));
        const hasMarks=fresh.some(x=>x.module==='exams'&&classStudents.has(x.details?.student)&&norm(x.details?.exam)===norm(original.details?.exam));
        const before=original.details;
        if(hasMarks&&(before.class_id!==prepared.class_id||
