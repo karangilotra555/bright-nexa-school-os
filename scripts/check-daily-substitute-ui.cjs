@@ -1,0 +1,42 @@
+// Optional DOM integration check: provide jsdom@26.1.0 through NODE_PATH.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),cp=require('node:child_process');
+const {JSDOM}=require('jsdom');
+const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const baseline=cp.execFileSync('git',['show','ad7ec6b:smart-tools.html'],{cwd:root,encoding:'utf8'});
+const html=read('smart-tools.html');
+assert.equal(html.match(/<style>([\s\S]*?)<\/style>/)[1],baseline.match(/<style>([\s\S]*?)<\/style>/)[1],'CSS must stay byte-identical');
+const dom=new JSDOM(html,{url:'https://fixture.school.test/smart-tools.html',runScripts:'outside-only'}),w=dom.window,d=w.document;
+(async()=>{
+w.HTMLElement.prototype.scrollIntoView=function(){};w.confirm=()=>true;
+const downloads=[];w.URL.createObjectURL=blob=>{downloads.push(blob);return 'blob:fixture'};w.URL.revokeObjectURL=()=>{};
+w.HTMLAnchorElement.prototype.click=function(){};
+w.eval(read('smart-tools-engine.js'));w.eval(read('smart-tools-ui.js'));
+d.querySelector('[data-tab=substitute]').click();
+assert.equal(d.querySelector('[data-view=substitute]').classList.contains('hidden'),false);
+d.getElementById('generateTimetable').click();
+assert.ok(d.querySelectorAll('#dailyAbsentTeachers input').length>1);
+d.getElementById('findSubstitutes').click();assert.ok(d.getElementById('substituteTable').querySelector('table'),'legacy suggestions still render');
+d.getElementById('dailyCoverDate').value='2026-11-02';
+const checkboxes=Array.from(d.querySelectorAll('#dailyAbsentTeachers input'));
+checkboxes[0].checked=true;checkboxes[0].dispatchEvent(new w.Event('change'));
+d.getElementById('dailyCoverReviewer').value='Fixture reviewer';
+d.getElementById('buildDailyCover').click();assert.ok(d.getElementById('dailyCoverSummary').textContent.includes('2026-11-02'));
+const candidate=Array.from(d.querySelectorAll('#dailyCoverTable select')).find(s=>s.options.length>1);
+assert.ok(candidate,'fixture should have a qualified free teacher');candidate.value=candidate.options[1].value;candidate.dispatchEvent(new w.Event('change'));
+candidate.closest('tr').querySelector('button').click();
+assert.match(d.getElementById('dailyCoverTable').textContent,/Confirmed on worksheet by Fixture reviewer/);
+d.getElementById('exportDailyCover').click();assert.equal(downloads.length,1,'adjusted-day CSV download uses real exporter');
+const csv=await new Promise((resolve,reject)=>{const r=new w.FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsText(downloads[0]);});
+const exported=w.BrightNexaSmart.parseCsv(csv);assert.ok(exported.length);const confirmed=exported.filter(r=>r.status==='Confirmed on worksheet');assert.equal(confirmed.length,1);assert.equal(confirmed[0].teacher,candidate.value);assert.equal(confirmed[0].reviewedBy,'Fixture reviewer');assert.equal(confirmed[0].date,'2026-11-02');assert.ok(exported.some(r=>r.status==='Uncovered'&&!r.teacher),'uncovered lessons must not retain the absent teacher as assigned');
+const undo=d.querySelector('#dailyCoverTable button[aria-label^="Undo cover"]');assert.ok(undo);undo.click();
+assert.doesNotMatch(d.getElementById('dailyCoverTable').textContent,/Confirmed on worksheet by/);
+// Date/absence changes invalidate table and export, rather than retaining stale duties.
+d.getElementById('dailyCoverDate').value='2026-11-03';d.getElementById('dailyCoverDate').dispatchEvent(new w.Event('change'));
+assert.equal(d.getElementById('exportDailyCover').disabled,true);assert.equal(d.getElementById('dailyCoverTable').children.length,0);
+d.getElementById('buildDailyCover').click();assert.equal(d.getElementById('exportDailyCover').disabled,false);
+d.getElementById('periodsSelect').value='4';d.getElementById('periodsSelect').dispatchEvent(new w.Event('change'));
+assert.equal(d.getElementById('exportDailyCover').disabled,true,'period-count edits must invalidate confirmations and exports');
+assert.equal(d.getElementById('dailyCoverTable').children.length,0);
+assert.equal(d.querySelectorAll('[data-tab]').length,5,'existing navigation unchanged');
+console.log('PASS: CSS unchanged; legacy suggestions render; dated cover confirms, exports and undoes; input changes invalidate stale worksheet; five existing tabs preserved.');
+})().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>w.close());

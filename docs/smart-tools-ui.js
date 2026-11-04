@@ -4,7 +4,7 @@
 const E=window.BrightNexaSmart;
 if(!E)throw Error('Smart Tools engine missing.');
 const $=id=>document.getElementById(id);
-const state={datasets:{},imports:{},plan:null,substitutes:[],analysis:null,findings:null};
+const state={datasets:{},imports:{},plan:null,substitutes:[],daily:null,analysis:null,findings:null};
 const DEMO={
  teachers:'teacher,subjects,classes,maxdaily,unavailable\nAsha Sharma,Mathematics;Science,Class 6-A;Class 7-A,4,Mon-1\nMeera Singh,English;Hindi,Class 6-A;Class 7-A,4,\nAmit Verma,Mathematics,Class 6-A;Class 7-A,4,\nRitu Gupta,Science;English,Class 6-A;Class 7-A,4,\nPooja Joshi,Hindi;Mathematics,Class 6-A;Class 7-A,4,',
  demands:'class,subject,periods\nClass 6-A,Mathematics,5\nClass 6-A,English,5\nClass 6-A,Science,4\nClass 6-A,Hindi,4\nClass 7-A,Mathematics,5\nClass 7-A,English,5\nClass 7-A,Science,4\nClass 7-A,Hindi,4',
@@ -93,6 +93,7 @@ const uid=()=>++editSeq;
 const skills=s=>String(s||'').split(';').map(v=>v.trim()).filter(Boolean);
 function invalidateTimetable(){
  state.plan=null;state.substitutes=[];
+ resetDailyCover('Timetable changed. Generate it again before reviewing daily cover.',true);
  $('exportTimetable').disabled=true;$('printTimetable').disabled=true;$('exportSubstitute').disabled=true;
  $('scheduleSummary').textContent='Details changed — generate a new timetable.';
  wipe('scheduleTable');wipe('substituteTable');
@@ -212,11 +213,19 @@ function validatedTimetableInputs(){
 
 function runTimetable(){
  clear();
+ if(state.daily?.assignments.length&&!window.confirm('Regenerating clears the daily worksheet confirmations. Export them first if needed. Continue?'))return;
  const {teachers,demands}=validatedTimetableInputs();
  if(!demands.length)throw Error('Class requirement rows were not recognized. Use class,subject,periods.');
  const days=Number($('daysSelect').value)===6?['Mon','Tue','Wed','Thu','Fri','Sat']:['Mon','Tue','Wed','Thu','Fri'];
  state.plan=E.schedule({teachers,demands,days,periods:Number($('periodsSelect').value)});
  const plan=state.plan;
+ resetDailyCover('Choose a date and mark all absent teachers.');
+ const absentRoot=$('dailyAbsentTeachers');absentRoot.replaceChildren();
+ for(const teacher of plan.teachers){
+  const label=dom('label'),input=dom('input');input.type='checkbox';input.value=teacher.name;
+  input.addEventListener('change',changeDailyCoverInputs);
+  label.append(input,dom('span',teacher.name));absentRoot.append(label);
+ }
  const sel=$('timetableFilter');sel.replaceChildren();const all=dom('option','All classes');all.value='all';sel.append(all);
  for(const c of plan.classes){const o=dom('option',c);o.value=c;sel.append(o)}
  const teachersSel=$('absentTeacher');teachersSel.replaceChildren();
@@ -273,6 +282,81 @@ function renderSubstitutes(){
  ],results);
  $('exportSubstitute').disabled=!results.length;
  msg(results.length+' affected period(s). '+results.filter(r=>!r.suggestions.length).length+' without a qualified free substitute.');
+}
+function resetDailyCover(message,clearRoster=false){
+ state.daily=null;$('exportDailyCover').disabled=true;wipe('dailyCoverTable');
+ $('dailyCoverSummary').textContent=message;
+ if(clearRoster)$('dailyAbsentTeachers').replaceChildren();
+}
+function changeDailyCoverInputs(){
+ if(state.daily?.assignments.length&&!window.confirm('Changing the date or absences clears worksheet confirmations. Export them first if needed. Continue?')){
+  $('dailyCoverDate').value=state.daily.date;
+  for(const input of $('dailyAbsentTeachers').querySelectorAll('input'))input.checked=state.daily.absentTeachers.includes(input.value);
+  return;
+ }
+ resetDailyCover('Inputs changed. Review daily cover again; earlier worksheet confirmations are cleared.');
+}
+function buildDailyCover(){
+ if(!state.plan)throw Error('Generate a timetable first.');
+ const date=$('dailyCoverDate').value;
+ const absentTeachers=Array.from($('dailyAbsentTeachers').querySelectorAll('input:checked'),input=>input.value);
+ const assignments=state.daily?.assignments||[];
+ const options={date,absentTeachers,assignments};
+ E.dailySubstitutions(state.plan,options); // Validate before retaining the worksheet.
+ state.daily=options;renderDailyCover();
+}
+function renderDailyCover(){
+ if(!state.daily||!state.plan)return;
+ const sheet=E.dailySubstitutions(state.plan,state.daily),root=wipe('dailyCoverTable');
+ const grid=dom('table'),head=dom('tr');
+ for(const text of ['Period','Class','Subject','Absent teacher','Cover / workload','Worksheet decision'])head.append(dom('th',text));
+ const thead=dom('thead');thead.append(head);grid.append(thead);
+ const body=dom('tbody');
+ for(const row of sheet.rows){
+  const tr=dom('tr');for(const value of [row.period,row.class,row.subject,row.teacher])tr.append(dom('td',value));
+  const cover=dom('td'),decision=dom('td');
+  if(row.approval){
+   cover.append(dom('strong',row.approval.teacher));
+   decision.append(dom('span','Confirmed on worksheet by '+row.approval.approvedBy));
+   const undo=dom('button','Undo','light');undo.type='button';undo.setAttribute('aria-label','Undo cover for '+row.class+' period '+row.period);
+   undo.addEventListener('click',()=>task(()=>{
+    state.daily.assignments=state.daily.assignments.filter(a=>a.slotId!==row.slotId);renderDailyCover();
+   }));decision.append(undo);
+  }else if(row.suggestions.length){
+   const select=dom('select');select.setAttribute('aria-label','Substitute for '+row.class+' period '+row.period);
+   const placeholder=dom('option','Choose qualified free teacher');placeholder.value='';select.append(placeholder);
+   for(const teacher of row.suggestions){const option=dom('option',teacher.teacher+' · '+teacher.load+' periods already assigned');option.value=teacher.teacher;select.append(option);}
+   cover.append(select);
+   const confirm=dom('button','Confirm on worksheet','secondary');confirm.type='button';confirm.disabled=true;
+   confirm.setAttribute('aria-label','Confirm cover for '+row.class+' period '+row.period);
+   select.addEventListener('change',()=>{confirm.disabled=!select.value;});
+   confirm.addEventListener('click',()=>task(()=>{
+    const assignments=E.confirmDailyCover(state.plan,{...state.daily,slotId:row.slotId,teacher:select.value,approvedBy:$('dailyCoverReviewer').value});
+    state.daily.assignments=assignments;renderDailyCover();
+   }));decision.append(confirm);
+  }else{
+   cover.append(dom('span','No qualified free teacher within capacity.'));
+   decision.append(dom('strong','Uncovered — manual action needed'));
+  }
+  tr.append(cover,decision);body.append(tr);
+ }
+ grid.append(body);root.append(grid);root.classList.remove('hidden');
+ $('dailyCoverSummary').textContent=sheet.date+' ('+sheet.day+'): '+sheet.rows.length+' affected periods · '+sheet.confirmed+' confirmed on worksheet · '+sheet.uncovered+' uncovered. '+sheet.alreadyOpen+' other open/study periods in the original day.';
+ if(!sheet.rows.length)root.append(dom('p','Selected absent teachers have no scheduled lessons on this date.','small'));
+ $('exportDailyCover').disabled=false;
+}
+function exportDailyCover(){
+ if(!state.daily||!state.plan)throw Error('Review daily cover first.');
+ const sheet=E.dailySubstitutions(state.plan,state.daily);
+ const affected=new Map(sheet.rows.map(row=>[row.slotId,row]));
+ const rows=state.plan.rows.filter(row=>row.day===sheet.day).map(row=>{
+  const cover=affected.get(JSON.stringify([row.day,Number(row.period),row.class]));
+  return {date:sheet.date,day:sheet.day,period:row.period,class:row.class,subject:row.subject,
+   originalTeacher:row.teacher,teacher:cover?(cover.approval?.teacher||''):row.teacher,
+   status:cover?(cover.approval?'Confirmed on worksheet':'Uncovered'):(row.teacher?'Original timetable':'Open / study'),
+   reviewedBy:cover?.approval?.approvedBy||''};
+ });
+ download('bright-nexa-adjusted-day-'+sheet.date+'.csv',E.toCsv(rows,['date','day','period','class','subject','originalTeacher','teacher','status','reviewedBy']));
 }
 function analyze(){
  const records=state.datasets.marks;if(!records?.length)throw Error('Import Marks dataset first or choose Load Demo Marks.');
@@ -424,10 +508,14 @@ $('addTeacher').addEventListener('click',()=>task(()=>{
  renderTeachers();invalidateTimetable();
 }));
 $('generateTimetable').addEventListener('click',()=>task(runTimetable));
+for(const id of ['daysSelect','periodsSelect'])$(id).addEventListener('change',invalidateTimetable);
 $('timetableFilter').addEventListener('change',()=>task(renderSchedule));
 $('exportTimetable').addEventListener('click',()=>task(()=>download('bright-nexa-timetable.csv',E.toCsv(state.plan.rows,['day','period','class','subject','teacher']))));
 $('printTimetable').addEventListener('click',()=>window.print());
 $('findSubstitutes').addEventListener('click',()=>task(renderSubstitutes));
+$('dailyCoverDate').addEventListener('change',changeDailyCoverInputs);
+$('buildDailyCover').addEventListener('click',()=>task(buildDailyCover));
+$('exportDailyCover').addEventListener('click',()=>task(exportDailyCover));
 $('exportSubstitute').addEventListener('click',()=>task(()=>download('bright-nexa-substitutes.csv',E.toCsv(state.substitutes.map(r=>({day:r.day,period:r.period,class:r.class,subject:r.subject,absent:r.teacher,suggested:r.suggestions.map(x=>x.teacher).join('; ')})),['day','period','class','subject','absent','suggested']))));
 $('sampleMarks').addEventListener('click',()=>task(()=>{useSample('marks');analyze()}));
 $('analyzeMarks').addEventListener('click',()=>task(analyze));

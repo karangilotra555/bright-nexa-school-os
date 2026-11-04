@@ -135,6 +135,19 @@ footer{font-size:12px;color:#8090a2;text-align:center;margin-top:25px}
 <div class="actions"><button id="findSubstitutes" class="primary" type="button">Find Substitutes</button><button id="exportSubstitute" class="light" type="button" disabled>Export Suggestions</button></div>
 <div class="hint">Substitute is a suggestion, not automatic allocation. Principal / timetable in-charge approval required.</div>
 <div id="substituteTable" class="tablewrap hidden" style="margin-top:13px"></div>
+<details class="tt-advanced" id="dailyAdjustment">
+<summary>Daily adjustment worksheet · multiple absent teachers</summary>
+<p class="small">Plan cover duties for one date using the generated timetable. Confirmations stay only in this tab: export before closing, changing inputs or regenerating. This worksheet does not change attendance, save the cloud timetable or notify staff. Single-teacher suggestions above use the original weekly plan; confirm daily duties here.</p>
+<div class="two">
+<div><label for="dailyCoverDate">Adjustment date</label><input id="dailyCoverDate" type="date"></div>
+<div><label for="dailyCoverReviewer">Reviewed by (worksheet name, not verified login)</label><input id="dailyCoverReviewer" maxlength="100" placeholder="Principal / timetable in-charge"></div>
+</div>
+<p class="small" id="dailyAbsentLabel">Select all teachers absent for this full day</p>
+<div id="dailyAbsentTeachers" class="tt-checkrow" role="group" aria-labelledby="dailyAbsentLabel"></div>
+<div class="actions"><button id="buildDailyCover" class="primary" type="button">Review daily cover</button><button id="exportDailyCover" class="light" type="button" disabled>Export adjusted day CSV</button></div>
+<p id="dailyCoverSummary" class="small" role="status" aria-live="polite">Generate a timetable first, then choose a date and absent teachers.</p>
+<div id="dailyCoverTable" class="tablewrap hidden"></div>
+</details>
 </section>
 <section class="card hidden" data-view="performance">
 <h2>Student Performance Analyzer</h2><p class="sub">Marks CSV or XLSX import karne par subject-wise percentages, improvement aur below-threshold subjects niklenge. Ye student ki ability ka prediction ya diagnosis nahi karta.</p>
