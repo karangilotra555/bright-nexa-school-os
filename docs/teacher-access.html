@@ -57,7 +57,7 @@ tr td select{padding:7px;min-width:115px}
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
 @media(max-width:470px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
 </style>
-<script src="./teacher-access.js" defer></script>
+<script src="./school-access-guard.js?v=20261104-phase3" defer></script><script src="./teacher-access.js?v=20261104-phase3" defer></script>
 </head>
 <body>
 <header><div class="bar"><div class="brand">Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a class="header-back" id="backToSchoolOs" href="./index.html" aria-label="Back to School OS Login">← Back to School OS Login</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
@@ -117,13 +117,15 @@ tr td select{padding:7px;min-width:115px}
     <div class="card"><b id="countHomework">0</b><small>Homework posts</small></div>
   </div>
   <div class="tabs" role="navigation">
-    <button class="active" data-tab="classes" type="button">Classes</button>
+    <button class="active" data-tab="dashboard" type="button">My Dashboard</button>
+     <button data-tab="classes" type="button">Classes</button>
     <button data-tab="attendance" type="button">Attendance</button>
     <button data-tab="homework" type="button">Homework</button>
     <button id="adminTab" data-tab="admin" class="hidden" type="button">Roles & Permissions</button>
     <button data-tab="account" type="button">🔐 My Account</button>
   </div>
-  <div data-view="classes" class="panel"><div class="row"><h2>My accessible classes</h2><button class="ghost" id="reload" type="button">↻ Refresh</button></div><div id="classesList"></div></div>
+  <div data-view="dashboard" class="panel" id="teacherDashboard"><h2>My Teacher Dashboard</h2><p class="muted">Sign in to view your assigned classes and permissions.</p></div>
+   <div data-view="classes" class="panel hidden"><div class="row"><h2>My accessible classes</h2><button class="ghost" id="reload" type="button">↻ Refresh</button></div><div id="classesList"></div></div>
   <div data-view="attendance" class="panel hidden">
     <h2>Class attendance</h2><div class="formgrid two">
       <div><label for="attendanceClass">Class</label><select id="attendanceClass"></select></div>
@@ -168,7 +170,7 @@ tr td select{padding:7px;min-width:115px}
       </form>
       <p class="muted">Invitation creates a staff identity in your school only. Login works after email activation.</p>
     </div>
-    <div class="panel"><h2>Staff accounts & access</h2><div class="tablewrap"><table><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="staffTable"></tbody></table></div></div>
+    <div class="panel"><h2>Staff accounts & access</h2><p class="muted">Staff directory profiles are not login accounts. Use verified school email invitations below, then assign an active teacher to classes. A teacher without a class assignment cannot mark attendance or publish homework.</p><div class="tablewrap"><table><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="staffTable"></tbody></table></div></div>
     <div class="panel">
       <h2>Create class / section</h2>
       <form id="classForm" class="formgrid">
