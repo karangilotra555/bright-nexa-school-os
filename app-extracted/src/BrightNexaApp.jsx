@@ -19965,6 +19965,67 @@ function Xn(e, t, n, r, i) {
     )
     .sort((e, t) => e.sequence - t.sequence);
 }
+// Read-only recovery report. Reuse the established obligation engine rather
+// than maintaining a second payment/concession/reversal calculation.
+function buildPendingFeeReport(data, students, institution, asOf) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || !Number.isFinite(Date.parse(asOf)) ||
+      new Date(asOf).toISOString().slice(0, 10) !== asOf) {
+    throw Error(`Choose a valid reporting date.`);
+  }
+  const money = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
+  const totals = { overdue: 0, dueToday: 0, upcoming: 0, unscheduled: 0, outstanding: 0 };
+  const rows = [];
+  for (const student of students) {
+    if (student.status !== `Active`) continue;
+    const row = { student, overdue: 0, dueToday: 0, upcoming: 0, unscheduled: 0, outstanding: 0, earliestDue: null, lines: [] };
+    for (const obligation of Xn(data, student, institution)) {
+      if (!Number.isFinite(obligation.amount) || !Number.isFinite(obligation.balance) ||
+          obligation.amount < 0 || obligation.balance < 0) {
+        throw Error(`Invalid fee amount or balance. Review the fee plan before using this report.`);
+      }
+      const balance = money(obligation.balance);
+      if (balance <= 0) continue;
+      const day = Number(obligation.structure.dueDay);
+      let dueOn = null;
+      // Annual, custom and one-time obligations have no explicit billing month
+      // in the existing model. Do not invent an admission or annual due date.
+      if (Number.isInteger(day) && day >= 1 && day <= 31 &&
+          Number.isInteger(obligation.billingMonth) && Number.isInteger(obligation.billingYear)) {
+        const month = obligation.billingMonth;
+        const year = obligation.billingYear;
+        const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        dueOn = `${year}-${String(month).padStart(2, `0`)}-${String(Math.min(day, lastDay)).padStart(2, `0`)}`;
+      }
+      const bucket = !dueOn ? `unscheduled` : dueOn < asOf ? `overdue` : dueOn === asOf ? `dueToday` : `upcoming`;
+      row[bucket] = money(row[bucket] + balance);
+      row.outstanding = money(row.outstanding + balance);
+      if (dueOn && (!row.earliestDue || dueOn < row.earliestDue)) row.earliestDue = dueOn;
+      row.lines.push({ key: obligation.key, category: obligation.structure.category, period: obligation.period,
+        dueOn, bucket, balance });
+    }
+    if (!row.lines.length) continue;
+    for (const key of Object.keys(totals)) totals[key] = money(totals[key] + row[key]);
+    rows.push(row);
+  }
+  rows.sort((a, b) => b.overdue - a.overdue || b.dueToday - a.dueToday ||
+    String(a.student.name).localeCompare(String(b.student.name)) || String(a.student.id).localeCompare(String(b.student.id)));
+  return { asOf, session: institution.session, rows, totals };
+}
+function pendingFeeCsv(report) {
+  const cell = (value) => {
+    let text = String(value ?? ``).replace(/\u0000/g, ``);
+    if (/^[\s\u0000-\u001f]*[=+@-]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, `""`)}"`;
+  };
+  const records = [[`Due-date reference`, `Session`, `Student ID`, `Admission`, `Student`, `Class`, `Section`, `Fee head`, `Period`, `Due date`, `Status`, `Outstanding (INR)`]];
+  const labels = { overdue: `Overdue`, dueToday: `Due today`, upcoming: `Future scheduled`, unscheduled: `No due date` };
+  for (const row of report.rows) for (const line of row.lines) records.push([
+    report.asOf, report.session, row.student.studentUniqueId, row.student.admissionNumber,
+    row.student.name, row.student.className, row.student.section, line.category, line.period,
+    line.dueOn || ``, labels[line.bucket], line.balance,
+  ]);
+  return records.map((row) => row.map(cell).join(`,`)).join(`\r\n`);
+}
 var Zn = `image/png,image/jpeg,image/webp`;
 var Qn = `image/png,image/jpeg,image/webp,application/pdf`;
 function $n(e, t = 2500000) {
@@ -24454,6 +24515,7 @@ var fi = [
   `12`,
 ];
 function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
+  const [pendingReportOpen, setPendingReportOpen] = (0, w.useState)(false);
   let i = n.institutionType === `Coaching Centre`;
   let a = (0, w.useMemo)(
     () =>
@@ -24946,6 +25008,7 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
             icon={<_Component24 size={22} />}
             title={`Open Student Fee Profile`}
             text={`Filter by class and section, select the learner, then use the clear payment button against the required fee head.`}
+            action={<button type="button" className="secondary-button" onClick={() => setPendingReportOpen(true)}>Pending fees report</button>}
           />
           <Component591 className={`student-fee-filters`}>
             <R label={`Class`}>
@@ -25444,6 +25507,12 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
           )}
         </Component666>
       )}
+      {pendingReportOpen && (
+        <PendingFeeReportDialog data={e} students={pe} institution={{ ...n, session: v }}
+          filterLabel={`${g} • ${S === `All` ? `All sections` : S}${b === `All Streams` ? `` : ` • ${b}`}${T ? ` • Search: ${T}` : ``}`}
+          onClose={() => setPendingReportOpen(false)}
+          onOpenStudent={(id) => { D(id); setPendingReportOpen(false); }} />
+      )}
       {te && (
         <_Component25
           initial={re}
@@ -25479,6 +25548,47 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
         />
       )}
     </Component667>
+  );
+}
+function PendingFeeReportDialog({ data, students, institution, filterLabel, onClose, onOpenStudent }) {
+  const [asOf, setAsOf] = (0, w.useState)(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, `0`)}-${String(now.getDate()).padStart(2, `0`)}`;
+  });
+  let report, error;
+  try { report = buildPendingFeeReport(data, students, institution, asOf); }
+  catch (failure) { error = failure.message; }
+  const inr = (value) => `₹${value.toLocaleString(`en-IN`, { maximumFractionDigits: 2 })}`;
+  return (
+    <L title="Pending fees report" subtitle={`${institution.session} • ${filterLabel}`} onClose={onClose}>
+      <p>Read-only report for the current class, section, stream and search filters. Existing receipts and fee plans are unchanged.</p>
+      <R label="Compare due dates to"><input type="date" value={asOf} onChange={(event) => setAsOf(event.target.value)} /></R>
+      {error ? <p role="alert">{error}</p> : <>
+        <div className="student-summary clerk-fee-summary">
+          <I label="Overdue" value={inr(report.totals.overdue)} />
+          <I label="Due today" value={inr(report.totals.dueToday)} />
+          <I label="Future scheduled" value={inr(report.totals.upcoming)} />
+          <I label="No due date" value={inr(report.totals.unscheduled)} />
+        </div>
+        <p>{report.rows.length} active student(s) with pending fees • Session outstanding: {inr(report.totals.outstanding)}.</p>
+        <p>Future charges are not overdue. Fees without an explicit billing date are shown under No due date. Due today is not overdue. This date classifies current balances only; past receipts and fee-plan changes are not reconstructed.</p>
+        <div className="table-scroll"><table className="clerk-receipt-table">
+          <thead><tr><th>Student</th><th>Overdue</th><th>Due today</th><th>Future</th><th>No due date</th><th>Outstanding</th><th>Earliest unpaid due</th><th>Action</th></tr></thead>
+          <tbody>{report.rows.map((row) => <tr key={row.student.id}>
+            <td><strong>{row.student.name}</strong><small>{row.student.studentUniqueId || row.student.admissionNumber} • {row.student.className}-{row.student.section}</small></td>
+            <td>{inr(row.overdue)}</td><td>{inr(row.dueToday)}</td><td>{inr(row.upcoming)}</td><td>{inr(row.unscheduled)}</td><td>{inr(row.outstanding)}</td>
+            <td>{row.earliestDue || `Not scheduled`}</td>
+            <td><button type="button" className="secondary-button" onClick={() => onOpenStudent(row.student.id)}>Open fee profile</button></td>
+          </tr>)}</tbody>
+        </table></div>
+        {!report.rows.length && <p>No pending fees for the active students in these filters.</p>}
+        <div className="modal-actions">
+          <button type="button" className="secondary-button" onClick={onClose}>Close</button>
+          <button type="button" className="primary-button" disabled={!report.rows.length}
+            onClick={() => Ei(new Blob([`\uFEFF`, pendingFeeCsv(report)], { type: `text/csv;charset=utf-8` }), `pending-fees-${asOf}.csv`)}>Export detailed CSV</button>
+        </div>
+      </>}
+    </L>
   );
 }
 function _Component19({
