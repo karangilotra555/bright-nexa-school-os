@@ -90,7 +90,8 @@
            });
            // This table is keyed by student_id, not a separate id.
            filter.delete('id');
-           result=await req('school_student_profiles?'+filter,{method:'PATCH',body:payload});
+           const {student_id:_lockedStudentId,...changes}=payload;
+           result=await req('school_student_profiles?'+filter,{method:'PATCH',body:changes});
          }else{
            result=await req('school_student_profiles',{method:'POST',body:{...payload,institution_id:schoolId}});
          }
@@ -143,7 +144,8 @@
              id:'eq.'+prior.id,institution_id:'eq.'+schoolId,
              student_id:'eq.'+student.id,updated_at:'eq.'+prior.updated_at
            });
-           result=await req('school_student_document_checks?'+q,{method:'PATCH',body:payload});
+           const {student_id:_lockedStudentId,document_type:_lockedDocType,...changes}=payload;
+           result=await req('school_student_document_checks?'+q,{method:'PATCH',body:changes});
          }else{
            result=await req('school_student_document_checks',
              {method:'POST',body:{...payload,institution_id:schoolId}});
