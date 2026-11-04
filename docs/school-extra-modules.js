@@ -48,8 +48,8 @@ async function renderGeneric(opts,config){
  save.disabled=true;
  try{
  const payload={title,details,updated_at:new Date().toISOString()};
- if(editId){await req('school_module_records?id=eq.'+encodeURIComponent(editId)+'&institution_id=eq.'+state.me.institution_id,{method:'PATCH',body:payload})}
- else{await req('school_module_records',{method:'POST',body:{...payload,module:config.key,institution_id:state.me.institution_id,created_by:state.authUserId}})}
+ if(editId){const rows=await req('school_module_records?id=eq.'+encodeURIComponent(editId)+'&institution_id=eq.'+state.me.institution_id,{method:'PATCH',body:payload});window.BrightNexaSchoolAdmin.expectUpdated(rows,editId)}
+ else{const rows=await req('school_module_records',{method:'POST',body:{...payload,module:config.key,institution_id:state.me.institution_id,created_by:state.authUserId}});if(!Array.isArray(rows)||rows.length!==1||!rows[0].id)throw Error('School module save was not confirmed; refresh before retrying.')}
  await reload();open(opts.title);
  }catch(e){error(e)}finally{save.disabled=false}
  });
@@ -65,7 +65,7 @@ async function renderGeneric(opts,config){
  const edit=elt('button','Edit');edit.type='button';
  edit.addEventListener('click',()=>{editId=row.id;for(const f of config.fields)inputs[f[0]].value=String(row.details?.[f[0]]??'');save.textContent='Update '+config.noun;cancel.hidden=false;form.scrollIntoView({behavior:'smooth',block:'start'})});
  const del=elt('button','Delete');del.type='button';
- del.addEventListener('click',async()=>{if(!confirm('Delete this '+config.noun+'?'))return;del.disabled=true;try{await req('school_module_records?id=eq.'+encodeURIComponent(row.id)+'&institution_id=eq.'+state.me.institution_id,{method:'DELETE'});await reload();open(opts.title)}catch(e){error(e);del.disabled=false}});
+ del.addEventListener('click',async()=>{if(!confirm('Delete this '+config.noun+'?'))return;del.disabled=true;try{const removed=await req('school_module_records?id=eq.'+encodeURIComponent(row.id)+'&institution_id=eq.'+state.me.institution_id,{method:'DELETE'});window.BrightNexaSchoolAdmin.expectUpdated(removed,row.id);await reload();open(opts.title)}catch(e){error(e);del.disabled=false}});
  cell.append(edit,elt('span',' '),del);tr.append(cell);tbody.append(tr);
  }
  table.append(tbody);wrap.append(table);body.append(wrap);
