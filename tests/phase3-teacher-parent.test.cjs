@@ -91,3 +91,12 @@ test('Phase 3 parent view revalidates links, prevents stale child render and con
  assert.match(p,/user\?\.id!==actorId/);
  assert.doesNotMatch(p,/localStorage\./);
 });
+
+test('parents awaiting approval can refresh without lingering child selection',()=>{
+ const html=read('parents-cloud.html'),code=read('parents-cloud.js');
+ assert.ok(html.includes('id="refreshAwaitingLink"'));
+ assert.ok(code.includes("$('refreshAwaitingLink').addEventListener('click'"));
+ assert.ok(code.includes("students=[];$('childSelector').replaceChildren()"));
+ assert.equal(html,read('docs/parents-cloud.html'));
+ assert.equal(code,read('docs/parents-cloud.js'));
+});
