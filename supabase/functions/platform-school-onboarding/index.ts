@@ -127,6 +127,12 @@ Deno.serve(async (req:Request)=>{
    if(raw.action==="invite"){
      if(row.status!=="draft"||row.institution_id||row.owner_auth_user_id)
        return send({error:"Invitation already started or requires manual reconciliation. No duplicate email sent."},409);
+     // Fail before sending an Auth invitation when the email is already attached to an existing school.
+     // DB provisioning independently repeats a case-insensitive check inside its transaction.
+     const {data:assigned,error:assignedErr}=await admin.from("school_users")
+       .select("id").eq("email",row.owner_email).limit(1);
+     if(assignedErr)return send({error:"Cannot verify whether the owner already belongs to another school."},500);
+     if(assigned?.length)return send({error:"This owner email already belongs to a school. Use the controlled multi-school access process."},409);
      const {data:claimed,error:claimErr}=await admin.from("bn_school_onboarding_requests")
        .update({status:"inviting",updated_by:actor,updated_at:new Date().toISOString()})
        .eq("id",row.id).eq("status","draft")
