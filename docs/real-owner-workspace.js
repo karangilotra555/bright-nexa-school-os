@@ -25,7 +25,9 @@ async function req(path,options={}){
  if(state.offlineReadOnly)throw Error('Offline copy is read-only. Reconnect and sign in before editing records.');
  const jwt=await token();
  const r=await fetch(BASE+'/rest/v1/'+path,{method:options.method||'GET',headers:{apikey:KEY,Authorization:'Bearer '+jwt,'content-type':'application/json',...(options.method?{'Prefer':'return=representation'}:{})},body:options.body?JSON.stringify(options.body):undefined,cache:'no-store'});
- return parse(r);
+ const result=await parse(r);
+ if(options.method && !['GET','HEAD'].includes(options.method))window.BrightNexaAutoBackup?.queue?.();
+ return result;
 }
 const filt=(tbl,params)=>tbl+'?'+new URLSearchParams(params).toString();
 const inSchool=(table,select='*',more={})=>req(filt(table,{select,institution_id:'eq.'+state.me.institution_id,...more}));
@@ -320,7 +322,7 @@ function bindInterface(){
  $('refresh').addEventListener('click',()=>{if(state.offlineReadOnly){location.assign('./index.html');return;}reload().catch(error)});
  $('logout').addEventListener('click',()=>{sessionStorage.removeItem(TOKEN);location.assign('./index.html')});
  window.BrightNexaOfflineUI?.attach(state);
- window.BrightNexaBackup?.attach({state,allSchool,error});
+ window.BrightNexaAutoBackup?.attach({state,allSchool,error});
 }
 async function restoreOffline(){
  const recovered=await window.BrightNexaOfflineUI.restore();
@@ -349,6 +351,7 @@ async function reload(){
  updateCounts();
  try {await window.BrightNexaOfflineUI?.save(state)}catch(e){const status=$('localStatus');if(status)status.textContent='Offline copy not saved: '+e.message;}
  if(active!=='Dashboard')renderSection(active);
+ window.BrightNexaAutoBackup?.afterReload?.();
 }
 async function start(){
  try{
