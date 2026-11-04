@@ -5,10 +5,11 @@
  else root.BrightNexaBackupCore=api;
 })(typeof globalThis==='object'?globalThis:this,function(){
  'use strict';
- const TABLES=['school_users','school_classes','school_students','school_staff_profiles','school_attendance',
+ const BASE_TABLES=['school_users','school_classes','school_students','school_staff_profiles','school_attendance',
  'school_teacher_assignments','school_homework','school_guardians','school_guardian_students','school_fee_entries',
  'school_notices','school_parent_leaves','school_staff_attendance','school_staff_directory_attendance',
  'school_contact_profiles','school_module_records'];
+ const TABLES=[...BASE_TABLES,'school_student_profiles','school_student_document_checks'];
  const tenc=new TextEncoder(),tdec=new TextDecoder();
  const b64=b=>typeof Buffer!=='undefined'?Buffer.from(b).toString('base64'):btoa(String.fromCharCode(...b));
  const un64=b=>typeof Buffer!=='undefined'?new Uint8Array(Buffer.from(b,'base64')):Uint8Array.from(atob(b),c=>c.charCodeAt(0));
@@ -40,7 +41,7 @@
     const data=await provider().subtle.decrypt({name:'AES-GCM',iv:un64(file.iv),additionalData:tenc.encode('bright-nexa-backup-v1')},k,un64(file.ciphertext));
     parsed=JSON.parse(tdec.decode(data));
   }catch{throw Error('Incorrect backup passphrase or corrupted file.')}
-  if(!parsed?.school_id||!parsed?.tables||!Array.isArray(parsed.table_names)||!TABLES.every(t=>parsed.table_names.includes(t)||parsed.omitted?.includes(t)))
+  if(!parsed?.school_id||!parsed?.tables||!Array.isArray(parsed.table_names)||!BASE_TABLES.every(t=>parsed.table_names.includes(t)||parsed.omitted?.includes(t)))
     throw Error('Decrypted backup has an invalid school manifest.');
   for(const table of parsed.table_names){
     if(!Array.isArray(parsed.tables[table])||parsed.tables[table].some(row=>row.institution_id!==parsed.school_id))
