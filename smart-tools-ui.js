@@ -429,7 +429,7 @@ $('loadCloudRoster').addEventListener('click',()=>task(async()=>{
       (flagged?' '+flagged+' staff profile(s) are flagged for verification.':'')+' No cloud records were changed.');
  }finally{button.disabled=false}
 }));
-$('sampleTimetable').addEventListener('click',()=>task(()=>{
+$('sampleTimetable')?.addEventListener('click',()=>task(()=>{
  loadEditorCsv(DEMO.teachers,DEMO.demands);
  $('advancedTimetable').open=false;
  msg('Sample school loaded. You can now edit teachers and subjects, then Generate Timetable.');
@@ -454,11 +454,11 @@ $('exportTimetable').addEventListener('click',()=>task(()=>download('bright-nexa
 $('printTimetable').addEventListener('click',()=>window.print());
 $('findSubstitutes').addEventListener('click',()=>task(renderSubstitutes));
 $('exportSubstitute').addEventListener('click',()=>task(()=>download('bright-nexa-substitutes.csv',E.toCsv(state.substitutes.map(r=>({day:r.day,period:r.period,class:r.class,subject:r.subject,absent:r.teacher,suggested:r.suggestions.map(x=>x.teacher).join('; ')})),['day','period','class','subject','absent','suggested']))));
-$('sampleMarks').addEventListener('click',()=>task(()=>{useSample('marks');analyze()}));
+$('sampleMarks')?.addEventListener('click',()=>task(()=>{useSample('marks');analyze()}));
 $('analyzeMarks').addEventListener('click',()=>task(analyze));
 $('exportAnalysis').addEventListener('click',()=>task(()=>download('bright-nexa-performance.csv',E.toCsv(state.analysis.students.map(s=>({id:s.id,name:s.name,average:s.average,attendance:s.attendance??'',weak:s.weak.join('; ')})),['id','name','average','attendance','weak']))));
 $('datasetType').addEventListener('change',()=>showImport($('datasetType').value));
-$('importSample').addEventListener('click',()=>task(()=>useSample($('datasetType').value)));
+$('importSample')?.addEventListener('click',()=>task(()=>useSample($('datasetType').value)));
 $('downloadTemplate').addEventListener('click',()=>task(()=>download('bright-nexa-'+$('datasetType').value+'-template.csv',guessTemplates($('datasetType').value))));
 $('importFile').addEventListener('change',()=>task(handleFile));
 $('exportClean').addEventListener('click',()=>task(()=>{
@@ -486,7 +486,7 @@ $('excludeInvalid').addEventListener('click',()=>task(()=>{
  msg('All imported browser data cleared from this page.');
 });
 $('runAudit').addEventListener('click',()=>task(audit));
-$('sampleErrors').addEventListener('click',()=>task(()=>{for(const kind of ['students','fees','attendance','marks'])loadDataset(kind,DEMO[kind]);audit()}));
+$('sampleErrors')?.addEventListener('click',()=>task(()=>{for(const kind of ['students','fees','attendance','marks'])loadDataset(kind,DEMO[kind]);audit()}));
 $('exportFindings').addEventListener('click',()=>task(()=>download('bright-nexa-data-audit.csv',E.toCsv(state.findings,['kind','severity','row','message']))));
 renderEditor();
 msg('Timetable starts empty. Load your verified school roster or add teachers and weekly subjects manually. Example data is not loaded into real school planning automatically.');
