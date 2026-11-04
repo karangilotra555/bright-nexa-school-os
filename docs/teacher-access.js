@@ -9,6 +9,8 @@
   const PENDING_SCHOOL='bn_pending_school_name_v1';
   const LOCAL_DEMO_KEY='bn_school_local_demo_access_v1'; // demo only, NOT a Supabase session
   const ROLES=['school_admin','principal','teacher','accountant','receptionist','transport_staff'];
+  const guard=window.BrightNexaAccessGuard;
+  if(!guard)throw Error('School access checks could not load. Please refresh.');
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[];
   const values=v=>v==null?'':String(v);
@@ -126,7 +128,7 @@
     display('smartToolsCard',canAcademic());
     document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
     document.querySelector('[data-tab="homework"]').classList.toggle('hidden',!canAcademic());
-    await reload();tab('classes');
+    await reload();tab(me.role==='teacher'?'dashboard':'classes');
     clearNotice();
   }
   async function reload(){
@@ -144,7 +146,35 @@
     if(isAdmin())allStaff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
     else allStaff=[];
     put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
-    renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();
+    renderClasses();renderSelects();renderHomework();renderDashboard();if(isAdmin())renderAdmin();
+  }
+  function renderDashboard(){
+    const root=$('teacherDashboard');
+    if(!root)return;
+    root.replaceChildren();
+    const title=dom('h2',me.role==='teacher'?'My Teacher Dashboard':'My School Access');
+    const description=dom('p','This view shows only cloud-verified school records and your assigned permissions.','sub');
+    root.append(title,description);
+    const assigned=me.role==='teacher'
+      ?allClasses.filter(c=>allAssignments.some(a=>a.active===true&&a.school_user_id===me.id&&a.class_id===c.id))
+      :allClasses;
+    if(me.role==='teacher'&&!assigned.length){
+      root.append(dom('p','No active class assignment yet. Your school administrator must invite/activate your account and assign classes before attendance or homework can be recorded.','muted'));
+      return;
+    }
+    for(const c of assigned){
+      const card=dom('div',undefined,'rowlist');
+      const left=dom('div');left.append(dom('strong',className(c)));
+      left.append(dom('div',allStudents.filter(s=>s.class_id===c.id).length+' accessible active students','muted'));
+      const abilities=[];
+      if(guard.writableClasses(me.role,allClasses,allAssignments,me.id,'can_view_roster').some(x=>x.id===c.id))abilities.push('Roster');
+      if(guard.writableClasses(me.role,allClasses,allAssignments,me.id,'can_take_attendance').some(x=>x.id===c.id))abilities.push('Attendance');
+      if(guard.writableClasses(me.role,allClasses,allAssignments,me.id,'can_assign_homework').some(x=>x.id===c.id)){
+        const rights=guard.homeworkSubjects(me.role,allAssignments,me.id,c.id);
+        abilities.push(rights.all?'Homework':('Homework: '+rights.subjects.join(', ')));
+      }
+      card.append(left,dom('span',abilities.join(' · ')||'View only','pill'));root.append(card);
+    }
   }
   function renderClasses(){
     const root=$('classesList');clearChildren(root);
@@ -160,9 +190,7 @@
     }
   }
   function writableClasses(action){
-    if(me.role==='school_admin'||me.role==='principal')return allClasses;
-    if(me.role!=='teacher')return [];
-    return allClasses.filter(c=>allAssignments.some(a=>a.school_user_id===me.id&&a.class_id===c.id&&a.active&&a[action]));
+    return guard.writableClasses(me.role,allClasses,allAssignments,me.id,action);
   }
   function renderSelects(){
     options('attendanceClass',writableClasses('can_take_attendance'),className);
@@ -176,11 +204,15 @@
     }
   }
   function fillSubject(classId){
-    if(me.role!=='teacher')return;
-    const a=allAssignments.filter(a=>a.school_user_id===me.id&&a.class_id===classId&&a.active&&a.can_assign_homework&&a.assignment_type==='subject_teacher');
-    const classT=allAssignments.some(a=>a.school_user_id===me.id&&a.class_id===classId&&a.active&&a.can_assign_homework&&a.assignment_type==='class_teacher');
-    if(a.length===1&&!classT){$('homeworkSubject').value=a[0].subject;$('homeworkSubject').readOnly=true}
-    else{$('homeworkSubject').readOnly=false;$('homeworkSubject').value=''}
+    const input=$('homeworkSubject');
+    if(me.role!=='teacher'){input.readOnly=false;input.placeholder='e.g. Mathematics';return;}
+    const rights=guard.homeworkSubjects(me.role,allAssignments,me.id,classId);
+    if(!rights.all&&rights.subjects.length===1){input.value=rights.subjects[0];input.readOnly=true;}
+    else{
+      input.readOnly=false;
+      if(!rights.all&&input.value&&!rights.subjects.some(s=>s.toLowerCase()===input.value.trim().toLowerCase()))input.value='';
+      input.placeholder=rights.all?'e.g. Mathematics':('Allowed: '+(rights.subjects.join(', ')||'None'));
+    }
   }
   function renderHomework(){
     const root=$('homeworkList');root.replaceChildren();
@@ -209,8 +241,10 @@
       const action=dom('td');const save=dom('button','Save','ghost');
       if(staff.id===me.id)save.disabled=true;
       save.addEventListener('click',()=>run(async()=>{
-        await api('school_users',query({id:eq(staff.id),institution_id:eq(me.institution_id)}),'PATCH',{role:roleSelect.value,status:statusSelect.value});
-        await reload();notify('Staff permissions updated.');
+        if(staff.id===me.id)throw Error('You cannot change your own school owner role.');
+        const rows=await api('school_users',query({id:eq(staff.id),institution_id:eq(me.institution_id)}),'PATCH',{role:roleSelect.value,status:statusSelect.value});
+        guard.confirmRow(rows,staff.id);
+        await reload();notify('Staff permissions updated and confirmed by school database.');
       }));
       action.append(save);tr.append(email,role,status,action);root.append(tr);
     }
@@ -220,13 +254,18 @@
       const staff=allStaff.find(x=>x.id===a.school_user_id);
       const line=dom('div',undefined,'rowlist');const left=dom('div');
       left.append(dom('strong',(staff?.email||'Teacher')+' · '+(c?className(c):'Class')));
-      const detail=(a.assignment_type==='subject_teacher'?a.subject+' · ':'Class teacher · ')+
+      const detail=(a.active?'Active · ':'Revoked · ')+(a.assignment_type==='subject_teacher'?a.subject+' · ':'Class teacher · ')+
         [a.can_view_roster?'Roster':'',a.can_take_attendance?'Attendance':'',a.can_assign_homework?'Homework':'',a.can_enter_marks?'Marks':''].filter(Boolean).join(', ');
       left.append(dom('div',detail,'muted'));line.append(left);
-      const revoke=dom('button','Revoke','danger');
+      const revoke=dom('button',a.active?'Revoke':'Restore',a.active?'danger':'ghost');
       revoke.addEventListener('click',()=>run(async()=>{
-        await api('school_teacher_assignments',query({id:eq(a.id),institution_id:eq(me.institution_id)}),'DELETE',null,'return=minimal');
-        await reload();notify('Assignment revoked.');
+        if(!confirm((a.active?'Revoke':'Restore')+' this class assignment?'))return;
+        revoke.disabled=true;
+        try{
+          const rows=await api('school_teacher_assignments',query({id:eq(a.id),institution_id:eq(me.institution_id)}),'PATCH',{active:!a.active});
+          guard.confirmRow(rows,a.id);
+          await reload();notify('Assignment '+(a.active?'revoked':'restored')+' and confirmed.');
+        }finally{revoke.disabled=false}
       }));
       line.append(revoke);listing.append(line);
     }
@@ -386,20 +425,23 @@
     const marked=selects.filter(s=>['present','absent','late','excused'].includes(s.value));
     if(!marked.length)throw Error('No attendance marked. Select Present, Absent, Late or Excused for at least one student.');
     const records=marked.map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:me.institution_id,day,status:s.value,recorded_by:me.id}));
-    await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=minimal');
+    const written=await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=representation');
+    guard.confirmAttendance(written,records);
     marked.forEach(s=>{s.dataset.originalStatus=s.value});
-    notify('Attendance saved for '+records.length+' explicitly marked student(s). '+(selects.length-marked.length)+' remain unmarked.');
+    notify('Attendance confirmed for '+records.length+' explicitly marked student(s). '+(selects.length-marked.length)+' remain unmarked.');
   }));
   $('homeworkForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const class_id=$('homeworkClass').value;
     if(!writableClasses('can_assign_homework').some(c=>c.id===class_id))throw Error('You are not assigned to this class.');
     const subject=$('homeworkSubject').value.trim(),title=$('homeworkTitle').value.trim();
     if(!subject||!title)throw Error('Subject and task are required.');
-    await api('school_homework','','POST',{
+    if(!guard.canPublishHomework(me.role,allAssignments,me.id,class_id,subject))throw Error('This subject is not assigned to your account for this class.');
+    const rows=await api('school_homework','','POST',{
       institution_id:me.institution_id,class_id,subject,title,
       instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null,created_by:me.id
     });
-    e.target.reset();await reload();notify('Homework published.');
+    guard.confirmRow(rows);
+    e.target.reset();await reload();notify('Homework published and confirmed.');
   })});
   $('inviteForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
@@ -431,8 +473,12 @@
     };
     if(!allStaff.some(s=>s.id===rec.school_user_id&&s.role==='teacher'))throw Error('Select an active teacher.');
     if(!allClasses.some(c=>c.id===rec.class_id))throw Error('Select an existing class.');
-    await api('school_teacher_assignments','','POST',rec);
-    await reload();notify('Teacher assignment saved.');
+    const prior=allAssignments.find(a=>a.school_user_id===rec.school_user_id&&a.class_id===rec.class_id&&a.assignment_type===type&&String(a.subject||'').trim().toLowerCase()===subject.toLowerCase());
+    const rows=prior
+      ?await api('school_teacher_assignments',query({id:eq(prior.id),institution_id:eq(me.institution_id)}),'PATCH',{...rec})
+      :await api('school_teacher_assignments','','POST',rec);
+    guard.confirmRow(rows,prior?.id);
+    await reload();notify('Teacher assignment saved and confirmed.');
   })});
   $('studentForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
