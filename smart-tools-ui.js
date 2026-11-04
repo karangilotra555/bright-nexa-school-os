@@ -1,6 +1,7 @@
 /* Bright Nexa Smart Tools UI — no external service calls; file inputs remain in memory. */
 (() => {
 'use strict';
+if(new URLSearchParams(window.location.search).get('embedded')==='1')document.documentElement.classList.add('school-os-embedded');
 const E=window.BrightNexaSmart;
 if(!E)throw Error('Smart Tools engine missing.');
 const $=id=>document.getElementById(id);

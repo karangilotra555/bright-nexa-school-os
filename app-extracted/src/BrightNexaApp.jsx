@@ -41347,6 +41347,11 @@ var Ts = [
     roles: Cs,
   },
   {
+    label: `Smart Tools`,
+    icon: _Component27,
+    roles: Cs,
+  },
+  {
     label: `Opportunity Desk`,
     icon: _Component37,
     roles: ws,
@@ -42158,6 +42163,21 @@ function Ds() {
             <Ri students={y} />
           ) : c === `AI Teacher Tools` ? (
             <Ea />
+          ) : c === `Smart Tools` ? (
+            <iframe
+              title={`Smart School Tools`}
+              src={`./smart-tools.html?embedded=1`}
+              loading={`lazy`}
+              style={{
+                display: `block`,
+                width: `100%`,
+                height: `calc(100vh - 160px)`,
+                minHeight: 580,
+                border: `none`,
+                borderRadius: 12,
+                background: `transparent`,
+              }}
+            />
           ) : c === `Opportunity Desk` ? (
             <_Component95
               data={i}
