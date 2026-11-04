@@ -49,7 +49,7 @@ footer{text-align:center;color:#768ba2;font-size:12px;padding:12px}
 </section>
 <section id="parentPanel" class="hidden">
  <div class="card row"><div><h2 id="schoolTitle">Your school</h2><p id="guardianStatus" class="muted"></p></div><button class="ghost" id="parentLogout" type="button">Sign out</button></div>
- <div id="noGuardianLink" class="card hidden"><h2>Awaiting school approval</h2><p>Your email is verified, but no school has linked it to a student yet. Contact the school administrator and provide the exact email you used to sign in. No student data is available until approval.</p></div>
+ <div id="noGuardianLink" class="card hidden"><h2>Awaiting school approval</h2><p>Your email is verified, but no school has linked it to a student yet. Contact the school administrator and provide the exact email you used to sign in. No student data is available until approval.</p><button id="refreshAwaitingLink" class="ghost" type="button">Check school approval again</button></div>
  <div id="parentData" class="hidden">
   <div class="card row"><div><label for="childSelector" style="margin-top:0">Select linked child</label><select id="childSelector" aria-label="Select child"></select></div><button class="ghost" type="button" id="refreshParent">↻ Refresh</button></div>
   <section class="grid">
