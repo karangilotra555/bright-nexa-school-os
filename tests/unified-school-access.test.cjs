@@ -30,7 +30,7 @@ test('teacher login does not expose fictional sample or owner preview route',()=
  assert.ok(!access.includes('DEMO_KEY'));
  assert.ok(!access.includes('SAMPLE MODE'));
  for(const s of ['sampleTimetable','sampleMarks','importSample','sampleErrors'])assert.ok(!smart.includes('id="'+s+'"'));
- assert.match(code,/token\\?grant_type=password/);
+ assert.ok(code.includes('token?grant_type=password'));
  assert.ok(!/SUPABASE_SERVICE_ROLE_KEY|sb_secret_/.test(code));
  assert.doesNotThrow(()=>new Function(code));
 });
