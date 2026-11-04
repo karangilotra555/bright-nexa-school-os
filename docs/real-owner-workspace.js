@@ -259,6 +259,7 @@ function renderSection(title){
    });body.append(form);
    body.append(table(['Date','Student','Status'],state.attendance.map(a=>[a.day,state.students.find(s=>s.id===a.student_id)?.name||'Student',a.status])));
    body.append(link('Mark full class attendance','./index.html?view=attendance'));
+   window.BrightNexaPhaseAReports?.showAttendance({body,state,allSchool,error});
  }else if(title==='Fees'){
     const total=state.fees.reduce((sum,x)=>sum+(x.kind==='payment'?Number(x.amount_rupees):0),0);
     desc.textContent='Recorded payments total: ₹'+total.toLocaleString('en-IN')+'. Append-only fee entries from cloud records; every entry has a unique reference.';body.append(desc);
