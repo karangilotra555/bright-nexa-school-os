@@ -70,9 +70,13 @@
  async function loadChildren(){
    const requested=++selectionEpoch;
    await ensureToken();
-   user=await readResponse(await fetch(BASE+'/auth/v1/user',{
-      headers:{apikey:KEY,Authorization:'Bearer '+session.access_token},cache:'no-store'}));
-   if(!user?.id)throw Error('Your verified account could not be identified.');
+   const tokenAtStart=session.access_token;
+   const verifiedUser=await readResponse(await fetch(BASE+'/auth/v1/user',{
+      headers:{apikey:KEY,Authorization:'Bearer '+tokenAtStart},cache:'no-store'}));
+   // Logout or a newer sign-in invalidates this in-flight request.
+   if(requested!==selectionEpoch||session?.access_token!==tokenAtStart)return;
+   if(!verifiedUser?.id)throw Error('Your verified account could not be identified.');
+   user=verifiedUser;
    show('authPanel',false);show('parentPanel',true);
    const guardians=await data('school_guardians',{select:'id,institution_id,email,status',auth_user_id:eq(user.id),status:'eq.active'});
    text('guardianStatus',user.email||'Verified parent account');
