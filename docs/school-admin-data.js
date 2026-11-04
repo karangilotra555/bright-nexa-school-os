@@ -14,11 +14,11 @@
     if(v.length<min||v.length>max)throw Error(field+' must have '+min+'–'+max+' characters.');
     return v;
   }
-  function exactDate(value){
+  function exactDate(value,allowFuture=false){
     if(!value)return null;
     const s=String(value);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(s)||!Number.isFinite(Date.parse(s))||new Date(s).toISOString().slice(0,10)!==s)throw Error('Enter a valid date of birth.');
-    if(s>new Date().toISOString().slice(0,10))throw Error('Date of birth cannot be in the future.');
+    if(!allowFuture && s>new Date().toISOString().slice(0,10))throw Error('Date of birth cannot be in the future.');
     return s;
   }
   function studentInput(values,classes,students,editingId){
@@ -39,7 +39,7 @@
     if(!['permanent','contract','part_time','visiting'].includes(employment_type))throw Error('Invalid employment type.');
     const row={display_name,designation,employment_type,contract_end_on:null,days_per_week:null,hours_per_day:null,visits_per_month:null};
     if(employment_type==='contract'){
-      row.contract_end_on=exactDate(values.contract_end_on);
+      row.contract_end_on=exactDate(values.contract_end_on,true);
       if(!row.contract_end_on)throw Error('Contract end date required.');
     }
     if(employment_type==='part_time'){
