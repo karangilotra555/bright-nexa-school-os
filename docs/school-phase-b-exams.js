@@ -22,7 +22,7 @@
  }
  function score(value,label,min,max){
   const s=String(value??'').trim();
-  if(!/^\d{1,3}(?:\.\d{1,2})?$/.test(s))throw Error('Enter '+label+' with at most two decimal places.');
+  if(!/^\d{1,4}(?:\.\d{1,2})?$/.test(s))throw Error('Enter '+label+' with at most two decimal places.');
   const n=Number(s);if(n<min||n>max)throw Error(label+' must be '+min+'–'+max+'.');return n;
  }
  const rows=(records,module)=>Array.isArray(records)?records.filter(r=>r?.module===module):[];
