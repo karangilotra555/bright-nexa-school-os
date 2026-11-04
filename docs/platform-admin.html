@@ -61,7 +61,38 @@ td button{padding:7px 10px;border:1px solid #bad4e4;background:#fff;color:#0d577
 footer{padding:18px;text-align:center;color:#8493a4;font-size:11px}
 @media(max-width:1000px){.layout{grid-template-columns:1fr}.totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){main{padding:17px 12px 40px}.panel{padding:16px}.totals{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}header{padding:13px}.form{grid-template-columns:1fr}.login{margin:20px auto}h1{font-size:24px}}
+
+/* D2 school onboarding */
+.onboarding-layout{display:grid;grid-template-columns:minmax(300px,1fr) minmax(330px,1.25fr);gap:16px}
+.onboarding-layout h3{margin-top:0}
+.onboarding-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.onboarding-form label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#34516d}
+.onboarding-form label:first-child,.onboarding-form label:last-of-type{grid-column:1/-1}
+.onboarding-form button{grid-column:1/-1}
+.onboarding-list{max-height:340px;overflow:auto;border:1px solid #dfeaf1;border-radius:9px}
+.onboarding-row{padding:12px 14px;border-bottom:1px solid #e4edf4;display:flex;justify-content:space-between;align-items:start;gap:10px}
+.onboarding-row:nth-child(even){background:#f8fbfe}
+.onboarding-row strong{display:block;font-size:12px;color:#164162}
+.onboarding-row small{display:block;font-size:11px;color:#688096;overflow-wrap:anywhere}
+.onboarding-row button{border:1px solid #b8d2e2;background:#fff;border-radius:7px;padding:7px 12px;font-size:11px;color:#125e88}
+.onboarding-step{display:flex;align-items:center;gap:9px;padding:10px 0;border-bottom:1px solid #e8eef4;font-size:12px}
+.onboarding-step strong{font-weight:700;color:#284d6b}
+.onboarding-step small{margin-left:auto;color:#6a839b}
+.onboarding-step .done{color:#137b54}
+.onboarding-step .pending{color:#956b28}
+.onboarding-link{font-size:12px;color:#17628b}
+#onboardingCurrent{margin:10px 0;padding:12px 15px;border-radius:9px;background:#f3f9fc}
+#onboardingCurrent strong{display:block}
+#onboardingCurrent small{display:block;color:#59758b;overflow-wrap:anywhere}
+#onboardingActions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
+#onboardingActions button{border-radius:8px;padding:10px 13px;font-size:12px;font-weight:700;border:1px solid #b8d3e3;background:#eff8fc;color:#0c5178}
+#onboardingActions button.primary{background:#0b6fa8;color:#fff;border-color:#0b6fa8}
+#onboardingActions button:disabled{opacity:.48}
+#onboardingReadiness{margin-top:14px}
+@media(max-width:900px){.onboarding-layout{grid-template-columns:1fr}}
+@media(max-width:540px){.onboarding-form{grid-template-columns:1fr}.onboarding-form label:first-child,.onboarding-form label:last-of-type{grid-column:auto}}
 </style>
+<script src="./platform-onboarding-core.js?v=20261104-d2" defer></script><script src="./platform-onboarding.js?v=20261104-d2" defer></script>
 <script src="./platform-admin-core.js?v=20261104-d1" defer></script>
 <script src="./platform-admin.js?v=20261104-d1" defer></script>
 </head>
@@ -92,6 +123,34 @@ footer{padding:18px;text-align:center;color:#8493a4;font-size:11px}
    <div class="metric"><span>Not enrolled in plan catalogue</span><strong id="unassignedSchools">—</strong></div>
    <div class="metric"><span>Marked active administratively</span><strong id="activeSchools">—</strong></div>
   </div>
+  <section id="onboardingPanel" class="panel" aria-label="New school onboarding">
+   <h2>Create School — verified onboarding</h2>
+   <p class="muted">Start a real school request. Owner invitation is a separate confirmed step; the owner creates actual class sections, invites a teacher and assigns the class before activation. No demo students, staff or passwords are generated.</p>
+   <div class="onboarding-layout">
+    <div>
+     <h3>1. Register school request</h3>
+     <form id="onboardingForm" class="onboarding-form">
+      <label>Official school name <input id="newSchoolName" type="text" minlength="3" maxlength="120" autocomplete="organization" placeholder="e.g. Green Valley Public School" required></label>
+      <label>Owner email <input id="newOwnerEmail" type="email" maxlength="254" autocomplete="off" placeholder="principal@school.in" required></label>
+      <label>School contact (optional) <input id="newSchoolPhone" type="tel" maxlength="20" placeholder="+91..."></label>
+      <label>Internal onboarding note <textarea id="newSchoolNotes" maxlength="300" placeholder="Authorised school representative and scope"></textarea></label>
+      <button id="createSchoolRequest" class="primary" type="submit">Save school request (no invitation yet)</button>
+     </form>
+     <p id="onboardingCreateStatus" class="status" role="status" aria-live="polite">No school creation request submitted.</p>
+     <h3>Registered onboarding requests</h3>
+     <div id="onboardingList" class="onboarding-list"><p class="muted">Loading approved requests…</p></div>
+    </div>
+    <div>
+     <h3>2–5. Verify owner, school setup and activation</h3>
+     <div id="onboardingCurrent"><strong>Choose a request</strong><small>Review owner email and stage before inviting.</small></div>
+     <div id="onboardingActions"></div>
+     <div id="onboardingReadiness"><p class="muted">No readiness check selected.</p></div>
+     <p id="onboardingActionStatus" class="status" role="status" aria-live="polite">An owner is invited only after an explicit administrator confirmation.</p>
+     <p class="muted">After accepting their invitation, the owner can use <a class="onboarding-link" href="./index.html" target="_blank" rel="noopener">School login</a>, then <a class="onboarding-link" href="./real-owner-workspace.html" target="_blank" rel="noopener">Classes & sections</a> and <a class="onboarding-link" href="./index.html?view=roles" target="_blank" rel="noopener">Teacher invitations and rights</a>.</p>
+     <div class="warning">Activation uses server-side checks: verified owner, at least one saved class, one active teacher account and an actual active teacher/class assignment. Stage changes are audited. If an invitation was sent but provisioning fails, manual reconciliation is required; sending it again automatically is blocked.</div>
+    </div>
+   </div>
+  </section>
   <div class="layout">
    <section class="panel">
     <div class="actions"><h2 style="margin-right:auto">School tenants</h2><button class="secondary" type="button" id="refresh">Refresh</button></div>
