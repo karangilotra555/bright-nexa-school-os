@@ -304,7 +304,7 @@ function renderSection(title){
 function open(name){
  active=name;view('dash',name==='Dashboard');view('section',name!=='Dashboard');
  $('heading').textContent=name==='Dashboard'?state.school.name:name;
- $('subtitle').textContent=name==='Dashboard'?'School operations from verified cloud records':'Haridwar Public School · '+name;
+ $('subtitle').textContent=name==='Dashboard'?'School operations from verified cloud records':state.school.name+' · '+name;
  document.querySelectorAll('#menu button').forEach(b=>b.setAttribute('aria-current',b.dataset.section===name?'page':'false'));
  if(name!=='Dashboard'){view('section',true);$('sectionTitle').textContent=name;renderSection(name)}
 }
