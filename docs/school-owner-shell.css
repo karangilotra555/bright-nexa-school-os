@@ -160,3 +160,33 @@ main{margin-left:250px}
 .phase-a-attention{margin-top:16px;padding:16px;border-radius:9px;background:#fffaf0;border:1px solid #f1e5c5}
 .phase-a-attention ul{padding-left:18px;margin:8px 0}
 .phase-a-attention li{margin:6px 0;color:#6d542b;font-size:12px;line-height:1.6}
+
+/* Phase B1 — owner exam planner, grade-band policy & safe provisional result review */
+.phase-b-planner{margin:28px 0 18px;padding:23px 0;border-top:1px solid #dbe6ef}
+.phase-b-planner>h2{font-size:21px;color:#0b3658;margin:0 0 7px}
+.phase-b-planner>p{color:#647b91;font-size:12.5px;line-height:1.65}
+.phase-b-columns{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:start;gap:16px;margin:16px 0}
+.phase-b-card{background:#fcfdff;border:1px solid #dce8f0;border-radius:13px;padding:20px;min-width:0}
+.phase-b-card h3{font-size:16px;color:#123b5f;margin:0 0 7px}
+.phase-b-card h4{font-size:13px;margin:17px 0 9px;color:#345570}
+.phase-b-card>p{font-size:12px;line-height:1.65;color:#5f7890}
+.phase-b-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:15px 0}
+.phase-b-form label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#2f4d69;min-width:0}
+.phase-b-form label:has(textarea){grid-column:1/-1}
+.phase-b-form input,.phase-b-form select,.phase-b-form textarea{padding:10px 11px;background:#fff;color:#143a5a;border:1px solid #cbdde9;border-radius:8px;font-size:13px;width:100%;min-width:0}
+.phase-b-form button,.phase-b-table button{padding:9px 12px;border-radius:8px;border:1px solid #0f679a;background:#0f679a;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+.phase-b-form button:disabled{opacity:.45;cursor:not-allowed}
+.phase-b-message{font-size:12px!important;border-left:3px solid #4b9c7d;background:#edf9f3;padding:10px 12px;line-height:1.55;color:#215a41}
+.phase-b-message:empty{display:none}
+.phase-b-error{border-left-color:#c74d42;color:#8f2923;background:#fff2f1}
+.phase-b-table{max-width:100%;overflow-x:auto;border-radius:9px;border:1px solid #e0eaf1}
+.phase-b-table table{width:100%;border-collapse:collapse;font-size:11.5px;min-width:510px}
+.phase-b-table th,.phase-b-table td{padding:10px;border-bottom:1px solid #e5edf3;text-align:left}
+.phase-b-table th{background:#eff5fa;font-size:11px;color:#234b69}
+.phase-b-disclaimer{padding:12px 15px;background:#fff9eb;border-left:3px solid #c9a44d;color:#785c2e!important;border-radius:7px}
+.phase-b-audit{padding:16px 19px;margin:16px 0;background:#f4f9fc;border:1px solid #d7e7f1;border-radius:10px}
+.phase-b-audit h3{font-size:16px;margin:0 0 8px;color:#164564}
+.phase-b-audit p,.phase-b-audit li{font-size:12px;line-height:1.65;color:#4e6981}
+.phase-b-audit ul{padding-left:22px;margin:8px 0}
+@media(max-width:1100px){.phase-b-columns{grid-template-columns:1fr}}
+@media(max-width:600px){.phase-b-card{padding:15px}.phase-b-form{grid-template-columns:1fr}.phase-b-table table{min-width:440px}}
