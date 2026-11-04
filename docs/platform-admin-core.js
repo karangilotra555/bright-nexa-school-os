@@ -9,7 +9,7 @@
 })(typeof globalThis==='object'?globalThis:this,function(){
  'use strict';
  const STATUS=['trial','active','paused','ended'];
- const validId=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||''));
+ const validId=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||''));
  const trimmed=v=>String(v??'').trim();
  function validDate(value,name){
    const s=trimmed(value);
