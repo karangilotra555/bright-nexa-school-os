@@ -2,7 +2,7 @@
    No student records in CacheStorage: sensitive records live encrypted in IndexedDB. */
 'use strict';
 const CACHE='bright-nexa-owner-shell-v7';
-const FILES=['real-owner-workspace.html','real-owner-workspace.js','school-owner-shell.css','school-owner-navigation.js','school-owner-settings.js','school-phase-a-reports.js','school-phase-a-reports-ui.js','school-extra-modules.js','school-fee-ledger.js','school-backup-core.js','school-auto-backup.js','school-auto-backup-ui.js','school-admin-data.js','smart-tools-engine.js','school-xlsx-reader.js','school-phase4-academics.js','school-phase4-import-ui.js','offline-vault.js','owner-offline-ui.js'];
+const FILES=['real-owner-workspace.html','real-owner-workspace.js','school-owner-shell.css','school-owner-navigation.js','school-owner-settings.js','school-phase-a-reports.js','school-phase-a-reports-ui.js','school-phase-a-daily.js','school-phase-a-daily-ui.js','school-extra-modules.js','school-fee-ledger.js','school-backup-core.js','school-auto-backup.js','school-auto-backup-ui.js','school-admin-data.js','smart-tools-engine.js','school-xlsx-reader.js','school-phase4-academics.js','school-phase4-import-ui.js','offline-vault.js','owner-offline-ui.js'];
 const allowed=new Set(FILES);
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
