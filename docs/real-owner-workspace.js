@@ -247,20 +247,44 @@ function renderSection(title){
    body.append(table(['Date','Student','Status'],state.attendance.map(a=>[a.day,state.students.find(s=>s.id===a.student_id)?.name||'Student',a.status])));
    body.append(link('Mark full class attendance','./index.html?view=attendance'));
  }else if(title==='Fees'){
-   const total=state.fees.reduce((sum,x)=>sum+(x.kind==='payment'?Number(x.amount_rupees):0),0);
-   desc.textContent='Recorded payments total: ₹'+total.toLocaleString('en-IN')+'. Only saved fee entries are included.';body.append(desc);
-   const form=node('form');form.className='form';
-   form.innerHTML='<label>Student<select name="student_id" required></select></label><label>Type<select name="kind"><option value="payment">Payment received</option><option value="charge">Fee charged</option></select></label><label>Amount (₹)<input type="number" name="amount" min="1" max="100000000" required></label><label>Description<input name="description" maxlength="250" placeholder="e.g. Tuition fee"></label><button class="primary" type="submit">Save fee entry</button>';
-   const sel=form.elements.student_id;sel.append(new Option('Choose student',''));state.students.forEach(s=>sel.append(new Option(s.name+' · '+s.admission_number,s.id)));
-   form.addEventListener('submit',async ev=>{ev.preventDefault();const amount=Number(form.elements.amount.value);if(!sel.value||!Number.isSafeInteger(amount)||amount<1||amount>100000000)return error(Error('Choose a student and valid amount.'));
-    const b=form.querySelector('button');b.disabled=true;try{
-     await req('school_fee_entries',{method:'POST',body:{institution_id:state.me.institution_id,student_id:sel.value,kind:form.elements.kind.value,amount_rupees:amount,description:form.elements.description.value.trim(),created_by:state.me.id,occurred_on:new Date().toLocaleDateString('en-CA')}});
-     await reload();open('Fees');
-    }catch(e){error(e)}finally{b.disabled=false}
-   });body.append(form);
-   body.append(table(['Date','Student','Kind','Amount (₹)','Description'],state.fees.map(f=>[f.occurred_on,state.students.find(s=>s.id===f.student_id)?.name||'Student',f.kind,f.amount_rupees,f.description||'—'])));
-   body.append(link('Detailed fee and guardian operations','./school-operations.html'));
- }else if(title==='Homework & Notices'){
+    const total=state.fees.reduce((sum,x)=>sum+(x.kind==='payment'?Number(x.amount_rupees):0),0);
+    desc.textContent='Recorded payments total: ₹'+total.toLocaleString('en-IN')+'. Append-only fee entries from cloud records; every entry has a unique reference.';body.append(desc);
+    const fee=window.BrightNexaFeeLedger;
+    if(!fee){body.append(node('p','Fee safety module unavailable. Refresh before recording payments.'));return}
+    const draft=fee.draft();
+    const form=node('form');form.className='form';
+    form.innerHTML='<label>Student<select name="student_id" required></select></label><label>Type<select name="kind"><option value="payment">Payment received</option><option value="charge">Fee charged</option></select></label><label>Amount (₹)<input type="number" name="amount" min="1" max="100000000" required></label><label>Description<input name="description" maxlength="250" placeholder="e.g. Tuition fee"></label><label>Receipt/reference (optional)<input name="reference" maxlength="100" placeholder="Auto-generated if blank"></label><button class="primary" type="submit">Save fee entry</button>';
+    const sel=form.elements.student_id;sel.append(new Option('Choose student',''));state.students.forEach(s=>sel.append(new Option(s.name+' · '+s.admission_number,s.id)));
+    const status=node('p');status.className='muted';status.setAttribute('role','status');
+    form.addEventListener('submit',async ev=>{
+      ev.preventDefault();
+      const student=state.students.find(s=>s.id===sel.value),amt=Number(form.elements.amount.value);
+      if(!student||!Number.isSafeInteger(amt)||amt<1||amt>100000000)return error(Error('Choose a student and valid whole-rupee amount.'));
+      let payload;
+      try{
+        payload=draft.prepare({
+          institution_id:state.me.institution_id,student_id:student.id,kind:form.elements.kind.value,
+          amount_rupees:amt,description:form.elements.description.value,occurred_on:new Date().toLocaleDateString('en-CA'),created_by:state.me.id
+        },form.elements.reference.value);
+      }catch(e){return error(e)}
+      const b=form.querySelector('button[type="submit"]');b.disabled=true;
+      status.textContent='Checking cloud fee reference '+payload.reference+'…';
+      try{
+        const saved=await fee.save({
+          payload,
+          post:row=>req('school_fee_entries',{method:'POST',body:row}),
+          find:reference=>inSchool('school_fee_entries','id,institution_id,student_id,kind,amount_rupees,occurred_on,reference',{reference:'eq.'+reference,limit:'2'})
+        });
+        draft.clear();
+        status.textContent='Fee record confirmed: '+saved.record.reference;
+        await reload();open('Fees');
+      }catch(e){error(e);status.textContent=e.message}
+      finally{b.disabled=false}
+    });
+    body.append(form,status);
+    body.append(table(['Date','Student','Kind','Amount (₹)','Reference'],state.fees.map(f=>[f.occurred_on,[...state.students,...state.formerStudents].find(s=>s.id===f.student_id)?.name||'Student',f.kind,f.amount_rupees,f.reference||'—'])));
+    body.append(link('Detailed fee and guardian operations','./school-operations.html'));
+  }else if(title==='Homework & Notices'){
    const form=node('form');form.className='form';
    form.innerHTML='<label>Notice title<input name="title" minlength="3" maxlength="180" required></label><label>Message<input name="body" minlength="3" maxlength="2500" required></label><button class="primary" type="submit">Publish notice</button>';
    form.addEventListener('submit',async ev=>{ev.preventDefault();const title=form.elements.title.value.trim(),body=form.elements.body.value.trim();if(title.length<3||body.length<3)return error(Error('Enter notice title and message.'));
@@ -313,7 +337,7 @@ async function reload(){
   allSchool('school_classes','id,name,section,academic_year'),
   allSchool('school_students','id,name,admission_number,class_id,status,dob,updated_at'),
   allSchool('school_staff_profiles','id,display_name,designation,employment_type,staff_category,contract_end_on,days_per_week,hours_per_day,visits_per_month,updated_at'),
-  allSchool('school_fee_entries','id,student_id,kind,amount_rupees,description,occurred_on'),
+  allSchool('school_fee_entries','id,student_id,kind,amount_rupees,description,reference,occurred_on'),
   inSchool('school_attendance','id,student_id,day,status',{order:'day.desc,id.asc',limit:'200'}),
   inSchool('school_notices','id,title,body,created_at',{order:'created_at.desc,id.asc',limit:'100'}),
   allSchool('school_module_records','id,module,title,details,created_at')
