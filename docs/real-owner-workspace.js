@@ -57,44 +57,125 @@ function renderSection(title){
    const info=state.school;
    body.append(table(['Field','Value'],[['School name',info.name],['Academic sections',state.classes.length],['Active students',state.students.length],['Staff profiles',state.staff.length]]));
  }else if(title==='Students'){
-   desc.textContent='Real admission register, saved in your school database.';body.append(desc);
-   const form=node('form');form.className='form';form.id='addStudent';
-   form.innerHTML='<label>Student name<input name="name" required minlength="2" maxlength="120"></label><label>Admission number<input name="admission" required maxlength="60"></label><label>Class<select name="class_id" required></select></label><button class="primary" type="submit">Add student</button>';
-   const sel=form.elements.class_id;sel.append(new Option('Choose class',''));
-   state.classes.forEach(c=>sel.append(new Option(c.name+' '+(c.section||''),c.id)));
-   form.addEventListener('submit',async ev=>{
-      ev.preventDefault();const name=form.elements.name.value.trim(),admission=form.elements.admission.value.trim(),class_id=sel.value;
-      if(!name||!admission||!state.classes.some(c=>c.id===class_id)){error(Error('Enter valid student details.'));return}
-      if(state.students.some(s=>s.admission_number.toLowerCase()===admission.toLowerCase())){error(Error('Admission number already exists.'));return}
-      const b=form.querySelector('button');b.disabled=true;
-      try{await req('school_students',{method:'POST',body:{institution_id:state.me.institution_id,name,admission_number:admission,class_id,status:'active'}});await reload();open('Students')}catch(e){error(e)}finally{b.disabled=false}
-   });body.append(form);body.append(table(['Student','Admission','Class','Status'],state.students.map(s=>[s.name,s.admission_number,state.classes.find(c=>c.id===s.class_id)?.name||'—',s.status])));
- }else if(title==='Teachers'||title==='Non-Teaching Staff'){
-   const want=title==='Teachers'?'teaching':'housekeeping';
-   const rows=state.staff.filter(s=>s.staff_category===want);
-   const form=node('form');form.className='form';
-   form.innerHTML='<label>Full name<input name="display_name" required minlength="2" maxlength="150"></label><label>Designation<input name="designation" required maxlength="120"></label><label>Employment<select name="employment_type"><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part-time</option><option value="visiting">Visiting</option></select></label><label id="staffExtras"></label><button class="primary" type="submit">Save staff profile</button>';
-   const extras=form.querySelector('#staffExtras');
-   form.elements.employment_type.addEventListener('change',()=>{
-     const v=form.elements.employment_type.value;extras.replaceChildren();
-     if(v==='contract')extras.innerHTML='Contract end date<input name="contract_end_on" type="date" required>';
-     else if(v==='part_time')extras.innerHTML='Days/week<input name="days_per_week" type="number" min="1" max="7" required><input name="hours_per_day" type="number" min=".5" max="12" step=".5" placeholder="Hours/day" required>';
-     else if(v==='visiting')extras.innerHTML='Visits/month<input name="visits_per_month" type="number" min="1" max="31" required>';
-   });
-   form.addEventListener('submit',async e=>{e.preventDefault();
-     const name=form.elements.display_name.value.trim(),designation=form.elements.designation.value.trim(),employment_type=form.elements.employment_type.value;
-     if(!name||!designation)return error(Error('Enter staff name and designation.'));
-     if(state.staff.some(x=>x.display_name.trim().toLowerCase()===name.toLowerCase()))return error(Error('This staff name already exists.'));
-     const row={institution_id:state.me.institution_id,display_name:name,designation,employment_type,staff_category:want,is_seeded_test:false};
-     if(employment_type==='contract')row.contract_end_on=form.elements.contract_end_on.value;
-     if(employment_type==='part_time'){row.days_per_week=Number(form.elements.days_per_week.value);row.hours_per_day=Number(form.elements.hours_per_day.value)}
-     if(employment_type==='visiting')row.visits_per_month=Number(form.elements.visits_per_month.value);
-     const btn=form.querySelector('button');btn.disabled=true;try{await req('school_staff_profiles',{method:'POST',body:row});await reload();open(title)}catch(e){error(e)}finally{btn.disabled=false}
-   });
-   body.append(form);
-   body.append(table(['Name','Designation','Employment','Category'],rows.map(s=>[s.display_name,s.designation||'—',s.employment_type||'—',s.staff_category])));
-   desc.textContent='Adding a staff profile does not give login access. Invite staff under Roles & Permissions.';body.append(desc,link('Invite school staff and assign class rights','./index.html?view=roles'));
- }else if(title==='Class & Section Setup'){
+    desc.textContent='Real student register. Edit existing records or archive a student without deleting their attendance or fee history.';body.append(desc);
+    const all=[...state.students,...state.formerStudents];
+    const form=node('form');form.className='form';form.id='addStudent';
+    form.innerHTML='<label>Student name<input name="name" required minlength="2" maxlength="180"></label><label>Admission number<input name="admission" required maxlength="60"></label><label>Date of birth<input name="dob" type="date"></label><label>Class<select name="class_id" required></select></label><label>Status<select name="status"><option value="active">Active</option><option value="archived">Archived</option><option value="transferred">Transferred</option><option value="graduated">Graduated</option></select></label><button class="primary" type="submit">Add student</button>';
+    const sel=form.elements.class_id;sel.append(new Option('Choose class',''));
+    state.classes.forEach(c=>sel.append(new Option(c.name+' '+(c.section||''),c.id)));
+    const saveButton=form.querySelector('button[type="submit"]'),cancel=node('button','Cancel edit');cancel.type='button';cancel.hidden=true;form.append(cancel);
+    let editing=null;
+    function resetEdit(){editing=null;form.reset();saveButton.textContent='Add student';cancel.hidden=true}
+    cancel.addEventListener('click',resetEdit);
+    form.addEventListener('submit',async ev=>{
+      ev.preventDefault();
+      let input;
+      try {
+        input=window.BrightNexaSchoolAdmin.studentInput({
+          name:form.elements.name.value,admission_number:form.elements.admission.value,
+          dob:form.elements.dob.value,class_id:sel.value,status:form.elements.status.value
+        },state.classes,all,editing?.id);
+      }catch(e){return error(e)}
+      saveButton.disabled=true;
+      try{
+        if(editing){
+          const payload={...input,updated_at:new Date().toISOString()};
+          const rows=await req(filt('school_students',{id:'eq.'+editing.id,institution_id:'eq.'+state.me.institution_id,updated_at:'eq.'+editing.updated_at}),{method:'PATCH',body:payload});
+          window.BrightNexaSchoolAdmin.expectUpdated(rows,editing.id);
+        } else {
+          const rows=await req('school_students',{method:'POST',body:{...input,institution_id:state.me.institution_id}});
+          if(!Array.isArray(rows)||rows.length!==1||!rows[0].id)throw Error('Cloud admission was not confirmed; refresh before retrying.');
+        }
+        resetEdit();await reload();open('Students');
+      }catch(e){error(e)}finally{saveButton.disabled=false}
+    });
+    body.append(form);
+    const wrap=node('div');wrap.className='data';const t=node('table'),head=node('thead'),tr=node('tr');
+    ['Student','Admission','Class','DOB','Status','Actions'].forEach(k=>tr.append(node('th',k)));
+    head.append(tr);t.append(head);const tbody=node('tbody');
+    for(const student of all){
+      const line=node('tr');
+      [student.name,student.admission_number,state.classes.find(c=>c.id===student.class_id)?.name||'—',student.dob||'—',student.status].forEach(v=>line.append(node('td',v)));
+      const actions=node('td'),edit=node('button','Edit'),archive=node('button',student.status==='active'?'Archive':'Reactivate');
+      edit.type=archive.type='button';
+      edit.addEventListener('click',()=>{
+        editing=student;form.elements.name.value=student.name;form.elements.admission.value=student.admission_number;
+        form.elements.dob.value=student.dob||'';sel.value=student.class_id||'';form.elements.status.value=student.status;
+        saveButton.textContent='Save changes';cancel.hidden=false;form.scrollIntoView({behavior:'smooth',block:'start'});
+      });
+      archive.addEventListener('click',async()=>{
+        const status=student.status==='active'?'archived':'active';
+        if(!confirm((status==='archived'?'Archive ':'Reactivate ')+student.name+'? Their historical records will be preserved.'))return;
+        archive.disabled=true;
+        try{
+          const rows=await req(filt('school_students',{id:'eq.'+student.id,institution_id:'eq.'+state.me.institution_id,updated_at:'eq.'+student.updated_at}),{method:'PATCH',body:{status,updated_at:new Date().toISOString()}});
+          window.BrightNexaSchoolAdmin.expectUpdated(rows,student.id);
+          await reload();open('Students');
+        }catch(e){error(e);archive.disabled=false}
+      });
+      actions.append(edit,node('span',' '),archive);line.append(actions);tbody.append(line);
+    }
+    t.append(tbody);wrap.append(t);body.append(wrap);
+  }else if(title==='Teachers'||title==='Non-Teaching Staff'){
+    const want=title==='Teachers'?'teaching':'housekeeping';
+    const rows=state.staff.filter(s=>s.staff_category===want);
+    const form=node('form');form.className='form';
+    form.innerHTML='<label>Full name<input name="display_name" required minlength="2" maxlength="150"></label><label>Designation<input name="designation" required maxlength="120"></label><label>Employment<select name="employment_type"><option value="permanent">Permanent</option><option value="contract">Contract</option><option value="part_time">Part-time</option><option value="visiting">Visiting</option></select></label><label id="staffExtras"></label><button class="primary" type="submit">Save staff profile</button>';
+    const extras=form.querySelector('#staffExtras');
+    function renderEmployment(){
+      const v=form.elements.employment_type.value;extras.replaceChildren();
+      if(v==='contract')extras.innerHTML='Contract end date<input name="contract_end_on" type="date" required>';
+      else if(v==='part_time')extras.innerHTML='Days/week<input name="days_per_week" type="number" min="1" max="7" required><input name="hours_per_day" type="number" min=".5" max="12" step=".5" placeholder="Hours/day" required>';
+      else if(v==='visiting')extras.innerHTML='Visits/month<input name="visits_per_month" type="number" min="1" max="31" required>';
+    }
+    form.elements.employment_type.addEventListener('change',renderEmployment);
+    const save=form.querySelector('button[type="submit"]'),cancel=node('button','Cancel edit');cancel.type='button';cancel.hidden=true;form.append(cancel);
+    let editing=null;
+    function resetEdit(){editing=null;form.reset();renderEmployment();save.textContent='Save staff profile';cancel.hidden=true}
+    cancel.addEventListener('click',resetEdit);
+    form.addEventListener('submit',async e=>{
+      e.preventDefault();
+      let input;
+      try{input=window.BrightNexaSchoolAdmin.staffInput({
+        id:editing?.id,display_name:form.elements.display_name.value,designation:form.elements.designation.value,
+        employment_type:form.elements.employment_type.value,
+        contract_end_on:form.elements.contract_end_on?.value,
+        days_per_week:form.elements.days_per_week?.value,hours_per_day:form.elements.hours_per_day?.value,
+        visits_per_month:form.elements.visits_per_month?.value
+      },state.staff)}catch(err){return error(err)}
+      save.disabled=true;
+      try{
+        if(editing){
+          const rows=await req(filt('school_staff_profiles',{id:'eq.'+editing.id,institution_id:'eq.'+state.me.institution_id,updated_at:'eq.'+editing.updated_at}),{method:'PATCH',body:{...input,updated_at:new Date().toISOString()}});
+          window.BrightNexaSchoolAdmin.expectUpdated(rows,editing.id);
+        }else{
+          const rows=await req('school_staff_profiles',{method:'POST',body:{...input,institution_id:state.me.institution_id,staff_category:want,is_seeded_test:false}});
+          if(!Array.isArray(rows)||rows.length!==1||!rows[0].id)throw Error('Staff profile save not confirmed; refresh before retrying.');
+        }
+        resetEdit();await reload();open(title);
+      }catch(err){error(err)}finally{save.disabled=false}
+    });
+    body.append(form);
+    const wrap=node('div');wrap.className='data';const t=node('table'),h=node('tr');
+    ['Name','Designation','Employment','Category','Actions'].forEach(k=>h.append(node('th',k)));
+    const thead=node('thead');thead.append(h);t.append(thead);const tbody=node('tbody');
+    for(const s of rows){
+      const tr=node('tr');[s.display_name,s.designation||'—',s.employment_type||'—',s.staff_category].forEach(v=>tr.append(node('td',v)));
+      const cell=node('td'),edit=node('button','Edit');edit.type='button';
+      edit.addEventListener('click',()=>{
+        editing=s;form.elements.display_name.value=s.display_name;form.elements.designation.value=s.designation;
+        form.elements.employment_type.value=s.employment_type||'permanent';renderEmployment();
+        if(form.elements.contract_end_on)form.elements.contract_end_on.value=s.contract_end_on||'';
+        if(form.elements.days_per_week)form.elements.days_per_week.value=s.days_per_week||'';
+        if(form.elements.hours_per_day)form.elements.hours_per_day.value=s.hours_per_day||'';
+        if(form.elements.visits_per_month)form.elements.visits_per_month.value=s.visits_per_month||'';
+        save.textContent='Update staff profile';cancel.hidden=false;form.scrollIntoView({behavior:'smooth',block:'start'});
+      });
+      cell.append(edit);tr.append(cell);tbody.append(tr);
+    }
+    t.append(tbody);wrap.append(t);body.append(wrap);
+    desc.textContent='Staff profile changes do not create or revoke login access. Account permissions are managed separately.';body.append(desc,link('Invite staff and assign class rights','./index.html?view=roles'));
+  }else if(title==='Class & Section Setup'){
    const form=node('form');form.className='form';
    form.innerHTML='<label>Class<select name="name" required></select></label><label>Section<input name="section" maxlength="12" required value="A"></label><label>Academic year<input name="academic_year" required value="2026-2027" pattern="[0-9]{4}-[0-9]{4}"></label><button class="primary" type="submit">Add class</button>';
    const sel=form.elements.name;sel.append(new Option('Choose class',''));
