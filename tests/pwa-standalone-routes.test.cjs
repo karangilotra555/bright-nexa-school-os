@@ -55,7 +55,7 @@ test('Public default index is school login, never auto-running the owner app bun
  }
  for(const p of ['school-demo.html','docs/school-demo.html']){
   const html=read(p);
-  assert.ok(html.includes('school-demo-gate.js'));
+  assert.ok(html.includes('real-owner-workspace.html'));
   assert.ok(!html.includes('script type="module" crossorigin src="./assets/index-brightnexa-v2'));
  }
 });
