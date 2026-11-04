@@ -86,7 +86,7 @@
      links=await data('school_guardian_students',{select:'guardian_id,student_id,institution_id',guardian_id:'in.('+ids.join(',')+')'});
    }
    if(!links.length){
-     students=[];show('noGuardianLink',true);show('parentData',false);
+     students=[];$('childSelector').replaceChildren();show('noGuardianLink',true);show('parentData',false);
      text('schoolTitle','Parent account');
      say('Signed in. School administrator approval is required before you can see a child.');
      return;
@@ -168,6 +168,7 @@
  }));
  $('childSelector').addEventListener('change',()=>loadSelected().catch(e=>say(e.message,true)));
  $('refreshParent').addEventListener('click',()=>loadChildren().catch(e=>say(e.message,true)));
+ $('refreshAwaitingLink').addEventListener('click',()=>loadChildren().catch(e=>say(e.message,true)));
  $('parentLogout').addEventListener('click',logout);
  $('leaveRequestForm').addEventListener('submit',withBusy($('leaveRequestForm'),async()=>{
    const chosen=students.find(s=>s.id===$('childSelector').value);
