@@ -114,3 +114,36 @@ main{margin-left:250px}
   .settings-form button{width:100%}
   .settings-actions>*{flex:1 1 auto}
 }
+
+/* Phase A1: financial / attendance operational reports */
+.phase-a-report{margin-top:28px;padding-top:22px;border-top:1px solid #dce6ed}
+.phase-a-report h3{margin:0 0 6px;color:#0d345a;font-size:19px}
+.phase-a-report h4{font-size:15px;margin:21px 0 10px;color:#163f5e}
+.phase-a-help{font-size:12px!important;color:#647d91!important;line-height:1.65}
+.phase-a-alert{font-size:12px!important;color:#932b25!important;background:#fff2f0;border-left:3px solid #d75045;padding:11px 12px;border-radius:6px}
+.phase-a-form{display:grid;grid-template-columns:1fr 1.2fr 1.8fr;gap:12px;align-items:end;margin:13px 0}
+.phase-a-form label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:12px;color:#3d5874}
+.phase-a-form input,.phase-a-form select{width:100%;min-width:0;border:1px solid #cedde9;border-radius:9px;padding:10px;background:#fff;color:#143b60}
+.phase-a-filters>label{font-size:12px;display:flex;align-items:center;gap:7px;margin:7px 0 12px;color:#344f69}
+.phase-a-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:11px 0}
+.phase-a-actions button,.phase-a-table button{background:#0c679a;color:white;border:1px solid #0c679a;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.phase-a-actions button:disabled,.phase-a-table button:disabled{opacity:.5;cursor:not-allowed}
+.phase-a-table{overflow-x:auto;max-width:100%;margin:11px 0 18px;border:1px solid #e2eaf1;border-radius:9px}
+.phase-a-table table{width:100%;border-collapse:collapse;font-size:12px;min-width:660px}
+.phase-a-table th,.phase-a-table td{padding:10px 11px;text-align:left;white-space:normal;overflow-wrap:break-word;border-bottom:1px solid #ecf1f5}
+.phase-a-table th{background:#f1f6fa;color:#184566;font-size:11px}
+.phase-a-table tr:nth-child(even){background:#fafcfe}
+.phase-a-receipt-dialog{width:min(600px,94vw);padding:25px;background:#fff;border:1px solid #d3e0e9;border-radius:14px;max-height:90vh}
+.phase-a-receipt-dialog::backdrop{background:rgba(9,28,46,.55)}
+.phase-a-receipt-dialog h2{font-size:23px;margin-bottom:8px;color:#103a5d}
+.phase-a-receipt-dialog table{width:100%;border-collapse:collapse;margin:17px 0;font-size:13px}
+.phase-a-receipt-dialog th,.phase-a-receipt-dialog td{padding:11px;border-bottom:1px solid #e2eaf1;text-align:left}
+@media(max-width:650px){.phase-a-form{grid-template-columns:1fr}.phase-a-actions button{flex:1 1 42%}}
+@media print{
+ body:has(#bnReceiptDialog[open]) *{visibility:hidden!important}
+ body:has(#bnReceiptDialog[open]) #bnReceipt,body:has(#bnReceiptDialog[open]) #bnReceipt *{visibility:visible!important}
+ body:has(#bnReceiptDialog[open]) #bnReceipt{position:fixed;left:0;top:0;width:100%;padding:20mm 15mm;background:#fff;color:#111}
+ body:has(#bnReceiptDialog[open]) #bnReceipt table{width:100%}
+ body:has(#bnReceiptDialog[open]) #bnReceipt .phase-a-help{color:#333!important}
+ .phase-a-report .phase-a-actions,.phase-a-report .phase-a-filters{display:none!important}
+}
