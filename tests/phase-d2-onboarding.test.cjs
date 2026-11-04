@@ -29,8 +29,9 @@ test('only a confirmed valid onboarding response with matching values is accepte
 test('stage transitions require manual owner invite and never treat draft as activated',()=>{
  const draft={id:reqId,school_name:'School',status:'draft',institution_id:null,owner_auth_user_id:null};
  assert.equal(core.canInvite(draft),true);
- for(const status of ['inviting','invited','needs_attention','activated'])
+ for(const status of ['inviting','invited','needs_attention'])
    assert.equal(core.canInvite({...draft,status}),false);
+ assert.equal(core.canInvite({...draft,status:'activated',institution_id:institution,owner_auth_user_id:owner}),false);
  assert.throws(()=>core.validOnboarding({...draft,status:'activated'}),/lacks school or owner/);
  assert.equal(core.validOnboarding({...draft,status:'activated',institution_id:institution,owner_auth_user_id:owner}).status,'activated');
  assert.throws(()=>core.validOnboarding({...draft,status:'error'}),/Malformed/);
@@ -130,8 +131,8 @@ test('platform UI has explicit create/invite/verify/activate actions and no hard
  assert.match(js,/confirm\('Activate "/);
  assert.match(js,/call\('check'/);
  assert.match(js,/call\('create'/);
- assert.match(js,/call\('invite'/);
- assert.match(js,/call\('activate'/);
+ assert.match(js,/perform\('invite'/);
+ assert.match(js,/perform\('activate'/);
  assert.match(platform,/BrightNexaPlatformOnboarding\?\.refresh/);
  assert.match(platform,/BrightNexaPlatformOnboarding\?\.reset/);
  assert.doesNotMatch(js,/service_role|sb_secret_|localStorage\.setItem|demoPassword/);
@@ -142,7 +143,7 @@ test('D2 does not rewrite existing school owner modules, bypass backups or secre
  const sql=read('supabase/migrations/20261104161500_phase_d2_school_onboarding.sql');
  assert.doesNotMatch(sql,/drop table public\.(institutions|school_users|school_students)|update public\.school_students/i);
  const html=read('docs/platform-admin.html');
- assert.match(html,/No demo students, staff or passwords are generated/i);
+ assert.match(html,/No seeded\/example students or staff/i);
  const src=read('supabase/functions/platform-school-onboarding/index.ts');
  assert.doesNotMatch(src,/from\("school_students"\)|from\("school_fee_entries"\)|from\("school_guardians"\)/);
  const owner=read('docs/real-owner-workspace.js'),sw=read('docs/owner-offline-sw.js');
