@@ -172,4 +172,49 @@ $$;
 revoke all on function public.bn_activate_invited_school(uuid,uuid) from public,anon,authenticated;
 grant execute on function public.bn_activate_invited_school(uuid,uuid) to service_role;
 
+
+-- Aggregate only setup counts, not student, guardian, fee or staff personal records.
+create function public.bn_onboarding_readiness(p_request_id uuid,p_actor_id uuid)
+returns jsonb
+language plpgsql security invoker
+set search_path = ''
+as $$
+declare
+ v public.bn_school_onboarding_requests%rowtype;
+ v_classes integer;
+ v_teachers integer;
+ v_assignments integer;
+ v_invited boolean;
+ v_verified boolean;
+begin
+ if not exists(select 1 from public.bn_platform_admins
+               where auth_user_id=p_actor_id and active=true) then
+   raise exception 'Active platform administrator required' using errcode='42501';
+ end if;
+ select * into v from public.bn_school_onboarding_requests where id=p_request_id;
+ if not found then
+   raise exception 'School onboarding request not found' using errcode='23514';
+ end if;
+ select count(*)::integer into v_classes from public.school_classes
+   where institution_id=v.institution_id;
+ select count(*)::integer into v_teachers from public.school_users
+   where institution_id=v.institution_id and role='teacher' and status='active';
+ select count(*)::integer into v_assignments
+   from public.school_teacher_assignments a
+   join public.school_users u on u.id=a.school_user_id and u.institution_id=a.institution_id
+   join public.school_classes c on c.id=a.class_id and c.institution_id=a.institution_id
+   where a.institution_id=v.institution_id and a.active=true
+     and u.role='teacher' and u.status='active';
+ v_invited := v.status in ('invited','activated') and v.institution_id is not null;
+ v_verified := v.owner_verified_at is not null;
+ return pg_catalog.jsonb_build_object(
+   'invite_sent',v_invited,'owner_verified',v_verified,'institution_id',v.institution_id,
+   'classes',v_classes,'teacher_accounts',v_teachers,'teacher_assignments',v_assignments,
+   'ready',(v_invited and v_verified and v_classes>=1 and v_teachers>=1 and v_assignments>=1)
+ );
+end;
+$$;
+revoke all on function public.bn_onboarding_readiness(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.bn_onboarding_readiness(uuid,uuid) to service_role;
+
 commit;
