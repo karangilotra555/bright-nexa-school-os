@@ -62,7 +62,7 @@ test('missing grades, missing marks, duplicate subjects, unplanned and wrong max
   [[...base,mark('m3','Mathematics','99')],/Duplicate mark record/],
   [[...base,mark('m3','Science','99')],/Unplanned subject mark/],
   [base.map(x=>x.id==='m1'?mark('m1','Mathematics','75','50'):x),/do not match planned maximum/],
-  [base.filter(x=>x.id!=='scheme'),/grading policy is required/],
+  [base.filter(x=>x.id!=='scheme-1'),/grading policy is required/],
   [base.map(x=>x.id==='p2'?{...x,details:{...x.details,status:'draft'}}:x),/still a draft/],
  ];
  for(const [records,message] of cases){
