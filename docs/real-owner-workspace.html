@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'">
-<title>Haridwar Public School | Bright Nexa School OS</title>
+<title>School Owner Workspace | Bright Nexa School OS</title>
 <style>
 :root{font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#102b4c;background:#f3f7fc}
 *{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}
@@ -26,14 +26,91 @@ h1{font-size:29px;letter-spacing:-.7px;margin:2px 0 5px}h2{font-size:17px;margin
 #message{padding:13px;background:#eaf3fc;border-radius:9px;margin:14px 0}.warn{background:#fff7e6!important;color:#835318}.links{display:flex;gap:20px;flex-wrap:wrap}
 .notice{border-left:3px solid #bd8326;padding:9px 13px;background:#fff8ec;margin:13px 0;font-size:13px}
 @media(max-width:850px){aside{position:static;width:100%;max-height:180px}nav{display:flex;overflow:auto;padding:5px}nav button{white-space:nowrap;width:auto}main{margin:0}.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.content{padding:18px}.topbar{height:auto}}
-</style><script src="./smart-tools-engine.js?v=20261104-phase4" defer></script><script src="./school-xlsx-reader.js?v=20261104-phase4" defer></script><script src="./school-phase4-academics.js?v=20261104-phase4" defer></script><script src="./school-phase4-import-ui.js?v=20261104-phase4" defer></script><script src="./school-extra-modules.js?v=20261104-phase4" defer></script><script src="./offline-vault.js?v=20261104-phase1" defer></script><script src="./owner-offline-ui.js?v=20261104-phase1" defer></script><script src="./school-admin-data.js?v=20261104-phase2" defer></script><script src="./school-fee-ledger.js?v=20261104-release" defer></script><script src="./school-backup-core.js?v=20261104-release" defer></script><script src="./school-auto-backup.js?v=20261104-local-v1" defer></script><script src="./school-auto-backup-ui.js?v=20261104-local-v1" defer></script><script src="./real-owner-workspace.js?v=20261104-release" defer></script></head>
-<body><aside><div class="brand">Bright Nexa <small>School OS</small></div><div class="schoolname" id="sideSchool">Haridwar Public School</div><nav id="menu" aria-label="School sections"></nav></aside>
-<main><div class="topbar"><strong id="topSchool">Haridwar Public School</strong><div class="links"><a href="./index.html?view=roles">Account & Roles</a><button id="backupFolder" type="button">Choose backup folder</button><button id="backupReauthorize" type="button" hidden>Allow folder access</button><button id="enableOffline" type="button">Enable offline copy</button><button id="refresh">↻ Refresh</button><button id="logout">Log out</button></div></div>
-<div class="content"><div class="eyebrow">School owner workspace</div><h1 id="heading">Haridwar Public School</h1><p class="muted" id="subtitle">Loading your school's secured records…</p><p id="localStatus" class="muted" aria-live="polite">Encrypted offline copy is off</p><p id="backupStatus" class="muted" role="status" aria-live="polite">Choose a folder once to enable automatic encrypted local backups. No backup passphrase is needed.</p><div id="message" class="hidden" role="alert"></div>
+</style><link rel="stylesheet" href="./school-owner-shell.css?v=20261104-ux1"><script src="./school-owner-navigation.js?v=20261104-ux1" defer></script><script src="./smart-tools-engine.js?v=20261104-phase4" defer></script><script src="./school-xlsx-reader.js?v=20261104-phase4" defer></script><script src="./school-phase4-academics.js?v=20261104-phase4" defer></script><script src="./school-phase4-import-ui.js?v=20261104-phase4" defer></script><script src="./school-extra-modules.js?v=20261104-phase4" defer></script><script src="./offline-vault.js?v=20261104-phase1" defer></script><script src="./owner-offline-ui.js?v=20261104-phase1" defer></script><script src="./school-admin-data.js?v=20261104-phase2" defer></script><script src="./school-fee-ledger.js?v=20261104-release" defer></script><script src="./school-backup-core.js?v=20261104-release" defer></script><script src="./school-auto-backup.js?v=20261104-local-v1" defer></script><script src="./school-auto-backup-ui.js?v=20261104-local-v1" defer></script><script src="./school-owner-settings.js?v=20261104-ux1" defer></script><script src="./real-owner-workspace.js?v=20261104-ux1" defer></script></head>
+<body><aside id="ownerSidebar" data-menu-open="false"><div class="brand">Bright Nexa <small>School OS</small><button id="mobileMenuToggle" type="button" class="mobile-menu-toggle" aria-expanded="false" aria-controls="menu">☰ Menu</button></div><div class="schoolname" id="sideSchool">Loading school…</div><label id="menuSearchWrapper" for="menuSearch"><input id="menuSearch" type="search" autocomplete="off" placeholder="Search modules…" aria-label="Find a school module"></label><nav id="menu" aria-label="School navigation"></nav></aside>
+<main><div class="topbar"><div class="page-identity"><strong id="topSchool">Loading school…</strong><small id="topScope">Verified school owner workspace</small></div><div class="top-actions"><button id="refresh" type="button">↻ Refresh</button><button id="openSettings" type="button">⚙ Settings</button><button id="logout" type="button">Log out</button></div></div>
+<div class="content"><div class="eyebrow">School owner workspace</div><h1 id="heading">Loading school…</h1><p class="muted" id="subtitle">Loading your school's secured records…</p><div id="message" class="hidden" role="alert"></div>
 <div id="dash"><div class="cards"><div class="card"><span>Students</span><strong id="studentsCount">—</strong><span>Active school records</span></div><div class="card"><span>Teachers</span><strong id="teachersCount">—</strong><span>School staff directory</span></div><div class="card"><span>Classes</span><strong id="classesCount">—</strong><span>Academic sections</span></div><div class="card"><span>Recorded fees received</span><strong id="feesCount">—</strong><span>Recorded payments, not estimates</span></div></div>
-<div class="grid"><div class="panel"><h2>Quick actions</h2><div class="actions"><button data-open="Students">Students & admissions</button><a href="./index.html?view=attendance">Mark attendance</a><button data-open="Fees">View fee ledger</button><button data-open="Notices">School notices</button><button data-open="Teachers">Teachers & staff</button><button data-open="Class & Section Setup">Classes & sections</button></div></div><div class="panel"><h2>School record status</h2><p>Figures in this workspace come from your school's database, not a browser sample. Sections without a connected cloud module are clearly marked.</p><div class="links"><a href="./school-operations.html">Cloud operations</a><a href="./smart-tools.html">Smart Tools</a></div></div></div>
-<div class="panel" id="backupPanel"><h2>Automatic encrypted backup</h2><p class="muted">Choose your local backup folder once, then Bright Nexa saves encrypted backups after changes and about every 30 minutes while the owner page stays open and folder permission is active. It cannot back up while the browser is closed. No password is asked.</p>
-<div class="actions"><button id="backupNow" type="button">Backup now</button><button id="backupVerify" type="button">Verify backup file</button><button id="backupRecovery" type="button">Download recovery key</button><button id="backupImportKey" type="button">Use recovery key file</button></div>
-<p class="notice">Keep the recovery key file in a different safe place from your backup folder. Without it, backups may be unreadable if the original browser or laptop is lost. This feature verifies backup files; database restore remains a separate process.</p></div></div>
+<div class="grid"><div class="panel"><h2>Quick actions</h2><div class="actions"><button data-open="Students">Students & admissions</button><a href="./index.html?view=attendance">Mark attendance</a><button data-open="Fees">View fee ledger</button><button data-open="Homework & Notices">School notices</button><button data-open="Teachers">Teachers & staff</button><button data-open="Class & Section Setup">Classes & sections</button></div></div><div class="panel"><h2>School record status</h2><p>Figures in this workspace come from your school's database, not a browser sample. Sections without a connected cloud module are clearly marked.</p><div class="links"><a href="./school-operations.html">Cloud operations</a><a href="./smart-tools.html">Smart Tools</a></div></div></div>
+</div>
+<section id="settingsWorkspace" class="settings-workspace hidden" aria-label="School settings">
+  <div class="settings-intro"><h2>Administration settings</h2><p>School identity, access, encrypted backups and workspace preferences in one place.</p></div>
+  <div class="settings-layout">
+    <nav class="settings-nav" aria-label="Settings sections">
+      <button type="button" data-settings-tab="school"><span class="settings-nav-icon" aria-hidden="true">◇</span>School profile</button>
+      <button type="button" data-settings-tab="access"><span class="settings-nav-icon" aria-hidden="true">♙</span>Accounts & security</button>
+      <button type="button" data-settings-tab="backup"><span class="settings-nav-icon" aria-hidden="true">▣</span>Backup & recovery</button>
+      <button type="button" data-settings-tab="offline"><span class="settings-nav-icon" aria-hidden="true">◷</span>Offline access</button>
+      <button type="button" data-settings-tab="appearance"><span class="settings-nav-icon" aria-hidden="true">☷</span>Display & navigation</button>
+      <button type="button" data-settings-tab="help"><span class="settings-nav-icon" aria-hidden="true">?</span>System & support</button>
+    </nav>
+    <div class="settings-pages">
+      <section class="settings-page" data-settings-page="school">
+        <div class="settings-card"><h3>Official school information</h3><p>Details are read from your verified school cloud account. Changes here update the real school's profile, not a browser-only label.</p>
+          <div class="settings-info-grid">
+            <div class="settings-info"><span>School</span><strong id="settingsSchoolHeader">—</strong></div>
+            <div class="settings-info"><span>Plan status</span><strong id="settingsSchoolStatus">—</strong></div>
+            <div class="settings-info"><span>Academic session(s)</span><strong id="settingsAcademicYears">—</strong></div>
+          </div>
+          <form id="settingsIdentityForm" class="settings-form"><label>Official school name<input id="settingsSchoolName" name="schoolName" required minlength="3" maxlength="120" autocomplete="organization"></label><button id="settingsSaveSchoolName" class="primary" type="submit">Save school name</button></form>
+          <p id="settingsSchoolStatusMessage" class="settings-message" role="status" aria-live="polite">The school name is saved securely in Supabase.</p>
+          <h4>Registered contact</h4><p>Owner email: <strong id="settingsOwnerEmail">—</strong>. Login email changes are managed separately through verified account security.</p>
+          <form id="settingsContactForm" class="settings-form"><label>School contact number<input id="settingsPhone" name="mobile" type="tel" maxlength="20" autocomplete="tel" placeholder="School phone"></label><button id="settingsSavePhone" type="submit">Save contact</button></form>
+          <p id="settingsPhoneStatus" class="settings-message" role="status" aria-live="polite">Contact changes are restricted to the verified school owner.</p>
+        </div>
+        <div class="settings-card"><h3>School structure</h3>
+          <div class="settings-info-grid"><div class="settings-info"><span>Active students</span><strong id="settingsStudentCount">—</strong></div><div class="settings-info"><span>Staff profiles</span><strong id="settingsStaffCount">—</strong></div><div class="settings-info"><span>Class sections</span><strong id="settingsClassCount">—</strong></div></div>
+          <div class="settings-actions"><button type="button" data-settings-open="Class & Section Setup">Manage classes & sections</button><button type="button" data-settings-open="School Profile">View complete school profile</button><button type="button" data-settings-open="Teachers">Manage staff profiles</button></div>
+        </div>
+      </section>
+      <section class="settings-page" data-settings-page="access" hidden>
+        <div class="settings-card"><h3>Accounts, permissions & passwords</h3><p>Only invited, verified school accounts can access private records. Employee directory entries are not the same as active login accounts.</p>
+          <div class="settings-item-grid">
+            <div class="settings-item"><strong>Roles & permissions</strong><small>Invite staff, control school roles and assign teaching access to classes and subjects.</small></div>
+            <div class="settings-item"><strong>Account security</strong><small>Change the owner password from your verified school session. Do not share school login credentials.</small></div>
+          </div>
+          <div class="settings-actions"><a href="./index.html?view=roles">Manage staff access & roles</a><a href="./index.html?view=account">Change owner password</a><a href="./teacher-access.html">Open staff portal</a></div>
+        </div>
+        <div class="settings-card"><h3>Student & parent access</h3><p>Parents must verify their email and be linked to the correct child by the school administrator. Student admission numbers alone do not grant parent access.</p>
+          <div class="settings-actions"><a href="./school-operations.html">Guardian linking & school operations</a><a href="./parents-cloud.html">Open parent portal</a></div>
+        </div>
+      </section>
+      <section class="settings-page" data-settings-page="backup" hidden>
+        <div class="settings-card"><h3>Automatic encrypted backups</h3><p>Select a folder on this computer. Backups then run automatically after confirmed data changes and approximately every 30 minutes while the owner page is open, online and has folder permission.</p>
+          <div class="settings-actions"><button id="backupFolder" class="primary" type="button">Choose backup folder</button><button id="backupReauthorize" type="button" hidden>Allow folder access</button><button id="backupNow" type="button">Backup now</button></div>
+          <p id="backupStatus" class="settings-message" role="status" aria-live="polite">Choose a folder to enable passwordless encrypted backups.</p>
+          <h4>Recovery & verification</h4><p>Backups use AES-256-GCM encryption. Export a recovery-key file once and store it <strong>separately</strong> from the folder; it is required if the browser or laptop is lost.</p>
+          <div class="settings-actions"><button id="backupRecovery" type="button">Download recovery key</button><button id="backupVerify" type="button">Verify backup file</button><button id="backupImportKey" type="button">Use recovery key file</button></div>
+          <div class="settings-notice">The browser cannot save to a local folder when it is closed. If permission expires, use “Allow folder access”. Backup verification does not restore a database; an independent restore procedure is still required.</div>
+        </div>
+      </section>
+      <section class="settings-page" data-settings-page="offline" hidden>
+        <div class="settings-card"><h3>Offline access (optional)</h3><p>This is separate from automatic backup. Offline access stores a short-lived, encrypted, read-only copy of school records on this device. No student, fee or staff changes can be saved offline.</p>
+          <div class="settings-actions"><button id="enableOffline" type="button">Enable offline read-only access</button></div>
+          <p id="localStatus" class="settings-message" role="status" aria-live="polite">Encrypted offline access is off.</p>
+          <div class="settings-notice">Offline unlock has its own security passphrase because it provides access to private student data without a live cloud login. Automatic folder backups do not require that passphrase.</div>
+        </div>
+      </section>
+      <section class="settings-page" data-settings-page="appearance" hidden>
+        <div class="settings-card"><h3>Display & navigation</h3><p>These preferences apply to this school owner on the current browser only. They never change school records or role permissions.</p>
+          <div class="settings-form">
+            <label>Workspace spacing<select id="settingsDensity"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+            <label>Start page after login<select id="settingsLanding"><option value="Dashboard">Dashboard</option><option value="Students">Students</option><option value="Attendance">Attendance</option><option value="Fees">Fees</option></select></label>
+          </div>
+          <p id="settingsAppearanceStatus" class="settings-message" role="status" aria-live="polite">Preferences save automatically on this browser.</p>
+          <div class="settings-item"><strong>Finding modules</strong><small>Use “Search modules” in the sidebar, or navigate through Overview, People, Academics, Finance and Administration. This does not change access permissions.</small></div>
+        </div>
+      </section>
+      <section class="settings-page" data-settings-page="help" hidden>
+        <div class="settings-card"><h3>System status & help</h3>
+          <div class="settings-info-grid"><div class="settings-info"><span>School</span><strong id="settingsSchoolId">—</strong></div><div class="settings-info"><span>Data storage</span><strong>Verified Supabase cloud</strong></div><div class="settings-info"><span>Backup storage</span><strong>Selected local folder</strong></div></div>
+          <p>School modules are displayed separately from account and system settings. Functions that are not connected to the cloud will say so instead of showing fictitious data.</p>
+          <div class="settings-actions"><button type="button" data-settings-open="Contact & Support">Contact & support</button><button type="button" data-settings-open="Smart Tools">Academic tools</button></div>
+          <div class="settings-notice">Need to restore a backup, report an account problem, or change school ownership? Verify the institution and backup first; do not delete records to repair an account.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
 <section id="section" class="hidden"><div class="panel"><div class="row"><h2 id="sectionTitle"></h2><span id="sectionMeta" class="muted"></span></div><div id="sectionBody"></div></div></section>
 </div></main></body></html>
