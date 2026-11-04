@@ -69,6 +69,7 @@ function renderSection(title){
  if(title==='School Profile'){
    const info=state.school;
    body.append(table(['Field','Value'],[['School name',info.name],['Academic sections',state.classes.length],['Active students',state.students.length],['Staff profiles',state.staff.length]]));
+   const editProfile=node('button','Edit school identity & contact in Settings');editProfile.type='button';editProfile.className='primary';editProfile.addEventListener('click',()=>open('Settings'));body.append(editProfile);
  }else if(title==='Students'){
     desc.textContent='Real student register. Edit existing records or archive a student without deleting their attendance or fee history.';body.append(desc);
     const all=[...state.students,...state.formerStudents];
