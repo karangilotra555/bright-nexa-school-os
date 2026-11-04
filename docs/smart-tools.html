@@ -82,6 +82,7 @@ body:not(.bn-smart-ready)>header,body:not(.bn-smart-ready)>main{display:none!imp
 </style>
 <script src="./smart-tools-access.js?v=20261023-dashboard-gate" defer></script>
 <script src="./smart-tools-engine.js" defer></script>
+<script src="./school-phase4-roster.js?v=20261104-phase4" defer></script>
 <script src="./smart-tools-ui.js" defer></script>
 </head><body>
 <div id="accessNotice" role="status" aria-live="polite">Checking school access…</div>
@@ -99,7 +100,7 @@ body:not(.bn-smart-ready)>header,body:not(.bn-smart-ready)>main{display:none!imp
 <button type="button" data-tab="errors">🛡️ Error Detector</button>
 </nav>
 <section class="card" data-view="timetable">
-<h2>Smart Timetable Generator</h2><p class="sub">Teachers, subjects aur classes select karke school timetable banayein. No coding, no AI API.</p>
+<h2>Smart Timetable Generator</h2><p class="sub">Teachers, subjects aur classes select karke school timetable banayein. No coding, no AI API.</p><div class="actions"><button id="loadCloudRoster" class="secondary" type="button">Load real school classes & staff (read-only)</button></div><p class="hint">Owner/principal login required. Imported class and staff names are read-only source records; select subjects, assignments and periods manually before generating. Nothing is published to school records.</p>
 
 <div class="tt-editor">
   <div class="tt-step"><h3>1. Classes & weekly subject periods</h3><button id="addDemand" type="button" class="secondary">+ Add Subject</button></div>
