@@ -7,7 +7,7 @@ const TOKEN='bn_school_staff_session_v1';
 const $=id=>document.getElementById(id);
 const menus=['Dashboard','School Profile','Students','Teachers','Non-Teaching Staff','Transport & Routes','Infrastructure & Assets','Class & Section Setup','Attendance','Fees','Expenses & Budget','Exams & Marks','Report Cards','Homework & Notices','Parent Messages','AI Teacher Tools','Opportunity Desk','Growth Passport','School Quality Score','Contact & Support','Settings','Parents App','Teachers Online Access','Smart Tools'];
 const available=new Set(['Dashboard','School Profile','Students','Teachers','Non-Teaching Staff','Class & Section Setup','Attendance','Fees','Homework & Notices','Settings','Smart Tools','Parents App','Teachers Online Access']);
-const state={session:null,me:null,school:null,authUserId:null,offlineReadOnly:false,classes:[],students:[],staff:[],fees:[],attendance:[],notices:[],extra:[]};
+const state={session:null,me:null,school:null,authUserId:null,offlineReadOnly:false,classes:[],students:[],formerStudents:[],staff:[],fees:[],attendance:[],notices:[],extra:[]};
 let active='Dashboard';
 const safe=x=>String(x??'');
 const node=(tag,value)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=safe(value);return e};
@@ -29,6 +29,7 @@ async function req(path,options={}){
 }
 const filt=(tbl,params)=>tbl+'?'+new URLSearchParams(params).toString();
 const inSchool=(table,select='*',more={})=>req(filt(table,{select,institution_id:'eq.'+state.me.institution_id,...more}));
+const allSchool=(table,select='*',more={})=>window.BrightNexaSchoolAdmin.allPages(inSchool,table,select,more);
 function renderMenu(){
  const nav=$('menu');nav.replaceChildren();
  for(const title of menus){
@@ -204,8 +205,13 @@ function renderSection(title){
      try{
        const prev=await inSchool('school_attendance','id',{student_id:'eq.'+student.id,day:'eq.'+day,limit:'1'});
        const row={institution_id:state.me.institution_id,student_id:student.id,class_id:student.class_id,day,status,recorded_by:state.me.id};
-       if(prev.length)await req(filt('school_attendance',{id:'eq.'+prev[0].id,institution_id:'eq.'+state.me.institution_id}),{method:'PATCH',body:row});
-       else await req('school_attendance',{method:'POST',body:row});
+       if(prev.length){
+         const result=await req(filt('school_attendance',{id:'eq.'+prev[0].id,institution_id:'eq.'+state.me.institution_id}),{method:'PATCH',body:row});
+         window.BrightNexaSchoolAdmin.expectUpdated(result,prev[0].id);
+       } else {
+         const result=await req('school_attendance',{method:'POST',body:row});
+         if(!Array.isArray(result)||result.length!==1||!result[0].id)throw Error('Attendance save was not confirmed. Refresh before retrying.');
+       }
        await reload();open('Attendance');
      }catch(e){error(e)}finally{b.disabled=false}
    });body.append(form);
@@ -274,16 +280,18 @@ async function restoreOffline(){
 }
 async function reload(){
  $('message').classList.add('hidden');
- const [classes,students,staff,fees,attendance,notices,extra]=await Promise.all([
- inSchool('school_classes','id,name,section,academic_year',{limit:'500'}),
- inSchool('school_students','id,name,admission_number,class_id,status',{status:'eq.active',limit:'1000'}),
- inSchool('school_staff_profiles','id,display_name,designation,employment_type,staff_category',{limit:'500'}),
- inSchool('school_fee_entries','id,student_id,kind,amount_rupees,description,occurred_on',{limit:'1000'}),
- inSchool('school_attendance','id,student_id,day,status',{order:'day.desc',limit:'200'}),
- inSchool('school_notices','id,title,body,created_at',{order:'created_at.desc',limit:'100'}),
- inSchool('school_module_records','id,module,title,details,created_at',{order:'created_at.desc',limit:'1000'})
+ const [classes,allStudents,staff,fees,attendance,notices,extra]=await Promise.all([
+  allSchool('school_classes','id,name,section,academic_year'),
+  allSchool('school_students','id,name,admission_number,class_id,status,dob,updated_at'),
+  allSchool('school_staff_profiles','id,display_name,designation,employment_type,staff_category,contract_end_on,days_per_week,hours_per_day,visits_per_month,updated_at'),
+  allSchool('school_fee_entries','id,student_id,kind,amount_rupees,description,occurred_on'),
+  inSchool('school_attendance','id,student_id,day,status',{order:'day.desc,id.asc',limit:'200'}),
+  inSchool('school_notices','id,title,body,created_at',{order:'created_at.desc,id.asc',limit:'100'}),
+  allSchool('school_module_records','id,module,title,details,created_at')
  ]);
- Object.assign(state,{classes,students,staff,fees,attendance,notices,extra});
+ const students=allStudents.filter(s=>s.status==='active');
+ const formerStudents=allStudents.filter(s=>s.status!=='active');
+ Object.assign(state,{classes,students,formerStudents,staff,fees,attendance,notices,extra});
  updateCounts();
  try {await window.BrightNexaOfflineUI?.save(state)}catch(e){const status=$('localStatus');if(status)status.textContent='Offline copy not saved: '+e.message;}
  if(active!=='Dashboard')renderSection(active);
