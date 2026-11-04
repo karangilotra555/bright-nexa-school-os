@@ -163,10 +163,10 @@
      }
      const data=await call(action,{request_id:current.id});
      if(ticket!==renderVersion&&selected?.id!==current.id)return;
-     status('onboardingActionStatus',action==='invite'?
-       'Invitation and trial-school creation confirmed. Owner must accept email, set password and configure actual classes and teacher access.':
-       action==='activate'?'School activation confirmed by server.':
-       'Readiness was verified from the school database.');
+     const successMessage=action==='invite'?
+       'Owner invitation and trial-school provisioning confirmed. Owner must accept email, set password and create real classes and teacher access.':
+       action==='activate'?'School activation confirmed by the database.':
+       'Readiness checked from verified school records.';
      if(action==='check'){
        displayReadiness(data);
      }else{
@@ -177,9 +177,10 @@
        }
        if(bridge?.refreshPlatform)await bridge.refreshPlatform();
      }
+     status('onboardingActionStatus',successMessage);
    }catch(e){
-     status('onboardingActionStatus',e.message,true);
      if(action!=='check')await reload().catch(()=>{});
+     status('onboardingActionStatus',e.message,true);
    }finally{lock(false)}
  }
  const form=$('onboardingForm');
