@@ -42,6 +42,7 @@
  };
  function displayReadiness(data){
    const panel=$('onboardingReadiness');panel.replaceChildren();
+   $('activateSchoolButton')?.remove();
    if(!data){panel.append(E('p','Readiness has not been checked.'));return}
    const progress=core.readiness(data);
    panel.append(E('h3',progress.ready?'School meets activation prerequisites':'Setup still pending'));
@@ -52,7 +53,7 @@
      ' · Active teacher logins: '+data.teacher_accounts+
      ' · Active class assignments: '+data.teacher_assignments));
    if(progress.ready&&selected?.status==='invited'){
-     const action=E('button','Activate verified school');action.className='primary';action.type='button';
+     const action=E('button','Activate verified school');action.id='activateSchoolButton';action.className='primary';action.type='button';
      action.addEventListener('click',()=>void perform('activate'));
      $('onboardingActions').append(action);
    }
@@ -171,7 +172,8 @@
      }else{
        await reload();
        if(action==='activate'){
-         displayReadiness({...data,invite_sent:true,owner_verified:true,classes:1,teacher_accounts:1,teacher_assignments:1});
+         const actual=await call('check',{request_id:current.id});
+         displayReadiness(actual);
        }
        if(bridge?.refreshPlatform)await bridge.refreshPlatform();
      }
