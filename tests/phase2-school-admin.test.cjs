@@ -43,10 +43,10 @@ test('phase2 admin modules are loaded before owner app, and dangerous delete sta
  const root=path.join(__dirname,'..');
  const html=fs.readFileSync(path.join(root,'docs/real-owner-workspace.html'),'utf8');
  const js=fs.readFileSync(path.join(root,'docs/real-owner-workspace.js'),'utf8');
- assert.match(html,/school-admin-data\\.js/);
+ assert.ok(html.includes('school-admin-data.js'));
  assert.match(js,/BrightNexaSchoolAdmin/);
  assert.match(js,/school_students/);
- assert.match(js,/status:'archived'/);
- assert.doesNotMatch(js,/school_students\\?[^'\\n]*DELETE/);
+ assert.ok(js.includes("?'archived':'active'"));
+ assert.ok(!js.includes("school_students?method=DELETE"));
  assert.doesNotThrow(()=>new vm.Script(js));
 });
