@@ -62,6 +62,7 @@
    loadGeneration++;
    session=null;user=null;schools=[];subscriptions=[];plans=[];chosen=null;
    sessionStorage.removeItem(SESSION);
+   window.BrightNexaPlatformOnboarding?.reset?.();
    show('platformView',false);show('loginView',true);show('logout',false);
    $('password').value='';
  }
@@ -104,6 +105,9 @@
    status('overviewStatus','Authorized school records refreshed. '+
      overview.assigned+' of '+overview.total+' schools have an administrative plan label.');
    drawSchools();
+   try{
+     await window.BrightNexaPlatformOnboarding?.refresh({allRows,token:currentToken,refreshPlatform:refresh});
+   }catch(e){status('onboardingActionStatus','Onboarding unavailable: '+e.message+' (check D2 migration and Edge deployment).',true)}
    if(chosen&&schools.some(x=>x.id===chosen))await selectSchool(chosen);
    else resetSelection();
  }
