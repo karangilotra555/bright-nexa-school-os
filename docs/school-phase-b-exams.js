@@ -36,6 +36,21 @@
   if(!Number.isInteger(duration)||duration<15||duration>360)throw Error('Duration must be 15–360 minutes.');
   const status=String(raw.status);
   if(!['draft','scheduled'].includes(status))throw Error('Exam plan status must be draft or scheduled.');
+  const minutes=h=>Number(h.slice(0,2))*60+Number(h.slice(3,5));
+  const start=minutes(starts_at),end=start+duration;
+  if(end>1440)throw Error('An exam must end on the same calendar day.');
+  if(status==='scheduled'){
+    for(const row of rows(allRows,'exam_plans')){
+      const d=row.details||{};
+      if(row.id===editingId||d.class_id!==classroom.id||d.scheduled_on!==scheduled_on||d.status!=='scheduled')continue;
+      // Never silently accept an ambiguous published class schedule.
+      const otherStart=minutes(time(d.starts_at)),otherDuration=Number(d.duration_minutes);
+      if(!Number.isInteger(otherDuration)||otherDuration<15||otherDuration>360)
+        throw Error('Existing scheduled exam duration is invalid. Correct it before scheduling another exam.');
+      if(start<otherStart+otherDuration&&otherStart<end)
+        throw Error('Exam time overlaps another scheduled subject for this class. Choose a different time.');
+    }
+  }
   const details={class_id:classroom.id,academic_year:classroom.academic_year,exam,subject,
     maximum,scheduled_on,starts_at,duration_minutes:duration,status};
   if(rows(allRows,'exam_plans').some(row=>row.id!==editingId&&
