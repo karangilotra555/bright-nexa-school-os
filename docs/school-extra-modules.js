@@ -75,7 +75,7 @@ async function renderGeneric(opts,config){
 }
 function renderReportCards({body,state}){
  const engine=window.BrightNexaAcademics;
- const p=elt('p','Only recorded marks from this school are used. Select one exam: marks from different exams are never added together. No school grading policy is configured, so no official grade is assigned.');
+ const p=elt('p','Only recorded school marks are used. Select one exam: marks from different exams are never combined. A school grading policy can show a provisional grade only when all planned subjects match; result publication still requires a separate approval process.');
  p.className='muted';body.append(p);
  if(!engine){body.append(elt('p','Report tools could not load. Refresh while online.'));return}
  const records=state.extra.filter(x=>x.module==='exams');
@@ -111,6 +111,7 @@ function renderReportCards({body,state}){
    table.append(tr);
   }
   result.append(table);
+  window.BrightNexaPhaseB?.decorateDraft({container:result,state,student,exam:data.exam});
   if(!data.subjects.length){result.append(elt('p','No valid marks for this exam.'));return}
   const sum=elt('p','Total: '+data.obtained+' / '+data.maximum+' ('+data.percent+'%). Percentage only; this is not an official pass/fail or grade decision.');
   result.append(sum);
@@ -151,7 +152,7 @@ function renderScore({body,state}){
 }
 window.BrightNexaOwnerExtra={
  render(opts){
-  if(configs[opts.title]){renderGeneric(opts,configs[opts.title]);return true}
+  if(configs[opts.title]){renderGeneric(opts,configs[opts.title]);if(opts.title==='Exams & Marks')window.BrightNexaPhaseB?.planner(opts);return true}
   if(opts.title==='Report Cards'){renderReportCards(opts);return true}
   if(opts.title==='School Quality Score'){renderScore(opts);return true}
   return false;
