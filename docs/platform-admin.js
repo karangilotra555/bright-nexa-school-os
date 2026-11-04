@@ -1,5 +1,5 @@
 /* Phase D1 – separately authenticated platform tenant administration.
- * Browser holds only a Supabase publishable key, never service_role or privileged secrets.
+ * Browser holds only a Supabase publishable key, never privileged server credentials.
  * All cross-tenant authority is checked again by Supabase RLS, not this UI.
  */
 (()=>{
