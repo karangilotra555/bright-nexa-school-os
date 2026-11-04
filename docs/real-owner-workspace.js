@@ -370,7 +370,7 @@ async function reload(){
   allSchool('school_classes','id,name,section,academic_year'),
   allSchool('school_students','id,name,admission_number,class_id,status,dob,updated_at'),
   allSchool('school_staff_profiles','id,display_name,designation,employment_type,staff_category,contract_end_on,days_per_week,hours_per_day,visits_per_month,updated_at'),
-  allSchool('school_fee_entries','id,student_id,kind,amount_rupees,description,reference,occurred_on'),
+  allSchool('school_fee_entries','id,institution_id,student_id,kind,amount_rupees,description,reference,occurred_on'),
   inSchool('school_attendance','id,student_id,day,status',{order:'day.desc,id.asc',limit:'200'}),
   inSchool('school_notices','id,title,body,created_at',{order:'created_at.desc,id.asc',limit:'100'}),
   allSchool('school_module_records','id,module,title,details,created_at')
