@@ -13,9 +13,9 @@ test('cloud operations source and website mirror deployed docs',()=>{
 });
 test('school email validation accepts normal addresses and rejects invalid ones',()=>{
  const code=read('teacher-access.js');
- const line=code.split('\n').find(x=>x.includes('.test(id)'));
+ const line=code.split('\n').find(x=>x.includes('.test(loginEmail)'));
  assert.ok(line,'No sign-in validation found');
- const m=/if\(!\/(.*)\/\.test\(id\)\)/.exec(line);
+ const m=/if\(!\/(.*)\/\.test\(loginEmail\)\)/.exec(line);
  assert.ok(m,'Cannot extract validation regex');
  const email=new RegExp(m[1]);
  assert.equal(email.test('admin@school.in'),true);
@@ -23,6 +23,7 @@ test('school email validation accepts normal addresses and rejects invalid ones'
  assert.equal(email.test('admin@school\\xom'),false);
  assert.equal(email.test('bad-email'),false);
  assert.match(code,/requireField\('signupOwnerEmail'/);
+ assert.match(code,/id\.toLowerCase\(\)==='yrskaran'/);
 });
 test('cloud admission uses approved class and authenticated school scoped REST inserts',()=>{
  const code=read('school-operations.js'),html=read('school-operations.html');
