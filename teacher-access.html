@@ -66,10 +66,9 @@ tr td select{padding:7px;min-width:115px}
   <h1>Teacher & Staff Login</h1>
   <p class="sub">Only school-invited accounts can access records. Every class and role is checked in the cloud database.</p>
   <form id="loginForm">
-    <div class="inputgroup"><label for="loginEmail">School staff email</label><input type="text" id="loginEmail" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="School email or demo" required></div>
+    <div class="inputgroup"><label for="loginEmail">School staff email</label><input type="text" id="loginEmail" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Verified school email" required></div>
     <div class="inputgroup" style="margin:12px 0"><label for="loginPassword">Password</label><input type="password" id="loginPassword" autocomplete="current-password" required minlength="4"></div>
     <button type="submit" class="primary">Sign in securely</button>
-    <p class="muted" style="margin:12px 0 0"><strong>Try demo:</strong> ID <code>demo</code> · Password <code>demo</code>. Fictional sample data only.</p>
   </form>
   <div style="margin-top:17px;border-top:1px solid #dce6ef;padding-top:15px">
     <button id="toggleSchoolRegistration" type="button" class="ghost" aria-expanded="false" aria-controls="createSchoolSignup">+ Create School (New Owner)</button>
@@ -108,9 +107,8 @@ tr td select{padding:7px;min-width:115px}
       <div><h2>🧠 Smart Tools</h2><p class="sub" style="margin:0">Timetable, Substitute Teacher, Student Performance, Excel Import and Error Detector. Browser-only tools; no automatic writes to school records.</p></div>
       <a class="header-back" href="./smart-tools.html" style="background:#0b315e;color:white">Open Smart Tools →</a>
     </div>
-    <a id="ownerDemoLink" class="ghost hidden" href="./school-demo.html" style="display:inline-block;text-decoration:none;margin-top:12px;font-size:12px">Open sample School OS dashboard</a>
   </section>
-  <div class="notice">Verified staff permissions are enforced by Supabase Row Level Security. Owner demo is a separate sample, NOT live school records. Full School OS cloud integration and parent sync are still pending.</div>
+  <div class="notice">Verified staff permissions are enforced by Supabase Row Level Security. Only approved school staff can access assigned real cloud records.</div>
   <div class="cards">
     <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>
     <div class="card"><b id="countStudents">0</b><small>Accessible students</small></div>
@@ -200,13 +198,13 @@ tr td select{padding:7px;min-width:115px}
       <h3>Existing assignments</h3><div id="assignmentsList"></div>
     </div>
     <div class="panel">
-      <h2>Add test student to an assigned class</h2>
+      <h2>Add student to an assigned class</h2>
       <p class="muted">For internal testing only. Do not add real student information until your institution has been securely onboarded.</p>
       <form id="studentForm" class="formgrid">
         <div><label for="studentClass">Class</label><select id="studentClass" required></select></div>
-        <div><label for="studentName">Name</label><input id="studentName" required placeholder="Test Student"></div>
+        <div><label for="studentName">Name</label><input id="studentName" required placeholder="Student name"></div>
         <div><label for="studentAdm">Admission no.</label><input id="studentAdm" required placeholder="TEST-001"></div>
-        <button type="submit" class="primary">Add test student</button>
+        <button type="submit" class="primary">Add student</button>
       </form>
     </div>
   </div>
