@@ -117,6 +117,7 @@ function renderSection(title){
       actions.append(edit,node('span',' '),archive);line.append(actions);tbody.append(line);
     }
     t.append(tbody);wrap.append(t);body.append(wrap);
+    window.BrightNexaAdmissionsImport?.render({body,state,req,allSchool,reload,open,error});
   }else if(title==='Teachers'||title==='Non-Teaching Staff'){
     const want=title==='Teachers'?'teaching':'housekeeping';
     const rows=state.staff.filter(s=>s.staff_category===want);
