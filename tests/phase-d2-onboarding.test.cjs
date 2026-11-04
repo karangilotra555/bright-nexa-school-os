@@ -7,7 +7,7 @@ const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 const reqId='11111111-1111-4111-8111-111111111111';
 const institution='22222222-2222-4222-8222-222222222222';
 const owner='33333333-3333-4333-8333-333333333333';
-const payload={school_name:' New    School ',owner_email:' PRINCIPAL@School.IN ',contact_phone:'+91 98765 43210',notes:'  Verified   representative '};
+const payload={school_name:' New    School ',owner_email:' PRINCIPAL@School.IN ',contact_phone:'9876543210',notes:'  Verified   representative '};
 test('D2 create request validation normalizes owner email, official name and optional fields',()=>{
  const valid=core.requestInput(payload);
  assert.deepEqual(valid,{school_name:'New School',owner_email:'principal@school.in',
