@@ -108,6 +108,12 @@
       const line=i+2;
       try{
         const admission_number=text(row[cols.admission],'Admission number',1,60);
+        const admitKey=canon(admission_number);
+        // Reserve every well-formed admission number, including rows that fail later validation.
+        // Otherwise a second identical row can evade the duplicate-file warning.
+        if(within.has(admitKey))throw Error('Duplicate admission number within file.');
+        within.add(admitKey);
+        if(previous.has(admitKey))throw Error('Admission number already exists in school (including archived students).');
         const name=text(row[cols.name],'Student name',2,180);
         const classLabel=text(row[cols.className],'Class',1,60);
         const section=cols.section?trim(row[cols.section]):'';
@@ -115,12 +121,8 @@
         const matches=(classes||[]).filter(c=>cleanClass(c.name)===cleanClass(classLabel)&&
           (!section||canon(c.section)===canon(section))&&(!year||trim(c.academic_year)===year));
         if(matches.length!==1)throw Error(matches.length?'Class is ambiguous. Specify section / academic year.':'Class and section not found in school.');
-        const admitKey=canon(admission_number);
-        if(previous.has(admitKey))throw Error('Admission number already exists in school (including archived students).');
-        if(within.has(admitKey))throw Error('Duplicate admission number within file.');
         const dob=cols.dob?parseDob(row[cols.dob]):null;
         valid.push({name,admission_number,class_id:matches[0].id,dob,status:'active'});
-        within.add(admitKey);
       }catch(e){errors.push({row:line,reason:e.message});}
     });
     return {valid,errors,rowCount:parsed.length,canCommit:valid.length===parsed.length&&errors.length===0};
