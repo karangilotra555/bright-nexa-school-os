@@ -4,8 +4,18 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.0";
 
 const URL = Deno.env.get("SUPABASE_URL") || "";
-const PRIVILEGED_KEY = Deno.env.get("SUPABASE_SECRET_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const PUBLISHABLE_KEY = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || "";
+function defaultKey(mapName:string,singleName:string,legacyName:string){
+  try{
+    const raw=Deno.env.get(mapName);
+    if(raw){
+      const parsed=JSON.parse(raw) as Record<string,string>;
+      if(typeof parsed.default==="string" && parsed.default)return parsed.default;
+    }
+  }catch{/* malformed secret map must not expose secrets; fail closed below */}
+  return Deno.env.get(singleName) || Deno.env.get(legacyName) || "";
+}
+const PRIVILEGED_KEY = defaultKey("SUPABASE_SECRET_KEYS","SUPABASE_SECRET_KEY","SUPABASE_SERVICE_ROLE_KEY");
+const PUBLISHABLE_KEY = defaultKey("SUPABASE_PUBLISHABLE_KEYS","SUPABASE_PUBLISHABLE_KEY","SUPABASE_ANON_KEY");
 const SCHOOL_PORTAL = "https://bright-nexa-school-os.onrender.com/index.html";
 const ALLOWED_ORIGINS = new Set([
  "https://bright-nexa-school-os.onrender.com",
