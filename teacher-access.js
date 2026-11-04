@@ -7,7 +7,6 @@
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
   const TOKEN_KEY='bn_school_staff_session_v1';
   const PENDING_SCHOOL='bn_pending_school_name_v1';
-  const LOCAL_DEMO_KEY='bn_school_local_demo_access_v1'; // demo only, NOT a Supabase session
   const ROLES=['school_admin','principal','teacher','accountant','receptionist','transport_staff'];
   const guard=window.BrightNexaAccessGuard;
   if(!guard)throw Error('School access checks could not load. Please refresh.');
@@ -83,7 +82,7 @@
   function dropSession(){
     session=null;me=null;identity=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);
-    display('portalSection',false);display('registrationSection',false);display('loginSection',true);display('logout',false);display('ownerDemoLink',false);display('cloudOperationsLink',false);display('smartToolsCard',false);
+    display('portalSection',false);display('registrationSection',false);display('loginSection',true);display('logout',false);display('cloudOperationsLink',false);display('smartToolsCard',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   function tab(name){
@@ -98,7 +97,7 @@
     me=memberships.find(x=>x.auth_user_id===identity.id&&x.status==='active')||null;
     if(!me){
       display('portalSection',false);display('loginSection',false);display('registrationSection',true);
-      display('logout',true);display('ownerDemoLink',false);display('cloudOperationsLink',false);
+      display('logout',true);display('cloudOperationsLink',false);
       put('schoolLabel','Create your school');
       const pending=sessionStorage.getItem(PENDING_SCHOOL);
       if(pending&&!$('newSchoolName').value)$('newSchoolName').value=pending;
@@ -123,7 +122,7 @@
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     display('loginSection',false);display('registrationSection',false);display('portalSection',true);display('logout',true);
     display('adminTab',isAdmin());
-    display('ownerDemoLink',isAdmin());
+    
     display('cloudOperationsLink',['school_admin','principal','accountant'].includes(me.role));
     display('smartToolsCard',canAcademic());
     document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
@@ -482,14 +481,14 @@
   })});
   $('studentForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
-    const studentName=requireField('studentName','Enter the test student name.');
+    const studentName=requireField('studentName','Enter the student name.');
     const admission=requireField('studentAdm','Enter an admission number.');
     const selectedClass=$('studentClass').value;
     if(!allClasses.some(c=>c.id===selectedClass))fieldError('studentClass','Select a valid class before saving.');
     if(allStudents.some(s=>s.admission_number.toLowerCase()===admission.toLowerCase()))fieldError('studentAdm','Admission number already exists in this school.');
     await api('school_students','','POST',{institution_id:me.institution_id,
       class_id:selectedClass,name:studentName,admission_number:admission,status:'active'});
-    e.target.reset();await reload();notify('Test student saved.');
+    e.target.reset();await reload();notify('Student saved to the school roster.');
   })});
   $('assignType').addEventListener('change',()=>{
     const subj=$('assignType').value==='subject_teacher';
