@@ -23173,7 +23173,92 @@ function Vr({ onClose: e, saveLabel: t }) {
     </Component397>
   );
 }
+// Attendance follow-up helpers: recorded evidence only, no inferred absences.
+function attendanceFollowUpDate(value) {
+  return typeof value === `string` && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+}
+function buildAttendanceFollowUpReport(data, students, options) {
+  const { date, fromDate, classId } = options, threshold = Number(options.threshold);
+  if (![date, fromDate, options.today].every(attendanceFollowUpDate)) throw Error(`Choose valid report dates.`);
+  if (date > options.today) throw Error(`Future dates cannot be used for attendance follow-up.`);
+  if (fromDate > date || (Date.parse(date) - Date.parse(fromDate)) / 86400000 > 365) throw Error(`Choose a date range up to 366 days; start cannot follow the report date.`);
+  if (!Number.isInteger(threshold) || threshold < 2 || threshold > 30) throw Error(`Repeated-absence threshold must be 2–30 recorded days.`);
+  const classes = (data.classes || []).filter(c => ![`Inactive`, `Archived`].includes(c.status));
+  const issues = [], roster = new Map(classes.map(c => [c.id, []]));
+  const holiday = day => (data.holidays || []).some(h => h.date === day && [`All`, `Students`].includes(h.appliesTo));
+  for (const student of students.filter(s => s.status === `Active`)) {
+    const matches = classes.filter(c => student.classId ? student.classId === c.id :
+      student.className === c.name && student.section === c.section && (student.academicStream || ``) === (c.academicStream || ``));
+    if (matches.length !== 1) { issues.push(`Review class/session mapping for ${student.studentUniqueId || student.id}.`); continue; }
+    roster.get(matches[0].id).push(student);
+  }
+  const coverage = [], cases = [], followUps = Array.isArray(data.attendanceFollowUps) ? data.attendanceFollowUps : [];
+  for (const cls of classes) {
+    const enrolled = roster.get(cls.id); if (!enrolled.length) continue;
+    let marked = 0, conflicts = 0;
+    for (const student of enrolled) {
+      const dates = new Map();
+      for (const row of data.attendance || []) {
+        if (row.studentId !== student.id || !attendanceFollowUpDate(row.date) || row.date > date || holiday(row.date)) continue;
+        if (row.classId) { if (row.classId !== cls.id) continue; }
+        else {
+          const matches = classes.filter(c => row.className && row.section != null && row.className === c.name && row.section === c.section && (row.academicStream || ``) === (c.academicStream || ``));
+          if (matches.length !== 1) { issues.push(`Review attendance class/session mapping for ${student.studentUniqueId || student.id} on ${row.date}.`); continue; }
+          if (matches[0].id !== cls.id) continue;
+        }
+        const list = dates.get(row.date) || []; list.push(row.status); dates.set(row.date, list);
+      }
+      const statusByDate = new Map();
+      for (const [day, statuses] of dates) {
+        const unique = new Set(statuses);
+        if (statuses.length > 1) issues.push(`Duplicate attendance rows for ${student.studentUniqueId || student.id} on ${day}.`);
+        if (unique.size !== 1 || ![`Present`, `Absent`, `Late`, `Leave`].includes(statuses[0])) {
+          if (day === date) conflicts++; issues.push(`Conflicting/invalid attendance for ${student.studentUniqueId || student.id} on ${day}.`); continue;
+        }
+        statusByDate.set(day, statuses[0]);
+      }
+      if (statusByDate.has(date)) marked++;
+      if (cls.id !== classId) continue;
+      const absenceDates = [...statusByDate].filter(([day, status]) => status === `Absent` && day >= fromDate).map(([day]) => day).sort();
+      const latest = absenceDates.at(-1), incidentDates = new Set();
+      if (latest && (latest === date || absenceDates.length >= threshold)) incidentDates.add(latest);
+      const latestEvents = new Map();
+      for (const event of followUps) if (event.studentId === student.id && event.classId === cls.id && !latestEvents.has(event.incidentDate)) latestEvents.set(event.incidentDate, event);
+      for (const [day, event] of latestEvents) if (day <= date && event.status !== `Resolved` && statusByDate.get(day) === `Absent`) incidentDates.add(day);
+      for (const incidentDate of incidentDates) cases.push({
+        key: JSON.stringify([student.id, cls.id, incidentDate]), student, classId: cls.id, incidentDate,
+        absenceCount: absenceDates.length, absenceDates, followUp: latestEvents.get(incidentDate) || null,
+      });
+    }
+    coverage.push({ classId: cls.id, label: [cls.name, cls.section, cls.academicStream].filter(Boolean).join(` • `), total: enrolled.length,
+      marked, conflicts, holiday: holiday(date), unmarked: holiday(date) ? 0 : enrolled.length - marked - conflicts });
+  }
+  cases.sort((a, b) => b.absenceCount - a.absenceCount || a.incidentDate.localeCompare(b.incidentDate) || String(a.student.name).localeCompare(String(b.student.name)));
+  return { date, fromDate, threshold, coverage, cases, issues };
+}
+function createAttendanceFollowUpEvent(data, students, options, caseKey, values, meta) {
+  if (![`OWNER`, `ADMIN`].includes(meta.actor?.role) || !meta.actor?.accountId) throw Error(`Only the existing owner/admin workspace can record follow-up.`);
+  const incident = buildAttendanceFollowUpReport(data, students, options).cases.find(c => c.key === caseKey);
+  if (!incident) throw Error(`Recorded absence incident changed. Refresh the report before saving.`);
+  if (![`Open`, `Contacted`, `Resolved`].includes(values.status)) throw Error(`Choose a valid follow-up status.`);
+  const notes = String(values.notes || ``).trim(), nextDate = values.nextDate || null;
+  if (notes.length > 1000) throw Error(`Keep notes within 1,000 characters.`);
+  let contactDate = null, method = null;
+  if (values.status !== `Open`) {
+    contactDate = values.contactDate;
+    if (!attendanceFollowUpDate(contactDate) || contactDate < incident.incidentDate || contactDate > options.today || notes.length < 3) throw Error(`Enter the actual contact date and contact notes before marking Contacted or Resolved.`);
+    if (![`Phone`, `In person`, `Parent portal`, `Other`].includes(values.method)) throw Error(`Choose the contact method.`);
+    method = values.method;
+  }
+  if (nextDate && (!attendanceFollowUpDate(nextDate) || nextDate < (contactDate || incident.incidentDate))) throw Error(`Next follow-up date cannot precede this incident/contact.`);
+  if (!meta.id) throw Error(`Follow-up event ID is required.`);
+  return { id: meta.id, studentId: incident.student.id, classId: incident.classId, incidentDate: incident.incidentDate,
+    status: values.status, method, contactDate, notes, nextDate: values.status === `Resolved` ? null : nextDate,
+    recordedBy: meta.actor.accountId, recordedByName: meta.actor.name || `School administrator`, recordedAt: meta.recordedAt || new Date().toISOString() };
+}
 function Hr({ data: e, students: t, onUpdate: n }) {
+  const [followUpOpen, setFollowUpOpen] = (0, w.useState)(false);
+  const followUpActor = Qt();
   let r = new Date().toISOString().slice(0, 10);
   let [i, a] = (0, w.useState)(`students`);
   let [o, s] = (0, w.useState)(r);
@@ -23208,6 +23293,8 @@ function Hr({ data: e, students: t, onUpdate: n }) {
               <_Component size={16} />
               {`Export Monthly Workbook`}
             </Component398>
+          ) : i === `students` && [`OWNER`, `ADMIN`].includes(followUpActor?.role) ? (
+            <button type="button" className="secondary-button" onClick={() => setFollowUpOpen(true)}>Absent follow-up</button>
           ) : undefined
         }
       />
@@ -23243,6 +23330,11 @@ function Hr({ data: e, students: t, onUpdate: n }) {
           label={`Reports & Payroll`}
         />
       </Component399>
+      {followUpOpen && [`OWNER`, `ADMIN`].includes(followUpActor?.role) && (
+        <AttendanceFollowUpDialog data={e} students={t} selectedClass={f} date={o} actor={followUpActor}
+          onClose={() => setFollowUpOpen(false)} onUpdate={n}
+          onOpenClass={(id) => { d(id); a(`students`); setFollowUpOpen(false); }} />
+      )}
       {i === `students` && (
         <Ur
           data={e}
@@ -23296,6 +23388,70 @@ function Hr({ data: e, students: t, onUpdate: n }) {
       )}
     </Component400>
   );
+}
+function AttendanceFollowUpDialog({ data, students, selectedClass, date, actor, onClose, onUpdate, onOpenClass }) {
+  const [fromDate, setFromDate] = (0, w.useState)(() => attendanceFollowUpDate(date) ? new Date(Date.parse(date) - 29 * 86400000).toISOString().slice(0, 10) : ``);
+  const [threshold, setThreshold] = (0, w.useState)(3);
+  const [caseKey, setCaseKey] = (0, w.useState)(``);
+  const [showResolved, setShowResolved] = (0, w.useState)(false);
+  const [values, setValues] = (0, w.useState)({ status: `Open`, method: `Phone`, contactDate: ``, notes: ``, nextDate: `` });
+  const [notice, setNotice] = (0, w.useState)(``);
+  const now = new Date(), today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, `0`)}-${String(now.getDate()).padStart(2, `0`)}`;
+  const options = { date, fromDate, threshold, classId: selectedClass?.id, today };
+  let report, failure;
+  try { report = buildAttendanceFollowUpReport(data, students, options); } catch (error) { failure = error.message; }
+  const selected = report?.cases.find(c => c.key === caseKey);
+  const update = (key, value) => setValues(old => ({ ...old, [key]: value }));
+  function edit(entry) {
+    setCaseKey(entry.key); setNotice(``);
+    setValues({ status: entry.followUp?.status || `Open`, method: entry.followUp?.method || `Phone`,
+      contactDate: entry.followUp?.contactDate || ``, notes: ``, nextDate: entry.followUp?.nextDate || `` });
+  }
+  return <L title="Absent follow-up" subtitle={`${date} • ${selectedClass ? ni(selectedClass) : `Choose a class in the register`}`} onClose={onClose}>
+    <p>Based only on saved attendance and the current roster. Unmarked is not absent. Check whether school is open before asking a class to mark attendance; no weekly working-day rule is assumed.</p>
+    <div className="form-grid">
+      <R label="Absence history from"><input type="date" value={fromDate} onChange={event => { setFromDate(event.target.value); setCaseKey(``); }} /></R>
+      <R label="Repeated absence threshold (recorded days)"><input type="number" min="2" max="30" value={threshold} onChange={event => { setThreshold(event.target.value); setCaseKey(``); }} /></R>
+    </div>
+    {failure ? <p role="alert">{failure}</p> : <>
+      <h3>Class marking coverage</h3>
+      <div className="table-scroll"><table><thead><tr><th>Class / section</th><th>Marked / enrolled</th><th>Not marked</th><th>Conflicts</th><th>Action</th></tr></thead>
+        <tbody>{report.coverage.map(row => <tr key={row.classId}><td>{row.label}{row.holiday ? ` • Student holiday` : ``}</td><td>{row.marked} / {row.total}</td><td>{row.unmarked}</td><td>{row.conflicts}</td><td><button type="button" className="secondary-button" onClick={() => onOpenClass(row.classId)}>Open class register</button></td></tr>)}</tbody>
+      </table></div>
+      {!!report.issues.length && <p role="status">{report.issues.length} data issue(s) require review. Ambiguous class/session mappings and conflicting attendance are excluded from absence counts.</p>}
+      {!!report.issues.length && <details><summary>Review data issues</summary><ul>{report.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}
+      <h3>Selected-class follow-up</h3>
+      <p>Recorded absence on the selected date, repeated recorded absences in this window, and earlier unresolved incidents. Present/late/leave and missing marks are not absence incidents.</p>
+      <R label="Case visibility"><select value={showResolved ? `all` : `pending`} onChange={event => setShowResolved(event.target.value === `all`)}><option value="pending">Needs follow-up</option><option value="all">Include resolved</option></select></R>
+      <div className="table-scroll"><table><thead><tr><th>Student</th><th>Recorded absent days in window</th><th>Incident</th><th>Status / next follow-up</th><th>Action</th></tr></thead>
+        <tbody>{report.cases.filter(entry => showResolved || entry.followUp?.status !== `Resolved`).map(entry => <tr key={entry.key}><td>{entry.student.name}<small>{entry.student.studentUniqueId || entry.student.admissionNumber}</small></td><td>{entry.absenceCount}</td><td>{entry.incidentDate}</td><td>{entry.followUp?.status || `Open`}{entry.followUp?.nextDate ? ` • ${entry.followUp.nextDate}` : ``}</td><td><button type="button" className="secondary-button" onClick={() => edit(entry)}>Record follow-up</button></td></tr>)}</tbody>
+      </table></div>
+      {!report.cases.filter(entry => showResolved || entry.followUp?.status !== `Resolved`).length && <p>No matching follow-up cases. This does not mean all attendance is marked.</p>}
+      {selected && <form onSubmit={event => {
+        event.preventDefault(); setNotice(``);
+        try {
+          const saved = createAttendanceFollowUpEvent(data, students, options, caseKey, values, { actor, id: crypto.randomUUID() });
+          onUpdate({ ...data, attendanceFollowUps: [saved, ...(data.attendanceFollowUps || [])] }, `CREATE`, `Attendance follow-up`, `${selected.student.studentUniqueId || selected.student.id} • ${saved.incidentDate} • ${saved.status}`);
+          setCaseKey(``); setNotice(`Follow-up recorded in this workspace. No message was sent.`);
+        } catch (error) { setNotice(error.message); }
+      }}>
+        <h3>{selected.student.name} • {selected.incidentDate}</h3>
+        <p>Parent contact: {selected.student.parentMobile || `Not entered`}</p>
+        <div className="form-grid">
+          <R label="Follow-up status"><select value={values.status} onChange={event => update(`status`, event.target.value)}><option>Open</option><option>Contacted</option><option value="Resolved">Resolved after contact</option></select></R>
+          <R label="Contact method"><select value={values.method} onChange={event => update(`method`, event.target.value)}>{[`Phone`, `In person`, `Parent portal`, `Other`].map(method => <option key={method}>{method}</option>)}</select></R>
+          <R label="Actual contact date"><input type="date" value={values.contactDate} onChange={event => update(`contactDate`, event.target.value)} /></R>
+          <R label="Next follow-up date"><input type="date" value={values.nextDate} onChange={event => update(`nextDate`, event.target.value)} /></R>
+          <R label="Contact / reason notes" wide={true}><textarea maxLength="1000" value={values.notes} onChange={event => update(`notes`, event.target.value)} /></R>
+        </div>
+        <p>Manual school record only. Saving Contacted/Resolved does not send or verify a call/message.</p>
+        <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setCaseKey(``)}>Cancel follow-up</button><button type="submit" className="primary-button">Save follow-up record</button></div>
+        <details><summary>Earlier contact history</summary><ul>{(data.attendanceFollowUps || []).filter(item => item.studentId === selected.student.id && item.classId === selected.classId && item.incidentDate === selected.incidentDate).map(item => <li key={item.id}>{item.recordedAt} • {item.status} • {item.method || `No contact recorded`} • {item.notes}</li>)}</ul></details>
+      </form>}
+    </>}
+    <p role="status">{notice}</p>
+    <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Close</button></div>
+  </L>;
 }
 function Ur({
   data: e,
@@ -26147,6 +26303,7 @@ function Oi() {
     teachers: [],
     classes: [],
     attendance: [],
+    attendanceFollowUps: [],
     staffAttendance: [],
     holidays: [],
     feeStructures: [],
