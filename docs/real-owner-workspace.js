@@ -311,7 +311,7 @@ function renderSection(title){
  else if(title==='Parents App'){location.assign('./parents-cloud.html')}
  else if(title==='Smart Tools'){location.assign('./smart-tools.html')}
  else if(title==='Settings'){window.BrightNexaSettings?.openTab('school')}
- else if(window.BrightNexaOwnerExtra?.render({title,body,state,req,reload,open,error})){}
+ else if(window.BrightNexaOwnerExtra?.render({title,body,state,req,allSchool,reload,open,error})){}
  else {
    desc.textContent='This module is not connected to the cloud database yet. Only verified school records will be shown after setup.';body.append(desc);
  }
