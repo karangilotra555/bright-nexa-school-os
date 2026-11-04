@@ -33,9 +33,9 @@ test('encrypted backup verifies school identity and refuses cross-tenant data',a
 });
 test('backup code is loaded only into owner page, not public school login',()=>{
  const html=read('docs/real-owner-workspace.html'),js=read('docs/real-owner-workspace.js'),sw=read('docs/owner-offline-sw.js');
- for(const s of ['school-backup-core.js','school-backup-ui.js','backupDownload','backupVerify','backupStatus'])assert.ok(html.includes(s),s);
- assert.match(js,/BrightNexaBackup\?\.attach/);
- assert.ok(sw.includes('school-backup-core.js'));assert.ok(sw.includes('school-backup-ui.js'));
- for(const src of ['docs/school-backup-core.js','docs/school-backup-ui.js'])assert.doesNotThrow(()=>new vm.Script(read(src)));
- assert.doesNotMatch(read('docs/school-backup-ui.js'),/service_role|sb_secret_|localStorage\.setItem/);
+ for(const s of ['school-backup-core.js','school-auto-backup.js','school-auto-backup-ui.js','backupFolder','backupNow','backupVerify','backupStatus','backupReauthorize','backupRecovery'])assert.ok(html.includes(s),s);
+ assert.match(js,/BrightNexaAutoBackup\?\.attach/);
+ for(const asset of ['school-backup-core.js','school-auto-backup.js','school-auto-backup-ui.js'])assert.ok(sw.includes(asset));
+ for(const src of ['docs/school-backup-core.js','docs/school-auto-backup.js','docs/school-auto-backup-ui.js'])assert.doesNotThrow(()=>new vm.Script(read(src)));
+ assert.doesNotMatch(read('docs/school-auto-backup-ui.js'),/service_role|sb_secret_|localStorage\.setItem|passphraseDialog/);
 });
