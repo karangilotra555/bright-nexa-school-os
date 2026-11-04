@@ -3,7 +3,7 @@
 (() => {
   'use strict';
   const POINTER='bn_school_offline_last_owner_v1';
-  const recordKeys=['classes','students','staff','fees','attendance','notices','extra'];
+  const recordKeys=['classes','students','formerStudents','staff','fees','attendance','notices','extra'];
   let vault=null,ids=null;
   const status=message=>{const el=document.getElementById('localStatus');if(el)el.textContent=message;};
   function passphraseDialog(heading){
