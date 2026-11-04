@@ -11,7 +11,7 @@ const payload={school_name:' New    School ',owner_email:' PRINCIPAL@School.IN '
 test('D2 create request validation normalizes owner email, official name and optional fields',()=>{
  const valid=core.requestInput(payload);
  assert.deepEqual(valid,{school_name:'New School',owner_email:'principal@school.in',
-   contact_phone:'+91 98765 43210',notes:'Verified representative'});
+   contact_phone:'9876543210',notes:'Verified representative'});
  assert.equal(core.requestInput({...payload,contact_phone:'',notes:''}).contact_phone,null);
  assert.throws(()=>core.requestInput({...payload,school_name:'N'}),/3–120/);
  assert.throws(()=>core.requestInput({...payload,owner_email:'not-an-email'}),/valid school owner email/);
