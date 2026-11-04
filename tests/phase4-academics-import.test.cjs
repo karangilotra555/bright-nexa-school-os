@@ -95,6 +95,6 @@ test('Phase 4 development modules parse and load in owner workspace; import neve
 test('Phase 4 new scripts are included in owner offline shell without caching auth or REST responses',()=>{
  const sw=read('docs/owner-offline-sw.js');
  for(const filename of ['school-xlsx-reader.js','school-phase4-academics.js','school-phase4-import-ui.js','smart-tools-engine.js'])assert.ok(sw.includes(filename));
- assert.match(sw,/bright-nexa-owner-shell-v2/);
+ assert.match(sw,/bright-nexa-owner-shell-v3/);
  assert.doesNotMatch(sw,/rest\/v1|auth\/v1/);
 });
