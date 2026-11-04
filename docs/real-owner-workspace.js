@@ -298,7 +298,7 @@ function renderSection(title){
  else if(title==='Settings'){body.append(link('Manage account and school roles','./index.html?view=roles'))}
  else if(window.BrightNexaOwnerExtra?.render({title,body,state,req,reload,open,error})){}
  else {
-   desc.textContent='This module is not connected to the cloud database yet. Existing historical local demonstration functionality is not being presented as real school records.';body.append(desc);
+   desc.textContent='This module is not connected to the cloud database yet. Only verified school records will be shown after setup.';body.append(desc);
  }
 }
 function open(name){
