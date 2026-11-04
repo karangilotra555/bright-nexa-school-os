@@ -36931,6 +36931,11 @@ var Ts = [
     roles: Cs
   },
   {
+    label: `Smart Tools`,
+    icon: _Component27,
+    roles: Cs
+  },
+  {
     label: `Opportunity Desk`,
     icon: _Component37,
     roles: ws
@@ -37533,7 +37538,20 @@ function Ds() {
       institution: e2.institution,
       onUpdate: j
     }
-  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, null) : c2 === `Opportunity Desk` ? /* @__PURE__ */ w.createElement(
+  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, null) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement("iframe", {
+    title: `Smart School Tools`,
+    src: `./smart-tools.html?embedded=1`,
+    loading: `lazy`,
+    style: {
+      display: `block`,
+      width: `100%`,
+      height: `calc(100vh - 160px)`,
+      minHeight: 580,
+      border: `none`,
+      borderRadius: 12,
+      background: `transparent`
+    }
+  }) : c2 === `Opportunity Desk` ? /* @__PURE__ */ w.createElement(
     _Component95,
     {
       data: i2,
