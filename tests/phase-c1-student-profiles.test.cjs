@@ -56,6 +56,9 @@ test('Phase C1 SQL restricts private details to school owner and guarantees tena
  assert.match(sql,/foreign key\(student_id,institution_id\)/i);
  assert.match(sql,/school_private\.has_role\(institution_id,array\['school_admin'::text\]\)/);
  assert.match(sql,/create policy bn_student_documents_owner_read/i);
+ assert.match(sql,/grant update \(guardian_name,guardian_relationship,guardian_phone/i);
+ assert.match(sql,/grant update \(status,notes,checked_by,checked_at,updated_at\)/i);
+ assert.doesNotMatch(sql,/grant select,insert,update on table/i);
  assert.doesNotMatch(sql,/to anon\s+using\s*\(true\)|service_role|storage\.objects/i);
 });
 test('owner Students screen gains selected-student editor and private records stay outside global state',()=>{
