@@ -18923,8 +18923,8 @@ function On(e2) {
 async function kn() {
   let [e2, t2] = await Promise.all([kt(`snapshot`), kt(`students`)]);
   return {
-    snapshot: e2 ? xn(e2) : null,
-    students: t2 ? t2.map(Sn) : null
+    snapshot: bnReadSchoolRecord(`snapshot`, e2) ? xn(bnReadSchoolRecord(`snapshot`, e2)) : null,
+    students: bnReadSchoolRecord(`students`, t2)?.map(Sn) ?? null
   };
 }
 var An = `Andaman and Nicobar Islands.Andhra Pradesh.Arunachal Pradesh.Assam.Bihar.Chandigarh.Chhattisgarh.Dadra and Nagar Haveli and Daman and Diu.Delhi.Goa.Gujarat.Haryana.Himachal Pradesh.Jammu and Kashmir.Jharkhand.Karnataka.Kerala.Ladakh.Lakshadweep.Madhya Pradesh.Maharashtra.Manipur.Meghalaya.Mizoram.Nagaland.Odisha.Puducherry.Punjab.Rajasthan.Sikkim.Tamil Nadu.Telangana.Tripura.Uttar Pradesh.Uttarakhand.West Bengal`.split(
@@ -22035,8 +22035,9 @@ function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = "Haridwar Public S
   const [desc, setDesc] = (0, w.useState)("As per administrative guidelines and weather conditions, school will observe a holiday. Online homework tasks have been shared in the app.");
   const [startDate, setStartDate] = (0, w.useState)(() => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
   const [reopenDate, setReopenDate] = (0, w.useState)("");
+  const [customMessage, setCustomMessage] = (0, w.useState)(null);
   if (!isOpen) return null;
-  const messageText = bnCreateNoticeMessage({
+  const generatedMessage = bnCreateNoticeMessage({
     schoolName,
     title,
     description: desc,
@@ -22044,7 +22045,9 @@ function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = "Haridwar Public S
     reopeningDate: reopenDate,
     schoolPhone: "+91 7500058655"
   });
+  const messageText = customMessage ?? generatedMessage;
   const handleShareWhatsApp = () => {
+    if (!messageText.trim()) return;
     const url = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
     window.open(url, "BN_WhatsApp_Runner", "width=1000,height=720,left=150,top=100");
   };
@@ -22061,7 +22064,7 @@ function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = "Haridwar Public S
       setTitle("Important School Circular & Guidelines");
       setDesc("Dear Parents, please review this important circular regarding upcoming school events and guidelines.");
     }
-  } }, /* @__PURE__ */ w.createElement("option", { value: "holiday" }, "\u2744\uFE0F Winter / Severe Cold Holiday (DM Order)"), /* @__PURE__ */ w.createElement("option", { value: "rain" }, "\u{1F327}\uFE0F Heavy Rain / Monsoon Alert"), /* @__PURE__ */ w.createElement("option", { value: "circular" }, "\u{1F4E2} General School Circular / Instructions"))), /* @__PURE__ */ w.createElement(R, { label: "Circular Title" }, /* @__PURE__ */ w.createElement("input", { type: "text", value: title, onChange: (e2) => setTitle(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "Notice Description & Instructions" }, /* @__PURE__ */ w.createElement("textarea", { rows: 3, value: desc, onChange: (e2) => setDesc(e2.target.value), style: { width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid var(--line, #cbd5e1)" } })), /* @__PURE__ */ w.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" } }, /* @__PURE__ */ w.createElement(R, { label: "Effective From" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: startDate, onChange: (e2) => setStartDate(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "Reopening Date (Optional)" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: reopenDate, onChange: (e2) => setReopenDate(e2.target.value) }))), /* @__PURE__ */ w.createElement("div", { style: { padding: "12px", background: "var(--card-bg, #f8fafc)", borderRadius: "8px", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("strong", { style: { display: "block", fontSize: "13px", marginBottom: "6px" } }, "Ready-to-Send Message Preview:"), /* @__PURE__ */ w.createElement("pre", { style: { margin: 0, fontSize: "12px", fontFamily: "monospace", whiteSpace: "pre-wrap", maxHeight: "130px", overflowY: "auto" } }, messageText)), /* @__PURE__ */ w.createElement("div", { className: "modal-actions", style: { display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "10px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Close"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#25D366", borderColor: "#1ea952", fontWeight: 700, gap: "8px" }, onClick: handleShareWhatsApp }, /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"), /* @__PURE__ */ w.createElement("span", null, "Open WhatsApp & Broadcast")))));
+  } }, /* @__PURE__ */ w.createElement("option", { value: "holiday" }, "\u2744\uFE0F Winter / Severe Cold Holiday (DM Order)"), /* @__PURE__ */ w.createElement("option", { value: "rain" }, "\u{1F327}\uFE0F Heavy Rain / Monsoon Alert"), /* @__PURE__ */ w.createElement("option", { value: "circular" }, "\u{1F4E2} General School Circular / Instructions"))), /* @__PURE__ */ w.createElement(R, { label: "Circular Title" }, /* @__PURE__ */ w.createElement("input", { type: "text", value: title, onChange: (e2) => setTitle(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "Notice Description & Instructions" }, /* @__PURE__ */ w.createElement("textarea", { rows: 3, value: desc, onChange: (e2) => setDesc(e2.target.value), style: { width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid var(--line, #cbd5e1)" } })), /* @__PURE__ */ w.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" } }, /* @__PURE__ */ w.createElement(R, { label: "Effective From" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: startDate, onChange: (e2) => setStartDate(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "Reopening Date (Optional)" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: reopenDate, onChange: (e2) => setReopenDate(e2.target.value) }))), /* @__PURE__ */ w.createElement("div", { style: { padding: "12px", background: "var(--card-bg, #f8fafc)", borderRadius: "8px", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("strong", { style: { display: "block", fontSize: "13px", marginBottom: "6px" } }, "Ready-to-Send Message Preview:"), /* @__PURE__ */ w.createElement("textarea", { "aria-label": "Final circular message", value: messageText, onChange: (event) => setCustomMessage(event.target.value), rows: 7, style: { margin: 0, width: "100%", boxSizing: "border-box", fontSize: "12px", fontFamily: "monospace", resize: "vertical" } }), /* @__PURE__ */ w.createElement("button", { type: "button", className: "text-button", onClick: () => setCustomMessage(null) }, "Reset message from fields"), customMessage !== null && /* @__PURE__ */ w.createElement("small", null, "Your edited message will be shared. Reset to apply changes from the fields above.")), /* @__PURE__ */ w.createElement("div", { className: "modal-actions", style: { display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "10px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Close"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#25D366", borderColor: "#1ea952", fontWeight: 700, gap: "8px" }, onClick: handleShareWhatsApp }, /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"), /* @__PURE__ */ w.createElement("span", null, "Open WhatsApp & Broadcast")))));
 }
 function R({ label: e2, wide: t2, children: n2 }) {
   const Component393 = `span`;
@@ -25136,7 +25139,7 @@ function ji(e2) {
   Ot(`operations`, t2).catch(() => void 0);
 }
 async function Mi() {
-  let e2 = await kt(`operations`);
+  let e2 = bnReadSchoolRecord(`operations`, await kt(`operations`));
   if (e2) {
     return Ni(e2);
   } else {
@@ -26028,30 +26031,31 @@ function Vi(e2, t2) {
 }
 function Hi({ data: e2, students: t2, snapshot: n2 }) {
   let [r2, i2] = (0, w.useState)(e2.exams[0]?.id || ``);
-  let a2 = e2.exams.find((e3) => e3.id === r2);
-  let o2 = t2.filter((e3) => !a2 || Ui(e3, a2));
-  let [s2, c2] = (0, w.useState)(o2[0]?.id || ``);
-  let l2 = t2.find((e3) => e3.id === s2);
+  let [s2, c2] = (0, w.useState)(t2.find((student) => Ui(student, e2.exams.find((exam) => exam.id === r2) || {}))?.id || t2[0]?.id || ``);
+  const selection = bnReportSelection(t2, e2.exams, s2, r2);
+  let a2 = selection.exam;
+  let o2 = t2;
+  let l2 = selection.student;
   let [whatsAppPtmOpen, setWhatsAppPtmOpen] = (0, w.useState)(false);
   let [u2, d2] = (0, w.useState)(``);
   let [f2, p2] = (0, w.useState)(`Promoted with best wishes.`);
   let m2 = (0, w.useMemo)(
     () => a2?.subjects.map(
       (t3) => e2.marks.find(
-        (e3) => e3.examId === a2.id && e3.studentId === s2 && e3.subject === t3.name
+        (e3) => e3.examId === a2.id && e3.studentId === l2?.id && e3.subject === t3.name
       ) || {
         subject: t3.name,
         maximumMarks: t3.maximumMarks,
         obtainedMarks: 0
       }
     ) || [],
-    [e2.marks, a2, s2]
+    [e2.marks, a2, l2?.id]
   );
   let h2 = m2.reduce((e3, t3) => e3 + t3.obtainedMarks, 0);
   let g2 = m2.reduce((e3, t3) => e3 + t3.maximumMarks, 0);
   let _2 = g2 ? h2 / g2 * 100 : 0;
   let v2 = Wi(_2);
-  let y2 = e2.attendance.filter((e3) => e3.studentId === s2);
+  let y2 = e2.attendance.filter((e3) => e3.studentId === l2?.id);
   let b2 = y2.length ? y2.filter((e3) => e3.status === `Present`).length / y2.length * 100 : 0;
   const Component883 = `button`;
   const Component884 = `option`;
@@ -26226,7 +26230,7 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
   ), /* @__PURE__ */ w.createElement(Component896, { className: `report-selectors` }, /* @__PURE__ */ w.createElement(R, { label: `Examination` }, /* @__PURE__ */ w.createElement(
     Component885,
     {
-      value: r2,
+      value: a2?.id || ``,
       onChange: (n3) => {
         i2(n3.target.value);
         let r3 = e2.exams.find((e3) => e3.id === n3.target.value);
@@ -26234,17 +26238,19 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
         d2(``);
       }
     },
+    /* @__PURE__ */ w.createElement(Component884, { value: `` }, "Select examination"),
     e2.exams.map((e3) => /* @__PURE__ */ w.createElement(Component884, { value: e3.id, key: e3.id }, e3.name, ` \u2022 Class `, [e3.className, e3.section, e3.academicStream].filter(Boolean).join(` \u2022 `)))
   )), /* @__PURE__ */ w.createElement(R, { label: `Student` }, /* @__PURE__ */ w.createElement(
     Component887,
     {
-      value: s2,
+      value: l2?.id || ``,
       onChange: (e3) => {
         c2(e3.target.value);
+        i2(bnReportSelection(t2, e3.exams, e3.target.value, r2).exam?.id || ``);
         d2(``);
       }
     },
-    o2.map((e3) => /* @__PURE__ */ w.createElement(Component886, { value: e3.id, key: e3.id }, e3.name, ` \u2022 `, e3.admissionNumber))
+    o2.map((e3) => /* @__PURE__ */ w.createElement(Component886, { value: e3.id, key: e3.id }, e3.name, ` \u2022 `, e3.admissionNumber, " \u2022 Class ", e3.className, " ", e3.section))
   )), /* @__PURE__ */ w.createElement(Component895, { className: `report-edit-box` }, /* @__PURE__ */ w.createElement(Component890, null, /* @__PURE__ */ w.createElement(Component888, null, `Teacher remark (editable)`), /* @__PURE__ */ w.createElement(
     Component889,
     {
@@ -26384,14 +26390,14 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
     {
       className: `empty-state`
     },
-    `Select an examination and student.`
+    l2 ? `No examination is configured for Class ${l2.className} ${l2.section || ""}. Add it in Exams & Marks to prepare this student's report.` : `Add a student in Students to prepare report cards.`
   ), whatsAppPtmOpen && /* @__PURE__ */ w.createElement(
     WhatsAppPtmDialog,
     {
       isOpen: whatsAppPtmOpen,
       onClose: () => setWhatsAppPtmOpen(false),
       exam: a2,
-      students: o2,
+      students: a2 ? o2.filter((student) => Ui(student, a2)) : [],
       schoolName: n2?.institution?.name || "Haridwar Public School"
     }
   ));
@@ -37370,6 +37376,48 @@ var Es = new Intl.NumberFormat(`en-IN`, {
   currency: `INR`,
   maximumFractionDigits: 0
 });
+function bnReadSchoolRecord(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(`bright-nexa-school-os:${key}:v1`);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+function bnLinkClassChanges(previous, next, students) {
+  const changes = (next.classes || []).flatMap((group) => {
+    const old = (previous.classes || []).find((item) => item.id === group.id);
+    return old && (old.name !== group.name || old.section !== group.section || old.academicStream !== group.academicStream) ? [{ old, group }] : [];
+  });
+  const samePlacement = (record, group, name) => record[name] === group.name && record.section === group.section && (record.academicStream || "") === (group.academicStream || "");
+  const matches = (record, group, name) => {
+    if (record.classId) return record.classId === group.id;
+    if (!samePlacement(record, group, name)) return false;
+    if (record.academicSession && group.academicSession) return record.academicSession === group.academicSession;
+    return (previous.classes || []).filter((item) => samePlacement(record, item, name)).length === 1;
+  };
+  const placement = (record, name) => {
+    const change = changes.find(({ old }) => matches(record, old, name));
+    return change ? { ...record, [name]: change.group.name, section: change.group.section, academicStream: change.group.academicStream } : record;
+  };
+  return {
+    students: students.map((student) => placement(student, "className")),
+    operations: {
+      ...next,
+      exams: (next.exams || []).map((exam) => placement(exam, "className")),
+      teachers: (next.teachers || []).map((teacher) => ({ ...teacher, assignedClasses: (teacher.assignedClasses || []).map((key) => {
+        const change = changes.find(({ old }) => key === `${old.name}-${old.section}` && (previous.classes || []).filter((item) => item.name === old.name && item.section === old.section).length === 1);
+        return change ? `${change.group.name}-${change.group.section}` : key;
+      }) }))
+    }
+  };
+}
+function bnReportSelection(students, exams, studentId, examId) {
+  const student = students.find((item) => item.id === studentId) || students[0] || null;
+  const matches = (exam2) => student && student.className === exam2.className && (!exam2.section || student.section === exam2.section) && (!exam2.academicStream || student.academicStream === exam2.academicStream);
+  const exam = exams.find((item) => item.id === examId && matches(item)) || exams.find(matches) || null;
+  return { student, exam };
+}
 function Ds() {
   let [e2, t2] = (0, w.useState)(wn);
   let [n2, r2] = (0, w.useState)(Dn);
@@ -37497,6 +37545,22 @@ function Ds() {
       o3 = false;
     };
   }, []);
+  (0, w.useEffect)(() => {
+    const refresh = (event) => {
+      if (event.storageArea !== window.localStorage) return;
+      if (event.key === _n && event.newValue) t2(xn(JSON.parse(event.newValue)));
+      if (event.key === vn && event.newValue) r2(JSON.parse(event.newValue).map(Sn));
+      if (event.key === Di && event.newValue) a2(Ni(JSON.parse(event.newValue)));
+    };
+    const receive = (event) => {
+      try {
+        refresh(event);
+      } catch {
+      }
+    };
+    window.addEventListener("storage", receive);
+    return () => window.removeEventListener("storage", receive);
+  }, []);
   let se = (e3) => {
     l2(e3);
     s2(false);
@@ -37584,10 +37648,15 @@ function Ds() {
     a2(l3);
     ji(l3);
   };
-  let j = (e3, t3, n3, r3) => {
-    let i3 = z(e3, t3, n3, r3);
-    a2(i3);
-    ji(i3);
+  let j = (next, action, module, detail) => {
+    const linked = bnLinkClassChanges(i2, next, n2);
+    if (linked.students.some((student, index) => student !== n2[index])) {
+      r2(linked.students);
+      On(linked.students);
+    }
+    const operations = z(linked.operations, action, module, detail);
+    a2(operations);
+    ji(operations);
   };
   const Component2051 = `img`;
   const Component2052 = `strong`;

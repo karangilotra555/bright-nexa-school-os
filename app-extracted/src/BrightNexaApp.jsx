@@ -19681,8 +19681,8 @@ function On(e) {
 async function kn() {
   let [e, t] = await Promise.all([kt(`snapshot`), kt(`students`)]);
   return {
-    snapshot: e ? xn(e) : null,
-    students: t ? t.map(Sn) : null,
+    snapshot: bnReadSchoolRecord(`snapshot`, e) ? xn(bnReadSchoolRecord(`snapshot`, e)) : null,
+    students: bnReadSchoolRecord(`students`, t)?.map(Sn) ?? null,
   };
 }
 var An =
@@ -23573,10 +23573,11 @@ function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = 'Haridwar Public S
   const [desc, setDesc] = (0, w.useState)('As per administrative guidelines and weather conditions, school will observe a holiday. Online homework tasks have been shared in the app.');
   const [startDate, setStartDate] = (0, w.useState)(() => new Date().toISOString().slice(0, 10));
   const [reopenDate, setReopenDate] = (0, w.useState)('');
+  const [customMessage, setCustomMessage] = (0, w.useState)(null);
 
   if (!isOpen) return null;
 
-  const messageText = bnCreateNoticeMessage({
+  const generatedMessage = bnCreateNoticeMessage({
     schoolName,
     title,
     description: desc,
@@ -23585,7 +23586,9 @@ function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = 'Haridwar Public S
     schoolPhone: '+91 7500058655'
   });
 
+  const messageText = customMessage ?? generatedMessage;
   const handleShareWhatsApp = () => {
+    if (!messageText.trim()) return;
     const url = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
     window.open(url, 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100');
   };
@@ -23629,9 +23632,9 @@ function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = 'Haridwar Public S
         </div>
         <div style={{ padding: '12px', background: 'var(--card-bg, #f8fafc)', borderRadius: '8px', border: '1px solid var(--line, #e2e8f0)' }}>
           <strong style={{ display: 'block', fontSize: '13px', marginBottom: '6px' }}>Ready-to-Send Message Preview:</strong>
-          <pre style={{ margin: 0, fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: '130px', overflowY: 'auto' }}>
-            {messageText}
-          </pre>
+          <textarea aria-label="Final circular message" value={messageText} onChange={event => setCustomMessage(event.target.value)} rows={7} style={{ margin: 0, width: '100%', boxSizing: 'border-box', fontSize: '12px', fontFamily: 'monospace', resize: 'vertical' }} />
+          <button type="button" className="text-button" onClick={() => setCustomMessage(null)}>Reset message from fields</button>
+          {customMessage !== null && <small>Your edited message will be shared. Reset to apply changes from the fields above.</small>}
         </div>
         <div className="modal-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
           <button type="button" className="secondary-button" onClick={onClose}>Close</button>
@@ -27510,7 +27513,7 @@ function ji(e) {
   Ot(`operations`, t).catch(() => undefined);
 }
 async function Mi() {
-  let e = await kt(`operations`);
+  let e = bnReadSchoolRecord(`operations`, await kt(`operations`));
   if (e) {
     return Ni(e);
   } else {
@@ -28668,10 +28671,11 @@ function Vi(e, t) {
 }
 function Hi({ data: e, students: t, snapshot: n }) {
   let [r, i] = (0, w.useState)(e.exams[0]?.id || ``);
-  let a = e.exams.find((e) => e.id === r);
-  let o = t.filter((e) => !a || Ui(e, a));
-  let [s, c] = (0, w.useState)(o[0]?.id || ``);
-  let l = t.find((e) => e.id === s);
+  let [s, c] = (0, w.useState)(t.find(student => Ui(student, e.exams.find(exam => exam.id === r) || {}))?.id || t[0]?.id || ``);
+  const selection = bnReportSelection(t, e.exams, s, r);
+  let a = selection.exam;
+  let o = t;
+  let l = selection.student;
   let [whatsAppPtmOpen, setWhatsAppPtmOpen] = (0, w.useState)(false);
   let [u, d] = (0, w.useState)(``);
   let [f, p] = (0, w.useState)(`Promoted with best wishes.`);
@@ -28681,20 +28685,20 @@ function Hi({ data: e, students: t, snapshot: n }) {
         (t) =>
           e.marks.find(
             (e) =>
-              e.examId === a.id && e.studentId === s && e.subject === t.name,
+              e.examId === a.id && e.studentId === l?.id && e.subject === t.name,
           ) || {
             subject: t.name,
             maximumMarks: t.maximumMarks,
             obtainedMarks: 0,
           },
       ) || [],
-    [e.marks, a, s],
+    [e.marks, a, l?.id],
   );
   let h = m.reduce((e, t) => e + t.obtainedMarks, 0);
   let g = m.reduce((e, t) => e + t.maximumMarks, 0);
   let _ = g ? (h / g) * 100 : 0;
   let v = Wi(_);
-  let y = e.attendance.filter((e) => e.studentId === s);
+  let y = e.attendance.filter((e) => e.studentId === l?.id);
   let b = y.length
     ? (y.filter((e) => e.status === `Present`).length / y.length) * 100
     : 0;
@@ -28874,7 +28878,7 @@ function Hi({ data: e, students: t, snapshot: n }) {
       <Component896 className={`report-selectors`}>
         <R label={`Examination`}>
           <Component885
-            value={r}
+            value={a?.id || ``}
             onChange={(n) => {
               i(n.target.value);
               let r = e.exams.find((e) => e.id === n.target.value);
@@ -28882,6 +28886,7 @@ function Hi({ data: e, students: t, snapshot: n }) {
               d(``);
             }}
           >
+            <Component884 value={``}>Select examination</Component884>
             {e.exams.map((e) => (
               <Component884 value={e.id} key={e.id}>
                 {e.name}
@@ -28895,9 +28900,10 @@ function Hi({ data: e, students: t, snapshot: n }) {
         </R>
         <R label={`Student`}>
           <Component887
-            value={s}
+            value={l?.id || ``}
             onChange={(e) => {
               c(e.target.value);
+              i(bnReportSelection(t, e.exams, e.target.value, r).exam?.id || ``);
               d(``);
             }}
           >
@@ -28905,7 +28911,7 @@ function Hi({ data: e, students: t, snapshot: n }) {
               <Component886 value={e.id} key={e.id}>
                 {e.name}
                 {` • `}
-                {e.admissionNumber}
+                {e.admissionNumber} • Class {e.className} {e.section}
               </Component886>
             ))}
           </Component887>
@@ -29264,14 +29270,14 @@ function Hi({ data: e, students: t, snapshot: n }) {
       ) : (
         <Component1005
           className={`empty-state`}
-        >{`Select an examination and student.`}</Component1005>
+        >{l ? `No examination is configured for Class ${l.className} ${l.section || ''}. Add it in Exams & Marks to prepare this student's report.` : `Add a student in Students to prepare report cards.`}</Component1005>
       )}
       {whatsAppPtmOpen && (
         <WhatsAppPtmDialog
           isOpen={whatsAppPtmOpen}
           onClose={() => setWhatsAppPtmOpen(false)}
           exam={a}
-          students={o}
+          students={a ? o.filter(student => Ui(student, a)) : []}
           schoolName={n?.institution?.name || 'Haridwar Public School'}
         />
       )}
@@ -42009,6 +42015,50 @@ var Es = new Intl.NumberFormat(`en-IN`, {
   currency: `INR`,
   maximumFractionDigits: 0,
 });
+// Local dashboard records share one synchronous source; IndexedDB is its fallback mirror.
+function bnReadSchoolRecord(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(`bright-nexa-school-os:${key}:v1`);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+function bnLinkClassChanges(previous, next, students) {
+  const changes = (next.classes || []).flatMap(group => {
+    const old = (previous.classes || []).find(item => item.id === group.id);
+    return old && (old.name !== group.name || old.section !== group.section || old.academicStream !== group.academicStream) ? [{old, group}] : [];
+  });
+  const samePlacement = (record, group, name) => record[name] === group.name && record.section === group.section && (record.academicStream || '') === (group.academicStream || '');
+  const matches = (record, group, name) => {
+    if (record.classId) return record.classId === group.id;
+    if (!samePlacement(record, group, name)) return false;
+    if (record.academicSession && group.academicSession) return record.academicSession === group.academicSession;
+    return (previous.classes || []).filter(item => samePlacement(record, item, name)).length === 1;
+  };
+  const placement = (record, name) => {
+    const change = changes.find(({old}) => matches(record, old, name));
+    return change ? {...record, [name]: change.group.name, section: change.group.section, academicStream: change.group.academicStream} : record;
+  };
+  return {
+    students: students.map(student => placement(student, 'className')),
+    operations: {...next,
+      exams: (next.exams || []).map(exam => placement(exam, 'className')),
+      teachers: (next.teachers || []).map(teacher => ({...teacher, assignedClasses: (teacher.assignedClasses || []).map(key => {
+        const change = changes.find(({old}) => key === `${old.name}-${old.section}` && (previous.classes || []).filter(item => item.name === old.name && item.section === old.section).length === 1);
+        return change ? `${change.group.name}-${change.group.section}` : key;
+      })})),
+    },
+  };
+}
+function bnReportSelection(students, exams, studentId, examId) {
+  const student = students.find(item => item.id === studentId) || students[0] || null;
+  const matches = exam => student && student.className === exam.className && (!exam.section || student.section === exam.section) && (!exam.academicStream || student.academicStream === exam.academicStream);
+  const exam = exams.find(item => item.id === examId && matches(item)) || exams.find(matches) || null;
+  return {student, exam};
+}
+
+
 function Ds() {
   let [e, t] = (0, w.useState)(wn);
   let [n, r] = (0, w.useState)(Dn);
@@ -42161,6 +42211,17 @@ function Ds() {
       o = false;
     };
   }, []);
+  (0, w.useEffect)(() => {
+    const refresh = (event) => {
+      if (event.storageArea !== window.localStorage) return;
+      if (event.key === _n && event.newValue) t(xn(JSON.parse(event.newValue)));
+      if (event.key === vn && event.newValue) r(JSON.parse(event.newValue).map(Sn));
+      if (event.key === Di && event.newValue) a(Ni(JSON.parse(event.newValue)));
+    };
+    const receive = event => { try { refresh(event); } catch { /* Keep last valid state on malformed writes. */ } };
+    window.addEventListener('storage', receive);
+    return () => window.removeEventListener('storage', receive);
+  }, []);
   let se = (e) => {
     l(e);
     s(false);
@@ -42248,10 +42309,15 @@ function Ds() {
     a(l);
     ji(l);
   };
-  let j = (e, t, n, r) => {
-    let i = z(e, t, n, r);
-    a(i);
-    ji(i);
+  let j = (next, action, module, detail) => {
+    const linked = bnLinkClassChanges(i, next, n);
+    if (linked.students.some((student, index) => student !== n[index])) {
+      r(linked.students);
+      On(linked.students);
+    }
+    const operations = z(linked.operations, action, module, detail);
+    a(operations);
+    ji(operations);
   };
   const Component2051 = `img`;
   const Component2052 = `strong`;
