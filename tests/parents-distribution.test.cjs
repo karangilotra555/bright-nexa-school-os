@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
-const link='https://github.com/karangilotra555/bright-nexa-school-os/releases/download/parents-demo-v0.3.0/Bright-Nexa-Parents-Demo-v0.3.0.apk';
+const link='https://github.com/karangilotra555/bright-nexa-school-os/releases/download/parents-demo-v0.3.0/app-debug.apk';
 
 test('School OS has parents download entry on app server and static docs',()=>{
  for(const root of ['', 'docs/']){
