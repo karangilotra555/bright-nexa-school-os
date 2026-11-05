@@ -7,10 +7,11 @@ const wait=()=>new Promise(resolve=>setTimeout(resolve,60));
 const student={id:'fixture-student',name:'Fixture Learner',admissionNumber:'FIXTURE-001',studentUniqueId:'FIXTURE-ID',className:'6',section:'A',parentMobile:'9876543210',dateOfBirth:'2015-01-01',fatherName:'Fixture Guardian',address:'Fixture address',status:'Active'};
 const fixtureOps={classes:[{id:'fixture-class',name:'6',section:'A',academicSession:'2026–27',subjects:['Mathematics']}],feeStructures:[{id:'fee',className:'6',academicSession:'2026–27',category:'Tuition',frequency:'Monthly',dueDay:10,amount:1000}],feePayments:[]};
 const dialogs=[];
-async function mount(component,props={}){
+async function mount(component,props={},apiMock){
  const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'https://school-fixture.test/',runScripts:'outside-only',pretendToBeVisual:true});dialogs.push(dom);
  const errors=[];dom.window.addEventListener('error',event=>errors.push(event.error||event.message));
  dom.window.structuredClone=structuredClone;dom.window.confirm=()=>false;dom.window.fetch=async()=>{throw Error('Network disabled for isolated UI verification')};
+ dom.window.BNSchoolWhatsApp=apiMock;
  dom.window.__props=props;dom.window.__student=student;dom.window.__ops=fixtureOps;
  const bootstrap=source.lastIndexOf('sa();\nCt.createRoot');assert(bootstrap>0,'recovered source bootstrap');
  const overrides=`\nconst fixtureSnapshot={...yn,role:'OWNER',institution:{...yn.institution,name:'Fixture School',session:'2026–27',institutionType:'School'}};const fixtureOperations={...Oi(),...window.__ops};\nwn=()=>fixtureSnapshot;Dn=()=>[window.__student];Ai=()=>fixtureOperations;Qt=()=>({role:'OWNER',name:'Fixture Admin'});kn=async()=>({snapshot:fixtureSnapshot,students:[window.__student]});Mi=async()=>fixtureOperations;Tn=On=ji=()=>{};bnScheduleCloudSync=()=>{};localStorage.setItem(ms,'fixture');\nCt.createRoot(document.getElementById('root')).render(w.createElement(${component},window.__props));`;
@@ -45,4 +46,12 @@ async function testFeeQueue(){
  console.log('PASS fee report integration: queue receives registered parentMobile from actual student records.');
 }
 async function testModal(){const dom=await mount('L',{title:'Fixture report',onClose(){},children:'Fixture table'}),doc=dom.window.document;doc.querySelector('button[aria-label="Maximize"]').click();await wait();const modal=doc.querySelector('[role="dialog"]');assert.equal(modal.style.width,'96vw');assert.equal(parseFloat(modal.querySelector('.simple-modal-body').style.minHeight),0);console.log('PASS shared dialog: maximize expands body with a flexible scroll area.');}
-(async()=>{try{await testProfile();await testQueue();await testFeeQueue();await testModal();}finally{for(const dom of dialogs)dom.window.close();}})().catch(error=>{console.error(error);process.exitCode=1;});
+async function testOfficial(){
+ let calls=0;
+ const apiMock={request:async(path,body)=>{calls++;if(path==='/connection')return {school:'Fixture School',connected:true,webhookVerified:true};if(path==='/preview')return {digest:'fixture',rows:[{name:'Fixture Learner',phone:'919876543210',state:'ready',preview:'Approved fixture text'}]};if(path==='/batches')return {id:'fixture-batch'};return {batch:{id:'fixture-batch'},rows:[{id:'r',phone:'919876543210',state:'accepted'}]};}};
+ const dom=await mount('OfficialWhatsAppPanel',{},apiMock);await wait();assert.equal(calls,1,'connection default items must not cause an effect/render loop');dom.window.close();
+ const items=[{id:student.id,phone:student.parentMobile,kind:'fee',meta:{admissionNumber:student.admissionNumber},values:{amount:1,dueDate:'2026-11-10'}}];
+ const page=await mount('OfficialWhatsAppPanel',{items},apiMock),doc=page.window.document;button(doc,'Preview numbers and approved messages').click();await wait();assert(doc.body.textContent.includes('Approved fixture text'));const send=button(doc,'Send automatically to reviewed numbers');assert(send.disabled);doc.querySelector('input[type="checkbox"]').click();await wait();assert(!button(doc,'Send automatically to reviewed numbers').disabled);button(doc,'Send automatically to reviewed numbers').click();await wait();assert(doc.body.textContent.includes('Accepted: 1'));assert(doc.body.textContent.includes('Sent: 0'));button(doc,'Prepare another batch (previous sending continues)').click();await wait();assert(button(doc,'Preview numbers and approved messages'));assert(!doc.body.textContent.includes('Approved fixture text'));
+ console.log('PASS official API panel: stable setup rendering, actual template preview, consent gate, accepted is not sent, next batch reset. Mock API only.');
+}
+(async()=>{try{await testProfile();await testQueue();await testFeeQueue();await testModal();await testOfficial();}finally{for(const dom of dialogs)dom.window.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -23697,6 +23697,41 @@ function bnCreateNoticeMessage({ schoolName = 'Haridwar Public School', title = 
   );
 }
 
+const BN_OFFICIAL_EMPTY_ITEMS = [];
+function OfficialWhatsAppPanel({items=BN_OFFICIAL_EMPTY_ITEMS}) {
+  const [email,setEmail]=w.useState(''),[password,setPassword]=w.useState(''),[error,setError]=w.useState(''),[busy,setBusy]=w.useState(false),[connection,setConnection]=w.useState(null),[setup,setSetup]=w.useState(false),[preview,setPreview]=w.useState(null),[consent,setConsent]=w.useState(false),[batch,setBatch]=w.useState(null),[requestKey,setRequestKey]=w.useState(()=>crypto.randomUUID());
+  const [config,setConfig]=w.useState({phoneNumberId:'',wabaId:'',token:'',appSecret:'',verifyToken:'',fee:'',absent:'',ptm:'',language:'en'});
+  const api=(path,body)=>{if(!window.BNSchoolWhatsApp)throw Error('Reload the page to load WhatsApp connection tools');return window.BNSchoolWhatsApp.request(path,body);};
+  const run=async action=>{setBusy(true);setError('');try{await action();}catch(e){setError(e.message);}finally{setBusy(false);}};
+  const load=async()=>setConnection(await api('/connection'));
+  const kind=items[0]?.kind;
+  const selectionKey=JSON.stringify(items.map(i=>[i.id,i.phone,i.kind,i.meta?.admissionNumber,i.values]));
+  const payload=()=>({kind,items:items.map(i=>({studentId:i.id,admissionNumber:i.meta?.admissionNumber,phone:i.phone,values:i.values}))});
+  w.useEffect(()=>{run(load);},[]);
+  w.useEffect(()=>{setPreview(null);setConsent(false);setRequestKey(crypto.randomUUID());},[selectionKey]);
+  w.useEffect(()=>{if(!batch?.batch?.id)return;const id=batch.batch.id;const timer=setInterval(()=>{api('/batches/'+id).then(setBatch).catch(e=>setError(e.message));},5000);return()=>clearInterval(timer);},[batch?.batch?.id]);
+  async function refreshBatch(id){const result=await api('/batches/'+id);setBatch(result);}
+  async function start(){const result=await api('/batches',{...payload(),digest:preview.digest,confirmed:true,consentConfirmed:consent,requestKey});sessionStorage.setItem('bn_wa_last_batch',result.id);await refreshBatch(result.id);}
+  return <section style={{padding:'14px',border:'1px solid var(--line, #e2e8f0)',borderRadius:'12px',display:'grid',gap:'12px'}}>
+    <h3 style={{margin:0}}>Automatic sending • Official WhatsApp</h3>
+    {error&&<p role="alert">{error}</p>}
+    {!connection?<form onSubmit={e=>{e.preventDefault();run(async()=>{await window.BNSchoolWhatsApp.login(email,password);setPassword('');await load();});}} style={{display:'grid',gap:'8px'}}><p>Sign in with your cloud school administrator account.</p><input aria-label="School administrator email" type="email" required value={email} onChange={e=>setEmail(e.target.value)}/><input aria-label="School administrator password" type="password" required value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"/><button className="primary-button" disabled={busy}>Sign in</button></form>:<>
+      <p>{connection.school} · {connection.connected?'Number connected':'WhatsApp API not connected'} · {connection.webhookVerified?'Delivery webhook verified':'Webhook verification required'}</p>
+      <button type="button" className="secondary-button" onClick={()=>setSetup(!setup)}>Configure school WhatsApp</button>
+      {setup&&<form onSubmit={e=>{e.preventDefault();run(async()=>{const templateMap={};for(const k of ['fee','absent','ptm'])if(config[k])templateMap[k]={name:config[k],language:config.language};await api('/connection',{...config,templateMap});setConfig(c=>({...c,token:'',appSecret:'',verifyToken:''}));await load();setPreview(null);});}} style={{display:'grid',gap:'8px'}}>
+        <p>Use your school's Meta WhatsApp Business account. Saving checks ownership and template approval. Re-saving requires webhook verification again.</p>
+        {['phoneNumberId','wabaId','token','appSecret','verifyToken','language','fee','absent','ptm'].map(field=><label key={field}>{({phoneNumberId:'Phone number ID',wabaId:'WhatsApp Business account ID',token:'System user access token',appSecret:'Meta app secret',verifyToken:'Webhook verify token (24+ characters; copy into Meta)',language:'Template language code',fee:'Approved fee template (4 parameters)',absent:'Approved absence template (3 parameters)',ptm:'Approved PTM template (6 parameters)'})[field]}<input style={{width:'100%',boxSizing:'border-box'}} type={['token','appSecret','verifyToken'].includes(field)?'password':'text'} autoComplete="off" value={config[field]} required={!['fee','absent','ptm'].includes(field)} onChange={e=>setConfig({...config,[field]:e.target.value})}/></label>)}
+        <p>Webhook URL: <code style={{overflowWrap:'anywhere'}}>{connection.webhookUrl}</code>. Subscribe to the Meta <strong>messages</strong> webhook field.</p><p>Body parameter order: Fee — student, amount, due date, school. Absence — student, date, school. PTM — student, exam, date, time, venue, school. Use numbered parameters; text-only templates.</p>
+        <button className="primary-button" disabled={busy}>Verify and save connection</button><button type="button" className="secondary-button" disabled={busy} onClick={()=>run(load)}>Refresh webhook verification</button>
+      </form>}
+      {items.length>0&&<><p>The approved template below is the actual message. Manual draft edits apply only to manual sending. Maximum 50 students per batch.</p><button type="button" className="primary-button" disabled={busy||!connection.webhookVerified||!kind} onClick={()=>run(async()=>{setPreview(await api('/preview',payload()));setConsent(false);setRequestKey(crypto.randomUUID());})}>Preview numbers and approved messages</button></>}
+      {preview&&<><div style={{maxHeight:'300px',overflow:'auto'}}>{preview.rows.map((r,i)=><div key={i} style={{borderBottom:'1px solid var(--line)',padding:'10px'}}><strong>{r.name||'Unlinked student'} · {r.admissionNumber} · {r.phone}</strong><p>{r.state==='ready'?r.preview:r.reason}</p></div>)}</div><label><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/> I reviewed these numbers/messages and confirm these parents opted in to school WhatsApp updates.</label><button type="button" className="primary-button" disabled={busy||!consent||preview.rows.some(r=>r.state!=='ready')||!!batch} onClick={()=>run(start)}>Send automatically to reviewed numbers</button></>}
+      <button type="button" className="secondary-button" disabled={busy} onClick={()=>run(async()=>{const id=sessionStorage.getItem('bn_wa_last_batch');if(!id)throw Error('No previous batch in this browser');await refreshBatch(id);})}>View last automatic batch</button>
+      {batch&&<><p>Accepted = queued by WhatsApp. Sent, delivered and read require signed WhatsApp status updates. Unconfirmed messages are never automatically resent.</p><p>Remaining: {batch.rows.filter(r=>r.state==='queued').length} · Accepted: {batch.rows.filter(r=>r.state==='accepted').length} · Sent: {batch.rows.filter(r=>['sent','delivered','read'].includes(r.state)).length} · Delivered: {batch.rows.filter(r=>['delivered','read'].includes(r.state)).length}</p><div style={{maxHeight:'240px',overflow:'auto'}}>{batch.rows.map(r=><p key={r.id}>{r.phone} · {r.state}{r.error_code?' · '+r.error_code:''}</p>)}</div><button type="button" className="secondary-button" disabled={busy} onClick={()=>run(async()=>{await api('/batches/'+batch.batch.id+'/resume',{});await refreshBatch(batch.batch.id);})}>Resume remaining queued recipients</button><p>The cloud worker sends without per-parent clicks. If interrupted, resume only the remaining queued recipients here.</p><button type="button" className="secondary-button" onClick={()=>{setBatch(null);setPreview(null);setConsent(false);setRequestKey(crypto.randomUUID());}}>Prepare another batch (previous sending continues)</button></>}
+    </>}
+  </section>;
+}
+
 function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
   if (!isOpen) return null;
   const handleOpenWeb = () => {
@@ -23711,6 +23746,7 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
   };
   return (
     <L title="WhatsApp Web Companion & QR Connect" subtitle="100% Free • Direct School Phone Integration • Zero API Charges" onClose={onClose}>
+      <OfficialWhatsAppPanel />
       <div className="simple-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', background: connected ? '#ecfdf5' : '#fffbeb', border: `1px solid ${connected ? '#a7f3d0' : '#fde68a'}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -23753,6 +23789,7 @@ function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = 'Br
   const [queue, setQueue] = (0, w.useState)(() => items.map((item, index) => ({...item, id: item.id || 'wa_' + index, status: 'pending'})));
   const [currentIndex, setCurrentIndex] = (0, w.useState)(0);
   const [autoAdvance, setAutoAdvance] = (0, w.useState)(true);
+  const [official,setOfficial]=w.useState(false);
   (0, w.useEffect)(() => {
     if (isOpen) {
       setQueue(items.map((item, index) => ({...item, id: item.id || 'wa_' + index, status: 'pending'})));
@@ -23787,6 +23824,8 @@ function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = 'Br
   const statusLabel = item => ({pending: 'Pending', opened: 'Draft opened — unverified', confirmed: 'Manually confirmed', skipped: 'Skipped', invalid: 'Invalid / missing details', blocked: 'Popup blocked'})[item.status] || 'Unverified';
   return <L title={title || 'WhatsApp reminder queue'} subtitle={subtitle || `${schoolName} • ${queue.length} recipients`} onClose={onClose}>
     <div style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
+      <button type="button" className="secondary-button" onClick={()=>setOfficial(!official)}>{official?'Hide automatic sending':'Automatic sending (Official API)'}</button>
+      {official&&<OfficialWhatsAppPanel items={items}/>}
       <p role="note" style={{margin: 0}}>This prepares a WhatsApp draft. Send it inside WhatsApp, then confirm here. Opening a draft does not verify sending or delivery.</p>
       <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'space-between'}}>
         <div>Verified sent: <strong>0</strong> · Manually confirmed: <strong>{confirmed}</strong> · Remaining: <strong>{remaining}</strong> · Skipped: <strong>{skipped}</strong></div>
@@ -23830,7 +23869,8 @@ function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 
     id: s.id || 'ptm_' + idx,
     name: s.name,
     phone: s.parentMobile || s.guardianPhone || s.mobile || '',
-    meta: { class: `${exam?.className || s.className || ''}-${exam?.section || s.section || ''}` },
+    kind:'ptm', values:{examName:exam?.name||'Academic Assessment',ptmDate,ptmTime,venue},
+    meta: { admissionNumber:s.admissionNumber||'', class: `${exam?.className || s.className || ''}-${exam?.section || s.section || ''}` },
     text: bnCreatePtmMessage({
       schoolName,
       studentName: s.name,
@@ -24593,7 +24633,8 @@ function Ur({
             id: student.id,
             name: student.name,
             phone: student.parentMobile || student.guardianPhone || student.mobile || '',
-            meta: { class: `${n?.name || ''}-${n?.section || ''}`, roll: student.rollNumber },
+            kind:'absent', values:{date:r},
+            meta: { admissionNumber:student.admissionNumber||'', class: `${n?.name || ''}-${n?.section || ''}`, roll: student.rollNumber },
             text: bnCreateAbsenteeMessage({
               schoolName: 'Haridwar Public School',
               studentName: student.name,
@@ -26666,6 +26707,7 @@ function PendingFeeReportDialog({ data, students, institution, filterLabel, onCl
             id: row.student.id,
             name: row.student.name,
             phone: row.student.parentMobile || row.student.guardianPhone || row.student.mobile || '',
+            kind:'fee', values:{amount:row.overdue>0?row.overdue:row.outstanding,dueDate:row.earliestDue||asOf},
             meta: {
               class: `${row.student.className || ''}-${row.student.section || ''}`,
               admissionNumber: row.student.admissionNumber || ''
