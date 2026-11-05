@@ -22147,6 +22147,7 @@ function Br({ query: e2, setQuery: t2, placeholder: n2, count: r2 }) {
   )), /* @__PURE__ */ w.createElement(Component382, null, r2, ` record`, r2 === 1 ? `` : `s`));
 }
 function L({ title: e2, subtitle: t2, onClose: n2, children: r2 }) {
+  const [maximized, setMaximized] = (0, w.useState)(false);
   const Component384 = `span`;
   const Component385 = `h2`;
   const Component386 = `p`;
@@ -22168,9 +22169,28 @@ function L({ title: e2, subtitle: t2, onClose: n2, children: r2 }) {
         className: `simple-modal`,
         role: `dialog`,
         "aria-modal": `true`,
-        "aria-label": e2
+        "aria-label": e2,
+        style: maximized ? {
+          width: "96vw",
+          maxWidth: "96vw",
+          height: "92vh",
+          maxHeight: "92vh",
+          display: "flex",
+          flexDirection: "column"
+        } : void 0
       },
-      /* @__PURE__ */ w.createElement(Component389, null, /* @__PURE__ */ w.createElement(Component387, null, /* @__PURE__ */ w.createElement(Component384, null, `Saved locally`), /* @__PURE__ */ w.createElement(Component385, null, e2), /* @__PURE__ */ w.createElement(Component386, null, t2)), /* @__PURE__ */ w.createElement(
+      /* @__PURE__ */ w.createElement(Component389, null, /* @__PURE__ */ w.createElement(Component387, null, /* @__PURE__ */ w.createElement(Component384, null, `Saved locally`), /* @__PURE__ */ w.createElement(Component385, null, e2), /* @__PURE__ */ w.createElement(Component386, null, t2)), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", gap: "4px" } }, /* @__PURE__ */ w.createElement(
+        "button",
+        {
+          type: "button",
+          className: "icon-button",
+          onClick: () => setMaximized(!maximized),
+          title: maximized ? "Restore size" : "Maximize dialog",
+          "aria-label": maximized ? "Restore" : "Maximize",
+          style: { fontSize: "15px", fontWeight: "bold" }
+        },
+        maximized ? "\u{1F5D7}" : "\u{1F5D6}"
+      ), /* @__PURE__ */ w.createElement(
         Component388,
         {
           className: `icon-button`,
@@ -22178,8 +22198,15 @@ function L({ title: e2, subtitle: t2, onClose: n2, children: r2 }) {
           "aria-label": `Close dialog`
         },
         /* @__PURE__ */ w.createElement(St, { size: 21 })
-      )),
-      /* @__PURE__ */ w.createElement(Component390, { className: `simple-modal-body` }, r2)
+      ))),
+      /* @__PURE__ */ w.createElement(
+        Component390,
+        {
+          className: `simple-modal-body`,
+          style: maximized ? { flex: 1, maxHeight: "none", overflowY: "auto" } : void 0
+        },
+        r2
+      )
     )
   );
 }

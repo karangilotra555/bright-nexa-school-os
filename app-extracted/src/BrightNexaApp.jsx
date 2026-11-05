@@ -23542,6 +23542,7 @@ function Br({ query: e, setQuery: t, placeholder: n, count: r }) {
   );
 }
 function L({ title: e, subtitle: t, onClose: n, children: r }) {
+  const [maximized, setMaximized] = (0, w.useState)(false);
   const Component384 = `span`;
   const Component385 = `h2`;
   const Component386 = `p`;
@@ -23561,6 +23562,14 @@ function L({ title: e, subtitle: t, onClose: n, children: r }) {
         role={`dialog`}
         aria-modal={`true`}
         aria-label={e}
+        style={maximized ? {
+          width: '96vw',
+          maxWidth: '96vw',
+          height: '92vh',
+          maxHeight: '92vh',
+          display: 'flex',
+          flexDirection: 'column'
+        } : undefined}
       >
         <Component389>
           <Component387>
@@ -23568,15 +23577,32 @@ function L({ title: e, subtitle: t, onClose: n, children: r }) {
             <Component385>{e}</Component385>
             <Component386>{t}</Component386>
           </Component387>
-          <Component388
-            className={`icon-button`}
-            onClick={n}
-            aria-label={`Close dialog`}
-          >
-            <St size={21} />
-          </Component388>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => setMaximized(!maximized)}
+              title={maximized ? "Restore size" : "Maximize dialog"}
+              aria-label={maximized ? "Restore" : "Maximize"}
+              style={{ fontSize: '15px', fontWeight: 'bold' }}
+            >
+              {maximized ? '🗗' : '🗖'}
+            </button>
+            <Component388
+              className={`icon-button`}
+              onClick={n}
+              aria-label={`Close dialog`}
+            >
+              <St size={21} />
+            </Component388>
+          </div>
         </Component389>
-        <Component390 className={`simple-modal-body`}>{r}</Component390>
+        <Component390
+          className={`simple-modal-body`}
+          style={maximized ? { flex: 1, maxHeight: 'none', overflowY: 'auto' } : undefined}
+        >
+          {r}
+        </Component390>
       </Component391>
     </Component392>
   );
