@@ -23745,7 +23745,7 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
     } catch {}
   };
   return (
-    <L title="WhatsApp Web Companion & QR Connect" subtitle="100% Free • Direct School Phone Integration • Zero API Charges" onClose={onClose}>
+    <L title="School WhatsApp connection" subtitle="Manual drafts or official API • Provider charges apply to automatic sending" onClose={onClose}>
       <OfficialWhatsAppPanel />
       <div className="simple-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', background: connected ? '#ecfdf5' : '#fffbeb', border: `1px solid ${connected ? '#a7f3d0' : '#fde68a'}` }}>
@@ -23753,15 +23753,15 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
             <span style={{ fontSize: '28px' }}>{connected ? '🟢' : '📱'}</span>
             <div>
               <strong style={{ fontSize: '16px', color: connected ? '#065f46' : '#92400e', display: 'block' }}>
-                {connected ? 'WhatsApp Web Linked & Ready' : 'WhatsApp Web Not Linked Yet'}
+                {connected ? 'Manual WhatsApp Web shortcut enabled' : 'Manual WhatsApp Web shortcut disabled'}
               </strong>
               <small style={{ color: connected ? '#047857' : '#b45309' }}>
-                {connected ? 'Your school WhatsApp session is linked in this browser. Outgoing notices will launch directly.' : 'Link your school mobile number via WhatsApp Web to send instant notices to parents.'}
+                {'This browser preference does not verify a WhatsApp session. Automatic sending requires the official connection above.'}
               </small>
             </div>
           </div>
           <button type="button" className="secondary-button" onClick={toggle} style={{ fontWeight: 600 }}>
-            {connected ? 'Disconnect' : 'Mark as Linked ✅'}
+            {connected ? 'Disable manual shortcut' : 'Enable manual shortcut'}
           </button>
         </div>
         <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--card-bg, #ffffff)', border: '1px solid var(--line, #e2e8f0)' }}>

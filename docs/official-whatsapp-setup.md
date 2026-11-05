@@ -1,6 +1,6 @@
 # Official school WhatsApp sending
 
-Open **Settings → WhatsApp connection → Configure school WhatsApp**, or **Fee reminder / Absentee / PTM queue → Automatic sending (Official API)**. Sign in with the real cloud school administrator email/password. The local desktop admin token is deliberately not accepted for messaging.
+Open the top **WhatsApp Web** button, then sign in and select **Configure school WhatsApp**, or **Fee reminder / Absentee / PTM queue → Automatic sending (Official API)**. Sign in with the real cloud school administrator email/password. The local desktop admin token is deliberately not accepted for messaging.
 
 Supply the school's Meta Phone number ID, WhatsApp Business account ID, system-user access token with WhatsApp messaging/management permissions, app secret, and a random webhook verification token of at least 24 characters. Provider secrets are encrypted in Supabase Vault and never returned to the browser. Setup is administrator only.
 
