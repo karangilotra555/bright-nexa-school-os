@@ -64,7 +64,7 @@
   }
   function dropSession(){
     session=null;me=null;identity=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
-    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);invalidateRoster();
     display('portalSection',false);display('loginSection',true);display('logout',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
@@ -92,8 +92,10 @@
     display('adminTab',isAdmin());
     document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
     document.querySelector('[data-tab="homework"]').classList.toggle('hidden',!canAcademic());
-    await reload();tab('classes');
-    clearNotice();
+    await reload();
+    const attendanceFirst=(me.role==='teacher'||new URLSearchParams(location.search).get('view')==='attendance')&&canAcademic();
+    tab(attendanceFirst?'attendance':'classes');clearNotice();
+    if(attendanceFirst){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
   async function reload(){
     const institution_id=me.institution_id;
@@ -110,8 +112,16 @@
     if(isAdmin())allStaff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
     else allStaff=[];
     put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
-    renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();
+    invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();await loadNotices();
   }
+  async function loadNotices(){
+    const rows=await api('school_notices',query({select:'id,title,body,created_at',institution_id:eq(me.institution_id),order:'created_at.desc',limit:'100'}));
+    const root=$('noticesList');root.replaceChildren();
+    if(!rows.length){root.append(dom('p','No notices published yet.'));return;}
+    for(const n of rows){const item=dom('div',undefined,'assignment');item.append(dom('h3',n.title),dom('p',n.body),dom('small',new Date(n.created_at).toLocaleDateString(),'muted'));root.append(item);}
+  }
+  $('refreshNotices').addEventListener('click',()=>run(loadNotices));
+  $('parentApp').addEventListener('click',async e=>{e.preventDefault();const jwt=session?.access_token;dropSession();if(jwt)await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt}}).catch(()=>{});location.assign('./parents.html');});
   function renderClasses(){
     const root=$('classesList');clearChildren(root);
     if(!allClasses.length){root.append(dom('p','No classes are assigned to your account yet. Ask the school administrator.'));return}
@@ -269,12 +279,18 @@
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
   $('homeworkClass').addEventListener('change',()=>fillSubject($('homeworkClass').value));
   $('loadAttendance').addEventListener('click',()=>run(loadAttendance));
-  let currentRoster=[];
+  let currentRoster=[],rosterScope=null,rosterGeneration=0;
+  function invalidateRoster(){rosterGeneration++;currentRoster=[];rosterScope=null;$('rosterList').replaceChildren();display('saveAttendance',false);}
+  $('attendanceClass').addEventListener('change',invalidateRoster);
+  $('attendanceDate').addEventListener('change',invalidateRoster);
   async function loadAttendance(){
     const cls=$('attendanceClass').value,day=$('attendanceDate').value;
-    if(!allClasses.some(c=>c.id===cls)||!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Choose class and date.');
-    currentRoster=allStudents.filter(s=>s.class_id===cls);
+    invalidateRoster();const generation=rosterGeneration;
+    if(!writableClasses('can_take_attendance').some(c=>c.id===cls)||!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Choose your assigned attendance class and date.');
+    const roster=allStudents.filter(s=>s.class_id===cls);
     const records=await api('school_attendance',query({select:'student_id,status',class_id:eq(cls),day:eq(day),institution_id:eq(me.institution_id)}));
+    if(generation!==rosterGeneration||$('attendanceClass').value!==cls||$('attendanceDate').value!==day)return;
+    currentRoster=roster;rosterScope={classId:cls,day};
     const root=$('rosterList');clearChildren(root);
     for(const student of currentRoster){
       const line=dom('div',undefined,'rowlist');
@@ -290,11 +306,14 @@
   $('saveAttendance').addEventListener('click',()=>run(async()=>{
     const cls=$('attendanceClass').value,day=$('attendanceDate').value;
     const selects=[...$('rosterList').querySelectorAll('select[data-student-id]')];
-    if(!selects.length)throw Error('Load the roster first.');
+    if(!selects.length||!rosterScope)throw Error('Load the roster first.');
+    if(!writableClasses('can_take_attendance').some(c=>c.id===cls))throw Error('You are not assigned to this attendance class.');
+    if(rosterScope.classId!==cls||rosterScope.day!==day)throw Error('Class or date changed. Reload roster.');
     if(selects.some(s=>s.dataset.classId!==cls))throw Error('Class changed. Reload roster.');
     const records=selects.map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:me.institution_id,day,status:s.value,recorded_by:me.id}));
-    await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=minimal');
-    notify('Attendance saved for '+records.length+' students.');
+    const button=$('saveAttendance');if(button.disabled)return;button.disabled=true;
+    try{await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=minimal');
+    notify('Attendance saved for '+records.length+' students on '+day+'. Linked parents can refresh attendance in their app.');}finally{button.disabled=false;}
   }));
   $('homeworkForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const class_id=$('homeworkClass').value;
