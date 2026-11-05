@@ -65,7 +65,7 @@
   }
   function dropSession(){
     session=null;me=null;identity=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
-    sessionStorage.removeItem(TOKEN_KEY);invalidateRoster();
+    sessionStorage.removeItem(TOKEN_KEY);invalidateRoster();clearProfileEditor();
     display('portalSection',false);display('loginSection',true);display('logout',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
@@ -90,7 +90,7 @@
     put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     display('loginSection',false);display('portalSection',true);display('logout',true);
-    display('adminTab',isAdmin());
+    display('adminTab',isAdmin());display('profilesTab',isAdmin());
     document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
     document.querySelector('[data-tab="homework"]').classList.toggle('hidden',!canAcademic());
     await reload();
@@ -116,6 +116,23 @@
     put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
     invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();await loadNotices();
   }
+  let readProfile=null,editingStudent=null,profileGeneration=0;
+  function clearProfileEditor(){profileGeneration++;readProfile=null;editingStudent=null;display('studentProfileForm',false);$('profileEditor').replaceChildren();}
+  $('profileStudent').addEventListener('change',clearProfileEditor);
+  $('loadProfile').addEventListener('click',()=>run(async()=>{
+    if(!isAdmin())throw Error('School admin required.');clearProfileEditor();const generation=profileGeneration,id=$('profileStudent').value;
+    const student=allStudents.find(s=>s.id===id);if(!student)throw Error('Choose a student.');
+    const rows=await api('school_student_profiles',query({select:'*',student_id:eq(id),institution_id:eq(me.institution_id)}));
+    if(generation!==profileGeneration||$('profileStudent').value!==id)return;
+    const core=await api('school_students',query({select:'id,name,dob',id:eq(id),institution_id:eq(me.institution_id)}));
+    if(generation!==profileGeneration||$('profileStudent').value!==id||!core[0])return;
+    editingStudent=id;readProfile=window.BNStudentProfile.editor($('profileEditor'),{student:{...core[0],profile:rows[0]||{}}});display('studentProfileForm',true);
+  }));
+  $('studentProfileForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
+    if(!isAdmin()||!readProfile||editingStudent!==$('profileStudent').value)throw Error('Load the student profile first.');
+    const button=$('saveProfile');if(button.disabled)return;const payload=readProfile();button.disabled=true;
+    try{await api('rpc/school_save_student_profile','','POST',{p_student_id:editingStudent,...payload},'return=minimal');notify('Student details saved. Linked app and web accounts can refresh Profile.');}finally{button.disabled=false;}
+  });});
   async function loadNotices(){
     const rows=await api('school_notices',query({select:'id,title,body,created_at',institution_id:eq(me.institution_id),order:'created_at.desc',limit:'100'}));
     const root=$('noticesList');root.replaceChildren();
@@ -150,7 +167,7 @@
     if(isAdmin()){
       options('assignTeacher',allStaff.filter(s=>s.role==='teacher'&&s.status==='active'),s=>s.email);
       options('assignClass',allClasses,className);
-      options('studentClass',allClasses,className);
+      options('studentClass',allClasses,className);options('profileStudent',allStudents,s=>s.admission_number+' · '+s.name);clearProfileEditor();
     }
   }
   function fillSubject(classId){

@@ -34,20 +34,21 @@ function create(fetcher){
   const filter={institution_id:'eq.'+link.institution_id,student_id:'eq.'+link.student_id};
   const students=await rows('school_students',{id:'eq.'+link.student_id,institution_id:filter.institution_id,status:'eq.active'});
   const student=students[0];if(!student)throw Error('Student access is unavailable. Contact the school office.');
-  const [schools,classes,attendance,fees,homework,notices,leaves]=await Promise.all([
+  const [schools,classes,attendance,fees,homework,notices,leaves,profiles]=await Promise.all([
    rows('institutions',{id:filter.institution_id}),
    student.class_id?rows('school_classes',{id:'eq.'+student.class_id,institution_id:filter.institution_id}):[],
    rows('school_attendance',{...filter,order:'day.desc'}),
    rows('school_fee_entries',{...filter}),
    student.class_id?rows('school_homework',{institution_id:filter.institution_id,class_id:'eq.'+student.class_id,order:'created_at.desc'}):[],
    rows('school_notices',{institution_id:filter.institution_id,order:'created_at.desc'}),
-   rows('school_parent_leaves',{...filter,parent_auth_user_id:'eq.'+session.user.id,order:'created_at.desc'})
+   rows('school_parent_leaves',{...filter,parent_auth_user_id:'eq.'+session.user.id,order:'created_at.desc'}),
+   rows('school_student_profiles',{order:'student_id.asc',student_id:filter.student_id,institution_id:filter.institution_id})
   ]);
   const attached=filesClient?await filesClient.list(homework.map(h=>h.id)):[];
   selected=link;
   const recorded=attendance.filter(a=>['present','absent','late','half_day'].includes(a.status.toLowerCase()));
   const present=recorded.reduce((n,a)=>n+(a.status.toLowerCase()==='half_day'?.5:['present','late'].includes(a.status.toLowerCase())?1:0),0);
-  return {student:{name:student.name,admissionNumber:student.admission_number,className:classes[0]?.name,section:classes[0]?.section},school:{name:schools[0]?.name,session:classes[0]?.academic_year},attendance:{percent:recorded.length?Math.round(present/recorded.length*1000)/10:null,recordedDays:recorded.length,recent:attendance},fees:{dueRupees:fees.length?Math.max(0,fees.reduce((n,f)=>n+(f.kind==='charge'?1:-1)*Number(f.amount_rupees),0)):null},homework:homework.map(h=>({...h,files:attached.filter(f=>f.homework_id===h.id),title:[h.title,h.instructions].filter(Boolean).join(' — '),due_date:h.due_on})),notices:notices.map(n=>({...n,published_at:n.created_at})),leaves:leaves.map(l=>({...l,from_day:l.from_on,to_day:l.to_on}))};
+  return {student:{name:student.name,dob:student.dob,profile:profiles[0]||{},admissionNumber:student.admission_number,className:classes[0]?.name,section:classes[0]?.section},school:{name:schools[0]?.name,session:classes[0]?.academic_year},attendance:{percent:recorded.length?Math.round(present/recorded.length*1000)/10:null,recordedDays:recorded.length,recent:attendance},fees:{dueRupees:fees.length?Math.max(0,fees.reduce((n,f)=>n+(f.kind==='charge'?1:-1)*Number(f.amount_rupees),0)):null},homework:homework.map(h=>({...h,files:attached.filter(f=>f.homework_id===h.id),title:[h.title,h.instructions].filter(Boolean).join(' — '),due_date:h.due_on})),notices:notices.map(n=>({...n,published_at:n.created_at})),leaves:leaves.map(l=>({...l,from_day:l.from_on,to_day:l.to_on}))};
  }
  async function leave(from,to,reason){
   if(!session||!selected)throw Error('Please log in and select your child');

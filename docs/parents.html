@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061a36"><meta name="description" content="Bright Nexa Parents — school updates, attendance, fees and homework in one place.">
-<link rel="manifest" href="/parents.webmanifest"><title>Bright Nexa Parents</title><link rel="stylesheet" href="school-mobile-details.css?v=20261105-files">
+<link rel="manifest" href="/parents.webmanifest"><title>Bright Nexa Parents</title><link rel="stylesheet" href="school-mobile-details.css?v=20261105-profile">
 <style>
 :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#102640;background:#f3f7fb;font-synthesis:none}*{box-sizing:border-box}
 body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #138ed8;outline-offset:2px}
@@ -96,15 +96,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
     <h2>School messages</h2><p class="sub">Notices published by your school</p><div id="allNotices" class="panel"></div>
   </div>
   <div data-view="profile" class="hidden">
-    <h2>Student profile</h2><div class="panel">
-      <div class="profileRow"><span>Name</span><b id="studentName"></b></div>
-      <div class="profileRow"><span>Admission no.</span><b id="studentAdm"></b></div>
-      <div class="profileRow"><span>Class / Section</span><b id="studentClass"></b></div>
-      <div class="profileRow"><span>Roll number</span><b id="studentRoll"></b></div>
-      <div class="profileRow"><span>Guardian</span><b id="studentGuardian"></b></div>
-      <div class="profileRow"><span>Bus stop</span><b id="studentBus"></b></div>
-      <div class="profileRow"><span>School session</span><b id="schoolSession"></b></div>
-    </div>
+    <h2>Student profile</h2><div id="studentProfileSections"></div>
     <div class="panel"><p class="notice">Only school-published records are displayed. If details are incorrect, contact your school's administration.</p><button class="secondary wide" id="changePassword" type="button">Change password</button><button class="secondary wide" id="refresh" type="button">↻ Refresh from school</button></div>
     <button class="secondary wide" id="logout" type="button">Log out</button>
   </div>
@@ -112,7 +104,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages"><span>✉</span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="school-homework-files.js?v=20261105-files"></script><script src="school-attendance-calendar.js?v=20261105-files"></script><script src="parents-cloud.js?v=20261105-files"></script>
+<script src="school-student-profile.js?v=20261105-profile"></script><script src="school-homework-files.js?v=20261105-profile"></script><script src="school-attendance-calendar.js?v=20261105-profile"></script><script src="parents-cloud.js?v=20261105-profile"></script>
 <script>
 (() => {
 'use strict';
@@ -145,10 +137,10 @@ function render(p){
  items('homeHomework',homework,'No homework published for this class yet.',(root,h)=>{item(root,h.subject,h.title,h.due_date?'Due '+day(h.due_date):'');cloud.fileLinks(root,h.files||[]);});
  window.BNAttendance.render($('attendanceList'),a.recent||[],p.school?.session);
  items('leaveList',p.leaves||[],'No leave requests yet.',(root,r)=>item(root,day(r.from_day)+' – '+day(r.to_day),r.reason,r.status));
- setText('studentName',s.name);setText('studentAdm',s.admissionNumber);setText('studentClass',[s.className,s.section].filter(Boolean).join(' - '));setText('studentRoll',s.rollNumber);setText('studentGuardian',s.fatherName);setText('studentBus',s.busStop);setText('schoolSession',p.school?.session);
+ window.BNStudentProfile.render($('studentProfileSections'),p);
 }
 async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0);$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(links[index]);if(generation!==loadGeneration)return;render(p);show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;data=null;show('gate');$('loginError').textContent=e.message}}
-function logout(){loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
+function logout(){$('studentProfileSections').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
 async function openLinked(nextLinks){links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();if(data)$('childPicker').selectedOptions[0].textContent=data.student.name;}
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;$('loginError').textContent='';try{const result=await cloud.login($('adm').value.trim(),$('dob').value);$('dob').value='';if(result.mustChangePassword){show('passwordGate');$('passwordHeading').textContent='Set your password';$('newPassword').focus();return}await openLinked(result.links)}catch(err){token=null;$('loginError').textContent=err.message;show('gate')}finally{button.disabled=false}});
 $('passwordForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');$('passwordError').textContent='';if($('newPassword').value!==$('confirmPassword').value){$('passwordError').textContent='Passwords do not match.';return}button.disabled=true;try{const nextLinks=await cloud.changePassword($('newPassword').value);e.target.reset();await openLinked(nextLinks)}catch(err){$('passwordError').textContent=err.message}finally{button.disabled=false}});
