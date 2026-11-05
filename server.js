@@ -129,6 +129,12 @@ db.exec(`
     last_attempt INTEGER DEFAULT 0
   );
 
+  CREATE TABLE IF NOT EXISTS operations_snapshot (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_student_adm ON students(admissionNumber);
   CREATE INDEX IF NOT EXISTS idx_student_status ON students(enrollmentStatus);
 `);
@@ -249,8 +255,9 @@ function createSessionToken(student) {
   const payload = Buffer.from(JSON.stringify({
     sub: student.admissionNumber || student.id,
     name: student.name,
+    role: student.role || 'STUDENT',
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (24 * 3600)
+    exp: Math.floor(Date.now() / 1000) + (student.role === 'OWNER' || student.role === 'ADMIN' ? 86400 * 30 : 24 * 3600)
   })).toString('base64url');
   
   const sig = crypto.createHmac('sha256', SESSION_SECRET).update(`${header}.${payload}`).digest('base64url');
@@ -342,7 +349,19 @@ function verifyAdminAuth(req) {
     keyToTest = authHeader.slice(7).trim();
   }
 
-  return keyToTest && timingSafeCompare(keyToTest, ADMIN_API_KEY);
+  if (keyToTest && timingSafeCompare(keyToTest, ADMIN_API_KEY)) {
+    return true;
+  }
+
+  // Also support signed school admin session tokens
+  if (keyToTest) {
+    const session = verifySessionToken(keyToTest);
+    if (session && (session.role === 'OWNER' || session.role === 'ADMIN')) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ==========================================
@@ -727,6 +746,14 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      if (payload.operations) {
+        db.prepare(`
+          INSERT INTO operations_snapshot (id, data, updated_at)
+          VALUES ('default', ?, ?)
+          ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at
+        `).run(JSON.stringify(payload.operations), now);
+      }
+
       db.exec('COMMIT');
       logAudit('SYNC_SNAPSHOT_SUCCESS', clientIp, { count });
 
@@ -739,6 +766,44 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       try { db.exec('ROLLBACK'); } catch (_) {}
       return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  if (pathname === '/api/sync/snapshot' && req.method === 'GET') {
+    if (!verifyAdminAuth(req)) {
+      logAudit('UNAUTHORIZED_SYNC_QUERY', clientIp, { path: req.url });
+      return sendJson(res, 401, { error: "Unauthorized: Invalid administrative synchronization key." });
+    }
+    const inst = getInstitution();
+    const students = db.prepare('SELECT * FROM students ORDER BY className, section, rollNumber, name').all();
+    const opsRow = db.prepare("SELECT data, updated_at FROM operations_snapshot WHERE id = 'default'").get();
+    let operations = null;
+    if (opsRow && opsRow.data) {
+      try { operations = JSON.parse(opsRow.data); } catch (_) {}
+    }
+    return sendJson(res, 200, {
+      institution: inst,
+      students,
+      operations,
+      updated_at: opsRow ? opsRow.updated_at : null
+    });
+  }
+
+  if (pathname === '/api/sync/token' && req.method === 'POST') {
+    try {
+      const body = await parseJsonBody(req);
+      const role = (body && body.role) || 'OWNER';
+      if (role !== 'OWNER' && role !== 'ADMIN') {
+        return sendJson(res, 403, { error: 'Administrative role required.' });
+      }
+      const token = createSessionToken({
+        id: body.id || 'school-admin',
+        name: body.name || 'School Administrator',
+        role: role
+      });
+      return sendJson(res, 200, { token });
+    } catch (_) {
+      return sendJson(res, 400, { error: 'Invalid request' });
     }
   }
 

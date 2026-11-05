@@ -19426,8 +19426,349 @@ function cr(e2, t2, n2) {
     return e2().catch(i2);
   });
 }
+var BN_ROMAN_MAP = {
+  "i": "1",
+  "ii": "2",
+  "iii": "3",
+  "iv": "4",
+  "v": "5",
+  "vi": "6",
+  "vii": "7",
+  "viii": "8",
+  "ix": "9",
+  "x": "10",
+  "xi": "11",
+  "xii": "12"
+};
+function normalizeClassName(name) {
+  if (name === null || name === void 0) return "";
+  let s2 = String(name).trim().toLowerCase();
+  if (!s2) return "";
+  s2 = s2.replace(/^(class|grade|batch|std|standard)\s*[-:]?\s*/i, "");
+  const hyphenParts = s2.split(/\s*[-–—]\s*/);
+  if (hyphenParts.length > 1 && /^\d+$/.test(hyphenParts[0].trim())) {
+    s2 = hyphenParts[0].trim();
+  }
+  s2 = s2.replace(/^(\d+)(st|nd|rd|th)$/i, "$1");
+  if (BN_ROMAN_MAP[s2]) {
+    s2 = BN_ROMAN_MAP[s2];
+  }
+  return s2.trim();
+}
+function normalizeSection(sec) {
+  if (sec === null || sec === void 0) return "";
+  let s2 = String(sec).trim().toLowerCase();
+  if (!s2) return "";
+  s2 = s2.replace(/^(sec|section)\s*[-:]?\s*/i, "");
+  return s2.trim();
+}
+function isClassMatch(classA, classB) {
+  if (!classA || !classB) return false;
+  if (classA === classB) return true;
+  const na2 = normalizeClassName(classA);
+  const nb = normalizeClassName(classB);
+  return !!na2 && na2 === nb;
+}
+function isSectionMatch(secA, secB) {
+  if (!secA && !secB) return true;
+  if (secA === "All" || secB === "All" || !secA || !secB) return true;
+  if (secA === secB) return true;
+  return normalizeSection(secA) === normalizeSection(secB);
+}
+function isStudentInClass(student, classRecord) {
+  if (!student || !classRecord) return false;
+  const classMatches = isClassMatch(student.className, classRecord.name);
+  if (!classMatches) return false;
+  if (classRecord.section) {
+    const secA = normalizeSection(student.section);
+    const secB = normalizeSection(classRecord.section);
+    if (secA && secB && secA !== secB) {
+      return false;
+    }
+  }
+  if (classRecord.academicStream && student.academicStream) {
+    if (classRecord.academicStream.toLowerCase() !== student.academicStream.toLowerCase()) {
+      return false;
+    }
+  }
+  return true;
+}
+function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = [], operations = {}) {
+  const oldMap = new Map((oldClasses || []).map((c2) => [c2.id, c2]));
+  let updatedStudents = [...students || []];
+  let updatedFeeStructures = [...operations.feeStructures || []];
+  let updatedAttendance = [...operations.attendance || []];
+  let updatedTeachers = [...operations.teachers || []];
+  let updatedTimetable = Array.isArray(operations.timetable) ? [...operations.timetable] : [];
+  let changesCount = 0;
+  for (const newClass of newClasses || []) {
+    const oldClass = oldMap.get(newClass.id);
+    if (!oldClass) continue;
+    const nameChanged = oldClass.name !== newClass.name;
+    const secChanged = oldClass.section !== newClass.section;
+    const streamChanged = (oldClass.academicStream || "") !== (newClass.academicStream || "");
+    if (!nameChanged && !secChanged && !streamChanged) {
+      continue;
+    }
+    changesCount++;
+    updatedStudents = updatedStudents.map((student) => {
+      const matchesOld = isClassMatch(student.className, oldClass.name) && (!oldClass.section || isSectionMatch(student.section, oldClass.section));
+      if (matchesOld) {
+        return {
+          ...student,
+          className: newClass.name,
+          section: newClass.section || student.section,
+          academicStream: newClass.academicStream || student.academicStream
+        };
+      }
+      return student;
+    });
+    updatedFeeStructures = updatedFeeStructures.map((fs2) => {
+      if (isClassMatch(fs2.className, oldClass.name)) {
+        return {
+          ...fs2,
+          className: newClass.name,
+          academicStream: newClass.academicStream || fs2.academicStream
+        };
+      }
+      return fs2;
+    });
+    updatedAttendance = updatedAttendance.map((att) => {
+      const matchesOld = isClassMatch(att.className, oldClass.name) && (!oldClass.section || isSectionMatch(att.section, oldClass.section));
+      if (matchesOld) {
+        return {
+          ...att,
+          className: newClass.name,
+          section: newClass.section || att.section
+        };
+      }
+      return att;
+    });
+    const oldKey = `${oldClass.name}-${oldClass.section}`;
+    const newKey = `${newClass.name}-${newClass.section}`;
+    updatedTeachers = updatedTeachers.map((teacher) => {
+      if (Array.isArray(teacher.assignedClasses) && teacher.assignedClasses.length > 0) {
+        const hasOld = teacher.assignedClasses.some(
+          (ac) => ac === oldKey || isClassMatch(ac.split("-")[0], oldClass.name) && isSectionMatch(ac.split("-")[1], oldClass.section)
+        );
+        if (hasOld) {
+          const newAssigned = teacher.assignedClasses.map((ac) => {
+            if (ac === oldKey || isClassMatch(ac.split("-")[0], oldClass.name) && isSectionMatch(ac.split("-")[1], oldClass.section)) {
+              return newKey;
+            }
+            return ac;
+          });
+          return { ...teacher, assignedClasses: Array.from(new Set(newAssigned)) };
+        }
+      }
+      return teacher;
+    });
+    if (updatedTimetable.length > 0) {
+      updatedTimetable = updatedTimetable.map((item) => {
+        if (isClassMatch(item.className, oldClass.name) && (!oldClass.section || isSectionMatch(item.section, oldClass.section))) {
+          return {
+            ...item,
+            className: newClass.name,
+            section: newClass.section || item.section
+          };
+        }
+        return item;
+      });
+    }
+  }
+  const updatedOperations = {
+    ...operations,
+    classes: newClasses,
+    feeStructures: updatedFeeStructures,
+    attendance: updatedAttendance,
+    teachers: updatedTeachers,
+    ...updatedTimetable.length ? { timetable: updatedTimetable } : {}
+  };
+  return {
+    updatedStudents,
+    updatedOperations,
+    changesCount
+  };
+}
+function bnCascadeStudentChanges(updatedStudent, oldStudent = null, operations = {}) {
+  if (!updatedStudent || !updatedStudent.id) return { updatedOperations: operations };
+  let updatedAttendance = [...operations.attendance || []];
+  let updatedFeePayments = [...operations.feePayments || []];
+  let updatedMarks = [...operations.marks || []];
+  let touched = false;
+  updatedAttendance = updatedAttendance.map((att) => {
+    if (att.studentId === updatedStudent.id) {
+      touched = true;
+      return {
+        ...att,
+        studentName: updatedStudent.name || att.studentName,
+        rollNumber: updatedStudent.rollNumber || att.rollNumber,
+        className: updatedStudent.className || att.className,
+        section: updatedStudent.section || att.section
+      };
+    }
+    return att;
+  });
+  updatedFeePayments = updatedFeePayments.map((fp) => {
+    if (fp.studentId === updatedStudent.id) {
+      touched = true;
+      return {
+        ...fp,
+        studentName: updatedStudent.name || fp.studentName,
+        admissionNumber: updatedStudent.admissionNumber || fp.admissionNumber,
+        className: updatedStudent.className || fp.className,
+        section: updatedStudent.section || fp.section
+      };
+    }
+    return fp;
+  });
+  updatedMarks = updatedMarks.map((m2) => {
+    if (m2.studentId === updatedStudent.id) {
+      touched = true;
+      return {
+        ...m2,
+        studentName: updatedStudent.name || m2.studentName,
+        className: updatedStudent.className || m2.className,
+        section: updatedStudent.section || m2.section
+      };
+    }
+    return m2;
+  });
+  return {
+    touched,
+    updatedOperations: {
+      ...operations,
+      attendance: updatedAttendance,
+      feePayments: updatedFeePayments,
+      marks: updatedMarks
+    }
+  };
+}
+function buildDynamicClassList(configuredClasses = [], studentList = []) {
+  const standardOrder = ["nursery", "lkg", "ukg", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+  const seen = /* @__PURE__ */ new Set();
+  const result = [];
+  function addClass(rawName) {
+    if (!rawName) return;
+    const trimmed = String(rawName).trim();
+    if (!trimmed) return;
+    const norm = normalizeClassName(trimmed);
+    if (!seen.has(norm)) {
+      seen.add(norm);
+      result.push(trimmed);
+    }
+  }
+  (configuredClasses || []).forEach((c2) => addClass(c2.name));
+  (studentList || []).forEach((s2) => addClass(s2.className));
+  ["Nursery", "LKG", "UKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].forEach(addClass);
+  result.sort((a2, b2) => {
+    const na2 = normalizeClassName(a2);
+    const nb = normalizeClassName(b2);
+    const idxA = standardOrder.indexOf(na2);
+    const idxB = standardOrder.indexOf(nb);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a2.localeCompare(b2, void 0, { numeric: true, sensitivity: "base" });
+  });
+  return result;
+}
+function buildDynamicSectionList(selectedClass, configuredClasses = [], studentList = []) {
+  const set = /* @__PURE__ */ new Set();
+  const normSelected = normalizeClassName(selectedClass);
+  (configuredClasses || []).forEach((c2) => {
+    if (c2.section && normalizeClassName(c2.name) === normSelected) {
+      set.add(c2.section.trim());
+    }
+  });
+  (studentList || []).forEach((s2) => {
+    if (s2.section && normalizeClassName(s2.className) === normSelected) {
+      set.add(s2.section.trim());
+    }
+  });
+  ["A", "B", "C", "D"].forEach((sec) => set.add(sec));
+  return Array.from(set).sort();
+}
+var bnSyncTimer = null;
+function bnScheduleCloudSync(institution, students, operations, setStatus) {
+  if (typeof window === "undefined") return;
+  if (setStatus) setStatus("syncing");
+  if (bnSyncTimer) clearTimeout(bnSyncTimer);
+  bnSyncTimer = setTimeout(async () => {
+    try {
+      let token = localStorage.getItem("school_admin_token") || "local-admin-key";
+      const res = await fetch("/api/sync/snapshot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          institution,
+          students,
+          operations
+        })
+      });
+      try {
+        const attSummary = {};
+        (operations.attendance || []).forEach((a2) => {
+          if (!attSummary[a2.studentId]) attSummary[a2.studentId] = { total: 0, present: 0 };
+          attSummary[a2.studentId].total++;
+          if (a2.status === "Present") attSummary[a2.studentId].present++;
+        });
+        await fetch("/api/parent/admin/publish", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify({
+            students: (students || []).map((s2) => ({
+              id: s2.id,
+              admissionNumber: s2.admissionNumber,
+              name: s2.name,
+              fatherName: s2.fatherName,
+              motherName: s2.motherName,
+              parentMobile: s2.parentMobile,
+              className: s2.className,
+              section: s2.section,
+              dateOfBirth: s2.dateOfBirth,
+              enrollmentStatus: s2.status || "Active",
+              attendanceSummary: attSummary[s2.id] || { total: 0, present: 0 }
+            }))
+          })
+        });
+      } catch (_2) {
+      }
+      if (res && res.ok) {
+        if (setStatus) setStatus("synced");
+      } else {
+        if (setStatus) setStatus("local");
+      }
+    } catch (_2) {
+      if (setStatus) setStatus("local");
+    }
+  }, 1e3);
+}
+function bnBroadcastStoreSync(institution, students, operations) {
+  try {
+    if (typeof BroadcastChannel !== "undefined") {
+      const channel = new BroadcastChannel("bright_nexa_store_sync");
+      channel.postMessage({
+        type: "BN_STORE_SYNC",
+        institution,
+        students,
+        operations,
+        timestamp: Date.now()
+      });
+      channel.close();
+    }
+  } catch (_2) {
+  }
+}
 function _Component90({
   students: e2,
+  classes = [],
   onAddStudent: t2,
   onImportStudents: n2,
   onUpdateStudent: r2,
@@ -19870,6 +20211,7 @@ function _Component90({
     _Component6,
     {
       students: e2,
+      classes,
       initialStudent: p2,
       onClose: () => m2(null),
       onSave: (e3) => {
@@ -19905,11 +20247,14 @@ var ur = {
 };
 function _Component6({
   students: e2,
+  classes = [],
   onClose: t2,
   onSave: n2,
   initialStudent: r2
 }) {
   let [i2, a2] = (0, w.useState)(() => r2 ? _r(r2) : ur);
+  let availableClasses = (0, w.useMemo)(() => buildDynamicClassList(classes, e2), [classes, e2]);
+  let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i2.className, classes, e2), [i2.className, classes, e2]);
   let [o2, s2] = (0, w.useState)({});
   let [c2, l2] = (0, w.useState)(``);
   let u2 = (0, w.useRef)(null);
@@ -20100,23 +20445,7 @@ function _Component6({
           }
         },
         /* @__PURE__ */ w.createElement(Component77, { value: `` }, `Select Class`),
-        [
-          `Nursery`,
-          `LKG`,
-          `UKG`,
-          `1`,
-          `2`,
-          `3`,
-          `4`,
-          `5`,
-          `6`,
-          `7`,
-          `8`,
-          `9`,
-          `10`,
-          `11`,
-          `12`
-        ].map((e3) => /* @__PURE__ */ w.createElement(Component78, { key: e3 }, e3))
+        availableClasses.map((cls) => /* @__PURE__ */ w.createElement(Component78, { key: cls, value: cls }, cls))
       )), (i2.className === `11` || i2.className === `12`) && /* @__PURE__ */ w.createElement(
         _Component7,
         {
@@ -20139,7 +20468,7 @@ function _Component6({
           onChange: (e3) => p2(`section`, e3.target.value)
         },
         /* @__PURE__ */ w.createElement(Component83, { value: `` }, `Select Section`),
-        [`A`, `B`, `C`, `D`].map((e3) => /* @__PURE__ */ w.createElement(Component84, { key: e3 }, e3))
+        availableSections.map((sec) => /* @__PURE__ */ w.createElement(Component84, { key: sec, value: sec }, sec))
       )), /* @__PURE__ */ w.createElement(_Component7, { label: `Roll Number` }, /* @__PURE__ */ w.createElement(
         Component86,
         {
@@ -23089,7 +23418,7 @@ function _Component18({ title: e2, note: t2 }) {
   return /* @__PURE__ */ w.createElement(Component549, { className: `attendance-section-heading` }, /* @__PURE__ */ w.createElement(Component548, null, /* @__PURE__ */ w.createElement(Component546, null, e2), /* @__PURE__ */ w.createElement(Component547, null, t2)));
 }
 function ti(e2, t2) {
-  return !!e2 && !!t2 && e2.className === t2.name && e2.section === t2.section && (!t2.academicStream || e2.academicStream === t2.academicStream);
+  return isStudentInClass(e2, t2);
 }
 function ni(e2) {
   if (e2) {
@@ -23283,11 +23612,7 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
   const [pendingReportOpen, setPendingReportOpen] = (0, w.useState)(false);
   let i2 = n2.institutionType === `Coaching Centre`;
   let a2 = (0, w.useMemo)(
-    () => Ci([
-      ...fi,
-      ...e2.classes.map((e3) => e3.name),
-      ...t2.map((e3) => e3.className)
-    ]).filter(Boolean),
+    () => buildDynamicClassList(e2.classes, t2),
     [e2.classes, t2]
   );
   let o2 = a2.includes(`9`) ? `9` : a2[0] || ``;
@@ -23295,7 +23620,7 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
   let [u2, d2] = (0, w.useState)(o2);
   let [f2, p2] = (0, w.useState)(n2.session);
   let [m2, h2] = (0, w.useState)(`All Streams`);
-  let [g2, _2] = (0, w.useState)(o2);
+  let [g2, _2] = (0, w.useState)(`All`);
   let [v2, y2] = (0, w.useState)(n2.session);
   let [b2, x2] = (0, w.useState)(`All Streams`);
   let [S2, C2] = (0, w.useState)(`All`);
@@ -23316,16 +23641,19 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
   let ue = (0, w.useMemo)(() => e2.feePayments.filter(Kn), [e2.feePayments]);
   let de = (0, w.useMemo)(() => ue.reduce((e3, t3) => e3 + t3.amount, 0), [ue]);
   let fe = (0, w.useMemo)(
-    () => Ci(t2.filter((e3) => e3.className === g2).map((e3) => e3.section)).filter(
-      Boolean
-    ),
+    () => Ci(
+      t2.filter((e3) => g2 === `All` || !g2 || isClassMatch(e3.className, g2)).map((e3) => e3.section)
+    ).filter(Boolean),
     [g2, t2]
   );
   let pe = (0, w.useMemo)(() => {
     let e3 = T2.toLowerCase();
     return t2.filter((t3) => {
       let n3 = [t3.name, t3.studentUniqueId, t3.admissionNumber, t3.fatherName].join(` `).toLowerCase();
-      return (!g2 || t3.className === g2) && (S2 === `All` || t3.section === S2) && (b2 === `All Streams` || t3.academicStream === b2) && n3.includes(e3);
+      let classMatches = !g2 || g2 === `All` || isClassMatch(t3.className, g2);
+      let sectionMatches = S2 === `All` || isSectionMatch(t3.section, S2);
+      let streamMatches = b2 === `All Streams` || !t3.academicStream || t3.academicStream === b2;
+      return classMatches && sectionMatches && streamMatches && n3.includes(e3);
     });
   }, [g2, S2, b2, T2, t2]);
   let j = pe.find((e3) => e3.id === ee2) || pe[0];
@@ -23690,7 +24018,8 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
         D2(``);
       }
     },
-    a2.map((e3) => /* @__PURE__ */ w.createElement(Component579, { key: e3 }, e3))
+    /* @__PURE__ */ w.createElement(Component579, { value: `All` }, `All Classes`),
+    a2.map((e3) => /* @__PURE__ */ w.createElement(Component579, { key: e3, value: e3 }, e3))
   )), /* @__PURE__ */ w.createElement(R, { label: `Section` }, /* @__PURE__ */ w.createElement(
     Component583,
     {
@@ -37380,6 +37709,7 @@ function Ds() {
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
   let [g2] = (0, w.useState)(Qt);
+  let [syncStatus, setSyncStatus] = (0, w.useState)("synced");
   let [whatsAppModalOpen, setWhatsAppModalOpen] = (0, w.useState)(false);
   let [whatsAppConnected, setWhatsAppConnected] = (0, w.useState)(() => {
     try {
@@ -37388,6 +37718,35 @@ function Ds() {
       return false;
     }
   });
+  (0, w.useEffect)(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    let channel;
+    try {
+      channel = new BroadcastChannel("bright_nexa_store_sync");
+      channel.onmessage = (event) => {
+        if (event.data && event.data.type === "BN_STORE_SYNC") {
+          if (event.data.institution) t2(event.data.institution);
+          if (event.data.students) r2(event.data.students);
+          if (event.data.operations) a2(event.data.operations);
+        }
+      };
+    } catch (_3) {
+    }
+    return () => {
+      try {
+        if (channel) channel.close();
+      } catch (_3) {
+      }
+    };
+  }, []);
+  let triggerManualSync = () => {
+    setSyncStatus("syncing");
+    bnScheduleCloudSync(e2, n2, i2, (st) => {
+      setSyncStatus(st);
+      p2(st === "synced" ? "Cloud & Local synchronized successfully." : "Working in offline local mode.");
+      window.setTimeout(() => p2(""), 3e3);
+    });
+  };
   let _2 = (0, w.useMemo)(() => fn(e2.language), [e2.language]);
   let v2 = g2?.role ?? e2.role;
   (0, w.useEffect)(() => {
@@ -37526,6 +37885,8 @@ function Ds() {
     l2(`Students`);
     p2(`${o3.name || o3.admissionNumber || `Student record`} added successfully`);
     window.setTimeout(() => p2(``), 3500);
+    bnBroadcastStoreSync(c3, s3, u3);
+    bnScheduleCloudSync(c3, s3, u3, setSyncStatus);
   };
   let ue = (o3) => {
     let s3 = [...o3, ...n2];
@@ -37548,22 +37909,27 @@ function Ds() {
     );
     a2(l3);
     ji(l3);
+    bnBroadcastStoreSync(c3, s3, l3);
+    bnScheduleCloudSync(c3, s3, l3, setSyncStatus);
   };
-  let de = (e3) => {
-    let t3 = n2.map((t4) => t4.id === e3.id ? e3 : t4);
-    r2(t3);
-    On(t3);
+  let de = (updatedSt) => {
+    let s3 = n2.map((t3) => t3.id === updatedSt.id ? updatedSt : t3);
+    r2(s3);
+    On(s3);
+    let { updatedOperations } = bnCascadeStudentChanges(updatedSt, null, i2);
     let o3 = z(
-      i2,
+      updatedOperations,
       `UPDATE`,
       `Student`,
-      e3.name || e3.admissionNumber || `Student record`
+      updatedSt.name || updatedSt.admissionNumber || `Student record`
     );
     a2(o3);
     ji(o3);
+    bnBroadcastStoreSync(e2, s3, o3);
+    bnScheduleCloudSync(e2, s3, o3, setSyncStatus);
   };
   let pe = (o3) => {
-    let s3 = n2.filter((e3) => e3.id !== o3.id);
+    let s3 = n2.filter((elem) => elem.id !== o3.id);
     r2(s3);
     On(s3);
     let c3 = {
@@ -37583,11 +37949,31 @@ function Ds() {
     );
     a2(l3);
     ji(l3);
+    bnBroadcastStoreSync(c3, s3, l3);
+    bnScheduleCloudSync(c3, s3, l3, setSyncStatus);
   };
-  let j = (e3, t3, n3, r3) => {
-    let i3 = z(e3, t3, n3, r3);
-    a2(i3);
-    ji(i3);
+  let j = (nextOpsArg, actionArg, entityArg, descArg) => {
+    let nextStudents = n2;
+    let nextOps = nextOpsArg;
+    if (entityArg === `Class` || entityArg === `Batch` || entityArg === `Classes` || entityArg === `Academic setup`) {
+      let cascadeResult = bnCascadeClassroomChanges(
+        i2.classes,
+        nextOpsArg.classes,
+        n2,
+        nextOpsArg
+      );
+      if (cascadeResult.changesCount > 0) {
+        nextStudents = cascadeResult.updatedStudents;
+        nextOps = cascadeResult.updatedOperations;
+        r2(nextStudents);
+        On(nextStudents);
+      }
+    }
+    let audited = z(nextOps, actionArg, entityArg, descArg);
+    a2(audited);
+    ji(audited);
+    bnBroadcastStoreSync(e2, nextStudents, audited);
+    bnScheduleCloudSync(e2, nextStudents, audited, setSyncStatus);
   };
   const Component2051 = `img`;
   const Component2052 = `strong`;
@@ -37742,6 +38128,42 @@ function Ds() {
     /* @__PURE__ */ w.createElement(Ze, { size: 16 }),
     /* @__PURE__ */ w.createElement(Component2076, null, `Update v`, m2)
   ), /* @__PURE__ */ w.createElement(_Component40, { compact: true }), /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button compact bn-sync-status-badge",
+      style: {
+        display: `inline-flex`,
+        alignItems: `center`,
+        gap: `6px`,
+        borderColor: syncStatus === "synced" ? `#10b981` : syncStatus === "syncing" ? `#f59e0b` : `var(--line, #cbd5e1)`,
+        background: syncStatus === "synced" ? `rgba(16, 185, 129, 0.1)` : syncStatus === "syncing" ? `rgba(245, 158, 11, 0.1)` : `transparent`,
+        color: syncStatus === "synced" ? `#065f46` : syncStatus === "syncing" ? `#92400e` : `inherit`,
+        fontWeight: 600,
+        fontSize: `12px`,
+        padding: `4px 10px`,
+        borderRadius: `20px`,
+        cursor: `pointer`,
+        height: `34px`
+      },
+      title: "Cloud & Local Storage Status. Click to force instant cloud synchronization.",
+      onClick: () => triggerManualSync()
+    },
+    /* @__PURE__ */ w.createElement("span", { style: { fontSize: `13px` } }, syncStatus === "syncing" ? "\u{1F504}" : "\u2601\uFE0F"),
+    /* @__PURE__ */ w.createElement("span", null, syncStatus === "syncing" ? "Syncing..." : syncStatus === "synced" ? "Cloud & Local Synced" : "Local Mode"),
+    /* @__PURE__ */ w.createElement(
+      "span",
+      {
+        style: {
+          display: `inline-block`,
+          width: `8px`,
+          height: `8px`,
+          borderRadius: `50%`,
+          background: syncStatus === "synced" ? `#10b981` : syncStatus === "syncing" ? `#f59e0b` : `#3b82f6`
+        }
+      }
+    )
+  ), /* @__PURE__ */ w.createElement(
     "button",
     {
       type: "button",
@@ -37981,6 +38403,7 @@ function Ds() {
     _Component90,
     {
       students: y2,
+      classes: i2.classes,
       onAddStudent: () => d2(true),
       onImportStudents: ue,
       onUpdateStudent: de,
@@ -38062,7 +38485,7 @@ function Ds() {
         window.setTimeout(() => p2(``), 5e3);
       }
     }
-  ) : c2 === `Contact & Support` ? /* @__PURE__ */ w.createElement(Ss, null) : /* @__PURE__ */ w.createElement(Ms, { name: c2, onBack: () => se(`Dashboard`) }))), u2 && /* @__PURE__ */ w.createElement(_Component6, { students: n2, onClose: () => d2(false), onSave: ce }), f2 && /* @__PURE__ */ w.createElement(Component2138, { className: `success-toast`, role: `status` }, /* @__PURE__ */ w.createElement(A, { size: 19 }), /* @__PURE__ */ w.createElement(Component2137, null, f2)), whatsAppModalOpen && /* @__PURE__ */ w.createElement(
+  ) : c2 === `Contact & Support` ? /* @__PURE__ */ w.createElement(Ss, null) : /* @__PURE__ */ w.createElement(Ms, { name: c2, onBack: () => se(`Dashboard`) }))), u2 && /* @__PURE__ */ w.createElement(_Component6, { students: n2, classes: i2.classes, onClose: () => d2(false), onSave: ce }), f2 && /* @__PURE__ */ w.createElement(Component2138, { className: `success-toast`, role: `status` }, /* @__PURE__ */ w.createElement(A, { size: 19 }), /* @__PURE__ */ w.createElement(Component2137, null, f2)), whatsAppModalOpen && /* @__PURE__ */ w.createElement(
     WhatsAppConnectModal,
     {
       isOpen: whatsAppModalOpen,

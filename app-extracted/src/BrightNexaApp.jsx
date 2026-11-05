@@ -20200,8 +20200,384 @@ function cr(e, t, n) {
     return e().catch(i);
   });
 }
+// --- Bright Nexa Unified Store & Synchronization Engine ---
+var BN_ROMAN_MAP = {
+  'i': '1', 'ii': '2', 'iii': '3', 'iv': '4', 'v': '5',
+  'vi': '6', 'vii': '7', 'viii': '8', 'ix': '9', 'x': '10',
+  'xi': '11', 'xii': '12'
+};
+
+function normalizeClassName(name) {
+  if (name === null || name === undefined) return '';
+  let s = String(name).trim().toLowerCase();
+  if (!s) return '';
+  s = s.replace(/^(class|grade|batch|std|standard)\s*[-:]?\s*/i, '');
+  const hyphenParts = s.split(/\s*[-–—]\s*/);
+  if (hyphenParts.length > 1 && /^\d+$/.test(hyphenParts[0].trim())) {
+    s = hyphenParts[0].trim();
+  }
+  s = s.replace(/^(\d+)(st|nd|rd|th)$/i, '$1');
+  if (BN_ROMAN_MAP[s]) {
+    s = BN_ROMAN_MAP[s];
+  }
+  return s.trim();
+}
+
+function normalizeSection(sec) {
+  if (sec === null || sec === undefined) return '';
+  let s = String(sec).trim().toLowerCase();
+  if (!s) return '';
+  s = s.replace(/^(sec|section)\s*[-:]?\s*/i, '');
+  return s.trim();
+}
+
+function isClassMatch(classA, classB) {
+  if (!classA || !classB) return false;
+  if (classA === classB) return true;
+  const na = normalizeClassName(classA);
+  const nb = normalizeClassName(classB);
+  return !!na && na === nb;
+}
+
+function isSectionMatch(secA, secB) {
+  if (!secA && !secB) return true;
+  if (secA === 'All' || secB === 'All' || !secA || !secB) return true;
+  if (secA === secB) return true;
+  return normalizeSection(secA) === normalizeSection(secB);
+}
+
+function isStudentInClass(student, classRecord) {
+  if (!student || !classRecord) return false;
+  const classMatches = isClassMatch(student.className, classRecord.name);
+  if (!classMatches) return false;
+  if (classRecord.section) {
+    const secA = normalizeSection(student.section);
+    const secB = normalizeSection(classRecord.section);
+    if (secA && secB && secA !== secB) {
+      return false;
+    }
+  }
+  if (classRecord.academicStream && student.academicStream) {
+    if (classRecord.academicStream.toLowerCase() !== student.academicStream.toLowerCase()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = [], operations = {}) {
+  const oldMap = new Map((oldClasses || []).map(c => [c.id, c]));
+  let updatedStudents = [...(students || [])];
+  let updatedFeeStructures = [...(operations.feeStructures || [])];
+  let updatedAttendance = [...(operations.attendance || [])];
+  let updatedTeachers = [...(operations.teachers || [])];
+  let updatedTimetable = Array.isArray(operations.timetable) ? [...operations.timetable] : [];
+  let changesCount = 0;
+
+  for (const newClass of (newClasses || [])) {
+    const oldClass = oldMap.get(newClass.id);
+    if (!oldClass) continue;
+
+    const nameChanged = oldClass.name !== newClass.name;
+    const secChanged = oldClass.section !== newClass.section;
+    const streamChanged = (oldClass.academicStream || '') !== (newClass.academicStream || '');
+
+    if (!nameChanged && !secChanged && !streamChanged) {
+      continue;
+    }
+
+    changesCount++;
+
+    updatedStudents = updatedStudents.map(student => {
+      const matchesOld = isClassMatch(student.className, oldClass.name) &&
+        (!oldClass.section || isSectionMatch(student.section, oldClass.section));
+
+      if (matchesOld) {
+        return {
+          ...student,
+          className: newClass.name,
+          section: newClass.section || student.section,
+          academicStream: newClass.academicStream || student.academicStream
+        };
+      }
+      return student;
+    });
+
+    updatedFeeStructures = updatedFeeStructures.map(fs => {
+      if (isClassMatch(fs.className, oldClass.name)) {
+        return {
+          ...fs,
+          className: newClass.name,
+          academicStream: newClass.academicStream || fs.academicStream
+        };
+      }
+      return fs;
+    });
+
+    updatedAttendance = updatedAttendance.map(att => {
+      const matchesOld = isClassMatch(att.className, oldClass.name) &&
+        (!oldClass.section || isSectionMatch(att.section, oldClass.section));
+
+      if (matchesOld) {
+        return {
+          ...att,
+          className: newClass.name,
+          section: newClass.section || att.section
+        };
+      }
+      return att;
+    });
+
+    const oldKey = `${oldClass.name}-${oldClass.section}`;
+    const newKey = `${newClass.name}-${newClass.section}`;
+    updatedTeachers = updatedTeachers.map(teacher => {
+      if (Array.isArray(teacher.assignedClasses) && teacher.assignedClasses.length > 0) {
+        const hasOld = teacher.assignedClasses.some(ac => 
+          ac === oldKey || 
+          (isClassMatch(ac.split('-')[0], oldClass.name) && isSectionMatch(ac.split('-')[1], oldClass.section))
+        );
+        if (hasOld) {
+          const newAssigned = teacher.assignedClasses.map(ac => {
+            if (ac === oldKey || (isClassMatch(ac.split('-')[0], oldClass.name) && isSectionMatch(ac.split('-')[1], oldClass.section))) {
+              return newKey;
+            }
+            return ac;
+          });
+          return { ...teacher, assignedClasses: Array.from(new Set(newAssigned)) };
+        }
+      }
+      return teacher;
+    });
+
+    if (updatedTimetable.length > 0) {
+      updatedTimetable = updatedTimetable.map(item => {
+        if (isClassMatch(item.className, oldClass.name) && (!oldClass.section || isSectionMatch(item.section, oldClass.section))) {
+          return {
+            ...item,
+            className: newClass.name,
+            section: newClass.section || item.section
+          };
+        }
+        return item;
+      });
+    }
+  }
+
+  const updatedOperations = {
+    ...operations,
+    classes: newClasses,
+    feeStructures: updatedFeeStructures,
+    attendance: updatedAttendance,
+    teachers: updatedTeachers,
+    ...(updatedTimetable.length ? { timetable: updatedTimetable } : {})
+  };
+
+  return {
+    updatedStudents,
+    updatedOperations,
+    changesCount
+  };
+}
+
+function bnCascadeStudentChanges(updatedStudent, oldStudent = null, operations = {}) {
+  if (!updatedStudent || !updatedStudent.id) return { updatedOperations: operations };
+
+  let updatedAttendance = [...(operations.attendance || [])];
+  let updatedFeePayments = [...(operations.feePayments || [])];
+  let updatedMarks = [...(operations.marks || [])];
+  let touched = false;
+
+  updatedAttendance = updatedAttendance.map(att => {
+    if (att.studentId === updatedStudent.id) {
+      touched = true;
+      return {
+        ...att,
+        studentName: updatedStudent.name || att.studentName,
+        rollNumber: updatedStudent.rollNumber || att.rollNumber,
+        className: updatedStudent.className || att.className,
+        section: updatedStudent.section || att.section
+      };
+    }
+    return att;
+  });
+
+  updatedFeePayments = updatedFeePayments.map(fp => {
+    if (fp.studentId === updatedStudent.id) {
+      touched = true;
+      return {
+        ...fp,
+        studentName: updatedStudent.name || fp.studentName,
+        admissionNumber: updatedStudent.admissionNumber || fp.admissionNumber,
+        className: updatedStudent.className || fp.className,
+        section: updatedStudent.section || fp.section
+      };
+    }
+    return fp;
+  });
+
+  updatedMarks = updatedMarks.map(m => {
+    if (m.studentId === updatedStudent.id) {
+      touched = true;
+      return {
+        ...m,
+        studentName: updatedStudent.name || m.studentName,
+        className: updatedStudent.className || m.className,
+        section: updatedStudent.section || m.section
+      };
+    }
+    return m;
+  });
+
+  return {
+    touched,
+    updatedOperations: {
+      ...operations,
+      attendance: updatedAttendance,
+      feePayments: updatedFeePayments,
+      marks: updatedMarks
+    }
+  };
+}
+
+function buildDynamicClassList(configuredClasses = [], studentList = []) {
+  const standardOrder = ['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const seen = new Set();
+  const result = [];
+
+  function addClass(rawName) {
+    if (!rawName) return;
+    const trimmed = String(rawName).trim();
+    if (!trimmed) return;
+    const norm = normalizeClassName(trimmed);
+    if (!seen.has(norm)) {
+      seen.add(norm);
+      result.push(trimmed);
+    }
+  }
+
+  (configuredClasses || []).forEach(c => addClass(c.name));
+  (studentList || []).forEach(s => addClass(s.className));
+  ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].forEach(addClass);
+
+  result.sort((a, b) => {
+    const na = normalizeClassName(a);
+    const nb = normalizeClassName(b);
+    const idxA = standardOrder.indexOf(na);
+    const idxB = standardOrder.indexOf(nb);
+
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  return result;
+}
+
+function buildDynamicSectionList(selectedClass, configuredClasses = [], studentList = []) {
+  const set = new Set();
+  const normSelected = normalizeClassName(selectedClass);
+
+  (configuredClasses || []).forEach(c => {
+    if (c.section && normalizeClassName(c.name) === normSelected) {
+      set.add(c.section.trim());
+    }
+  });
+
+  (studentList || []).forEach(s => {
+    if (s.section && normalizeClassName(s.className) === normSelected) {
+      set.add(s.section.trim());
+    }
+  });
+
+  ['A', 'B', 'C', 'D'].forEach(sec => set.add(sec));
+
+  return Array.from(set).sort();
+}
+
+var bnSyncTimer = null;
+function bnScheduleCloudSync(institution, students, operations, setStatus) {
+  if (typeof window === 'undefined') return;
+  if (setStatus) setStatus('syncing');
+  if (bnSyncTimer) clearTimeout(bnSyncTimer);
+  bnSyncTimer = setTimeout(async () => {
+    try {
+      let token = localStorage.getItem('school_admin_token') || 'local-admin-key';
+      const res = await fetch('/api/sync/snapshot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          institution,
+          students,
+          operations
+        })
+      });
+
+      try {
+        const attSummary = {};
+        (operations.attendance || []).forEach(a => {
+          if (!attSummary[a.studentId]) attSummary[a.studentId] = { total: 0, present: 0 };
+          attSummary[a.studentId].total++;
+          if (a.status === 'Present') attSummary[a.studentId].present++;
+        });
+
+        await fetch('/api/parent/admin/publish', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            students: (students || []).map(s => ({
+              id: s.id,
+              admissionNumber: s.admissionNumber,
+              name: s.name,
+              fatherName: s.fatherName,
+              motherName: s.motherName,
+              parentMobile: s.parentMobile,
+              className: s.className,
+              section: s.section,
+              dateOfBirth: s.dateOfBirth,
+              enrollmentStatus: s.status || 'Active',
+              attendanceSummary: attSummary[s.id] || { total: 0, present: 0 }
+            }))
+          })
+        });
+      } catch (_) {}
+
+      if (res && res.ok) {
+        if (setStatus) setStatus('synced');
+      } else {
+        if (setStatus) setStatus('local');
+      }
+    } catch (_) {
+      if (setStatus) setStatus('local');
+    }
+  }, 1000);
+}
+
+function bnBroadcastStoreSync(institution, students, operations) {
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('bright_nexa_store_sync');
+      channel.postMessage({
+        type: 'BN_STORE_SYNC',
+        institution,
+        students,
+        operations,
+        timestamp: Date.now()
+      });
+      channel.close();
+    }
+  } catch (_) {}
+}
+
 function _Component90({
   students: e,
+  classes = [],
   onAddStudent: t,
   onImportStudents: n,
   onUpdateStudent: r,
@@ -20771,6 +21147,7 @@ function _Component90({
       {p && (
         <_Component6
           students={e}
+          classes={classes}
           initialStudent={p}
           onClose={() => m(null)}
           onSave={(e) => {
@@ -20808,11 +21185,14 @@ var ur = {
 };
 function _Component6({
   students: e,
+  classes = [],
   onClose: t,
   onSave: n,
   initialStudent: r,
 }) {
   let [i, a] = (0, w.useState)(() => (r ? _r(r) : ur));
+  let availableClasses = (0, w.useMemo)(() => buildDynamicClassList(classes, e), [classes, e]);
+  let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i.className, classes, e), [i.className, classes, e]);
   let [o, s] = (0, w.useState)({});
   let [c, l] = (0, w.useState)(``);
   let u = (0, w.useRef)(null);
@@ -21022,24 +21402,8 @@ function _Component6({
                   }}
                 >
                   <Component77 value={``}>{`Select Class`}</Component77>
-                  {[
-                    `Nursery`,
-                    `LKG`,
-                    `UKG`,
-                    `1`,
-                    `2`,
-                    `3`,
-                    `4`,
-                    `5`,
-                    `6`,
-                    `7`,
-                    `8`,
-                    `9`,
-                    `10`,
-                    `11`,
-                    `12`,
-                  ].map((e) => (
-                    <Component78 key={e}>{e}</Component78>
+                  {availableClasses.map((cls) => (
+                    <Component78 key={cls} value={cls}>{cls}</Component78>
                   ))}
                 </Component79>
               </_Component7>
@@ -21065,8 +21429,8 @@ function _Component6({
                   onChange={(e) => p(`section`, e.target.value)}
                 >
                   <Component83 value={``}>{`Select Section`}</Component83>
-                  {[`A`, `B`, `C`, `D`].map((e) => (
-                    <Component84 key={e}>{e}</Component84>
+                  {availableSections.map((sec) => (
+                    <Component84 key={sec} value={sec}>{sec}</Component84>
                   ))}
                 </Component85>
               </_Component7>
@@ -24967,13 +25331,7 @@ function _Component18({ title: e, note: t }) {
   );
 }
 function ti(e, t) {
-  return (
-    !!e &&
-    !!t &&
-    e.className === t.name &&
-    e.section === t.section &&
-    (!t.academicStream || e.academicStream === t.academicStream)
-  );
+  return isStudentInClass(e, t);
 }
 function ni(e) {
   if (e) {
@@ -25185,12 +25543,7 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
   const [pendingReportOpen, setPendingReportOpen] = (0, w.useState)(false);
   let i = n.institutionType === `Coaching Centre`;
   let a = (0, w.useMemo)(
-    () =>
-      Ci([
-        ...fi,
-        ...e.classes.map((e) => e.name),
-        ...t.map((e) => e.className),
-      ]).filter(Boolean),
+    () => buildDynamicClassList(e.classes, t),
     [e.classes, t],
   );
   let o = a.includes(`9`) ? `9` : a[0] || ``;
@@ -25198,7 +25551,7 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
   let [u, d] = (0, w.useState)(o);
   let [f, p] = (0, w.useState)(n.session);
   let [m, h] = (0, w.useState)(`All Streams`);
-  let [g, _] = (0, w.useState)(o);
+  let [g, _] = (0, w.useState)(`All`);
   let [v, y] = (0, w.useState)(n.session);
   let [b, x] = (0, w.useState)(`All Streams`);
   let [S, C] = (0, w.useState)(`All`);
@@ -25221,9 +25574,11 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
   let de = (0, w.useMemo)(() => ue.reduce((e, t) => e + t.amount, 0), [ue]);
   let fe = (0, w.useMemo)(
     () =>
-      Ci(t.filter((e) => e.className === g).map((e) => e.section)).filter(
-        Boolean,
-      ),
+      Ci(
+        t
+          .filter((e) => g === `All` || !g || isClassMatch(e.className, g))
+          .map((e) => e.section)
+      ).filter(Boolean),
     [g, t],
   );
   let pe = (0, w.useMemo)(() => {
@@ -25232,10 +25587,13 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
       let n = [t.name, t.studentUniqueId, t.admissionNumber, t.fatherName]
         .join(` `)
         .toLowerCase();
+      let classMatches = !g || g === `All` || isClassMatch(t.className, g);
+      let sectionMatches = S === `All` || isSectionMatch(t.section, S);
+      let streamMatches = b === `All Streams` || !t.academicStream || t.academicStream === b;
       return (
-        (!g || t.className === g) &&
-        (S === `All` || t.section === S) &&
-        (b === `All Streams` || t.academicStream === b) &&
+        classMatches &&
+        sectionMatches &&
+        streamMatches &&
         n.includes(e)
       );
     });
@@ -25688,8 +26046,9 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
                   D(``);
                 }}
               >
+                <Component579 value={`All`}>{`All Classes`}</Component579>
                 {a.map((e) => (
-                  <Component579 key={e}>{e}</Component579>
+                  <Component579 key={e} value={e}>{e}</Component579>
                 ))}
               </Component580>
             </R>
@@ -42019,6 +42378,7 @@ function Ds() {
   let [f, p] = (0, w.useState)(``);
   let [m, h] = (0, w.useState)(``);
   let [g] = (0, w.useState)(Qt);
+  let [syncStatus, setSyncStatus] = (0, w.useState)('synced');
   let [whatsAppModalOpen, setWhatsAppModalOpen] = (0, w.useState)(false);
   let [whatsAppConnected, setWhatsAppConnected] = (0, w.useState)(() => {
     try {
@@ -42027,6 +42387,33 @@ function Ds() {
       return false;
     }
   });
+
+  (0, w.useEffect)(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    let channel;
+    try {
+      channel = new BroadcastChannel('bright_nexa_store_sync');
+      channel.onmessage = (event) => {
+        if (event.data && event.data.type === 'BN_STORE_SYNC') {
+          if (event.data.institution) t(event.data.institution);
+          if (event.data.students) r(event.data.students);
+          if (event.data.operations) a(event.data.operations);
+        }
+      };
+    } catch (_) {}
+    return () => {
+      try { if (channel) channel.close(); } catch (_) {}
+    };
+  }, []);
+
+  let triggerManualSync = () => {
+    setSyncStatus('syncing');
+    bnScheduleCloudSync(e, n, i, (st) => {
+      setSyncStatus(st);
+      p(st === 'synced' ? 'Cloud & Local synchronized successfully.' : 'Working in offline local mode.');
+      window.setTimeout(() => p(''), 3000);
+    });
+  };
   let _ = (0, w.useMemo)(() => fn(e.language), [e.language]);
   let v = g?.role ?? e.role;
   (0, w.useEffect)(() => {
@@ -42190,6 +42577,8 @@ function Ds() {
     l(`Students`);
     p(`${o.name || o.admissionNumber || `Student record`} added successfully`);
     window.setTimeout(() => p(``), 3500);
+    bnBroadcastStoreSync(c, s, u);
+    bnScheduleCloudSync(c, s, u, setSyncStatus);
   };
   let ue = (o) => {
     let s = [...o, ...n];
@@ -42212,22 +42601,27 @@ function Ds() {
     );
     a(l);
     ji(l);
+    bnBroadcastStoreSync(c, s, l);
+    bnScheduleCloudSync(c, s, l, setSyncStatus);
   };
-  let de = (e) => {
-    let t = n.map((t) => (t.id === e.id ? e : t));
-    r(t);
-    On(t);
+  let de = (updatedSt) => {
+    let s = n.map((t) => (t.id === updatedSt.id ? updatedSt : t));
+    r(s);
+    On(s);
+    let { updatedOperations } = bnCascadeStudentChanges(updatedSt, null, i);
     let o = z(
-      i,
+      updatedOperations,
       `UPDATE`,
       `Student`,
-      e.name || e.admissionNumber || `Student record`,
+      updatedSt.name || updatedSt.admissionNumber || `Student record`,
     );
     a(o);
     ji(o);
+    bnBroadcastStoreSync(e, s, o);
+    bnScheduleCloudSync(e, s, o, setSyncStatus);
   };
   let pe = (o) => {
-    let s = n.filter((e) => e.id !== o.id);
+    let s = n.filter((elem) => elem.id !== o.id);
     r(s);
     On(s);
     let c = {
@@ -42247,11 +42641,38 @@ function Ds() {
     );
     a(l);
     ji(l);
+    bnBroadcastStoreSync(c, s, l);
+    bnScheduleCloudSync(c, s, l, setSyncStatus);
   };
-  let j = (e, t, n, r) => {
-    let i = z(e, t, n, r);
-    a(i);
-    ji(i);
+  let j = (nextOpsArg, actionArg, entityArg, descArg) => {
+    let nextStudents = n;
+    let nextOps = nextOpsArg;
+
+    if (
+      entityArg === `Class` ||
+      entityArg === `Batch` ||
+      entityArg === `Classes` ||
+      entityArg === `Academic setup`
+    ) {
+      let cascadeResult = bnCascadeClassroomChanges(
+        i.classes,
+        nextOpsArg.classes,
+        n,
+        nextOpsArg,
+      );
+      if (cascadeResult.changesCount > 0) {
+        nextStudents = cascadeResult.updatedStudents;
+        nextOps = cascadeResult.updatedOperations;
+        r(nextStudents);
+        On(nextStudents);
+      }
+    }
+
+    let audited = z(nextOps, actionArg, entityArg, descArg);
+    a(audited);
+    ji(audited);
+    bnBroadcastStoreSync(e, nextStudents, audited);
+    bnScheduleCloudSync(e, nextStudents, audited, setSyncStatus);
   };
   const Component2051 = `img`;
   const Component2052 = `strong`;
@@ -42438,6 +42859,38 @@ function Ds() {
               </Component2077>
             )}
             <_Component40 compact={true} />
+            <button
+              type="button"
+              className="secondary-button compact bn-sync-status-badge"
+              style={{
+                display: `inline-flex`,
+                alignItems: `center`,
+                gap: `6px`,
+                borderColor: syncStatus === 'synced' ? `#10b981` : syncStatus === 'syncing' ? `#f59e0b` : `var(--line, #cbd5e1)`,
+                background: syncStatus === 'synced' ? `rgba(16, 185, 129, 0.1)` : syncStatus === 'syncing' ? `rgba(245, 158, 11, 0.1)` : `transparent`,
+                color: syncStatus === 'synced' ? `#065f46` : syncStatus === 'syncing' ? `#92400e` : `inherit`,
+                fontWeight: 600,
+                fontSize: `12px`,
+                padding: `4px 10px`,
+                borderRadius: `20px`,
+                cursor: `pointer`,
+                height: `34px`
+              }}
+              title="Cloud & Local Storage Status. Click to force instant cloud synchronization."
+              onClick={() => triggerManualSync()}
+            >
+              <span style={{ fontSize: `13px` }}>{syncStatus === 'syncing' ? '🔄' : '☁️'}</span>
+              <span>{syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'synced' ? 'Cloud & Local Synced' : 'Local Mode'}</span>
+              <span
+                style={{
+                  display: `inline-block`,
+                  width: `8px`,
+                  height: `8px`,
+                  borderRadius: `50%`,
+                  background: syncStatus === 'synced' ? `#10b981` : syncStatus === 'syncing' ? `#f59e0b` : `#3b82f6`
+                }}
+              />
+            </button>
             <button
               type="button"
               className="secondary-button compact bn-whatsapp-top-badge"
@@ -42787,6 +43240,7 @@ function Ds() {
           ) : c === `Students` ? (
             <_Component90
               students={y}
+              classes={i.classes}
               onAddStudent={() => d(true)}
               onImportStudents={ue}
               onUpdateStudent={de}
@@ -42911,7 +43365,7 @@ function Ds() {
           )}
         </Component2135>
       </Component2136>
-      {u && <_Component6 students={n} onClose={() => d(false)} onSave={ce} />}
+      {u && <_Component6 students={n} classes={i.classes} onClose={() => d(false)} onSave={ce} />}
       {f && (
         <Component2138 className={`success-toast`} role={`status`}>
           <A size={19} />
