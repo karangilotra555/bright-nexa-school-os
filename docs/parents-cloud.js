@@ -5,6 +5,7 @@ const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
 const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 function create(fetcher){
  let session=null,selected=null;
+ const filesClient=typeof root.BNHomeworkFiles!=='undefined'?root.BNHomeworkFiles.create({base:BASE,key:KEY,token:async()=>session?.access_token,fetcher}):null;
  async function request(path,options={}){
   const res=await fetcher(BASE+path,{...options,cache:'no-store',headers:{apikey:KEY,...(session?{Authorization:'Bearer '+session.access_token}:{}),'Content-Type':'application/json',...options.headers}});
   const raw=await res.text();
@@ -42,10 +43,11 @@ function create(fetcher){
    rows('school_notices',{institution_id:filter.institution_id,order:'created_at.desc'}),
    rows('school_parent_leaves',{...filter,parent_auth_user_id:'eq.'+session.user.id,order:'created_at.desc'})
   ]);
+  const attached=filesClient?await filesClient.list(homework.map(h=>h.id)):[];
   selected=link;
   const recorded=attendance.filter(a=>['present','absent','late','half_day'].includes(a.status.toLowerCase()));
   const present=recorded.reduce((n,a)=>n+(a.status.toLowerCase()==='half_day'?.5:['present','late'].includes(a.status.toLowerCase())?1:0),0);
-  return {student:{name:student.name,admissionNumber:student.admission_number,className:classes[0]?.name,section:classes[0]?.section},school:{name:schools[0]?.name,session:classes[0]?.academic_year},attendance:{percent:recorded.length?Math.round(present/recorded.length*1000)/10:null,recordedDays:recorded.length,recent:attendance},fees:{dueRupees:fees.length?Math.max(0,fees.reduce((n,f)=>n+(f.kind==='charge'?1:-1)*Number(f.amount_rupees),0)):null},homework:homework.map(h=>({...h,title:[h.title,h.instructions].filter(Boolean).join(' — '),due_date:h.due_on})),notices:notices.map(n=>({...n,published_at:n.created_at})),leaves:leaves.map(l=>({...l,from_day:l.from_on,to_day:l.to_on}))};
+  return {student:{name:student.name,admissionNumber:student.admission_number,className:classes[0]?.name,section:classes[0]?.section},school:{name:schools[0]?.name,session:classes[0]?.academic_year},attendance:{percent:recorded.length?Math.round(present/recorded.length*1000)/10:null,recordedDays:recorded.length,recent:attendance},fees:{dueRupees:fees.length?Math.max(0,fees.reduce((n,f)=>n+(f.kind==='charge'?1:-1)*Number(f.amount_rupees),0)):null},homework:homework.map(h=>({...h,files:attached.filter(f=>f.homework_id===h.id),title:[h.title,h.instructions].filter(Boolean).join(' — '),due_date:h.due_on})),notices:notices.map(n=>({...n,published_at:n.created_at})),leaves:leaves.map(l=>({...l,from_day:l.from_on,to_day:l.to_on}))};
  }
  async function leave(from,to,reason){
   if(!session||!selected)throw Error('Please log in and select your child');
@@ -53,7 +55,7 @@ function create(fetcher){
   await request('/rest/v1/school_parent_leaves',{method:'POST',body:JSON.stringify({institution_id:selected.institution_id,student_id:selected.student_id,parent_auth_user_id:session.user.id,from_on:from,to_on:to,reason:reason.trim(),status:'pending'})});
  }
  async function logout(){try{if(session)await request('/auth/v1/logout',{method:'POST'});}finally{session=null;selected=null;}}
- return {login,changePassword,dashboard,leave,logout};
+ return {login,changePassword,dashboard,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
 }
 if(typeof module!=='undefined')module.exports={create};else root.BNParentsCloud=create(root.fetch.bind(root));
 })(typeof window!=='undefined'?window:globalThis);

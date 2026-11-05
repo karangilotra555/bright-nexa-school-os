@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061a36"><meta name="description" content="Bright Nexa Parents — school updates, attendance, fees and homework in one place.">
-<link rel="manifest" href="/parents.webmanifest"><title>Bright Nexa Parents</title>
+<link rel="manifest" href="/parents.webmanifest"><title>Bright Nexa Parents</title><link rel="stylesheet" href="school-mobile-details.css?v=20261105-files">
 <style>
 :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#102640;background:#f3f7fb;font-synthesis:none}*{box-sizing:border-box}
 body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #138ed8;outline-offset:2px}
@@ -88,7 +88,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
    <section class="section panel"><div class="panelHead"><h2>Homework</h2><span class="pill">Class updates</span></div><div id="homeHomework"></div></section>
   </div>
   <div data-view="activity" class="hidden">
-    <h2>Attendance & activities</h2><div class="panel"><div class="panelHead"><h2>Recorded attendance</h2><span id="attendanceCount" class="pill"></span></div><div id="attendanceList"></div></div>
+    <h2>Attendance & activities</h2><div class="panel"><div class="panelHead"><h2>Your attendance</h2><span id="attendanceCount" class="pill"></span></div><div id="attendanceList"></div></div>
     <div class="panel"><div class="panelHead"><h2>Leave requests</h2><span class="pill">Parent → school</span></div><div id="leaveList"></div></div>
     <div class="panel"><h2>Apply for leave</h2><form id="leaveForm"><label class="field" for="leaveFrom">From</label><input required type="date" id="leaveFrom"><label class="field" for="leaveTo">To</label><input required type="date" id="leaveTo"><label class="field" for="leaveReason">Reason</label><textarea id="leaveReason" minlength="5" maxlength="500" required placeholder="Reason for leave"></textarea><div id="leaveResult" class="success" role="status"></div><button class="primary wide" type="submit">Send leave request</button></form></div>
   </div>
@@ -112,7 +112,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages"><span>✉</span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="parents-cloud.js?v=20261105-admission"></script>
+<script src="school-homework-files.js?v=20261105-files"></script><script src="school-attendance-calendar.js?v=20261105-files"></script><script src="parents-cloud.js?v=20261105-files"></script>
 <script>
 (() => {
 'use strict';
@@ -142,8 +142,8 @@ function render(p){
  const drawNotice=(root,n)=>item(root,n.title,n.body,day(n.published_at));
  items('homeNotices',notices.slice(0,3),'No notices published yet.',drawNotice);
  items('allNotices',notices,'No school messages published yet.',drawNotice);
- items('homeHomework',homework.slice(0,5),'No homework published for this class yet.',(root,h)=>item(root,h.subject,h.title,h.due_date?'Due '+day(h.due_date):''));
- items('attendanceList',a.recent||[],'Attendance is not yet published by the school.',(root,r)=>item(root,day(r.day),r.status,''));
+ items('homeHomework',homework,'No homework published for this class yet.',(root,h)=>{item(root,h.subject,h.title,h.due_date?'Due '+day(h.due_date):'');cloud.fileLinks(root,h.files||[]);});
+ window.BNAttendance.render($('attendanceList'),a.recent||[],p.school?.session);
  items('leaveList',p.leaves||[],'No leave requests yet.',(root,r)=>item(root,day(r.from_day)+' – '+day(r.to_day),r.reason,r.status));
  setText('studentName',s.name);setText('studentAdm',s.admissionNumber);setText('studentClass',[s.className,s.section].filter(Boolean).join(' - '));setText('studentRoll',s.rollNumber);setText('studentGuardian',s.fatherName);setText('studentBus',s.busStop);setText('schoolSession',p.school?.session);
 }

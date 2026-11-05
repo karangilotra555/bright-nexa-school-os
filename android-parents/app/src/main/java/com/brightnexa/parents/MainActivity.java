@@ -3,6 +3,9 @@ package com.brightnexa.parents;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.webkit.ValueCallback;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -27,6 +30,8 @@ public final class MainActivity extends Activity {
     private static final String STORAGE = "bn_parents_settings";
     private static final String KEY_URL = "school_url";
     private static final String PREVIEW_BASE = "https://appassets.androidplatform.net/";
+    private static final int FILE_REQUEST = 407;
+    private ValueCallback<Uri[]> fileCallback;
     private WebView web;
     private TextView status;
     private String liveHost = "";
@@ -46,7 +51,7 @@ public final class MainActivity extends Activity {
         bg.setCornerRadius(dp(11));
         bg.setStroke(dp(1),Color.rgb(43,125,190));
         v.setBackground(bg);
-        v.setContentDescription(label.equals("Demo") ? "Open demo preview" : "Connect to school");
+        v.setContentDescription(label.equals("Home") ? "Open school app" : "Connect to school");
         return v;
     }
 
@@ -56,7 +61,7 @@ public final class MainActivity extends Activity {
         getWindow().setNavigationBarColor(Color.rgb(255,255,255));
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         SharedPreferences preferences = getSharedPreferences(STORAGE, MODE_PRIVATE);
-        configuredUrl = preferences.getString(KEY_URL, "");
+        configuredUrl = preferences.getString(KEY_URL, "https://bright-nexa-school-os.onrender.com");
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -79,7 +84,7 @@ public final class MainActivity extends Activity {
         toolbar.addView(heading, new LinearLayout.LayoutParams(0, dp(40), 1));
 
         // Compact branded actions instead of oversized Android default buttons.
-        TextView preview = makeToolbarChip("Demo");
+        TextView preview = makeToolbarChip("Home");
         LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dp(61),dp(36));
         previewParams.leftMargin=dp(6);
         toolbar.addView(preview,previewParams);
@@ -100,13 +105,30 @@ public final class MainActivity extends Activity {
         opts.setJavaScriptEnabled(true);
         opts.setDomStorageEnabled(true);
         opts.setAllowFileAccess(false);
-        opts.setAllowContentAccess(false);
+        opts.setAllowContentAccess(true);
+        opts.setCacheMode(WebSettings.LOAD_NO_CACHE);
         opts.setJavaScriptCanOpenWindowsAutomatically(false);
         opts.setSupportMultipleWindows(false);
         opts.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         opts.setGeolocationEnabled(false);
         opts.setSafeBrowsingEnabled(true);
-        web.setWebChromeClient(new WebChromeClient());
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                URI current = parse(view.getUrl());
+                if (current == null || !"https".equalsIgnoreCase(current.getScheme()) || !liveHost.equalsIgnoreCase(current.getHost())) return false;
+                if (fileCallback != null) fileCallback.onReceiveValue(null);
+                fileCallback = callback;
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/pdf", "image/jpeg", "image/png", "image/webp"});
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                try { startActivityForResult(intent, FILE_REQUEST); }
+                catch (Exception ex) { fileCallback = null; callback.onReceiveValue(null); Toast.makeText(MainActivity.this, "Unable to open file picker", Toast.LENGTH_LONG).show(); }
+                return true;
+            }
+        });
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
                 URI uri = parse(request.getUrl().toString());
@@ -118,10 +140,10 @@ public final class MainActivity extends Activity {
         root.addView(web, new LinearLayout.LayoutParams(-1,0,1));
         setContentView(root);
 
-        preview.setOnClickListener(v -> openPreview());
+        preview.setOnClickListener(v -> openSchool(configuredUrl));
         settings.setOnClickListener(v -> configureSchool());
-        // Never connect to a server implicitly; the parent must choose the institution.
-        openPreview();
+        // Open the configured school; all records still require role-specific authentication.
+        openSchool(configuredUrl);
     }
 
     private URI parse(String input) {
@@ -157,7 +179,8 @@ public final class MainActivity extends Activity {
         configuredUrl = "https://" + liveHost;
         getSharedPreferences(STORAGE, MODE_PRIVATE).edit().putString(KEY_URL, configuredUrl).apply();
         status.setVisibility(View.VISIBLE);
-        status.setText("SCHOOL PORTAL • " + liveHost + " • Testing only");
+        status.setText("SCHOOL PORTAL • " + liveHost);
+        web.clearCache(true);
         web.loadUrl(path);
     }
     private void configureSchool() {
@@ -171,7 +194,7 @@ public final class MainActivity extends Activity {
         holder.addView(input, new LinearLayout.LayoutParams(-1,-2));
         new AlertDialog.Builder(this)
           .setTitle("Connect to school")
-          .setMessage("For testing only. Enter the HTTPS address of the deployed Bright Nexa School OS server. Public launch needs verified parent login.")
+          .setMessage("Enter your school’s Bright Nexa HTTPS address. Teachers and students use separate secure logins in the same app.")
           .setView(holder)
           .setPositiveButton("Connect", (d,w) -> openSchool(input.getText().toString()))
           .setNegativeButton("Cancel",null)
@@ -179,8 +202,15 @@ public final class MainActivity extends Activity {
     }
     @Override public void onBackPressed() {
         if (web.canGoBack() && liveHost.length()>0) { web.goBack(); return; }
-        if (liveHost.length()>0) { openPreview(); return; }
+
         super.onBackPressed();
     }
-    @Override protected void onDestroy() { if(web!=null) { web.destroy(); web=null; } super.onDestroy(); }
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FILE_REQUEST && fileCallback != null) {
+            ValueCallback<Uri[]> callback = fileCallback; fileCallback = null;
+            callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data));
+        }
+    }
+    @Override protected void onDestroy() { if(fileCallback!=null) { fileCallback.onReceiveValue(null); fileCallback=null; } if(web!=null) { web.destroy(); web=null; } super.onDestroy(); }
 }

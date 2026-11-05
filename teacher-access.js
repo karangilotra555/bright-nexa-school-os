@@ -8,7 +8,8 @@
   const TOKEN_KEY='bn_school_staff_session_v1';
   const ROLES=['school_admin','principal','teacher','accountant','receptionist','transport_staff'];
   const $=id=>document.getElementById(id);
-  let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[];
+  let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
+  const homeworkFiles=window.BNHomeworkFiles.create({base:BASE,key:APIKEY,token:async()=>{await ensureToken();return session?.access_token;}});
   const values=v=>v==null?'':String(v);
   function notify(msg,isError=false){
     const e=$('status');e.textContent=msg;e.classList.remove('hidden','error','ok');e.classList.add(isError?'error':'ok');
@@ -111,6 +112,7 @@
     ]);
     if(isAdmin())allStaff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
     else allStaff=[];
+    allHomeworkFiles=await homeworkFiles.list(allHomework.map(h=>h.id));
     put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
     invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();await loadNotices();
   }
@@ -167,6 +169,11 @@
       div.append(dom('strong',h.subject+' · '+h.title));
       div.append(dom('div',(c?className(c):'Class')+(h.due_on?' · Due '+h.due_on:''),'muted'));
       if(h.instructions)div.append(dom('p',h.instructions));
+      homeworkFiles.links(div,allHomeworkFiles.filter(f=>f.homework_id===h.id));
+      if(h.created_by===me.id&&writableClasses('can_assign_homework').some(c=>c.id===h.class_id)){
+        const label=dom('label','Add photo / PDF','muted'),input=document.createElement('input');input.type='file';input.multiple=true;input.accept='application/pdf,image/jpeg,image/png,image/webp';label.append(input);div.append(label);
+        input.addEventListener('change',()=>run(async()=>{input.disabled=true;try{await homeworkFiles.upload(h,input.files);await reload();notify('Homework files uploaded.');}finally{input.disabled=false;}}));
+      }
       root.append(div);
     }
   }
@@ -320,11 +327,14 @@
     if(!writableClasses('can_assign_homework').some(c=>c.id===class_id))throw Error('You are not assigned to this class.');
     const subject=$('homeworkSubject').value.trim(),title=$('homeworkTitle').value.trim();
     if(!subject||!title)throw Error('Subject and task are required.');
-    await api('school_homework','','POST',{
+    const button=$('publishHomework');if(button.disabled)return;const selectedFiles=Array.from($('homeworkFiles').files||[]);if(selectedFiles.length>5)throw Error('Choose up to 5 files.');for(const file of selectedFiles)await window.BNHomeworkFiles.validate(file);button.disabled=true;
+    try{const published=await api('school_homework','','POST',{
       institution_id:me.institution_id,class_id,subject,title,
       instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null,created_by:me.id
     });
-    e.target.reset();await reload();notify('Homework published.');
+    let fileError=null;try{if(selectedFiles.length)await homeworkFiles.upload(published[0],selectedFiles);}catch(err){fileError=err;}
+    e.target.reset();await reload();notify(fileError?'Homework saved. Some files were not uploaded: '+fileError.message+' Use Add photo / PDF on this homework to retry.':'Homework published with '+selectedFiles.length+' file(s).',!!fileError);
+    }finally{button.disabled=false;}
   })});
   $('inviteForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');

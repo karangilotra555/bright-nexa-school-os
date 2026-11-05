@@ -1,5 +1,10 @@
-name: Build Parents Android APK
+name: Build Bright Nexa School APK
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-parents/**'
+      - '.github/workflows/build-parents-apk.yml'
   pull_request:
     paths:
       - 'android-parents/**'
@@ -19,6 +24,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: bright-nexa-android-signing-v1
       - name: Prepare Android SDK
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
@@ -29,26 +38,25 @@ jobs:
           if [ ! -d "$ANDROID_HOME/build-tools/35.0.0" ]; then
             yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.0'
           fi
-      - name: Build demo APK
+      - name: Build School APK
         working-directory: android-parents
         run: gradle --no-daemon :app:assembleDebug
-      - name: Upload installable demo APK
+      - name: Upload installable School APK
         uses: actions/upload-artifact@v4
         with:
-          name: Bright-Nexa-Parents-demo-APK
+          name: Bright-Nexa-School-APK
           path: android-parents/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Publish shareable GitHub pre-release APK
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/parents-pwa-phase1-20261022' }}
+      - name: Publish School APK
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag='parents-demo-v0.3.0'
-          file='android-parents/app/build/outputs/apk/debug/app-debug.apk'
-          test -s "$file"
+          tag='school-app-v0.4.0'
+          cp android-parents/app/build/outputs/apk/debug/app-debug.apk Bright-Nexa-School-v0.4.0.apk
           if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload "$tag" "$file#Bright-Nexa-Parents-Demo-v0.3.0.apk" --clobber --repo "${{ github.repository }}"
+            gh release upload "$tag" Bright-Nexa-School-v0.4.0.apk --clobber --repo "${{ github.repository }}"
           else
-            gh release create "$tag" "$file#Bright-Nexa-Parents-Demo-v0.3.0.apk" --repo "${{ github.repository }}" --target "${{ github.event.pull_request.head.sha }}" --prerelease --title 'Bright Nexa Parents Demo v0.3' --notes 'Demo/testing only. Fictional student data. No automatic live school sync or verified parent authentication yet. Not for production parents.'
+            gh release create "$tag" Bright-Nexa-School-v0.4.0.apk --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease --title 'Bright Nexa School App v0.4.0' --notes 'Teacher and student logins, homework photo/PDF file picker, in-app PDF and image viewer, and attendance calendar. The old demo APK used a temporary signing key; uninstall it first if Android reports a signing conflict. Cloud records are preserved.'
           fi

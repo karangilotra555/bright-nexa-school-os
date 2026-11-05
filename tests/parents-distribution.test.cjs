@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
-const link='https://github.com/karangilotra555/bright-nexa-school-os/releases/download/parents-demo-v0.3.0/app-debug.apk';
+const link='https://github.com/karangilotra555/bright-nexa-school-os/releases/download/school-app-v0.4.0/Bright-Nexa-School-v0.4.0.apk';
 
 test('School OS has parents download entry on app server and static docs',()=>{
  for(const root of ['', 'docs/']){
@@ -16,7 +16,7 @@ test('School OS has parents download entry on app server and static docs',()=>{
    assert.match(menu,/parent-app-download\.html/);
    const html=read(root+'parent-app-download.html');
    assert.ok(html.includes(link),'Share link must point to public GitHub release');
-   assert.match(html,/Demo build only/);
+   assert.match(html,/Teacher.*Student/);
    assert.match(html,/navigator\.share/);
    assert.match(html,/navigator\.clipboard/);
  }
@@ -29,5 +29,5 @@ test('Android demo identifies school separately and does not claim real sync',()
  const wf=read('.github/workflows/build-parents-apk.yml');
  assert.match(wf,/gh release create/);
  assert.match(wf,/--prerelease/);
- assert.match(wf,/parents-demo-v0\.3\.0/);
+ assert.match(wf,/school-app-v0\.4\.0/);
 });
