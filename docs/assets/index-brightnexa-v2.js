@@ -19689,6 +19689,14 @@ function buildDynamicSectionList(selectedClass, configuredClasses = [], studentL
   ["A", "B", "C", "D"].forEach((sec) => set.add(sec));
   return Array.from(set).sort();
 }
+function bnGetApiBase() {
+  if (typeof window === "undefined") return "";
+  if (window.location.hostname.includes("bright-nexa-school-os-api")) return "";
+  if (window.location.hostname.includes("onrender.com") || window.location.hostname.includes("github.io")) {
+    return "https://bright-nexa-school-os-api.onrender.com";
+  }
+  return "";
+}
 var bnSyncTimer = null;
 function bnScheduleCloudSync(institution, students, operations, setStatus) {
   if (typeof window === "undefined") return;
@@ -19696,8 +19704,9 @@ function bnScheduleCloudSync(institution, students, operations, setStatus) {
   if (bnSyncTimer) clearTimeout(bnSyncTimer);
   bnSyncTimer = setTimeout(async () => {
     try {
+      const apiBase = bnGetApiBase();
       let token = localStorage.getItem("school_admin_token") || "local-admin-key";
-      const res = await fetch("/api/sync/snapshot", {
+      const res = await fetch(apiBase + "/api/sync/snapshot", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -19716,7 +19725,7 @@ function bnScheduleCloudSync(institution, students, operations, setStatus) {
           attSummary[a2.studentId].total++;
           if (a2.status === "Present") attSummary[a2.studentId].present++;
         });
-        await fetch("/api/parent/admin/publish", {
+        await fetch(apiBase + "/api/parent/admin/publish", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
