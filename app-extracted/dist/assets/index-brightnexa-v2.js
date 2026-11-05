@@ -28858,26 +28858,15 @@ function Ea() {
   let [o2, s2] = (0, w.useState)(`Food Components`);
   let [c2, l2] = (0, w.useState)(`Medium`);
   let [u2, d2] = (0, w.useState)(`10`);
+  let [duration, setDuration] = (0, w.useState)(`45 Minutes`);
+  let [totalMarks, setTotalMarks] = (0, w.useState)(`25`);
+  let [lang, setLang] = (0, w.useState)(`English`);
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
   let [g2, _2] = (0, w.useState)(Da);
-  const Component1340 = `strong`;
-  const Component1341 = `p`;
-  const Component1342 = `div`;
-  const Component1343 = `span`;
-  const Component1344 = `div`;
   const Component1345 = `button`;
   const Component1346 = `aside`;
   const Component1347 = `h2`;
-  const Component1348 = `input`;
-  const Component1349 = `input`;
-  const Component1350 = `input`;
-  const Component1351 = `input`;
-  const Component1352 = `option`;
-  const Component1353 = `option`;
-  const Component1354 = `option`;
-  const Component1355 = `select`;
-  const Component1356 = `input`;
   const Component1357 = `div`;
   const Component1358 = `button`;
   const Component1359 = `span`;
@@ -28897,41 +28886,119 @@ function Ea() {
   const Component1373 = `small`;
   const Component1374 = `button`;
   const Component1375 = `div`;
-  const Component1376 = `strong`;
-  const Component1377 = `p`;
-  const Component1378 = `div`;
-  const Component1379 = `div`;
   const Component1380 = `section`;
   return /* @__PURE__ */ w.createElement(Component1380, null, /* @__PURE__ */ w.createElement(
     F,
     {
-      eyebrow: `Cost-protected teacher assistant`,
+      eyebrow: `Smart Academic Assistant`,
       title: `AI Teacher Tools`,
-      subtitle: `Offline templates remain free; connected AI requires prepaid credits or an institution-owned provider key.`
+      subtitle: `Create syllabus-aligned lesson plans, question papers, worksheets, and notices tailored to your exact class and time specifications.`
     }
-  ), /* @__PURE__ */ w.createElement(Component1344, { className: `ai-cost-banner` }, /* @__PURE__ */ w.createElement(_Component46, { size: 23 }), /* @__PURE__ */ w.createElement(Component1342, null, /* @__PURE__ */ w.createElement(Component1340, null, `Current provider cost: \u20B90`), /* @__PURE__ */ w.createElement(Component1341, null, `This generator runs entirely on local rules. It does not send requests to OpenAI, Gemini, or any messaging provider.`)), /* @__PURE__ */ w.createElement(
-    Component1343,
-    {
-      className: `service-state free-local`
-    },
-    `Offline free`
-  )), /* @__PURE__ */ w.createElement(Component1368, { className: `ai-workbench` }, /* @__PURE__ */ w.createElement(Component1346, null, Ta.map((n3) => /* @__PURE__ */ w.createElement(
+  ), /* @__PURE__ */ w.createElement(Component1368, { className: `ai-workbench` }, /* @__PURE__ */ w.createElement(Component1346, null, Ta.map((n3) => /* @__PURE__ */ w.createElement(
     Component1345,
     {
       className: e2 === n3 ? `active` : ``,
-      onClick: () => t2(n3),
+      onClick: () => {
+        t2(n3);
+        if (n3.includes("Lesson Plan")) {
+          setDuration("45 Minutes");
+        } else if (n3.includes("Question Paper")) {
+          setDuration("1 Hour");
+          setTotalMarks("50");
+        } else if (n3.includes("Class Test")) {
+          setDuration("20 Minutes");
+          setTotalMarks("15");
+        } else if (n3.includes("Homework")) {
+          setDuration("25-30 Minutes");
+        } else if (n3.includes("Weak Student")) {
+          setDuration("2 Weeks");
+        }
+      },
       key: n3
     },
     /* @__PURE__ */ w.createElement(_Component30, { size: 15 }),
     n3
-  ))), /* @__PURE__ */ w.createElement(Component1367, { className: `ai-builder` }, /* @__PURE__ */ w.createElement(Component1347, null, e2), /* @__PURE__ */ w.createElement(Component1357, { className: `ai-input-grid` }, /* @__PURE__ */ w.createElement(R, { label: `Class / batch` }, /* @__PURE__ */ w.createElement(Component1348, { value: n2, onChange: (e3) => r2(e3.target.value) })), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement(Component1349, { value: i2, onChange: (e3) => a2(e3.target.value) })), /* @__PURE__ */ w.createElement(R, { label: `Topic`, wide: true }, /* @__PURE__ */ w.createElement(Component1350, { value: o2, onChange: (e3) => s2(e3.target.value) })), /* @__PURE__ */ w.createElement(R, { label: `Output language` }, /* @__PURE__ */ w.createElement(Component1351, { value: `English`, readOnly: true })), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement(Component1355, { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component1352, null, `Easy`), /* @__PURE__ */ w.createElement(Component1353, null, `Medium`), /* @__PURE__ */ w.createElement(Component1354, null, `Hard`))), /* @__PURE__ */ w.createElement(R, { label: `Questions / items` }, /* @__PURE__ */ w.createElement(
-    Component1356,
+  ))), /* @__PURE__ */ w.createElement(Component1367, { className: `ai-builder` }, /* @__PURE__ */ w.createElement(Component1347, null, e2), /* @__PURE__ */ w.createElement(Component1357, { className: `ai-input-grid` }, /* @__PURE__ */ w.createElement(R, { label: `Class / batch` }, /* @__PURE__ */ w.createElement("input", { value: n2, onChange: (e3) => r2(e3.target.value), placeholder: "e.g. 6 or 10-A" })), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("input", { value: i2, onChange: (e3) => a2(e3.target.value), placeholder: "e.g. Science" })), /* @__PURE__ */ w.createElement(R, { label: `Topic / Chapter`, wide: true }, /* @__PURE__ */ w.createElement("input", { value: o2, onChange: (e3) => s2(e3.target.value), placeholder: "e.g. Food Components" })), /* @__PURE__ */ w.createElement(R, { label: `Output Language` }, /* @__PURE__ */ w.createElement("select", { value: lang, onChange: (e3) => setLang(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "English" }, "English"), /* @__PURE__ */ w.createElement("option", { value: "Hindi" }, "Hindi (\u0939\u093F\u0902\u0926\u0940)"), /* @__PURE__ */ w.createElement("option", { value: "Bilingual" }, "Bilingual (English + Hindi)"))), e2.includes(`Lesson Plan`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Plan Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "40 Minutes" }, "40 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour (60 Min)"), /* @__PURE__ */ w.createElement("option", { value: "Double Period (80 Min)" }, "Double Period (80 Min)"))), /* @__PURE__ */ w.createElement(R, { label: `Difficulty / Depth` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Foundational / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Curriculum"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Advanced / Deep Concept")))), e2.includes(`Question Paper`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Time Allowed` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"), /* @__PURE__ */ w.createElement("option", { value: "1.5 Hours" }, "1.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2 Hours" }, "2 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2.5 Hours" }, "2.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "3 Hours" }, "3 Hours"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
+    "input",
     {
-      inputMode: `numeric`,
-      value: u2,
-      onChange: (e3) => d2(e3.target.value.replace(/\D/g, ``))
+      type: "number",
+      value: totalMarks,
+      onChange: (e3) => setTotalMarks(e3.target.value),
+      min: "10",
+      max: "100",
+      placeholder: "e.g. 50"
     }
-  ))), /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(R, { label: `Total Questions` }, /* @__PURE__ */ w.createElement(
+    "input",
+    {
+      type: "number",
+      value: u2,
+      onChange: (e3) => d2(e3.target.value.replace(/\D/g, ``)),
+      min: "3",
+      max: "50",
+      placeholder: "e.g. 15"
+    }
+  )), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Easy / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Board Level"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Challenging / HOTS")))), e2.includes(`Class Test`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Test Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "15 Minutes" }, "15 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "20 Minutes" }, "20 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
+    "input",
+    {
+      type: "number",
+      value: totalMarks,
+      onChange: (e3) => setTotalMarks(e3.target.value),
+      min: "5",
+      max: "50",
+      placeholder: "e.g. 15"
+    }
+  )), /* @__PURE__ */ w.createElement(R, { label: `Number of Questions` }, /* @__PURE__ */ w.createElement(
+    "input",
+    {
+      type: "number",
+      value: u2,
+      onChange: (e3) => d2(e3.target.value.replace(/\D/g, ``)),
+      min: "3",
+      max: "25",
+      placeholder: "e.g. 8"
+    }
+  )), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Easy"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Medium"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Hard")))), e2.includes(`Worksheet`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
+    "input",
+    {
+      type: "number",
+      value: totalMarks,
+      onChange: (e3) => setTotalMarks(e3.target.value),
+      min: "5",
+      max: "50",
+      placeholder: "e.g. 20"
+    }
+  )), /* @__PURE__ */ w.createElement(R, { label: `Practice Questions / Items` }, /* @__PURE__ */ w.createElement(
+    "input",
+    {
+      type: "number",
+      value: u2,
+      onChange: (e3) => d2(e3.target.value.replace(/\D/g, ``)),
+      min: "3",
+      max: "30",
+      placeholder: "e.g. 10"
+    }
+  )), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Easy / Concept Builder"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard / Mixed"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Advanced / Problem Solving")))), e2.includes(`Homework`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Estimated Completion Time` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "15-20 Minutes" }, "15-20 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "25-30 Minutes" }, "25-30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "40-45 Minutes" }, "40-45 Minutes"))), /* @__PURE__ */ w.createElement(R, { label: `Practice Tasks Count` }, /* @__PURE__ */ w.createElement(
+    "input",
+    {
+      type: "number",
+      value: u2,
+      onChange: (e3) => d2(e3.target.value.replace(/\D/g, ``)),
+      min: "2",
+      max: "10",
+      placeholder: "e.g. 5"
+    }
+  )), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Easy"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Medium"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Hard")))), (e2.includes(`Weak Student`) || e2.includes(`Remedial`)) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Remedial Plan Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "1 Week" }, "1 Week Intensive"), /* @__PURE__ */ w.createElement("option", { value: "2 Weeks" }, "2 Weeks Standard"), /* @__PURE__ */ w.createElement("option", { value: "3 Weeks" }, "3 Weeks Comprehensive"), /* @__PURE__ */ w.createElement("option", { value: "1 Month" }, "1 Month Foundation"))), /* @__PURE__ */ w.createElement(R, { label: `Target Level` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Basic Foundations"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Passing to Average (40% \u2192 60%)"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Concept Gaps & Problem Solving")))), e2.includes(`Activity Ideas`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Number of Activities` }, /* @__PURE__ */ w.createElement(
+    "input",
+    {
+      type: "number",
+      value: u2,
+      onChange: (e3) => d2(e3.target.value.replace(/\D/g, ``)),
+      min: "2",
+      max: "8",
+      placeholder: "e.g. 3"
+    }
+  )), /* @__PURE__ */ w.createElement(R, { label: `Activity Focus` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Hands-on & Experiential"), /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Quick Fun Games"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Research & Discovery")))), e2.includes(`Student Remark`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Assessment Context` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Term 1 / Periodic Test" }, "Term 1 / Periodic Test"), /* @__PURE__ */ w.createElement("option", { value: "Mid-Term Examination" }, "Mid-Term Examination"), /* @__PURE__ */ w.createElement("option", { value: "Final / Annual Report" }, "Final / Annual Report"), /* @__PURE__ */ w.createElement("option", { value: "PTM Review" }, "PTM Review"))), /* @__PURE__ */ w.createElement(R, { label: `Feedback Tone` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Balanced & Constructive"), /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Appreciative & Positive"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Direct & Action-Oriented")))), e2.includes(`Parent Message`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Message Purpose` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Daily Homework & Class Update"), /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Commendation / Positive Update"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Revision Alert / Special Notice")))), e2.includes(`School Notice`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Notice Category` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Academic / Curriculum"), /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Activity / Event Notification"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Examination / Mandatory Attendance"))))), /* @__PURE__ */ w.createElement(
     Component1358,
     {
       className: `primary-button`,
@@ -28942,16 +29009,18 @@ function Ea() {
             className: n2,
             subject: i2,
             topic: o2,
-            language: `English`,
+            language: lang,
             difficulty: c2,
-            count: Number(u2) || 10
+            count: Number(u2) || 10,
+            duration,
+            totalMarks
           })
         );
-        h2(`Offline draft generated. Review and edit before use.`);
+        h2(`Generated successfully. You can review, edit, or copy the content below.`);
       }
     },
     /* @__PURE__ */ w.createElement(_Component30, { size: 17 }),
-    `Generate free offline draft`
+    `Generate ${e2.replace(` Generator`, ``)}`
   ), f2 && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component1361, { className: `ai-output` }, /* @__PURE__ */ w.createElement(Component1359, null, `Editable teacher-reviewed output`), /* @__PURE__ */ w.createElement(
     Component1360,
     {
@@ -28967,7 +29036,7 @@ function Ea() {
         if (f2) {
           await navigator.clipboard.writeText(f2);
           h2(
-            `Copied. Teacher review is still required before sharing.`
+            `Copied to clipboard.`
           );
         }
       }
@@ -29007,7 +29076,7 @@ function Ea() {
     },
     /* @__PURE__ */ w.createElement(Qe, { size: 16 }),
     `Save locally`
-  ))), m2 && /* @__PURE__ */ w.createElement(Component1366, { className: `settings-message` }, /* @__PURE__ */ w.createElement(_Component17, { size: 15 }), m2))), /* @__PURE__ */ w.createElement(Component1375, { className: `saved-template-panel` }, /* @__PURE__ */ w.createElement(Component1371, null, /* @__PURE__ */ w.createElement(Component1369, null, `Saved offline templates`), /* @__PURE__ */ w.createElement(Component1370, null, g2.length, ` local drafts \u2022 editable anytime`)), g2.slice(0, 6).map((e3) => /* @__PURE__ */ w.createElement(
+  ))), m2 && /* @__PURE__ */ w.createElement(Component1366, { className: `settings-message` }, /* @__PURE__ */ w.createElement(_Component17, { size: 15 }), m2))), /* @__PURE__ */ w.createElement(Component1375, { className: `saved-template-panel` }, /* @__PURE__ */ w.createElement(Component1371, null, /* @__PURE__ */ w.createElement(Component1369, null, `Saved templates`), /* @__PURE__ */ w.createElement(Component1370, null, g2.length, ` saved drafts \u2022 editable anytime`)), g2.slice(0, 6).map((e3) => /* @__PURE__ */ w.createElement(
     Component1374,
     {
       onClick: () => {
@@ -29018,7 +29087,7 @@ function Ea() {
     },
     /* @__PURE__ */ w.createElement(Component1372, null, e3.title),
     /* @__PURE__ */ w.createElement(Component1373, null, e3.tool, ` \u2022 `, new Date(e3.createdAt).toLocaleDateString(`en-IN`))
-  ))), /* @__PURE__ */ w.createElement(Component1379, { className: `ai-provider-lock` }, /* @__PURE__ */ w.createElement(Se, { size: 21 }), /* @__PURE__ */ w.createElement(Component1378, null, /* @__PURE__ */ w.createElement(Component1376, null, `Advanced generative AI remains locked`), /* @__PURE__ */ w.createElement(Component1377, null, `Enable only with prepaid credits or the institution\u2019s own provider key. No postpaid usage is allowed.`))));
+  ))));
 }
 function Da() {
   try {
@@ -29039,18 +29108,23 @@ function Oa({
   topic: r2,
   language: i2,
   difficulty: a2,
-  count: o2
+  count: o2,
+  duration: dur,
+  totalMarks: tm
 }) {
+  let userDuration = dur || (e2.includes(`Lesson Plan`) ? `45 Minutes` : e2.includes(`Question Paper`) ? `1 Hour` : e2.includes(`Class Test`) ? `20 Minutes` : `30 Minutes`);
+  let userMarks = Number(tm) || (e2.includes(`Question Paper`) ? 50 : e2.includes(`Class Test`) ? 15 : 25);
+  let numItems = Math.min(50, Math.max(3, Number(o2) || 8));
+  let userLang = i2 || `English`;
   let s2 = `${e2.replace(` Generator`, ``)} \u2014 ${n2}: ${r2}
-Class/Batch: ${t2} | Difficulty: ${a2} | Language: ${i2}
+Class/Batch: ${t2} | Duration: ${userDuration} | Total Marks: ${userMarks} | Language: ${userLang}
 
 [TEACHER REVIEW REQUIRED BEFORE USE]
 `;
-  let numItems = Math.min(25, Math.max(3, Number(o2) || 5));
   if (e2.includes(`Lesson Plan`)) {
     return `${s2}
 LESSON PLAN: ${n2} \u2014 ${r2}
-Target Class: ${t2} | Duration: 40-45 Minutes | Level: ${a2}
+Target Class: ${t2} | Duration: ${userDuration} | Level: ${a2}
 
 I. INSTRUCTIONAL OBJECTIVES:
 1. Knowledge: Learners will clearly define and explain the core concept of ${r2}.
@@ -29061,19 +29135,19 @@ II. TEACHING AIDS & PREREQUISITES:
 \u2022 Whiteboard/Blackboard, concept diagrams, and everyday situational examples.
 \u2022 Prerequisite: Basic foundational terminology of ${n2}.
 
-III. PERIOD STRUCTURE & TIMELINE:
-1. Warm-up & Hook (5 Min):
+III. PERIOD STRUCTURE & TIMELINE (Planned for ${userDuration}):
+1. Warm-up & Hook:
    - Ask two engaging introductory questions connected to ${r2}.
    - Invite learners to share observations from their local environment.
-2. Direct Concept Delivery (20 Min):
+2. Direct Concept Delivery:
    - Structured board explanation and key definitions.
    - Step-by-step breakdown of ${r2} with 2 practical illustrations.
    - Address common misconceptions.
-3. Guided & Peer Practice (12 Min):
+3. Guided & Peer Practice:
    - Think-Pair-Share: Have students discuss a practical scenario on ${r2} with their bench partner.
-   - Solve 2 sample problems on the board with active student participation.
-4. Summary & Exit Ticket (5 Min):
-   - 3 quick oral check questions.
+   - Solve sample problems on the board with active student participation.
+4. Summary & Exit Ticket:
+   - Quick oral check questions.
    - Exit slip: One fact learned today, one example, and one doubt to review tomorrow.
 
 IV. HOMEWORK & EXTENSION:
@@ -29083,6 +29157,7 @@ IV. HOMEWORK & EXTENSION:
     return `${s2}
 PRACTICE WORKSHEET: ${n2}
 Topic: ${r2} | Class: ${t2} | Level: ${a2}
+Total Marks: ${userMarks} | Time Target: ${userDuration}
 Student Name: _______________________ Roll No: _____ Date: _________
 
 --- SECTION A: CONCEPT RECALL & OBJECTIVE (1 Mark Each) ---
@@ -29091,38 +29166,42 @@ Student Name: _______________________ Roll No: _____ Date: _________
 3. Fill in the blank: The primary significance of ${r2} is ___________________.
 4. Name two key terms or components directly associated with ${r2}.
 
---- SECTION B: SHORT ANSWER & CONCEPTUAL QUESTIONS (2 Marks Each) ---
+--- SECTION B: SHORT ANSWER & CONCEPTUAL QUESTIONS ---
 ${Array.from({ length: numItems }, (_2, idx) => `${idx + 5}. ${ka(idx, r2, a2)}`).join("\n")}
 
---- SECTION C: APPLICATION & THINKING TASK (4 Marks) ---
+--- SECTION C: APPLICATION & THINKING TASK ---
 ${numItems + 5}. Describe a real-life situation where understanding ${r2} helps solve a problem. Support your answer with reasons.
 
-Teacher's Remarks: ____________________________________ Marks: _____ / 25`;
+Teacher's Remarks: ____________________________________ Marks: _____ / ${userMarks}`;
   }
   if (e2.includes(`Question Paper`)) {
+    const secAMarks = Math.max(2, Math.round(userMarks * 0.2));
+    const secBMarks = Math.max(4, Math.round(userMarks * 0.4));
+    const secCMarks = userMarks - secAMarks - secBMarks;
+    const qCountSecB = Math.max(2, Math.min(8, Math.round(numItems * 0.5)));
     return `${s2}
 ANNUAL / PERIODIC EXAMINATION: ${n2}
 Chapter / Topic: ${r2} | Class: ${t2}
-Time Allowed: 1 Hour | Maximum Marks: 25 | Level: ${a2}
+Time Allowed: ${userDuration} | Maximum Marks: ${userMarks} | Level: ${a2}
 
 GENERAL INSTRUCTIONS:
-1. All questions are compulsory. Marks are indicated against each question.
-2. Write neat and legible answers.
+1. All questions are compulsory. Maximum Marks: ${userMarks}.
+2. Time Allowed: ${userDuration}. Write neat and legible answers.
 
---- SECTION A: OBJECTIVE QUESTIONS (5 Marks \u2014 1 Mark Each) ---
+--- SECTION A: OBJECTIVE QUESTIONS (${secAMarks} Marks \u2014 1 Mark Each) ---
 Q1. Multiple Choice: Which statement accurately describes ${r2}?
     (a) Option A    (b) Option B    (c) Option C    (d) Option D
 Q2. State True or False: Principles of ${r2} apply universally under standard conditions.
 Q3. Fill in the blank: In ${n2}, ${r2} is fundamentally used to ________________.
 Q4. Define ${r2} in one sentence.
-Q5. Give one practical unit or daily-life example connected with ${r2}.
+${Array.from({ length: Math.max(0, secAMarks - 4) }, (_2, idx) => `Q${idx + 5}. Give one practical unit or daily-life example connected with ${r2}.`).join("\n")}
 
---- SECTION B: SHORT ANSWER QUESTIONS (10 Marks \u2014 2 Marks Each) ---
-${Array.from({ length: 5 }, (_2, idx) => `Q${idx + 6}. ${ka(idx, r2, a2)} [2 Marks]`).join("\n")}
+--- SECTION B: SHORT ANSWER QUESTIONS (${secBMarks} Marks) ---
+${Array.from({ length: qCountSecB }, (_2, idx) => `Q${secAMarks + idx + 1}. ${ka(idx, r2, a2)} [${Math.max(1, Math.floor(secBMarks / qCountSecB))} Marks]`).join("\n")}
 
---- SECTION C: LONG ANSWER / APPLICATION (10 Marks \u2014 5 Marks Each) ---
-Q11. Detailed Concept Analysis: Explain ${r2} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [5 Marks]
-Q12. Problem Solving: Analyze a real-world case where principles of ${r2} are tested. Propose a logical solution step by step. [5 Marks]
+--- SECTION C: LONG ANSWER & APPLICATION (${secCMarks} Marks) ---
+Q${secAMarks + qCountSecB + 1}. Detailed Concept Analysis: Explain ${r2} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [${Math.floor(secCMarks / 2)} Marks]
+Q${secAMarks + qCountSecB + 2}. Practical Problem Solving: Analyze a real-world case where principles of ${r2} are tested. Propose a logical solution step by step. [${secCMarks - Math.floor(secCMarks / 2)} Marks]
 
 *** END OF QUESTION PAPER ***`;
   }
@@ -29131,16 +29210,16 @@ Q12. Problem Solving: Analyze a real-world case where principles of ${r2} are te
 DAILY HOMEWORK ASSIGNMENT: ${n2}
 Topic: ${r2} | Class: ${t2}
 Assigned Date: __________ | Due Date: __________
-Target Duration: 25-30 Minutes
+Target Duration: ${userDuration}
 
-1. CONCEPT REVISION (8 Mins):
+1. CONCEPT REVISION:
    - Read textbook section on "${r2}" thoroughly.
    - Write down 3 essential keywords and their meanings in your homework notebook.
 
-2. PRACTICE EXERCISES (15 Mins):
-${Array.from({ length: Math.min(5, numItems) }, (_2, idx) => `   Task ${idx + 1}: ${ka(idx, r2, a2)}`).join("\n")}
+2. PRACTICE EXERCISES:
+${Array.from({ length: Math.min(8, numItems) }, (_2, idx) => `   Task ${idx + 1}: ${ka(idx, r2, a2)}`).join("\n")}
 
-3. OBSERVATION & DISCOVERY (7 Mins):
+3. OBSERVATION & DISCOVERY:
    - Identify one real-world occurrence of ${r2} at home or around your neighborhood.
    - Write 2 sentences explaining how it connects to today's classroom lesson.
 
@@ -29151,7 +29230,7 @@ Parent / Guardian Signature: _______________________ Date: ____________`;
   if (e2.includes(`Student Remark`)) {
     return `${s2}
 STUDENT PERFORMANCE REMARKS FOR REPORT CARDS & PTM
-Subject: ${n2} | Class: ${t2} | Focus Area: ${r2}
+Subject: ${n2} | Class: ${t2} | Focus Area: ${r2} | Term: ${userDuration}
 
 [1. COMMENDABLE / EXCELLENT PROGRESS (Grade A1 / A2)]:
 "Demonstrates outstanding conceptual clarity in ${r2}. Actively participates in class discussions and shows exceptional problem-solving initiative in ${n2}."
@@ -29169,34 +29248,50 @@ REPORT CARD ONE-LINER:
 "Solid effort in ${n2}; continued focus on ${r2} will ensure consistent academic excellence."`;
   }
   if (e2.includes(`Parent Message`)) {
-    return `${s2}
-OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
-Subject: ${n2} | Class: ${t2} | Topic: ${r2}
-
-ENGLISH VERSION:
-Dear Parent,
+    let msgEnglish = `Dear Parent,
 Greetings from the School. Today in Class ${t2}, we completed the chapter/topic "${r2}" in ${n2}.
 Kindly ensure that your child:
 1. Revises today's class notes on ${r2}.
 2. Completes the assigned practice homework in their notebook.
 3. Clarifies any pending doubts with the subject teacher tomorrow.
 Thank you for your partnership in your child's learning.
-\u2014 Subject Teacher, ${n2}
-
-HINDI VERSION (\u0939\u093F\u0902\u0926\u0940 \u0938\u0902\u0926\u0947\u0936):
-\u0906\u0926\u0930\u0923\u0940\u092F \u0905\u092D\u093F\u092D\u093E\u0935\u0915,
+\u2014 Subject Teacher, ${n2}`;
+    let msgHindi = `\u0906\u0926\u0930\u0923\u0940\u092F \u0905\u092D\u093F\u092D\u093E\u0935\u0915,
 \u0938\u093E\u0926\u0930 \u0928\u092E\u0938\u094D\u0915\u093E\u0930\u0964 \u0906\u091C \u0915\u0915\u094D\u0937\u093E ${t2} \u092E\u0947\u0902 ${n2} \u0935\u093F\u0937\u092F \u0915\u0947 \u0905\u0902\u0924\u0930\u094D\u0917\u0924 "${r2}" \u0915\u093E \u0905\u0927\u094D\u092F\u092F\u0928 \u0915\u0930\u093E\u092F\u093E \u0917\u092F\u093E\u0964
 \u0915\u0943\u092A\u092F\u093E \u092F\u0939 \u0938\u0941\u0928\u093F\u0936\u094D\u091A\u093F\u0924 \u0915\u0930\u0947\u0902 \u0915\u093F \u0906\u092A\u0915\u093E \u092C\u091A\u094D\u091A\u093E:
 1. \u0918\u0930 \u092A\u0930 \u0906\u091C \u0915\u0947 \u0928\u094B\u091F\u094D\u0938 \u0915\u093E \u0905\u092D\u094D\u092F\u093E\u0938 \u0935 \u0930\u093F\u0935\u0940\u091C\u093C\u0928 \u0915\u0930\u0947\u0964
 2. \u0926\u0940 \u0917\u0908 \u0917\u0943\u0939\u0915\u093E\u0930\u094D\u092F (Homework) \u0915\u094B \u0938\u092E\u092F \u092A\u0930 \u092A\u0942\u0930\u093E \u0915\u0930\u0947\u0964
 \u0906\u092A\u0915\u0947 \u0928\u093F\u0930\u0902\u0924\u0930 \u0938\u0939\u092F\u094B\u0917 \u0915\u0947 \u0932\u093F\u090F \u0927\u0928\u094D\u092F\u0935\u093E\u0926\u0964
 \u2014 \u0935\u093F\u0937\u092F \u0905\u0927\u094D\u092F\u093E\u092A\u0915, ${n2}`;
+    if (userLang === `Hindi`) {
+      return `${s2}
+OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
+Subject: ${n2} | Class: ${t2} | Topic: ${r2}
+
+${msgHindi}`;
+    }
+    if (userLang === `English`) {
+      return `${s2}
+OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
+Subject: ${n2} | Class: ${t2} | Topic: ${r2}
+
+${msgEnglish}`;
+    }
+    return `${s2}
+OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
+Subject: ${n2} | Class: ${t2} | Topic: ${r2}
+
+ENGLISH VERSION:
+${msgEnglish}
+
+HINDI VERSION (\u0939\u093F\u0902\u0926\u0940 \u0938\u0902\u0926\u0947\u0936):
+${msgHindi}`;
   }
   if (e2.includes(`Weak Student`) || e2.includes(`Remedial`)) {
     return `${s2}
 INDIVIDUALIZED REMEDIAL ACTION PLAN (STP)
 Subject: ${n2} | Class: ${t2} | Focus Topic: ${r2}
-Plan Duration: 2 Weeks | Objective: Foundation Strengthening & Confidence Building
+Plan Duration: ${userDuration} | Objective: Foundation Strengthening & Confidence Building
 
 STEP 1: LEARNING GAP DIAGNOSIS:
 \u2022 Identified Barrier: Student faces difficulty recalling fundamental definitions and multistep reasoning in ${r2}.
@@ -29218,7 +29313,7 @@ STEP 4: DAILY 10-MINUTE MICRO-PRACTICE SCHEDULE:
 \u2022 Days 9-12: Complete one 5-question confidence booster worksheet.
 
 STEP 5: PROGRESS RE-ASSESSMENT:
-\u2022 Conduct a friendly 10-minute oral check and short 5-mark quiz on Day 14.
+\u2022 Conduct a friendly oral check and short quiz after ${userDuration}.
 Goal: Student gains clarity and participates actively in regular class without hesitation.`;
   }
   if (e2.includes(`Activity Ideas`)) {
@@ -29243,30 +29338,32 @@ ACTIVITY 3: GAMIFIED LIGHTNING QUIZ RELAY (10 Mins)
 \u2022 Learning Outcome: High energy, 100% participation, and instant detection of learning gaps.`;
   }
   if (e2.includes(`Class Test`)) {
+    const partAMarks = Math.max(2, Math.round(userMarks * 0.3));
+    const partBMarks = Math.max(3, Math.round(userMarks * 0.4));
+    const partCMarks = userMarks - partAMarks - partBMarks;
     return `${s2}
 DIAGNOSTIC CLASS TEST: ${n2}
 Topic: ${r2} | Class: ${t2} | Level: ${a2}
-Time: 20 Minutes | Maximum Marks: 15
+Time Allowed: ${userDuration} | Maximum Marks: ${userMarks}
 Student Name: _______________________ Roll No: _____ Date: _________
 
-PART A: RAPID RECALL (5 Marks \u2014 1 Mark Each)
+PART A: RAPID RECALL (${partAMarks} Marks)
 1. What is the central definition of ${r2}? ____________________________
 2. Write one primary rule or property of ${r2}. _______________________
 3. State True or False: ${r2} can be observed in everyday technology or nature. (   )
 4. Give one standard unit or common example of ${r2}.
-5. Fill in the blank: When studying ${n2}, ${r2} helps us understand ________________.
+${Array.from({ length: Math.max(0, partAMarks - 4) }, (_2, idx) => `${idx + 5}. Fill in the blank: In ${n2}, ${r2} helps explain ________________.`).join("\n")}
 
-PART B: CONCEPT EXPLANATION (6 Marks \u2014 3 Marks Each)
-6. Explain the mechanism or main principle of ${r2} in 3 to 4 concise sentences.
-7. What is a common mistake or misconception regarding ${r2}, and how can it be avoided?
+PART B: CONCEPT EXPLANATION (${partBMarks} Marks)
+${Array.from({ length: Math.max(2, Math.min(5, Math.round(numItems * 0.5))) }, (_2, idx) => `${partAMarks + idx + 1}. ${ka(idx, r2, a2)}`).join("\n")}
 
-PART C: APPLICATION CHALLENGE (4 Marks)
-8. Higher Order Thinking: How can the principles of ${r2} be applied to improve a process or solve a problem in daily life? Justify with two points.
+PART C: APPLICATION CHALLENGE (${partCMarks} Marks)
+${partAMarks + Math.max(2, Math.min(5, Math.round(numItems * 0.5))) + 1}. Higher Order Thinking: How can the principles of ${r2} be applied to improve a process or solve a problem in daily life? Justify with two points. [${partCMarks} Marks]
 
 TEACHER SCORING RUBRIC:
-\u2022 Q1-Q5: 1 mark each for correct terminology.
-\u2022 Q6-Q7: 2 marks for conceptual accuracy + 1 mark for clarity.
-\u2022 Q8: 2 marks for analytical reasoning + 2 marks for valid justification.`;
+\u2022 Part A: Accuracy of terminology and core facts.
+\u2022 Part B: Conceptual correctness and step-by-step clarity.
+\u2022 Part C: Analytical reasoning and justification.`;
   }
   if (e2.includes(`School Notice`)) {
     return `${s2}
@@ -29288,7 +29385,7 @@ IMPORTANT INSTRUCTIONS:
 1. Full attendance is compulsory for all students during these sessions.
 2. Students must bring their relevant textbook, notebook, and geometry/drawing materials.
 3. Review of ${r2} will form part of the upcoming periodic assessments.
-4. For any academic inquiries, parents may contact the subject teacher during official visiting hours (8:30 AM \u2013 9:30 AM).
+4. For any academic inquiries, parents may contact the subject teacher during official visiting hours.
 
 Thank you for your continuous support in maintaining our school's high educational standards.
 
@@ -29297,7 +29394,7 @@ Principal / Academic Coordinator
 [Institution Name]`;
   }
   return `${s2}
-Instructions: Attempt all questions. Show your working where required.
+Instructions: Attempt all questions. Show your working where required. Total Marks: ${userMarks}. Time: ${userDuration}.
 
 Questions:
 ${Array.from({ length: numItems }, (_2, idx) => `${idx + 1}. ${ka(idx, r2, a2)}`).join("\n")}

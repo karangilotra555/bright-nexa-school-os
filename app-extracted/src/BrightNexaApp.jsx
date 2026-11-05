@@ -32317,26 +32317,15 @@ function Ea() {
   let [o, s] = (0, w.useState)(`Food Components`);
   let [c, l] = (0, w.useState)(`Medium`);
   let [u, d] = (0, w.useState)(`10`);
+  let [duration, setDuration] = (0, w.useState)(`45 Minutes`);
+  let [totalMarks, setTotalMarks] = (0, w.useState)(`25`);
+  let [lang, setLang] = (0, w.useState)(`English`);
   let [f, p] = (0, w.useState)(``);
   let [m, h] = (0, w.useState)(``);
   let [g, _] = (0, w.useState)(Da);
-  const Component1340 = `strong`;
-  const Component1341 = `p`;
-  const Component1342 = `div`;
-  const Component1343 = `span`;
-  const Component1344 = `div`;
   const Component1345 = `button`;
   const Component1346 = `aside`;
   const Component1347 = `h2`;
-  const Component1348 = `input`;
-  const Component1349 = `input`;
-  const Component1350 = `input`;
-  const Component1351 = `input`;
-  const Component1352 = `option`;
-  const Component1353 = `option`;
-  const Component1354 = `option`;
-  const Component1355 = `select`;
-  const Component1356 = `input`;
   const Component1357 = `div`;
   const Component1358 = `button`;
   const Component1359 = `span`;
@@ -32356,34 +32345,35 @@ function Ea() {
   const Component1373 = `small`;
   const Component1374 = `button`;
   const Component1375 = `div`;
-  const Component1376 = `strong`;
-  const Component1377 = `p`;
-  const Component1378 = `div`;
-  const Component1379 = `div`;
   const Component1380 = `section`;
   return (
     <Component1380>
       <F
-        eyebrow={`Cost-protected teacher assistant`}
+        eyebrow={`Smart Academic Assistant`}
         title={`AI Teacher Tools`}
-        subtitle={`Offline templates remain free; connected AI requires prepaid credits or an institution-owned provider key.`}
+        subtitle={`Create syllabus-aligned lesson plans, question papers, worksheets, and notices tailored to your exact class and time specifications.`}
       />
-      <Component1344 className={`ai-cost-banner`}>
-        <_Component46 size={23} />
-        <Component1342>
-          <Component1340>{`Current provider cost: ₹0`}</Component1340>
-          <Component1341>{`This generator runs entirely on local rules. It does not send requests to OpenAI, Gemini, or any messaging provider.`}</Component1341>
-        </Component1342>
-        <Component1343
-          className={`service-state free-local`}
-        >{`Offline free`}</Component1343>
-      </Component1344>
       <Component1368 className={`ai-workbench`}>
         <Component1346>
           {Ta.map((n) => (
             <Component1345
               className={e === n ? `active` : ``}
-              onClick={() => t(n)}
+              onClick={() => {
+                t(n);
+                if (n.includes('Lesson Plan')) {
+                  setDuration('45 Minutes');
+                } else if (n.includes('Question Paper')) {
+                  setDuration('1 Hour');
+                  setTotalMarks('50');
+                } else if (n.includes('Class Test')) {
+                  setDuration('20 Minutes');
+                  setTotalMarks('15');
+                } else if (n.includes('Homework')) {
+                  setDuration('25-30 Minutes');
+                } else if (n.includes('Weak Student')) {
+                  setDuration('2 Weeks');
+                }
+              }}
               key={n}
             >
               <_Component30 size={15} />
@@ -32395,31 +32385,271 @@ function Ea() {
           <Component1347>{e}</Component1347>
           <Component1357 className={`ai-input-grid`}>
             <R label={`Class / batch`}>
-              <Component1348 value={n} onChange={(e) => r(e.target.value)} />
+              <input value={n} onChange={(e) => r(e.target.value)} placeholder="e.g. 6 or 10-A" />
             </R>
             <R label={`Subject`}>
-              <Component1349 value={i} onChange={(e) => a(e.target.value)} />
+              <input value={i} onChange={(e) => a(e.target.value)} placeholder="e.g. Science" />
             </R>
-            <R label={`Topic`} wide={true}>
-              <Component1350 value={o} onChange={(e) => s(e.target.value)} />
+            <R label={`Topic / Chapter`} wide={true}>
+              <input value={o} onChange={(e) => s(e.target.value)} placeholder="e.g. Food Components" />
             </R>
-            <R label={`Output language`}>
-              <Component1351 value={`English`} readOnly={true} />
+            <R label={`Output Language`}>
+              <select value={lang} onChange={(e) => setLang(e.target.value)}>
+                <option value="English">English</option>
+                <option value="Hindi">Hindi (हिंदी)</option>
+                <option value="Bilingual">Bilingual (English + Hindi)</option>
+              </select>
             </R>
-            <R label={`Difficulty`}>
-              <Component1355 value={c} onChange={(e) => l(e.target.value)}>
-                <Component1352>{`Easy`}</Component1352>
-                <Component1353>{`Medium`}</Component1353>
-                <Component1354>{`Hard`}</Component1354>
-              </Component1355>
-            </R>
-            <R label={`Questions / items`}>
-              <Component1356
-                inputMode={`numeric`}
-                value={u}
-                onChange={(e) => d(e.target.value.replace(/\D/g, ``))}
-              />
-            </R>
+
+            {e.includes(`Lesson Plan`) && (
+              <P.Fragment>
+                <R label={`Plan Duration`}>
+                  <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                    <option value="30 Minutes">30 Minutes</option>
+                    <option value="40 Minutes">40 Minutes</option>
+                    <option value="45 Minutes">45 Minutes</option>
+                    <option value="1 Hour">1 Hour (60 Min)</option>
+                    <option value="Double Period (80 Min)">Double Period (80 Min)</option>
+                  </select>
+                </R>
+                <R label={`Difficulty / Depth`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Easy">Foundational / Basic</option>
+                    <option value="Medium">Standard Curriculum</option>
+                    <option value="Hard">Advanced / Deep Concept</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {e.includes(`Question Paper`) && (
+              <P.Fragment>
+                <R label={`Time Allowed`}>
+                  <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                    <option value="45 Minutes">45 Minutes</option>
+                    <option value="1 Hour">1 Hour</option>
+                    <option value="1.5 Hours">1.5 Hours</option>
+                    <option value="2 Hours">2 Hours</option>
+                    <option value="2.5 Hours">2.5 Hours</option>
+                    <option value="3 Hours">3 Hours</option>
+                  </select>
+                </R>
+                <R label={`Total Marks`}>
+                  <input
+                    type="number"
+                    value={totalMarks}
+                    onChange={(e) => setTotalMarks(e.target.value)}
+                    min="10"
+                    max="100"
+                    placeholder="e.g. 50"
+                  />
+                </R>
+                <R label={`Total Questions`}>
+                  <input
+                    type="number"
+                    value={u}
+                    onChange={(e) => d(e.target.value.replace(/\D/g, ``))}
+                    min="3"
+                    max="50"
+                    placeholder="e.g. 15"
+                  />
+                </R>
+                <R label={`Difficulty`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Easy">Easy / Basic</option>
+                    <option value="Medium">Standard Board Level</option>
+                    <option value="Hard">Challenging / HOTS</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {e.includes(`Class Test`) && (
+              <P.Fragment>
+                <R label={`Test Duration`}>
+                  <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                    <option value="15 Minutes">15 Minutes</option>
+                    <option value="20 Minutes">20 Minutes</option>
+                    <option value="30 Minutes">30 Minutes</option>
+                    <option value="45 Minutes">45 Minutes</option>
+                  </select>
+                </R>
+                <R label={`Total Marks`}>
+                  <input
+                    type="number"
+                    value={totalMarks}
+                    onChange={(e) => setTotalMarks(e.target.value)}
+                    min="5"
+                    max="50"
+                    placeholder="e.g. 15"
+                  />
+                </R>
+                <R label={`Number of Questions`}>
+                  <input
+                    type="number"
+                    value={u}
+                    onChange={(e) => d(e.target.value.replace(/\D/g, ``))}
+                    min="3"
+                    max="25"
+                    placeholder="e.g. 8"
+                  />
+                </R>
+                <R label={`Difficulty`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {e.includes(`Worksheet`) && (
+              <P.Fragment>
+                <R label={`Total Marks`}>
+                  <input
+                    type="number"
+                    value={totalMarks}
+                    onChange={(e) => setTotalMarks(e.target.value)}
+                    min="5"
+                    max="50"
+                    placeholder="e.g. 20"
+                  />
+                </R>
+                <R label={`Practice Questions / Items`}>
+                  <input
+                    type="number"
+                    value={u}
+                    onChange={(e) => d(e.target.value.replace(/\D/g, ``))}
+                    min="3"
+                    max="30"
+                    placeholder="e.g. 10"
+                  />
+                </R>
+                <R label={`Difficulty`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Easy">Easy / Concept Builder</option>
+                    <option value="Medium">Standard / Mixed</option>
+                    <option value="Hard">Advanced / Problem Solving</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {e.includes(`Homework`) && (
+              <P.Fragment>
+                <R label={`Estimated Completion Time`}>
+                  <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                    <option value="15-20 Minutes">15-20 Minutes</option>
+                    <option value="25-30 Minutes">25-30 Minutes</option>
+                    <option value="40-45 Minutes">40-45 Minutes</option>
+                  </select>
+                </R>
+                <R label={`Practice Tasks Count`}>
+                  <input
+                    type="number"
+                    value={u}
+                    onChange={(e) => d(e.target.value.replace(/\D/g, ``))}
+                    min="2"
+                    max="10"
+                    placeholder="e.g. 5"
+                  />
+                </R>
+                <R label={`Difficulty`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {(e.includes(`Weak Student`) || e.includes(`Remedial`)) && (
+              <P.Fragment>
+                <R label={`Remedial Plan Duration`}>
+                  <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                    <option value="1 Week">1 Week Intensive</option>
+                    <option value="2 Weeks">2 Weeks Standard</option>
+                    <option value="3 Weeks">3 Weeks Comprehensive</option>
+                    <option value="1 Month">1 Month Foundation</option>
+                  </select>
+                </R>
+                <R label={`Target Level`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Easy">Basic Foundations</option>
+                    <option value="Medium">Passing to Average (40% → 60%)</option>
+                    <option value="Hard">Concept Gaps & Problem Solving</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {e.includes(`Activity Ideas`) && (
+              <P.Fragment>
+                <R label={`Number of Activities`}>
+                  <input
+                    type="number"
+                    value={u}
+                    onChange={(e) => d(e.target.value.replace(/\D/g, ``))}
+                    min="2"
+                    max="8"
+                    placeholder="e.g. 3"
+                  />
+                </R>
+                <R label={`Activity Focus`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Medium">Hands-on & Experiential</option>
+                    <option value="Easy">Quick Fun Games</option>
+                    <option value="Hard">Research & Discovery</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {e.includes(`Student Remark`) && (
+              <P.Fragment>
+                <R label={`Assessment Context`}>
+                  <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                    <option value="Term 1 / Periodic Test">Term 1 / Periodic Test</option>
+                    <option value="Mid-Term Examination">Mid-Term Examination</option>
+                    <option value="Final / Annual Report">Final / Annual Report</option>
+                    <option value="PTM Review">PTM Review</option>
+                  </select>
+                </R>
+                <R label={`Feedback Tone`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Medium">Balanced & Constructive</option>
+                    <option value="Easy">Appreciative & Positive</option>
+                    <option value="Hard">Direct & Action-Oriented</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {e.includes(`Parent Message`) && (
+              <P.Fragment>
+                <R label={`Message Purpose`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Medium">Daily Homework & Class Update</option>
+                    <option value="Easy">Commendation / Positive Update</option>
+                    <option value="Hard">Revision Alert / Special Notice</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
+
+            {e.includes(`School Notice`) && (
+              <P.Fragment>
+                <R label={`Notice Category`}>
+                  <select value={c} onChange={(e) => l(e.target.value)}>
+                    <option value="Medium">Academic / Curriculum</option>
+                    <option value="Easy">Activity / Event Notification</option>
+                    <option value="Hard">Examination / Mandatory Attendance</option>
+                  </select>
+                </R>
+              </P.Fragment>
+            )}
           </Component1357>
           <Component1358
             className={`primary-button`}
@@ -32430,16 +32660,18 @@ function Ea() {
                   className: n,
                   subject: i,
                   topic: o,
-                  language: `English`,
+                  language: lang,
                   difficulty: c,
                   count: Number(u) || 10,
+                  duration: duration,
+                  totalMarks: totalMarks,
                 }),
               );
-              h(`Offline draft generated. Review and edit before use.`);
+              h(`Generated successfully. You can review, edit, or copy the content below.`);
             }}
           >
             <_Component30 size={17} />
-            {`Generate free offline draft`}
+            {`Generate ${e.replace(` Generator`, ``)}`}
           </Component1358>
           {f && (
             <P.Fragment>
@@ -32458,7 +32690,7 @@ function Ea() {
                     if (f) {
                       await navigator.clipboard.writeText(f);
                       h(
-                        `Copied. Teacher review is still required before sharing.`,
+                        `Copied to clipboard.`,
                       );
                     }
                   }}
@@ -32510,10 +32742,10 @@ function Ea() {
       </Component1368>
       <Component1375 className={`saved-template-panel`}>
         <Component1371>
-          <Component1369>{`Saved offline templates`}</Component1369>
+          <Component1369>{`Saved templates`}</Component1369>
           <Component1370>
             {g.length}
-            {` local drafts • editable anytime`}
+            {` saved drafts • editable anytime`}
           </Component1370>
         </Component1371>
         {g.slice(0, 6).map((e) => (
@@ -32533,13 +32765,6 @@ function Ea() {
           </Component1374>
         ))}
       </Component1375>
-      <Component1379 className={`ai-provider-lock`}>
-        <Se size={21} />
-        <Component1378>
-          <Component1376>{`Advanced generative AI remains locked`}</Component1376>
-          <Component1377>{`Enable only with prepaid credits or the institution’s own provider key. No postpaid usage is allowed.`}</Component1377>
-        </Component1378>
-      </Component1379>
     </Component1380>
   );
 }
@@ -32563,14 +32788,19 @@ function Oa({
   language: i,
   difficulty: a,
   count: o,
+  duration: dur,
+  totalMarks: tm,
 }) {
-  let s = `${e.replace(` Generator`, ``)} — ${n}: ${r}\nClass/Batch: ${t} | Difficulty: ${a} | Language: ${i}\n\n[TEACHER REVIEW REQUIRED BEFORE USE]\n`;
-  let numItems = Math.min(25, Math.max(3, Number(o) || 5));
+  let userDuration = dur || (e.includes(`Lesson Plan`) ? `45 Minutes` : e.includes(`Question Paper`) ? `1 Hour` : e.includes(`Class Test`) ? `20 Minutes` : `30 Minutes`);
+  let userMarks = Number(tm) || (e.includes(`Question Paper`) ? 50 : e.includes(`Class Test`) ? 15 : 25);
+  let numItems = Math.min(50, Math.max(3, Number(o) || 8));
+  let userLang = i || `English`;
+  let s = `${e.replace(` Generator`, ``)} — ${n}: ${r}\nClass/Batch: ${t} | Duration: ${userDuration} | Total Marks: ${userMarks} | Language: ${userLang}\n\n[TEACHER REVIEW REQUIRED BEFORE USE]\n`;
 
   if (e.includes(`Lesson Plan`)) {
     return `${s}
 LESSON PLAN: ${n} — ${r}
-Target Class: ${t} | Duration: 40-45 Minutes | Level: ${a}
+Target Class: ${t} | Duration: ${userDuration} | Level: ${a}
 
 I. INSTRUCTIONAL OBJECTIVES:
 1. Knowledge: Learners will clearly define and explain the core concept of ${r}.
@@ -32581,19 +32811,19 @@ II. TEACHING AIDS & PREREQUISITES:
 • Whiteboard/Blackboard, concept diagrams, and everyday situational examples.
 • Prerequisite: Basic foundational terminology of ${n}.
 
-III. PERIOD STRUCTURE & TIMELINE:
-1. Warm-up & Hook (5 Min):
+III. PERIOD STRUCTURE & TIMELINE (Planned for ${userDuration}):
+1. Warm-up & Hook:
    - Ask two engaging introductory questions connected to ${r}.
    - Invite learners to share observations from their local environment.
-2. Direct Concept Delivery (20 Min):
+2. Direct Concept Delivery:
    - Structured board explanation and key definitions.
    - Step-by-step breakdown of ${r} with 2 practical illustrations.
    - Address common misconceptions.
-3. Guided & Peer Practice (12 Min):
+3. Guided & Peer Practice:
    - Think-Pair-Share: Have students discuss a practical scenario on ${r} with their bench partner.
-   - Solve 2 sample problems on the board with active student participation.
-4. Summary & Exit Ticket (5 Min):
-   - 3 quick oral check questions.
+   - Solve sample problems on the board with active student participation.
+4. Summary & Exit Ticket:
+   - Quick oral check questions.
    - Exit slip: One fact learned today, one example, and one doubt to review tomorrow.
 
 IV. HOMEWORK & EXTENSION:
@@ -32604,6 +32834,7 @@ IV. HOMEWORK & EXTENSION:
     return `${s}
 PRACTICE WORKSHEET: ${n}
 Topic: ${r} | Class: ${t} | Level: ${a}
+Total Marks: ${userMarks} | Time Target: ${userDuration}
 Student Name: _______________________ Roll No: _____ Date: _________
 
 --- SECTION A: CONCEPT RECALL & OBJECTIVE (1 Mark Each) ---
@@ -32612,39 +32843,44 @@ Student Name: _______________________ Roll No: _____ Date: _________
 3. Fill in the blank: The primary significance of ${r} is ___________________.
 4. Name two key terms or components directly associated with ${r}.
 
---- SECTION B: SHORT ANSWER & CONCEPTUAL QUESTIONS (2 Marks Each) ---
+--- SECTION B: SHORT ANSWER & CONCEPTUAL QUESTIONS ---
 ${Array.from({ length: numItems }, (_, idx) => `${idx + 5}. ${ka(idx, r, a)}`).join('\n')}
 
---- SECTION C: APPLICATION & THINKING TASK (4 Marks) ---
+--- SECTION C: APPLICATION & THINKING TASK ---
 ${numItems + 5}. Describe a real-life situation where understanding ${r} helps solve a problem. Support your answer with reasons.
 
-Teacher's Remarks: ____________________________________ Marks: _____ / 25`;
+Teacher's Remarks: ____________________________________ Marks: _____ / ${userMarks}`;
   }
 
   if (e.includes(`Question Paper`)) {
+    const secAMarks = Math.max(2, Math.round(userMarks * 0.2));
+    const secBMarks = Math.max(4, Math.round(userMarks * 0.4));
+    const secCMarks = userMarks - secAMarks - secBMarks;
+    const qCountSecB = Math.max(2, Math.min(8, Math.round(numItems * 0.5)));
+
     return `${s}
 ANNUAL / PERIODIC EXAMINATION: ${n}
 Chapter / Topic: ${r} | Class: ${t}
-Time Allowed: 1 Hour | Maximum Marks: 25 | Level: ${a}
+Time Allowed: ${userDuration} | Maximum Marks: ${userMarks} | Level: ${a}
 
 GENERAL INSTRUCTIONS:
-1. All questions are compulsory. Marks are indicated against each question.
-2. Write neat and legible answers.
+1. All questions are compulsory. Maximum Marks: ${userMarks}.
+2. Time Allowed: ${userDuration}. Write neat and legible answers.
 
---- SECTION A: OBJECTIVE QUESTIONS (5 Marks — 1 Mark Each) ---
+--- SECTION A: OBJECTIVE QUESTIONS (${secAMarks} Marks — 1 Mark Each) ---
 Q1. Multiple Choice: Which statement accurately describes ${r}?
     (a) Option A    (b) Option B    (c) Option C    (d) Option D
 Q2. State True or False: Principles of ${r} apply universally under standard conditions.
 Q3. Fill in the blank: In ${n}, ${r} is fundamentally used to ________________.
 Q4. Define ${r} in one sentence.
-Q5. Give one practical unit or daily-life example connected with ${r}.
+${Array.from({ length: Math.max(0, secAMarks - 4) }, (_, idx) => `Q${idx + 5}. Give one practical unit or daily-life example connected with ${r}.`).join('\n')}
 
---- SECTION B: SHORT ANSWER QUESTIONS (10 Marks — 2 Marks Each) ---
-${Array.from({ length: 5 }, (_, idx) => `Q${idx + 6}. ${ka(idx, r, a)} [2 Marks]`).join('\n')}
+--- SECTION B: SHORT ANSWER QUESTIONS (${secBMarks} Marks) ---
+${Array.from({ length: qCountSecB }, (_, idx) => `Q${secAMarks + idx + 1}. ${ka(idx, r, a)} [${Math.max(1, Math.floor(secBMarks / qCountSecB))} Marks]`).join('\n')}
 
---- SECTION C: LONG ANSWER / APPLICATION (10 Marks — 5 Marks Each) ---
-Q11. Detailed Concept Analysis: Explain ${r} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [5 Marks]
-Q12. Problem Solving: Analyze a real-world case where principles of ${r} are tested. Propose a logical solution step by step. [5 Marks]
+--- SECTION C: LONG ANSWER & APPLICATION (${secCMarks} Marks) ---
+Q${secAMarks + qCountSecB + 1}. Detailed Concept Analysis: Explain ${r} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [${Math.floor(secCMarks / 2)} Marks]
+Q${secAMarks + qCountSecB + 2}. Practical Problem Solving: Analyze a real-world case where principles of ${r} are tested. Propose a logical solution step by step. [${secCMarks - Math.floor(secCMarks / 2)} Marks]
 
 *** END OF QUESTION PAPER ***`;
   }
@@ -32654,16 +32890,16 @@ Q12. Problem Solving: Analyze a real-world case where principles of ${r} are tes
 DAILY HOMEWORK ASSIGNMENT: ${n}
 Topic: ${r} | Class: ${t}
 Assigned Date: __________ | Due Date: __________
-Target Duration: 25-30 Minutes
+Target Duration: ${userDuration}
 
-1. CONCEPT REVISION (8 Mins):
+1. CONCEPT REVISION:
    - Read textbook section on "${r}" thoroughly.
    - Write down 3 essential keywords and their meanings in your homework notebook.
 
-2. PRACTICE EXERCISES (15 Mins):
-${Array.from({ length: Math.min(5, numItems) }, (_, idx) => `   Task ${idx + 1}: ${ka(idx, r, a)}`).join('\n')}
+2. PRACTICE EXERCISES:
+${Array.from({ length: Math.min(8, numItems) }, (_, idx) => `   Task ${idx + 1}: ${ka(idx, r, a)}`).join('\n')}
 
-3. OBSERVATION & DISCOVERY (7 Mins):
+3. OBSERVATION & DISCOVERY:
    - Identify one real-world occurrence of ${r} at home or around your neighborhood.
    - Write 2 sentences explaining how it connects to today's classroom lesson.
 
@@ -32675,7 +32911,7 @@ Parent / Guardian Signature: _______________________ Date: ____________`;
   if (e.includes(`Student Remark`)) {
     return `${s}
 STUDENT PERFORMANCE REMARKS FOR REPORT CARDS & PTM
-Subject: ${n} | Class: ${t} | Focus Area: ${r}
+Subject: ${n} | Class: ${t} | Focus Area: ${r} | Term: ${userDuration}
 
 [1. COMMENDABLE / EXCELLENT PROGRESS (Grade A1 / A2)]:
 "Demonstrates outstanding conceptual clarity in ${r}. Actively participates in class discussions and shows exceptional problem-solving initiative in ${n}."
@@ -32694,35 +32930,55 @@ REPORT CARD ONE-LINER:
   }
 
   if (e.includes(`Parent Message`)) {
-    return `${s}
-OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
-Subject: ${n} | Class: ${t} | Topic: ${r}
-
-ENGLISH VERSION:
-Dear Parent,
+    let msgEnglish = `Dear Parent,
 Greetings from the School. Today in Class ${t}, we completed the chapter/topic "${r}" in ${n}.
 Kindly ensure that your child:
 1. Revises today's class notes on ${r}.
 2. Completes the assigned practice homework in their notebook.
 3. Clarifies any pending doubts with the subject teacher tomorrow.
 Thank you for your partnership in your child's learning.
-— Subject Teacher, ${n}
+— Subject Teacher, ${n}`;
 
-HINDI VERSION (हिंदी संदेश):
-आदरणीय अभिभावक,
+    let msgHindi = `आदरणीय अभिभावक,
 सादर नमस्कार। आज कक्षा ${t} में ${n} विषय के अंतर्गत "${r}" का अध्ययन कराया गया।
 कृपया यह सुनिश्चित करें कि आपका बच्चा:
 1. घर पर आज के नोट्स का अभ्यास व रिवीज़न करे।
 2. दी गई गृहकार्य (Homework) को समय पर पूरा करे।
 आपके निरंतर सहयोग के लिए धन्यवाद।
 — विषय अध्यापक, ${n}`;
+
+    if (userLang === `Hindi`) {
+      return `${s}
+OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
+Subject: ${n} | Class: ${t} | Topic: ${r}
+
+${msgHindi}`;
+    }
+
+    if (userLang === `English`) {
+      return `${s}
+OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
+Subject: ${n} | Class: ${t} | Topic: ${r}
+
+${msgEnglish}`;
+    }
+
+    return `${s}
+OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
+Subject: ${n} | Class: ${t} | Topic: ${r}
+
+ENGLISH VERSION:
+${msgEnglish}
+
+HINDI VERSION (हिंदी संदेश):
+${msgHindi}`;
   }
 
   if (e.includes(`Weak Student`) || e.includes(`Remedial`)) {
     return `${s}
 INDIVIDUALIZED REMEDIAL ACTION PLAN (STP)
 Subject: ${n} | Class: ${t} | Focus Topic: ${r}
-Plan Duration: 2 Weeks | Objective: Foundation Strengthening & Confidence Building
+Plan Duration: ${userDuration} | Objective: Foundation Strengthening & Confidence Building
 
 STEP 1: LEARNING GAP DIAGNOSIS:
 • Identified Barrier: Student faces difficulty recalling fundamental definitions and multistep reasoning in ${r}.
@@ -32744,7 +33000,7 @@ STEP 4: DAILY 10-MINUTE MICRO-PRACTICE SCHEDULE:
 • Days 9-12: Complete one 5-question confidence booster worksheet.
 
 STEP 5: PROGRESS RE-ASSESSMENT:
-• Conduct a friendly 10-minute oral check and short 5-mark quiz on Day 14.
+• Conduct a friendly oral check and short quiz after ${userDuration}.
 Goal: Student gains clarity and participates actively in regular class without hesitation.`;
   }
 
@@ -32771,30 +33027,33 @@ ACTIVITY 3: GAMIFIED LIGHTNING QUIZ RELAY (10 Mins)
   }
 
   if (e.includes(`Class Test`)) {
+    const partAMarks = Math.max(2, Math.round(userMarks * 0.3));
+    const partBMarks = Math.max(3, Math.round(userMarks * 0.4));
+    const partCMarks = userMarks - partAMarks - partBMarks;
+
     return `${s}
 DIAGNOSTIC CLASS TEST: ${n}
 Topic: ${r} | Class: ${t} | Level: ${a}
-Time: 20 Minutes | Maximum Marks: 15
+Time Allowed: ${userDuration} | Maximum Marks: ${userMarks}
 Student Name: _______________________ Roll No: _____ Date: _________
 
-PART A: RAPID RECALL (5 Marks — 1 Mark Each)
+PART A: RAPID RECALL (${partAMarks} Marks)
 1. What is the central definition of ${r}? ____________________________
 2. Write one primary rule or property of ${r}. _______________________
 3. State True or False: ${r} can be observed in everyday technology or nature. (   )
 4. Give one standard unit or common example of ${r}.
-5. Fill in the blank: When studying ${n}, ${r} helps us understand ________________.
+${Array.from({ length: Math.max(0, partAMarks - 4) }, (_, idx) => `${idx + 5}. Fill in the blank: In ${n}, ${r} helps explain ________________.`).join('\n')}
 
-PART B: CONCEPT EXPLANATION (6 Marks — 3 Marks Each)
-6. Explain the mechanism or main principle of ${r} in 3 to 4 concise sentences.
-7. What is a common mistake or misconception regarding ${r}, and how can it be avoided?
+PART B: CONCEPT EXPLANATION (${partBMarks} Marks)
+${Array.from({ length: Math.max(2, Math.min(5, Math.round(numItems * 0.5))) }, (_, idx) => `${partAMarks + idx + 1}. ${ka(idx, r, a)}`).join('\n')}
 
-PART C: APPLICATION CHALLENGE (4 Marks)
-8. Higher Order Thinking: How can the principles of ${r} be applied to improve a process or solve a problem in daily life? Justify with two points.
+PART C: APPLICATION CHALLENGE (${partCMarks} Marks)
+${partAMarks + Math.max(2, Math.min(5, Math.round(numItems * 0.5))) + 1}. Higher Order Thinking: How can the principles of ${r} be applied to improve a process or solve a problem in daily life? Justify with two points. [${partCMarks} Marks]
 
 TEACHER SCORING RUBRIC:
-• Q1-Q5: 1 mark each for correct terminology.
-• Q6-Q7: 2 marks for conceptual accuracy + 1 mark for clarity.
-• Q8: 2 marks for analytical reasoning + 2 marks for valid justification.`;
+• Part A: Accuracy of terminology and core facts.
+• Part B: Conceptual correctness and step-by-step clarity.
+• Part C: Analytical reasoning and justification.`;
   }
 
   if (e.includes(`School Notice`)) {
@@ -32817,7 +33076,7 @@ IMPORTANT INSTRUCTIONS:
 1. Full attendance is compulsory for all students during these sessions.
 2. Students must bring their relevant textbook, notebook, and geometry/drawing materials.
 3. Review of ${r} will form part of the upcoming periodic assessments.
-4. For any academic inquiries, parents may contact the subject teacher during official visiting hours (8:30 AM – 9:30 AM).
+4. For any academic inquiries, parents may contact the subject teacher during official visiting hours.
 
 Thank you for your continuous support in maintaining our school's high educational standards.
 
@@ -32828,7 +33087,7 @@ Principal / Academic Coordinator
 
   // Generic fallback
   return `${s}
-Instructions: Attempt all questions. Show your working where required.
+Instructions: Attempt all questions. Show your working where required. Total Marks: ${userMarks}. Time: ${userDuration}.
 
 Questions:
 ${Array.from({ length: numItems }, (_, idx) => `${idx + 1}. ${ka(idx, r, a)}`).join('\n')}
