@@ -22276,7 +22276,7 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
   };
   return /* @__PURE__ */ w.createElement(L, { title: "WhatsApp Web Companion & QR Connect", subtitle: "100% Free \u2022 Direct School Phone Integration \u2022 Zero API Charges", onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "16px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", borderRadius: "12px", background: connected ? "#ecfdf5" : "#fffbeb", border: `1px solid ${connected ? "#a7f3d0" : "#fde68a"}` } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", gap: "12px" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "28px" } }, connected ? "\u{1F7E2}" : "\u{1F4F1}"), /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "16px", color: connected ? "#065f46" : "#92400e", display: "block" } }, connected ? "WhatsApp Web Linked & Ready" : "WhatsApp Web Not Linked Yet"), /* @__PURE__ */ w.createElement("small", { style: { color: connected ? "#047857" : "#b45309" } }, connected ? "Your school WhatsApp session is linked in this browser. Outgoing notices will launch directly." : "Link your school mobile number via WhatsApp Web to send instant notices to parents."))), /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: toggle, style: { fontWeight: 600 } }, connected ? "Disconnect" : "Mark as Linked \u2705")), /* @__PURE__ */ w.createElement("div", { style: { padding: "16px", borderRadius: "12px", background: "var(--card-bg, #ffffff)", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("h3", { style: { margin: "0 0 12px", fontSize: "15px", color: "var(--navy, #1e293b)" } }, "\u{1F4F2} How to Scan QR & Connect School Phone:"), /* @__PURE__ */ w.createElement("ol", { style: { margin: 0, paddingLeft: "20px", lineHeight: "1.7", color: "var(--theme-text, #334155)", fontSize: "14px" } }, /* @__PURE__ */ w.createElement("li", null, "Apne school ke mobile phone me ", /* @__PURE__ */ w.createElement("strong", null, "WhatsApp"), " open karein."), /* @__PURE__ */ w.createElement("li", null, "Top-right me ", /* @__PURE__ */ w.createElement("strong", null, "\u22EE (3 Dots)"), " ya ", /* @__PURE__ */ w.createElement("strong", null, "Settings"), " par tap karke ", /* @__PURE__ */ w.createElement("strong", null, "Linked Devices (\u0932\u093F\u0902\u0915\u094D\u0921 \u0921\u093F\u0935\u093E\u0907\u0938\u0947\u0938)"), " chunein."), /* @__PURE__ */ w.createElement("li", null, /* @__PURE__ */ w.createElement("strong", null, "Link a Device (\u0921\u093F\u0935\u093E\u0907\u0938 \u0932\u093F\u0902\u0915 \u0915\u0930\u0947\u0902)"), " dabayein aur button click karne par aane wala ", /* @__PURE__ */ w.createElement("strong", null, "QR Code scan karein"), "."), /* @__PURE__ */ w.createElement("li", null, "Scan hote hi aapka browser WhatsApp se connect ho jayega aur session browser me safe rahega."))), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Close"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#25D366", borderColor: "#1ea952", fontWeight: 700, gap: "8px" }, onClick: handleOpenWeb }, /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"), /* @__PURE__ */ w.createElement("span", null, "Open WhatsApp Web & Scan QR")))));
 }
-function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = "Haridwar Public School", items = [] }) {
+function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = "Bright Nexa School", items = [] }) {
   const [queue, setQueue] = (0, w.useState)(() => items.map((it, idx) => ({ ...it, id: it.id || "wa_" + idx, status: "pending" })));
   const [currentIndex, setCurrentIndex] = (0, w.useState)(0);
   const [autoAdvance, setAutoAdvance] = (0, w.useState)(true);
@@ -22322,7 +22322,7 @@ function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = "Ha
   }, [countdown, autoAdvance, currentIndex]);
   return /* @__PURE__ */ w.createElement(L, { title: title || "WhatsApp Queue Runner", subtitle: subtitle || `${schoolName} \u2022 ${sentCount} sent of ${queue.length} total`, onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "14px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", background: "var(--card-bg, #fff)", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "12px", alignItems: "center" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "13px", fontWeight: 600 } }, "Queue:"), /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#dcfce7", color: "#15803d" } }, "Sent: ", sentCount), /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#fef3c7", color: "#b45309" } }, "Remaining: ", queue.length - (sentCount + skippedCount)), skippedCount > 0 && /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#f1f5f9", color: "#64748b" } }, "Skipped: ", skippedCount)), /* @__PURE__ */ w.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", cursor: "pointer" } }, /* @__PURE__ */ w.createElement("input", { type: "checkbox", checked: autoAdvance, onChange: (e2) => setAutoAdvance(e2.target.checked) }), /* @__PURE__ */ w.createElement("span", null, "Auto-advance (3s delay)"))), !isDone && currentItem ? /* @__PURE__ */ w.createElement("div", { style: { padding: "16px", borderRadius: "12px", background: "#f8fafc", border: "2px solid #22c55e", display: "flex", flexDirection: "column", gap: "12px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "12px", textTransform: "uppercase", color: "#16a34a", fontWeight: 700 } }, "Active #", currentIndex + 1, " of ", queue.length), /* @__PURE__ */ w.createElement("h3", { style: { margin: "2px 0 0", fontSize: "17px", color: "#0f172a" } }, currentItem.name, currentItem.meta?.class ? ` \u2022 Class ${currentItem.meta.class}` : "", currentItem.meta?.admissionNumber ? ` (${currentItem.meta.admissionNumber})` : ""), /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b" } }, "\u{1F4DE} Parent Phone: ", /* @__PURE__ */ w.createElement("strong", null, currentItem.phone || "No phone recorded"))), countdown > 0 && /* @__PURE__ */ w.createElement("div", { style: { padding: "6px 12px", background: "#dbeafe", color: "#1e40af", borderRadius: "8px", fontWeight: 700, fontSize: "13px" } }, "Next in ", countdown, "s...")), /* @__PURE__ */ w.createElement("div", { style: { background: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontFamily: "monospace", whiteSpace: "pre-wrap", maxHeight: "130px", overflowY: "auto" } }, currentItem.text), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end", alignItems: "center" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: handleSkip, style: { fontWeight: 600 } }, "\u23ED\uFE0F Skip"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#22c55e", borderColor: "#16a34a", fontWeight: 700, fontSize: "14px", gap: "8px" }, onClick: () => handleSend(currentIndex), autoFocus: true }, /* @__PURE__ */ w.createElement("span", null, "\u{1F680}"), /* @__PURE__ */ w.createElement("span", null, "Send on WhatsApp (Enter)")))) : /* @__PURE__ */ w.createElement("div", { style: { padding: "24px", borderRadius: "12px", background: "#f0fdf4", border: "1px solid #bbf7d0", textAlign: "center", display: "flex", flexDirection: "column", gap: "8px" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "36px" } }, "\u{1F389}"), /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "18px", color: "#15803d" } }, "All Messages Processed!"), /* @__PURE__ */ w.createElement("p", { style: { margin: 0, color: "#166534", fontSize: "14px" } }, "Successfully processed ", sentCount, " sent and ", skippedCount, " skipped out of ", queue.length, " parents.")), /* @__PURE__ */ w.createElement("div", { style: { maxHeight: "200px", overflowY: "auto", border: "1px solid var(--line, #e2e8f0)", borderRadius: "8px" } }, /* @__PURE__ */ w.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "13px" } }, /* @__PURE__ */ w.createElement("thead", null, /* @__PURE__ */ w.createElement("tr", { style: { background: "var(--header-bg, #f1f5f9)", textAlign: "left" } }, /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "#"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Student / Parent"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Phone"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Status"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px", textAlign: "right" } }, "Action"))), /* @__PURE__ */ w.createElement("tbody", null, queue.map((item, idx) => /* @__PURE__ */ w.createElement("tr", { key: item.id, style: { borderTop: "1px solid var(--line, #e2e8f0)", background: idx === currentIndex ? "rgba(34, 197, 94, 0.08)" : "transparent" } }, /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px", color: "#64748b" } }, idx + 1), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, /* @__PURE__ */ w.createElement("strong", null, item.name), item.meta?.class ? /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b", display: "block" } }, "Class: ", item.meta.class) : null), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, item.phone || "\u2014"), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, item.status === "sent" ? /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#dcfce7", color: "#15803d" } }, "Sent \u2705") : item.status === "skipped" ? /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#f1f5f9", color: "#64748b" } }, "Skipped \u23ED\uFE0F") : /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#fef3c7", color: "#b45309" } }, "Pending")), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px", textAlign: "right" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button compact", style: { fontSize: "12px", padding: "4px 8px" }, onClick: () => handleSend(idx) }, "\u{1F4F1} Send")))))))));
 }
-function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = "Haridwar Public School" }) {
+function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = "Bright Nexa School", schoolPhone = "" }) {
   const [ptmDate, setPtmDate] = (0, w.useState)(() => {
     const d2 = /* @__PURE__ */ new Date();
     d2.setDate(d2.getDate() + 7);
@@ -22346,7 +22346,7 @@ function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 
       ptmDate,
       ptmTime,
       venue,
-      schoolPhone: "+91 7500058655"
+      schoolPhone: schoolPhone || "+91 7500058655"
     })
   }));
   if (queueOpen) {
@@ -22367,7 +22367,7 @@ function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 
   }
   return /* @__PURE__ */ w.createElement(L, { title: "PTM & Report Card WhatsApp Broadcast", subtitle: `${schoolName} \u2022 ${exam?.name || "Exam"} \u2022 ${students.length} students`, onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "14px" } }, /* @__PURE__ */ w.createElement("p", { style: { margin: 0, fontSize: "14px", color: "var(--muted)" } }, "Configure meeting details and send personalized invitations to all parents on WhatsApp."), /* @__PURE__ */ w.createElement(R, { label: "Meeting / PTM Date" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: ptmDate, onChange: (e2) => setPtmDate(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "PTM Timing (e.g. 9:00 AM to 1:00 PM)" }, /* @__PURE__ */ w.createElement("input", { type: "text", value: ptmTime, onChange: (e2) => setPtmTime(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "Venue / Meeting Location" }, /* @__PURE__ */ w.createElement("input", { type: "text", value: venue, onChange: (e2) => setVenue(e2.target.value) })), /* @__PURE__ */ w.createElement("div", { style: { padding: "12px", background: "var(--card-bg, #f8fafc)", borderRadius: "8px", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("strong", { style: { display: "block", fontSize: "13px", marginBottom: "6px" } }, "Message Preview:"), /* @__PURE__ */ w.createElement("pre", { style: { margin: 0, fontSize: "12px", fontFamily: "monospace", whiteSpace: "pre-wrap", maxHeight: "120px", overflowY: "auto" } }, items[0]?.text || "No students selected")), /* @__PURE__ */ w.createElement("div", { className: "modal-actions", style: { display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "10px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Cancel"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#22c55e", borderColor: "#16a34a", fontWeight: 700 }, disabled: !students.length, onClick: () => setQueueOpen(true) }, "\u{1F680} Start WhatsApp Queue (", students.length, " Parents)"))));
 }
-function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = "Haridwar Public School" }) {
+function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = "Bright Nexa School", schoolPhone = "" }) {
   const [noticeType, setNoticeType] = (0, w.useState)("holiday");
   const [title, setTitle] = (0, w.useState)("Winter Vacation / Severe Cold Wave Holiday");
   const [desc, setDesc] = (0, w.useState)("As per administrative guidelines and weather conditions, school will observe a holiday. Online homework tasks have been shared in the app.");
@@ -22380,7 +22380,7 @@ function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = "Haridwar Public S
     description: desc,
     startDate,
     reopeningDate: reopenDate,
-    schoolPhone: "+91 7500058655"
+    schoolPhone: schoolPhone || "+91 7500058655"
   });
   const handleShareWhatsApp = () => {
     const url = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
@@ -23708,7 +23708,7 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
   let he = (0, w.useMemo)(() => me.reduce((e3, t3) => e3 + t3.balance, 0), [me]);
   let _e2 = (0, w.useMemo)(
     () => e2.feeStructures.filter(
-      (e3) => e3.className === u2 && e3.academicSession === f2 && e3.active !== false && (m2 === `All Streams` ? !e3.academicStream : e3.academicStream === m2)
+      (e3) => isClassMatch(e3.className, u2) && e3.academicSession === f2 && e3.active !== false && (m2 === `All Streams` ? !e3.academicStream : e3.academicStream === m2)
     ),
     [e2.feeStructures, u2, f2, m2]
   );
@@ -26154,7 +26154,8 @@ function Fi({ data: e2, onUpdate: t2 }) {
     WhatsAppNoticeDialog,
     {
       isOpen: whatsAppNoticeOpen,
-      schoolName: e2?.institution?.name || e2?.school?.name || `Haridwar Public School`,
+      schoolName: e2?.institution?.name || e2?.school?.name || `Bright Nexa School`,
+      schoolPhone: e2?.institution?.phone || e2?.institution?.contactNumber || ``,
       onClose: () => setWhatsAppNoticeOpen(false)
     }
   ));
@@ -26394,7 +26395,7 @@ function Bi({ text: e2 }) {
   return /* @__PURE__ */ w.createElement(Component882, { className: `empty-state` }, /* @__PURE__ */ w.createElement(M, { size: 30 }), /* @__PURE__ */ w.createElement(Component881, null, e2));
 }
 function Vi(e2, t2) {
-  return e2.className === t2.className && (!t2.section || e2.section === t2.section) && (!t2.academicStream || e2.academicStream === t2.academicStream);
+  return isClassMatch(e2.className, t2.className) && (!t2.section || isSectionMatch(e2.section, t2.section)) && (!t2.academicStream || e2.academicStream === t2.academicStream);
 }
 function Hi({ data: e2, students: t2, snapshot: n2 }) {
   let [r2, i2] = (0, w.useState)(e2.exams[0]?.id || ``);
@@ -26762,12 +26763,12 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
       onClose: () => setWhatsAppPtmOpen(false),
       exam: a2,
       students: o2,
-      schoolName: n2?.institution?.name || "Haridwar Public School"
+      schoolName: e2?.institution?.name || n2?.institution?.name || "Bright Nexa School"
     }
   ));
 }
 function Ui(e2, t2) {
-  return e2.className === t2.className && (!t2.section || e2.section === t2.section) && (!t2.academicStream || e2.academicStream === t2.academicStream);
+  return isClassMatch(e2.className, t2.className) && (!t2.section || isSectionMatch(e2.section, t2.section)) && (!t2.academicStream || e2.academicStream === t2.academicStream);
 }
 function Wi(e2) {
   if (e2 >= 90) {
@@ -26789,7 +26790,7 @@ function Wi(e2) {
 function Gi({ data: e2, students: t2 }) {
   let [n2, r2] = (0, w.useState)(e2.exams[0]?.id || ``);
   let i2 = e2.exams.find((e3) => e3.id === n2);
-  let a2 = t2.filter((e3) => e3.className === i2?.className);
+  let a2 = t2.filter((e3) => !i2 || isClassMatch(e3.className, i2.className) && (!i2.section || isSectionMatch(e3.section, i2.section)));
   let o2 = (0, w.useMemo)(
     () => a2.map((t3) => {
       let r3 = e2.marks.filter((e3) => e3.examId === n2 && e3.studentId === t3.id);
@@ -28999,7 +29000,7 @@ function Aa({ students: e2, data: t2 }) {
     (t3) => t3.date === a2 && e2.some((e3) => e3.id === t3.studentId)
   );
   let s2 = t2.homework.filter((e3) => i2.has(`${e3.className}-${e3.section}`));
-  let c2 = t2.exams.filter((t3) => e2.some((e3) => e3.className === t3.className));
+  let c2 = t2.exams.filter((exam) => e2.some((st) => isClassMatch(st.className, exam.className)));
   const Component1381 = `div`;
   const Component1382 = `span`;
   const Component1383 = `h2`;
@@ -29049,7 +29050,7 @@ function _Component86({ students: e2, data: t2 }) {
   let s2 = t2.marks.filter((e3) => e3.studentId === n2.id);
   let c2 = s2.length ? s2.reduce((e3, t3) => e3 + t3.obtainedMarks, 0) / s2.reduce((e3, t3) => e3 + t3.maximumMarks, 0) * 100 : 0;
   let l2 = t2.homework.filter(
-    (e3) => e3.className === n2.className && (e3.section === n2.section || !e3.section)
+    (e3) => isClassMatch(e3.className, n2.className) && (isSectionMatch(e3.section, n2.section) || !e3.section)
   );
   let u2 = t2.achievements.filter((e3) => e3.studentId === n2.id);
   const Component1397 = `div`;
@@ -37759,6 +37760,42 @@ function Ds() {
       return false;
     }
   });
+  let [globalSearch, setGlobalSearch] = (0, w.useState)("");
+  let [searchDropdownOpen, setSearchDropdownOpen] = (0, w.useState)(false);
+  let searchInputRef = (0, w.useRef)(null);
+  (0, w.useEffect)(() => {
+    let onKeyDown = (e3) => {
+      if ((e3.ctrlKey || e3.metaKey) && e3.key.toLowerCase() === "k") {
+        e3.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          setSearchDropdownOpen(true);
+        }
+      }
+      if (e3.key === "Escape") {
+        setSearchDropdownOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+  let searchResults = (0, w.useMemo)(() => {
+    let q = (globalSearch || "").trim().toLowerCase();
+    if (!q || q.length < 1) return { students: [], classes: [], receipts: [] };
+    let stus = (n2 || []).filter((s3) => {
+      let combined = [s3.name, s3.admissionNumber, s3.studentUniqueId, s3.className, s3.section, s3.fatherName, s3.mobile].filter(Boolean).join(" ").toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 8);
+    let clss = (i2.classes || []).filter((c3) => {
+      let combined = [c3.name, c3.section, c3.academicStream].filter(Boolean).join(" ").toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 5);
+    let rcts = (i2.feePayments || []).filter((f3) => {
+      let combined = [f3.receiptNumber, f3.category, f3.paymentMode, f3.remarks].filter(Boolean).join(" ").toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 5);
+    return { students: stus, classes: clss, receipts: rcts };
+  }, [globalSearch, n2, i2.classes, i2.feePayments]);
   (0, w.useEffect)(() => {
     if (typeof BroadcastChannel === "undefined") return;
     let channel;
@@ -38151,12 +38188,75 @@ function Ds() {
       "aria-label": `Open navigation`
     },
     /* @__PURE__ */ w.createElement(_Component82, { size: 22 })
-  ), /* @__PURE__ */ w.createElement(Component2075, { className: `search-box` }, /* @__PURE__ */ w.createElement($e, { size: 18 }), /* @__PURE__ */ w.createElement(
+  ), /* @__PURE__ */ w.createElement("div", { style: { position: "relative" } }, /* @__PURE__ */ w.createElement(Component2075, { className: `search-box` }, /* @__PURE__ */ w.createElement($e, { size: 18 }), /* @__PURE__ */ w.createElement(
     Component2073,
     {
+      ref: searchInputRef,
+      value: globalSearch,
+      onChange: (e3) => {
+        setGlobalSearch(e3.target.value);
+        setSearchDropdownOpen(true);
+      },
+      onFocus: () => setSearchDropdownOpen(true),
       placeholder: `Search students, classes, receipts\u2026`
     }
-  ), /* @__PURE__ */ w.createElement(Component2074, null, `Ctrl K`)), /* @__PURE__ */ w.createElement(Component2084, { className: `topbar-actions` }, m2 && (v2 === `OWNER` || v2 === `ADMIN`) && /* @__PURE__ */ w.createElement(
+  ), /* @__PURE__ */ w.createElement(Component2074, null, `Ctrl K`)), searchDropdownOpen && globalSearch.trim().length > 0 && /* @__PURE__ */ w.createElement(
+    "div",
+    {
+      style: {
+        position: "absolute",
+        top: "100%",
+        left: 0,
+        width: "380px",
+        maxHeight: "380px",
+        overflowY: "auto",
+        background: "#ffffff",
+        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+        borderRadius: "10px",
+        border: "1px solid #cbd5e1",
+        marginTop: "6px",
+        padding: "8px",
+        zIndex: 1e3
+      }
+    },
+    searchResults.students.length === 0 && searchResults.classes.length === 0 && searchResults.receipts.length === 0 ? /* @__PURE__ */ w.createElement("div", { style: { padding: "12px", textAlign: "center", color: "#64748b", fontSize: "13px" } }, "No records match \u201C", globalSearch, "\u201D") : /* @__PURE__ */ w.createElement("div", null, searchResults.students.length > 0 && /* @__PURE__ */ w.createElement("div", { style: { marginBottom: "8px" } }, /* @__PURE__ */ w.createElement("div", { style: { fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#64748b", padding: "4px 8px" } }, "Students (", searchResults.students.length, ")"), searchResults.students.map((st) => /* @__PURE__ */ w.createElement(
+      "div",
+      {
+        key: st.id,
+        style: { padding: "8px", borderRadius: "6px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" },
+        onClick: () => {
+          l2("Students");
+          setSearchDropdownOpen(false);
+        }
+      },
+      /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "13px", display: "block", color: "#0f172a" } }, st.name), /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b" } }, "Class ", st.className, st.section ? `-${st.section}` : "", " \u2022 Adm: ", st.admissionNumber || st.studentUniqueId || "N/A")),
+      /* @__PURE__ */ w.createElement("span", { style: { fontSize: "12px", color: "#2563eb", fontWeight: 600 } }, "View \u2192")
+    ))), searchResults.classes.length > 0 && /* @__PURE__ */ w.createElement("div", { style: { marginBottom: "8px", borderTop: "1px solid #f1f5f9", paddingTop: "6px" } }, /* @__PURE__ */ w.createElement("div", { style: { fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#64748b", padding: "4px 8px" } }, "Classes (", searchResults.classes.length, ")"), searchResults.classes.map((cl) => /* @__PURE__ */ w.createElement(
+      "div",
+      {
+        key: cl.id,
+        style: { padding: "8px", borderRadius: "6px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" },
+        onClick: () => {
+          l2("Class & Section Setup");
+          setSearchDropdownOpen(false);
+        }
+      },
+      /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "13px", color: "#0f172a" } }, "Class ", cl.name, " ", cl.section ? `(${cl.section})` : "")),
+      /* @__PURE__ */ w.createElement("span", { style: { fontSize: "12px", color: "#2563eb", fontWeight: 600 } }, "Setup \u2192")
+    ))), searchResults.receipts.length > 0 && /* @__PURE__ */ w.createElement("div", { style: { borderTop: "1px solid #f1f5f9", paddingTop: "6px" } }, /* @__PURE__ */ w.createElement("div", { style: { fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#64748b", padding: "4px 8px" } }, "Receipts (", searchResults.receipts.length, ")"), searchResults.receipts.map((rc) => /* @__PURE__ */ w.createElement(
+      "div",
+      {
+        key: rc.id,
+        style: { padding: "8px", borderRadius: "6px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" },
+        onClick: () => {
+          l2("Fees");
+          setSearchDropdownOpen(false);
+        }
+      },
+      /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "13px", color: "#0f172a" } }, "Rcpt #", rc.receiptNumber), /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b", display: "block" } }, rc.category, " \u2022 \u20B9", rc.amount)),
+      /* @__PURE__ */ w.createElement("span", { style: { fontSize: "12px", color: "#2563eb", fontWeight: 600 } }, "Fees \u2192")
+    ))))
+  )), /* @__PURE__ */ w.createElement(Component2084, { className: `topbar-actions` }, m2 && (v2 === `OWNER` || v2 === `ADMIN`) && /* @__PURE__ */ w.createElement(
     Component2077,
     {
       className: `update-notice-button`,

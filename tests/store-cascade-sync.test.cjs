@@ -149,3 +149,10 @@ test('buildDynamicClassList produces sorted dynamic class array', () => {
   // Standard nursery and grades appear first in order
   assert.equal(list[0], 'Nursery');
 });
+
+test('isClassMatch links variations for Exam and Marks modules', () => {
+  assert.equal(isClassMatch('Class 2', '2'), true);
+  assert.equal(isClassMatch('2', '2-D'), true);
+  assert.equal(isClassMatch('Class 6', '6th'), true);
+  assert.equal(isClassMatch('Class 9', 'Class 10'), false);
+});

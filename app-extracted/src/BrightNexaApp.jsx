@@ -23710,7 +23710,7 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
   );
 }
 
-function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = 'Haridwar Public School', items = [] }) {
+function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = 'Bright Nexa School', items = [] }) {
   const [queue, setQueue] = (0, w.useState)(() => items.map((it, idx) => ({ ...it, id: it.id || 'wa_' + idx, status: 'pending' })));
   const [currentIndex, setCurrentIndex] = (0, w.useState)(0);
   const [autoAdvance, setAutoAdvance] = (0, w.useState)(true);
@@ -23863,7 +23863,7 @@ function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = 'Ha
   );
 }
 
-function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 'Haridwar Public School' }) {
+function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 'Bright Nexa School', schoolPhone = '' }) {
   const [ptmDate, setPtmDate] = (0, w.useState)(() => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
@@ -23889,7 +23889,7 @@ function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 
       ptmDate,
       ptmTime,
       venue,
-      schoolPhone: '+91 7500058655'
+      schoolPhone: schoolPhone || '+91 7500058655'
     })
   }));
 
@@ -23941,7 +23941,7 @@ function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 
   );
 }
 
-function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = 'Haridwar Public School' }) {
+function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = 'Bright Nexa School', schoolPhone = '' }) {
   const [noticeType, setNoticeType] = (0, w.useState)('holiday');
   const [title, setTitle] = (0, w.useState)('Winter Vacation / Severe Cold Wave Holiday');
   const [desc, setDesc] = (0, w.useState)('As per administrative guidelines and weather conditions, school will observe a holiday. Online homework tasks have been shared in the app.');
@@ -23956,7 +23956,7 @@ function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = 'Haridwar Public S
     description: desc,
     startDate,
     reopeningDate: reopenDate,
-    schoolPhone: '+91 7500058655'
+    schoolPhone: schoolPhone || '+91 7500058655'
   });
 
   const handleShareWhatsApp = () => {
@@ -25664,7 +25664,7 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
     () =>
       e.feeStructures.filter(
         (e) =>
-          e.className === u &&
+          isClassMatch(e.className, u) &&
           e.academicSession === f &&
           e.active !== false &&
           (m === `All Streams` ? !e.academicStream : e.academicStream === m),
@@ -28746,7 +28746,8 @@ function Fi({ data: e, onUpdate: t }) {
       {whatsAppNoticeOpen && (
         <WhatsAppNoticeDialog
           isOpen={whatsAppNoticeOpen}
-          schoolName={e?.institution?.name || e?.school?.name || `Haridwar Public School`}
+          schoolName={e?.institution?.name || e?.school?.name || `Bright Nexa School`}
+          schoolPhone={e?.institution?.phone || e?.institution?.contactNumber || ``}
           onClose={() => setWhatsAppNoticeOpen(false)}
         />
       )}
@@ -29070,8 +29071,8 @@ function Bi({ text: e }) {
 }
 function Vi(e, t) {
   return (
-    e.className === t.className &&
-    (!t.section || e.section === t.section) &&
+    isClassMatch(e.className, t.className) &&
+    (!t.section || isSectionMatch(e.section, t.section)) &&
     (!t.academicStream || e.academicStream === t.academicStream)
   );
 }
@@ -29681,7 +29682,7 @@ function Hi({ data: e, students: t, snapshot: n }) {
           onClose={() => setWhatsAppPtmOpen(false)}
           exam={a}
           students={o}
-          schoolName={n?.institution?.name || 'Haridwar Public School'}
+          schoolName={e?.institution?.name || n?.institution?.name || 'Bright Nexa School'}
         />
       )}
     </Component1006>
@@ -29689,8 +29690,8 @@ function Hi({ data: e, students: t, snapshot: n }) {
 }
 function Ui(e, t) {
   return (
-    e.className === t.className &&
-    (!t.section || e.section === t.section) &&
+    isClassMatch(e.className, t.className) &&
+    (!t.section || isSectionMatch(e.section, t.section)) &&
     (!t.academicStream || e.academicStream === t.academicStream)
   );
 }
@@ -29714,7 +29715,7 @@ function Wi(e) {
 function Gi({ data: e, students: t }) {
   let [n, r] = (0, w.useState)(e.exams[0]?.id || ``);
   let i = e.exams.find((e) => e.id === n);
-  let a = t.filter((e) => e.className === i?.className);
+  let a = t.filter((e) => !i || (isClassMatch(e.className, i.className) && (!i.section || isSectionMatch(e.section, i.section))));
   let o = (0, w.useMemo)(
     () =>
       a
@@ -32598,7 +32599,7 @@ function Aa({ students: e, data: t }) {
     (t) => t.date === a && e.some((e) => e.id === t.studentId),
   );
   let s = t.homework.filter((e) => i.has(`${e.className}-${e.section}`));
-  let c = t.exams.filter((t) => e.some((e) => e.className === t.className));
+  let c = t.exams.filter((exam) => e.some((st) => isClassMatch(st.className, exam.className)));
   const Component1381 = `div`;
   const Component1382 = `span`;
   const Component1383 = `h2`;
@@ -32680,7 +32681,7 @@ function _Component86({ students: e, data: t }) {
     : 0;
   let l = t.homework.filter(
     (e) =>
-      e.className === n.className && (e.section === n.section || !e.section),
+      isClassMatch(e.className, n.className) && (isSectionMatch(e.section, n.section) || !e.section),
   );
   let u = t.achievements.filter((e) => e.studentId === n.id);
   const Component1397 = `div`;
@@ -42437,6 +42438,44 @@ function Ds() {
       return false;
     }
   });
+  let [globalSearch, setGlobalSearch] = (0, w.useState)('');
+  let [searchDropdownOpen, setSearchDropdownOpen] = (0, w.useState)(false);
+  let searchInputRef = (0, w.useRef)(null);
+
+  (0, w.useEffect)(() => {
+    let onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          setSearchDropdownOpen(true);
+        }
+      }
+      if (e.key === 'Escape') {
+        setSearchDropdownOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  let searchResults = (0, w.useMemo)(() => {
+    let q = (globalSearch || '').trim().toLowerCase();
+    if (!q || q.length < 1) return { students: [], classes: [], receipts: [] };
+    let stus = (n || []).filter(s => {
+      let combined = [s.name, s.admissionNumber, s.studentUniqueId, s.className, s.section, s.fatherName, s.mobile].filter(Boolean).join(' ').toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 8);
+    let clss = (i.classes || []).filter(c => {
+      let combined = [c.name, c.section, c.academicStream].filter(Boolean).join(' ').toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 5);
+    let rcts = (i.feePayments || []).filter(f => {
+      let combined = [f.receiptNumber, f.category, f.paymentMode, f.remarks].filter(Boolean).join(' ').toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 5);
+    return { students: stus, classes: clss, receipts: rcts };
+  }, [globalSearch, n, i.classes, i.feePayments]);
 
   (0, w.useEffect)(() => {
     if (typeof BroadcastChannel === 'undefined') return;
@@ -42884,13 +42923,118 @@ function Ds() {
           >
             <_Component82 size={22} />
           </Component2072>
-          <Component2075 className={`search-box`}>
-            <$e size={18} />
-            <Component2073
-              placeholder={`Search students, classes, receipts…`}
-            />
-            <Component2074>{`Ctrl K`}</Component2074>
-          </Component2075>
+          <div style={{ position: 'relative' }}>
+            <Component2075 className={`search-box`}>
+              <$e size={18} />
+              <Component2073
+                ref={searchInputRef}
+                value={globalSearch}
+                onChange={(e) => {
+                  setGlobalSearch(e.target.value);
+                  setSearchDropdownOpen(true);
+                }}
+                onFocus={() => setSearchDropdownOpen(true)}
+                placeholder={`Search students, classes, receipts…`}
+              />
+              <Component2074>{`Ctrl K`}</Component2074>
+            </Component2075>
+            {searchDropdownOpen && globalSearch.trim().length > 0 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  width: '380px',
+                  maxHeight: '380px',
+                  overflowY: 'auto',
+                  background: '#ffffff',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  marginTop: '6px',
+                  padding: '8px',
+                  zIndex: 1000
+                }}
+              >
+                {searchResults.students.length === 0 && searchResults.classes.length === 0 && searchResults.receipts.length === 0 ? (
+                  <div style={{ padding: '12px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                    No records match &ldquo;{globalSearch}&rdquo;
+                  </div>
+                ) : (
+                  <div>
+                    {searchResults.students.length > 0 && (
+                      <div style={{ marginBottom: '8px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', padding: '4px 8px' }}>
+                          Students ({searchResults.students.length})
+                        </div>
+                        {searchResults.students.map((st) => (
+                          <div
+                            key={st.id}
+                            style={{ padding: '8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            onClick={() => {
+                              l('Students');
+                              setSearchDropdownOpen(false);
+                            }}
+                          >
+                            <div>
+                              <strong style={{ fontSize: '13px', display: 'block', color: '#0f172a' }}>{st.name}</strong>
+                              <small style={{ color: '#64748b' }}>Class {st.className}{st.section ? `-${st.section}` : ''} • Adm: {st.admissionNumber || st.studentUniqueId || 'N/A'}</small>
+                            </div>
+                            <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>View →</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.classes.length > 0 && (
+                      <div style={{ marginBottom: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '6px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', padding: '4px 8px' }}>
+                          Classes ({searchResults.classes.length})
+                        </div>
+                        {searchResults.classes.map((cl) => (
+                          <div
+                            key={cl.id}
+                            style={{ padding: '8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            onClick={() => {
+                              l('Class & Section Setup');
+                              setSearchDropdownOpen(false);
+                            }}
+                          >
+                            <div>
+                              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Class {cl.name} {cl.section ? `(${cl.section})` : ''}</strong>
+                            </div>
+                            <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>Setup →</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.receipts.length > 0 && (
+                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '6px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', padding: '4px 8px' }}>
+                          Receipts ({searchResults.receipts.length})
+                        </div>
+                        {searchResults.receipts.map((rc) => (
+                          <div
+                            key={rc.id}
+                            style={{ padding: '8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            onClick={() => {
+                              l('Fees');
+                              setSearchDropdownOpen(false);
+                            }}
+                          >
+                            <div>
+                              <strong style={{ fontSize: '13px', color: '#0f172a' }}>Rcpt #{rc.receiptNumber}</strong>
+                              <small style={{ color: '#64748b', display: 'block' }}>{rc.category} • ₹{rc.amount}</small>
+                            </div>
+                            <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>Fees →</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <Component2084 className={`topbar-actions`}>
             {m && (v === `OWNER` || v === `ADMIN`) && (
               <Component2077
