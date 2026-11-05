@@ -38198,11 +38198,26 @@ function Ds() {
         setSearchDropdownOpen(true);
       },
       onFocus: () => setSearchDropdownOpen(true),
+      onKeyDown: (e3) => {
+        if (e3.key === "Enter") {
+          if (searchResults.students.length > 0) {
+            l2("Students");
+            setSearchDropdownOpen(false);
+          } else if (searchResults.classes.length > 0) {
+            l2("Class & Section Setup");
+            setSearchDropdownOpen(false);
+          } else if (searchResults.receipts.length > 0) {
+            l2("Fees");
+            setSearchDropdownOpen(false);
+          }
+        }
+      },
       placeholder: `Search students, classes, receipts\u2026`
     }
   ), /* @__PURE__ */ w.createElement(Component2074, null, `Ctrl K`)), searchDropdownOpen && globalSearch.trim().length > 0 && /* @__PURE__ */ w.createElement(
     "div",
     {
+      onMouseDown: (e3) => e3.preventDefault(),
       style: {
         position: "absolute",
         top: "100%",
@@ -38216,7 +38231,7 @@ function Ds() {
         border: "1px solid #cbd5e1",
         marginTop: "6px",
         padding: "8px",
-        zIndex: 1e3
+        zIndex: 9999
       }
     },
     searchResults.students.length === 0 && searchResults.classes.length === 0 && searchResults.receipts.length === 0 ? /* @__PURE__ */ w.createElement("div", { style: { padding: "12px", textAlign: "center", color: "#64748b", fontSize: "13px" } }, "No records match \u201C", globalSearch, "\u201D") : /* @__PURE__ */ w.createElement("div", null, searchResults.students.length > 0 && /* @__PURE__ */ w.createElement("div", { style: { marginBottom: "8px" } }, /* @__PURE__ */ w.createElement("div", { style: { fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#64748b", padding: "4px 8px" } }, "Students (", searchResults.students.length, ")"), searchResults.students.map((st) => /* @__PURE__ */ w.createElement(

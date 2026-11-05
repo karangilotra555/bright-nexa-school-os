@@ -42934,12 +42934,27 @@ function Ds() {
                   setSearchDropdownOpen(true);
                 }}
                 onFocus={() => setSearchDropdownOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (searchResults.students.length > 0) {
+                      l('Students');
+                      setSearchDropdownOpen(false);
+                    } else if (searchResults.classes.length > 0) {
+                      l('Class & Section Setup');
+                      setSearchDropdownOpen(false);
+                    } else if (searchResults.receipts.length > 0) {
+                      l('Fees');
+                      setSearchDropdownOpen(false);
+                    }
+                  }
+                }}
                 placeholder={`Search students, classes, receipts…`}
               />
               <Component2074>{`Ctrl K`}</Component2074>
             </Component2075>
             {searchDropdownOpen && globalSearch.trim().length > 0 && (
               <div
+                onMouseDown={(e) => e.preventDefault()}
                 style={{
                   position: 'absolute',
                   top: '100%',
@@ -42953,7 +42968,7 @@ function Ds() {
                   border: '1px solid #cbd5e1',
                   marginTop: '6px',
                   padding: '8px',
-                  zIndex: 1000
+                  zIndex: 9999
                 }}
               >
                 {searchResults.students.length === 0 && searchResults.classes.length === 0 && searchResults.receipts.length === 0 ? (
