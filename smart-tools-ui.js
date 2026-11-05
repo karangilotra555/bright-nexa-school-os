@@ -102,10 +102,36 @@ function invalidateTimetable(){
 function demandChoices(field){
  return [...new Set(editor.demands.map(d=>String(d[field]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
 }
+function loadSchoolOsContext(){
+ try{
+  const raw=localStorage.getItem('bright-nexa-school-os:operations:v1');
+  if(raw){
+   const ops=JSON.parse(raw);
+   const classes=(ops.classes||[]).map(c=>`${c.name}${c.section?'-'+c.section:''}`.trim()).filter(Boolean);
+   const subjects=(ops.subjects||[]).map(s=>typeof s==='string'?s:s.name).filter(Boolean);
+   return{classes,subjects};
+  }
+ }catch(e){}
+ return{classes:[],subjects:[]};
+}
 function suggest(){
- for(const [key,id] of [['class','ttClassesList'],['subject','ttSubjectsList']]){
-  const list=$(id);list.replaceChildren();
-  for(const v of demandChoices(key)){const o=dom('option');o.value=v;list.append(o);}
+ const ctx=loadSchoolOsContext();
+ const stdClasses=['Nursery','LKG','UKG','Class 1-A','Class 2-A','Class 3-A','Class 4-A','Class 5-A','Class 6-A','Class 7-A','Class 8-A','Class 9-A','Class 10-A','Class 11-A','Class 12-A'];
+ const stdSubjects=['Mathematics','English','Science','Hindi','Social Science','Computer Science / AI','Physics','Chemistry','Biology','Economics','Accountancy','Physical Education','Environmental Studies (EVS)'];
+
+ for(const [key,id,ctxItems,stdItems] of [
+  ['class','ttClassesList',ctx.classes,stdClasses],
+  ['subject','ttSubjectsList',ctx.subjects,stdSubjects]
+ ]){
+  const list=$(id);if(!list)continue;list.replaceChildren();
+  const seen=new Set();
+  const all=[...demandChoices(key),...ctxItems,...stdItems];
+  for(const v of all){
+   const trimmed=String(v||'').trim();
+   if(!trimmed||seen.has(trimmed.toLowerCase()))continue;
+   seen.add(trimmed.toLowerCase());
+   const o=dom('option');o.value=trimmed;list.append(o);
+  }
  }
 }
 function field(title,value,onChange,options={}){

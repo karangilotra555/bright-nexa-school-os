@@ -21,12 +21,13 @@ h1{font-size:25px;letter-spacing:-.03em;margin:0 0 9px}h2{font-size:20px;margin:
 .tabs button.active{background:#0b315e;color:white;border-color:#0b315e}
 .card{border:1px solid #dce6ef;background:white;border-radius:17px;padding:22px;margin-bottom:16px;box-shadow:0 6px 22px #061a3609}
 label{display:block;color:#3a4f68;font-size:12px;font-weight:750;margin-bottom:6px}
-textarea,select,input{font:inherit;width:100%;background:white;border:1px solid #cbdde9;color:#102640;padding:10px 11px;border-radius:9px;min-height:42px}
+textarea,select,input{font:inherit;width:100%;background:white;border:1px solid #cbdde9;color:#102640;padding:10px 11px;border-radius:9px;min-height:42px;transition:border-color .15s ease,box-shadow .15s ease}
+input:focus,select:focus,textarea:focus{border-color:#0284c7;box-shadow:0 0 0 3px rgba(2,132,199,0.15);outline:none}
 textarea{resize:vertical;line-height:1.45;font-size:12px;min-height:145px}
 input[type=file]{font-size:12px}
 button,.btn{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 16px;font-weight:760}
 .primary{background:#138ed8;color:white}.secondary{background:#e7f2fc;color:#0b315e;border:1px solid #c3ddec}.light{background:#f5f7fb;color:#26496e;border:1px solid #dce6ef}.danger{background:#fff2f2;color:#ad3140;border:1px solid #f7d2d7}
-button:disabled{cursor:not-allowed;opacity:.5}:focus-visible{outline:3px solid #ff7818;outline-offset:2px}
+button:disabled{cursor:not-allowed;opacity:.5}:focus-visible{outline:2px solid #0284c7;outline-offset:1px}
 .actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}

@@ -68,3 +68,39 @@ test('BrightNexaApp report card Hi displays uploaded photo and realistic roll nu
   assert.match(src, /l\.photoDataUrl\s*\?/, 'Hi report card preview must check l.photoDataUrl');
   assert.match(src, /l\.rollNumber\s*\|\|\s*`-`/, 'Roll number fallback must be dash rather than 06');
 });
+
+test('AI Teacher Tools generate distinct structured templates for each of the 10 tools', () => {
+  const src = read('app-extracted/src/BrightNexaApp.jsx');
+  const expectedSignatures = [
+    'LESSON PLAN:',
+    'PRACTICE WORKSHEET:',
+    'ANNUAL / PERIODIC EXAMINATION:',
+    'DAILY HOMEWORK ASSIGNMENT:',
+    'STUDENT PERFORMANCE REMARKS',
+    'OFFICIAL PARENT COMMUNICATION',
+    'INDIVIDUALIZED REMEDIAL ACTION PLAN',
+    'COLLABORATIVE & EXPERIENTIAL CLASSROOM ACTIVITIES',
+    'DIAGNOSTIC CLASS TEST:',
+    'OFFICIAL SCHOOL CIRCULAR'
+  ];
+
+  for (const sig of expectedSignatures) {
+    assert.ok(src.includes(sig), `Must contain distinct template for ${sig}`);
+  }
+});
+
+test('Smart Timetable Generator links School OS classes, subjects and uses polished focus styles', () => {
+  for (const file of ['smart-tools-ui.js', 'docs/smart-tools-ui.js']) {
+    const js = read(file);
+    assert.match(js, /loadSchoolOsContext/, `${file} must load School OS context`);
+    assert.match(js, /bright-nexa-school-os:operations:v1/, `${file} must read operations context`);
+    assert.match(js, /ttClassesList/, `${file} must populate ttClassesList`);
+    assert.match(js, /ttSubjectsList/, `${file} must populate ttSubjectsList`);
+  }
+
+  for (const file of ['smart-tools.html', 'docs/smart-tools.html']) {
+    const html = read(file);
+    assert.doesNotMatch(html, /:focus-visible\{[^}]*#ff7818/, `${file} must not use harsh orange focus outline`);
+    assert.match(html, /0284c7/, `${file} must use school primary blue focus outline`);
+  }
+});

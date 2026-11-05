@@ -29041,80 +29041,268 @@ function Oa({
   difficulty: a2,
   count: o2
 }) {
-  let s2 = `${`${e2.replace(` Generator`, ``)} \u2014 ${n2}: ${r2}`}
+  let s2 = `${e2.replace(` Generator`, ``)} \u2014 ${n2}: ${r2}
 Class/Batch: ${t2} | Difficulty: ${a2} | Language: ${i2}
 
-TEACHER REVIEW REQUIRED BEFORE USE
+[TEACHER REVIEW REQUIRED BEFORE USE]
 `;
+  let numItems = Math.min(25, Math.max(3, Number(o2) || 5));
   if (e2.includes(`Lesson Plan`)) {
     return `${s2}
-Learning outcomes
-1. Learners can explain the key ideas of ${r2}.
-2. Learners can connect ${r2} with daily life.
-3. Learners can answer age-appropriate questions independently.
+LESSON PLAN: ${n2} \u2014 ${r2}
+Target Class: ${t2} | Duration: 40-45 Minutes | Level: ${a2}
 
-Warm-up (5 min)
-Ask two familiar examples related to ${r2}. Invite learners to share relevant examples from their local context.
+I. INSTRUCTIONAL OBJECTIVES:
+1. Knowledge: Learners will clearly define and explain the core concept of ${r2}.
+2. Understanding: Learners will connect ${r2} with real-world examples and daily-life situations.
+3. Application: Learners will independently answer questions and solve exercises related to ${r2}.
 
-Teaching sequence (20 min)
-\u2022 Explain the concept with one board diagram.
-\u2022 Think\u2013pair\u2013share activity.
-\u2022 Check understanding with three oral questions.
+II. TEACHING AIDS & PREREQUISITES:
+\u2022 Whiteboard/Blackboard, concept diagrams, and everyday situational examples.
+\u2022 Prerequisite: Basic foundational terminology of ${n2}.
 
-Practice (15 min)
-Students create a small concept map and compare answers.
+III. PERIOD STRUCTURE & TIMELINE:
+1. Warm-up & Hook (5 Min):
+   - Ask two engaging introductory questions connected to ${r2}.
+   - Invite learners to share observations from their local environment.
+2. Direct Concept Delivery (20 Min):
+   - Structured board explanation and key definitions.
+   - Step-by-step breakdown of ${r2} with 2 practical illustrations.
+   - Address common misconceptions.
+3. Guided & Peer Practice (12 Min):
+   - Think-Pair-Share: Have students discuss a practical scenario on ${r2} with their bench partner.
+   - Solve 2 sample problems on the board with active student participation.
+4. Summary & Exit Ticket (5 Min):
+   - 3 quick oral check questions.
+   - Exit slip: One fact learned today, one example, and one doubt to review tomorrow.
 
-Assessment
-Exit ticket: one fact, one example and one remaining question.
-
-Homework
-Revise the concept and find two real-life examples.`;
-  } else if (e2.includes(`Parent Message`)) {
-    return `${s2}
-English
-Dear Parent, today the class worked on ${r2} in ${n2}. Please help your child revise the class notes and complete the assigned practice. Kindly contact the teacher if support is needed.`;
-  } else if (e2.includes(`Student Remark`)) {
-    return `${s2}
-Positive remark
-The student participates sincerely and is developing a clear understanding of ${r2}.
-
-Improvement remark
-Regular revision and guided practice in ${n2} will help the student gain confidence.
-
-Actionable next step
-Complete three short practice tasks this week and discuss mistakes with the teacher.
-
-Avoid labels or shaming; edit this draft using actual classroom evidence.`;
-  } else if (e2.includes(`School Notice`)) {
-    return `${s2}
-NOTICE
-Date: __________
-Subject: ${r2}
-
-All students and parents are informed that ${r2}. Please note the instructions, date, time and required materials after verification by the school office.
-
-Authorized signatory: __________`;
-  } else {
-    return `${s2}
-Instructions
-Attempt all questions. Show your working where required.
-
-Questions
-${Array.from(
-      {
-        length: Math.min(50, Math.max(3, o2))
-      },
-      (e3, t3) => `${t3 + 1}. ${ka(t3, r2, a2)}`
-    ).join(`
-`)}
-
-Answer key / teacher notes
-1. ____________________
-2. ____________________
-3. ____________________
-
-Teacher must verify factual accuracy, syllabus alignment and marks before printing.`;
+IV. HOMEWORK & EXTENSION:
+- Revise textbook notes for ${r2} and complete assigned practice tasks.`;
   }
+  if (e2.includes(`Worksheet`)) {
+    return `${s2}
+PRACTICE WORKSHEET: ${n2}
+Topic: ${r2} | Class: ${t2} | Level: ${a2}
+Student Name: _______________________ Roll No: _____ Date: _________
+
+--- SECTION A: CONCEPT RECALL & OBJECTIVE (1 Mark Each) ---
+1. State the fundamental definition or rule of ${r2}.
+2. True or False: ${r2} plays an essential role in practical applications of ${n2}. (   )
+3. Fill in the blank: The primary significance of ${r2} is ___________________.
+4. Name two key terms or components directly associated with ${r2}.
+
+--- SECTION B: SHORT ANSWER & CONCEPTUAL QUESTIONS (2 Marks Each) ---
+${Array.from({ length: numItems }, (_2, idx) => `${idx + 5}. ${ka(idx, r2, a2)}`).join("\n")}
+
+--- SECTION C: APPLICATION & THINKING TASK (4 Marks) ---
+${numItems + 5}. Describe a real-life situation where understanding ${r2} helps solve a problem. Support your answer with reasons.
+
+Teacher's Remarks: ____________________________________ Marks: _____ / 25`;
+  }
+  if (e2.includes(`Question Paper`)) {
+    return `${s2}
+ANNUAL / PERIODIC EXAMINATION: ${n2}
+Chapter / Topic: ${r2} | Class: ${t2}
+Time Allowed: 1 Hour | Maximum Marks: 25 | Level: ${a2}
+
+GENERAL INSTRUCTIONS:
+1. All questions are compulsory. Marks are indicated against each question.
+2. Write neat and legible answers.
+
+--- SECTION A: OBJECTIVE QUESTIONS (5 Marks \u2014 1 Mark Each) ---
+Q1. Multiple Choice: Which statement accurately describes ${r2}?
+    (a) Option A    (b) Option B    (c) Option C    (d) Option D
+Q2. State True or False: Principles of ${r2} apply universally under standard conditions.
+Q3. Fill in the blank: In ${n2}, ${r2} is fundamentally used to ________________.
+Q4. Define ${r2} in one sentence.
+Q5. Give one practical unit or daily-life example connected with ${r2}.
+
+--- SECTION B: SHORT ANSWER QUESTIONS (10 Marks \u2014 2 Marks Each) ---
+${Array.from({ length: 5 }, (_2, idx) => `Q${idx + 6}. ${ka(idx, r2, a2)} [2 Marks]`).join("\n")}
+
+--- SECTION C: LONG ANSWER / APPLICATION (10 Marks \u2014 5 Marks Each) ---
+Q11. Detailed Concept Analysis: Explain ${r2} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [5 Marks]
+Q12. Problem Solving: Analyze a real-world case where principles of ${r2} are tested. Propose a logical solution step by step. [5 Marks]
+
+*** END OF QUESTION PAPER ***`;
+  }
+  if (e2.includes(`Homework`)) {
+    return `${s2}
+DAILY HOMEWORK ASSIGNMENT: ${n2}
+Topic: ${r2} | Class: ${t2}
+Assigned Date: __________ | Due Date: __________
+Target Duration: 25-30 Minutes
+
+1. CONCEPT REVISION (8 Mins):
+   - Read textbook section on "${r2}" thoroughly.
+   - Write down 3 essential keywords and their meanings in your homework notebook.
+
+2. PRACTICE EXERCISES (15 Mins):
+${Array.from({ length: Math.min(5, numItems) }, (_2, idx) => `   Task ${idx + 1}: ${ka(idx, r2, a2)}`).join("\n")}
+
+3. OBSERVATION & DISCOVERY (7 Mins):
+   - Identify one real-world occurrence of ${r2} at home or around your neighborhood.
+   - Write 2 sentences explaining how it connects to today's classroom lesson.
+
+PARENT ACKNOWLEDGEMENT:
+"I confirm that my child has completed today's homework independently."
+Parent / Guardian Signature: _______________________ Date: ____________`;
+  }
+  if (e2.includes(`Student Remark`)) {
+    return `${s2}
+STUDENT PERFORMANCE REMARKS FOR REPORT CARDS & PTM
+Subject: ${n2} | Class: ${t2} | Focus Area: ${r2}
+
+[1. COMMENDABLE / EXCELLENT PROGRESS (Grade A1 / A2)]:
+"Demonstrates outstanding conceptual clarity in ${r2}. Actively participates in class discussions and shows exceptional problem-solving initiative in ${n2}."
+
+[2. CONSISTENT & DILIGENT (Grade B1 / B2)]:
+"Understands the fundamental ideas of ${r2} well. With slightly more daily practice in structured problem-solving, can easily achieve top-tier mastery."
+
+[3. NEEDS GUIDED PRACTICE (Grade C1 / C2)]:
+"Grasping basic concepts of ${r2}; needs regular revision and encouragement to clarify doubts promptly. Daily 15-minute concept review at home will boost confidence."
+
+[4. TARGETED REMEDIAL ATTENTION (Grade D / E)]:
+"Requires individualized assistance in ${r2}. Encouraged to attend remedial support sessions and complete guided worksheets with teacher feedback."
+
+REPORT CARD ONE-LINER:
+"Solid effort in ${n2}; continued focus on ${r2} will ensure consistent academic excellence."`;
+  }
+  if (e2.includes(`Parent Message`)) {
+    return `${s2}
+OFFICIAL PARENT COMMUNICATION / WHATSAPP NOTICE
+Subject: ${n2} | Class: ${t2} | Topic: ${r2}
+
+ENGLISH VERSION:
+Dear Parent,
+Greetings from the School. Today in Class ${t2}, we completed the chapter/topic "${r2}" in ${n2}.
+Kindly ensure that your child:
+1. Revises today's class notes on ${r2}.
+2. Completes the assigned practice homework in their notebook.
+3. Clarifies any pending doubts with the subject teacher tomorrow.
+Thank you for your partnership in your child's learning.
+\u2014 Subject Teacher, ${n2}
+
+HINDI VERSION (\u0939\u093F\u0902\u0926\u0940 \u0938\u0902\u0926\u0947\u0936):
+\u0906\u0926\u0930\u0923\u0940\u092F \u0905\u092D\u093F\u092D\u093E\u0935\u0915,
+\u0938\u093E\u0926\u0930 \u0928\u092E\u0938\u094D\u0915\u093E\u0930\u0964 \u0906\u091C \u0915\u0915\u094D\u0937\u093E ${t2} \u092E\u0947\u0902 ${n2} \u0935\u093F\u0937\u092F \u0915\u0947 \u0905\u0902\u0924\u0930\u094D\u0917\u0924 "${r2}" \u0915\u093E \u0905\u0927\u094D\u092F\u092F\u0928 \u0915\u0930\u093E\u092F\u093E \u0917\u092F\u093E\u0964
+\u0915\u0943\u092A\u092F\u093E \u092F\u0939 \u0938\u0941\u0928\u093F\u0936\u094D\u091A\u093F\u0924 \u0915\u0930\u0947\u0902 \u0915\u093F \u0906\u092A\u0915\u093E \u092C\u091A\u094D\u091A\u093E:
+1. \u0918\u0930 \u092A\u0930 \u0906\u091C \u0915\u0947 \u0928\u094B\u091F\u094D\u0938 \u0915\u093E \u0905\u092D\u094D\u092F\u093E\u0938 \u0935 \u0930\u093F\u0935\u0940\u091C\u093C\u0928 \u0915\u0930\u0947\u0964
+2. \u0926\u0940 \u0917\u0908 \u0917\u0943\u0939\u0915\u093E\u0930\u094D\u092F (Homework) \u0915\u094B \u0938\u092E\u092F \u092A\u0930 \u092A\u0942\u0930\u093E \u0915\u0930\u0947\u0964
+\u0906\u092A\u0915\u0947 \u0928\u093F\u0930\u0902\u0924\u0930 \u0938\u0939\u092F\u094B\u0917 \u0915\u0947 \u0932\u093F\u090F \u0927\u0928\u094D\u092F\u0935\u093E\u0926\u0964
+\u2014 \u0935\u093F\u0937\u092F \u0905\u0927\u094D\u092F\u093E\u092A\u0915, ${n2}`;
+  }
+  if (e2.includes(`Weak Student`) || e2.includes(`Remedial`)) {
+    return `${s2}
+INDIVIDUALIZED REMEDIAL ACTION PLAN (STP)
+Subject: ${n2} | Class: ${t2} | Focus Topic: ${r2}
+Plan Duration: 2 Weeks | Objective: Foundation Strengthening & Confidence Building
+
+STEP 1: LEARNING GAP DIAGNOSIS:
+\u2022 Identified Barrier: Student faces difficulty recalling fundamental definitions and multistep reasoning in ${r2}.
+\u2022 Baseline Target: Raise conceptual comprehension from below 40% to above 60%.
+
+STEP 2: SIMPLIFIED TEACHING STRATEGY:
+\u2022 Use concrete analogies, visual diagrams, and bilingual explanation (Hindi/English).
+\u2022 Deconstruct ${r2} into 3 manageable micro-units:
+  1. Everyday intuitive analogy and basic definition.
+  2. One core formula or rule demonstrated step by step.
+  3. Low-stress single-concept practice.
+
+STEP 3: PEER BUDDY SYSTEM:
+\u2022 Seat student alongside a supportive peer mentor during zero-period revision sessions.
+
+STEP 4: DAILY 10-MINUTE MICRO-PRACTICE SCHEDULE:
+\u2022 Days 1-4: Master 3 key definitions and 2 diagrams of ${r2}.
+\u2022 Days 5-8: Solve 2 simple guided questions daily with teacher check.
+\u2022 Days 9-12: Complete one 5-question confidence booster worksheet.
+
+STEP 5: PROGRESS RE-ASSESSMENT:
+\u2022 Conduct a friendly 10-minute oral check and short 5-mark quiz on Day 14.
+Goal: Student gains clarity and participates actively in regular class without hesitation.`;
+  }
+  if (e2.includes(`Activity Ideas`)) {
+    return `${s2}
+COLLABORATIVE & EXPERIENTIAL CLASSROOM ACTIVITIES
+Subject: ${n2} | Class: ${t2} | Topic: ${r2}
+Pedagogy: NEP 2020 Aligned (Activity-Based & Joyful Learning)
+
+ACTIVITY 1: HANDS-ON DEMONSTRATION / PHYSICAL MODEL (15 Mins)
+\u2022 Activity Title: "Living Model of ${r2}"
+\u2022 Setup: Divide class into small teams. Using everyday classroom objects (charts, stationary, cards), each group demonstrates how ${r2} works physically.
+\u2022 Learning Outcome: Students visualize the core mechanism of ${r2} rather than passively memorizing theory.
+
+ACTIVITY 2: THINK-PAIR-SHARE & REAL-WORLD PUZZLE (12 Mins)
+\u2022 Activity Title: "${r2} Mystery Solver"
+\u2022 Setup: Teacher presents a real-world scenario where a breakdown in ${r2} causes a practical issue. Pairs have 5 minutes to diagnose the issue and present their 1-minute solution to the class.
+\u2022 Learning Outcome: Encourages logical reasoning, communication skills, and critical thinking.
+
+ACTIVITY 3: GAMIFIED LIGHTNING QUIZ RELAY (10 Mins)
+\u2022 Activity Title: "Speed Relay on ${r2}"
+\u2022 Setup: 2 teams at the board. The teacher announces a prompt related to ${r2}; each team member contributes one step or fact before passing the marker.
+\u2022 Learning Outcome: High energy, 100% participation, and instant detection of learning gaps.`;
+  }
+  if (e2.includes(`Class Test`)) {
+    return `${s2}
+DIAGNOSTIC CLASS TEST: ${n2}
+Topic: ${r2} | Class: ${t2} | Level: ${a2}
+Time: 20 Minutes | Maximum Marks: 15
+Student Name: _______________________ Roll No: _____ Date: _________
+
+PART A: RAPID RECALL (5 Marks \u2014 1 Mark Each)
+1. What is the central definition of ${r2}? ____________________________
+2. Write one primary rule or property of ${r2}. _______________________
+3. State True or False: ${r2} can be observed in everyday technology or nature. (   )
+4. Give one standard unit or common example of ${r2}.
+5. Fill in the blank: When studying ${n2}, ${r2} helps us understand ________________.
+
+PART B: CONCEPT EXPLANATION (6 Marks \u2014 3 Marks Each)
+6. Explain the mechanism or main principle of ${r2} in 3 to 4 concise sentences.
+7. What is a common mistake or misconception regarding ${r2}, and how can it be avoided?
+
+PART C: APPLICATION CHALLENGE (4 Marks)
+8. Higher Order Thinking: How can the principles of ${r2} be applied to improve a process or solve a problem in daily life? Justify with two points.
+
+TEACHER SCORING RUBRIC:
+\u2022 Q1-Q5: 1 mark each for correct terminology.
+\u2022 Q6-Q7: 2 marks for conceptual accuracy + 1 mark for clarity.
+\u2022 Q8: 2 marks for analytical reasoning + 2 marks for valid justification.`;
+  }
+  if (e2.includes(`School Notice`)) {
+    return `${s2}
+[INSTITUTION NAME] \u2014 OFFICIAL SCHOOL CIRCULAR
+Circular Ref No: BMS/CIR/2026/${Math.floor(100 + Math.random() * 900)} | Date: ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-IN")}
+To: All Students and Parents (Class ${t2})
+Subject: Important School Notice Regarding ${r2}
+
+Dear Students and Parents,
+
+This is to notify all parents and students of Class ${t2} regarding upcoming academic activities and arrangements concerning "${r2}" in ${n2}.
+
+KEY DETAILS & SCHEDULE:
+\u2022 Subject / Chapter: ${n2} \u2014 ${r2}
+\u2022 Concerned Classes: Class ${t2}
+\u2022 Venue & Timings: Regular school hours on the school campus.
+
+IMPORTANT INSTRUCTIONS:
+1. Full attendance is compulsory for all students during these sessions.
+2. Students must bring their relevant textbook, notebook, and geometry/drawing materials.
+3. Review of ${r2} will form part of the upcoming periodic assessments.
+4. For any academic inquiries, parents may contact the subject teacher during official visiting hours (8:30 AM \u2013 9:30 AM).
+
+Thank you for your continuous support in maintaining our school's high educational standards.
+
+Authorized Signatory,
+Principal / Academic Coordinator
+[Institution Name]`;
+  }
+  return `${s2}
+Instructions: Attempt all questions. Show your working where required.
+
+Questions:
+${Array.from({ length: numItems }, (_2, idx) => `${idx + 1}. ${ka(idx, r2, a2)}`).join("\n")}
+
+Teacher Notes: Verify syllabus alignment and marks distribution before printing.`;
 }
 function ka(e2, t2, n2) {
   let r2 = [
