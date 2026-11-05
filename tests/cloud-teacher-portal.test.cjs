@@ -63,6 +63,11 @@ test('Cloud teacher portal has live student search, class filter, roll number di
    assert.match(html, /id="profileSearchInput"/, `${file} must have profileSearchInput`);
    assert.match(html, /id="profileSelectedBadge"/, `${file} must have profileSelectedBadge`);
    assert.match(html, /id="homeworkSubjectList"/, `${file} must have homeworkSubjectList`);
+   assert.match(html, /id="accountNameInput"/, `${file} must have accountNameInput`);
+   assert.match(html, /id="saveAccountNameButton"/, `${file} must have saveAccountNameButton`);
+   assert.match(html, /id="accountEmailDisplay"/, `${file} must have accountEmailDisplay`);
+   assert.match(html, /id="accountRoleDisplay"/, `${file} must have accountRoleDisplay`);
+   assert.match(html, /id="assignSubjectList"/, `${file} must have assignSubjectList`);
  }
 
  for (const file of ['teacher-access.js', 'docs/teacher-access.js']) {
@@ -71,6 +76,10 @@ test('Cloud teacher portal has live student search, class filter, roll number di
    assert.match(js, /function getFilteredProfileStudents/, `${file} must filter students by class and query`);
    assert.match(js, /function updateSelectedStudentBadge/, `${file} must display live selected student badge`);
    assert.match(js, /homeworkSubjectList/, `${file} must populate homeworkSubjectList in fillSubject`);
+   assert.match(js, /function staffName/, `${file} must resolve staffName`);
+   assert.match(js, /function staffLabel/, `${file} must format staffLabel with teacher name and email`);
+   assert.match(js, /saveAccountNameButton/, `${file} must support updating staff display name`);
  }
 });
+
 

@@ -32939,10 +32939,43 @@ Teacher's Remarks: ____________________________________ Marks: _____ / ${userMar
   }
 
   if (e.includes(`Question Paper`)) {
-    const secAMarks = Math.max(2, Math.round(userMarks * 0.2));
-    const secBMarks = Math.max(4, Math.round(userMarks * 0.4));
-    const secCMarks = userMarks - secAMarks - secBMarks;
-    const qCountSecB = Math.max(2, Math.min(8, Math.round(numItems * 0.5)));
+    const countA = Math.max(2, Math.min(6, Math.floor(numItems * 0.4)));
+    const countB = Math.max(2, Math.min(8, Math.floor(numItems * 0.4)));
+    const countC = Math.max(1, numItems - countA - countB);
+
+    const markA = 1;
+    const totalA = countA * markA;
+    const remainingMarks = Math.max(countB * 2 + countC * 5, userMarks - totalA);
+    const markB = Math.max(2, Math.floor((remainingMarks * 0.45) / countB));
+    const totalB = countB * markB;
+    const totalC = Math.max(countC * 5, userMarks - totalA - totalB);
+    const markC = Math.max(4, Math.floor(totalC / countC));
+
+    const secAPool = [
+      `Multiple Choice: Which statement accurately describes ${r} in ${n}?\n    (a) Option A    (b) Option B    (c) Option C    (d) Option D`,
+      `State True or False: Principles of ${r} apply universally under standard conditions in ${n}.`,
+      `Fill in the blank: In the study of ${n}, ${r} is fundamentally used to ________________.`,
+      `Define ${r} in one sentence.`,
+      `Identify: What is the primary characteristic or key property of ${r}?\n    (a) Characteristic 1    (b) Characteristic 2    (c) Characteristic 3    (d) Characteristic 4`,
+      `Give one practical observation or daily-life example connected with ${r}.`
+    ];
+
+    const secBPool = [
+      `Conceptual Reasoning: Why is ${r} important in ${n}? Give two supporting reasons.`,
+      `Distinguish between ${r} and related foundational concepts. State two key differences.`,
+      `Explain the step-by-step mechanism or process involved in ${r}.`,
+      `Cause & Effect: What happens when the standard parameters of ${r} change? Explain with a scenario.`,
+      `State the primary principles governing ${r} and write their practical importance.`,
+      `A student investigates a case involving ${r}. What primary observation verifies the concept?`,
+      `Compare the advantages and limitations of relying on ${r} in applied contexts.`,
+      `Draw a neat, labeled schematic representation or concept diagram illustrating ${r}.`
+    ];
+
+    const secCPool = [
+      `Detailed Concept Analysis: Explain ${r} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [${markC} Marks]`,
+      `Case-Study & Problem Solving: A student investigates a situation involving ${r}. Suggest a hypothesis, list the experimental procedure, and state the expected outcome. [${markC} Marks]`,
+      `Comprehensive Application: How can the principles of ${r} be utilized to resolve a practical challenge in ${n}? Justify your approach with reasons. [${markC} Marks]`
+    ];
 
     return `${s}
 ANNUAL / PERIODIC EXAMINATION: ${n}
@@ -32950,25 +32983,26 @@ Chapter / Topic: ${r} | Class: ${t}
 Time Allowed: ${userDuration} | Maximum Marks: ${userMarks} | Level: ${a}
 
 GENERAL INSTRUCTIONS:
-1. All questions are compulsory. Maximum Marks: ${userMarks}.
-2. Time Allowed: ${userDuration}. Write neat and legible answers.
+1. The question paper consists of ${countA + countB + countC} questions across 3 sections.
+2. Section A contains ${countA} Objective questions of ${markA} mark each.
+3. Section B contains ${countB} Short Answer questions of ${markB} marks each.
+4. Section C contains ${countC} Long Answer / Application questions of ${markC} marks each.
+5. All questions are compulsory. Internal choice is provided where applicable.
 
---- SECTION A: OBJECTIVE QUESTIONS (${secAMarks} Marks — 1 Mark Each) ---
-Q1. Multiple Choice: Which statement accurately describes ${r}?
-    (a) Option A    (b) Option B    (c) Option C    (d) Option D
-Q2. State True or False: Principles of ${r} apply universally under standard conditions.
-Q3. Fill in the blank: In ${n}, ${r} is fundamentally used to ________________.
-Q4. Define ${r} in one sentence.
-${Array.from({ length: Math.max(0, secAMarks - 4) }, (_, idx) => `Q${idx + 5}. Give one practical unit or daily-life example connected with ${r}.`).join('\n')}
+--- SECTION A: OBJECTIVE QUESTIONS (${countA * markA} Marks — ${markA} Mark Each) ---
+${Array.from({ length: countA }, (_, idx) => `Q${idx + 1}. ${secAPool[idx % secAPool.length]}`).join('\n\n')}
 
---- SECTION B: SHORT ANSWER QUESTIONS (${secBMarks} Marks) ---
-${Array.from({ length: qCountSecB }, (_, idx) => `Q${secAMarks + idx + 1}. ${ka(idx, r, a)} [${Math.max(1, Math.floor(secBMarks / qCountSecB))} Marks]`).join('\n')}
+--- SECTION B: SHORT ANSWER QUESTIONS (${countB * markB} Marks — ${markB} Marks Each) ---
+${Array.from({ length: countB }, (_, idx) => `Q${countA + idx + 1}. ${secBPool[idx % secBPool.length]} [${markB} Marks]`).join('\n\n')}
 
---- SECTION C: LONG ANSWER & APPLICATION (${secCMarks} Marks) ---
-Q${secAMarks + qCountSecB + 1}. Detailed Concept Analysis: Explain ${r} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [${Math.floor(secCMarks / 2)} Marks]
-Q${secAMarks + qCountSecB + 2}. Practical Problem Solving: Analyze a real-world case where principles of ${r} are tested. Propose a logical solution step by step. [${secCMarks - Math.floor(secCMarks / 2)} Marks]
+--- SECTION C: LONG ANSWER & APPLICATION (${totalC} Marks) ---
+${Array.from({ length: countC }, (_, idx) => `Q${countA + countB + idx + 1}. ${secCPool[idx % secCPool.length]}`).join('\n\n')}
 
-*** END OF QUESTION PAPER ***`;
+--- MARKING SCHEME & SUMMARY ---
+• Section A: ${countA * markA} Marks (${countA} Objective Questions)
+• Section B: ${countB * markB} Marks (${countB} Conceptual Short Questions)
+• Section C: ${totalC} Marks (${countC} Long Application Questions)
+TOTAL MARKS: ${userMarks} | END OF QUESTION PAPER`;
   }
 
   if (e.includes(`Homework`)) {

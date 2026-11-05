@@ -110,6 +110,28 @@ tr td select{padding:7px;min-width:115px}
   </div>
   <div data-view="notices" class="panel hidden"><h2>School notices</h2><button class="ghost" id="refreshNotices" type="button">↻ Refresh notices</button><div id="noticesList"></div></div>
   <div data-view="profiles" class="panel hidden"><h2>Student profile details</h2><p class="muted">School admin updates these records. The linked student / parent sees the same details in the mobile app and web.</p><div class="formgrid two"><div class="inputgroup"><label for="profileClassFilter">Filter by class</label><select id="profileClassFilter"><option value="">All accessible classes</option></select></div><div class="inputgroup"><label for="profileSearchInput">Search student (Name, Roll No, Admission No)</label><input type="search" id="profileSearchInput" placeholder="e.g. Aarav, 06, or BMS-2026-001" autocomplete="off"></div></div><div class="inputgroup" style="margin-bottom:12px"><label for="profileStudent">Student (<span id="profileStudentCount">0</span> available)</label><select id="profileStudent"></select></div><div id="profileSelectedBadge" class="notice hidden" style="margin-bottom:14px;border-left-color:#138ed8;background:#f0f8ff;color:#0b315e;font-weight:600"></div><button class="ghost" type="button" id="loadProfile">Load profile</button><form id="studentProfileForm" class="hidden"><div id="profileEditor"></div><button class="primary" id="saveProfile" type="submit">Save student details</button></form></div><div data-view="account" class="panel hidden">
+    <div style="border-bottom:1px solid #e6edf5;padding-bottom:19px;margin-bottom:21px">
+      <h2>Staff Account Profile</h2>
+      <p class="sub">Your verified school staff identity. Update your name to appear across rosters, assignments, and school documents.</p>
+      <div class="formgrid">
+        <div class="inputgroup">
+          <label for="accountNameInput">Teacher / Staff display name</label>
+          <input id="accountNameInput" placeholder="e.g. Karan Gilotra" maxlength="80">
+        </div>
+        <div class="inputgroup">
+          <label>School staff email</label>
+          <input id="accountEmailDisplay" readonly style="background:#f8fafc;color:#475569">
+        </div>
+        <div class="inputgroup">
+          <label>Assigned role</label>
+          <input id="accountRoleDisplay" readonly style="background:#f8fafc;color:#475569">
+        </div>
+      </div>
+      <div class="row" style="margin-top:13px">
+        <button class="primary" id="saveAccountNameButton" type="button">Save Account Name</button>
+        <span class="muted">Display name appears in all teacher selectors, rosters, and assignments.</span>
+      </div>
+    </div>
     <h2>Change Password</h2>
     <p class="sub">Change your own staff login password. You must confirm your current password. School admin approval is not required.</p>
     <form id="changePasswordForm" autocomplete="off">
@@ -150,7 +172,7 @@ tr td select{padding:7px;min-width:115px}
           <div><label for="assignClass">Class</label><select id="assignClass" required></select></div>
           <div><label for="assignType">Assignment</label><select id="assignType"><option value="class_teacher">Class Teacher</option><option value="subject_teacher">Subject Teacher</option></select></div>
         </div>
-        <div class="inputgroup"><label for="assignSubject">Subject (required only for subject teacher)</label><input id="assignSubject" placeholder="e.g. Mathematics"></div>
+        <div class="inputgroup"><label for="assignSubject">Subject (required only for subject teacher)</label><input id="assignSubject" placeholder="e.g. Mathematics" list="assignSubjectList"><datalist id="assignSubjectList"></datalist></div>
         <div class="checks">
           <label><input id="permRoster" type="checkbox" checked> View roster</label>
           <label><input id="permAttendance" type="checkbox" checked> Mark attendance</label>

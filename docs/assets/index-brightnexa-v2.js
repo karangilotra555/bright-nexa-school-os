@@ -29221,35 +29221,67 @@ ${numItems + 5}. Describe a real-life situation where understanding ${r2} helps 
 Teacher's Remarks: ____________________________________ Marks: _____ / ${userMarks}`;
   }
   if (e2.includes(`Question Paper`)) {
-    const secAMarks = Math.max(2, Math.round(userMarks * 0.2));
-    const secBMarks = Math.max(4, Math.round(userMarks * 0.4));
-    const secCMarks = userMarks - secAMarks - secBMarks;
-    const qCountSecB = Math.max(2, Math.min(8, Math.round(numItems * 0.5)));
+    const countA = Math.max(2, Math.min(6, Math.floor(numItems * 0.4)));
+    const countB = Math.max(2, Math.min(8, Math.floor(numItems * 0.4)));
+    const countC = Math.max(1, numItems - countA - countB);
+    const markA = 1;
+    const totalA = countA * markA;
+    const remainingMarks = Math.max(countB * 2 + countC * 5, userMarks - totalA);
+    const markB = Math.max(2, Math.floor(remainingMarks * 0.45 / countB));
+    const totalB = countB * markB;
+    const totalC = Math.max(countC * 5, userMarks - totalA - totalB);
+    const markC = Math.max(4, Math.floor(totalC / countC));
+    const secAPool = [
+      `Multiple Choice: Which statement accurately describes ${r2} in ${n2}?
+    (a) Option A    (b) Option B    (c) Option C    (d) Option D`,
+      `State True or False: Principles of ${r2} apply universally under standard conditions in ${n2}.`,
+      `Fill in the blank: In the study of ${n2}, ${r2} is fundamentally used to ________________.`,
+      `Define ${r2} in one sentence.`,
+      `Identify: What is the primary characteristic or key property of ${r2}?
+    (a) Characteristic 1    (b) Characteristic 2    (c) Characteristic 3    (d) Characteristic 4`,
+      `Give one practical observation or daily-life example connected with ${r2}.`
+    ];
+    const secBPool = [
+      `Conceptual Reasoning: Why is ${r2} important in ${n2}? Give two supporting reasons.`,
+      `Distinguish between ${r2} and related foundational concepts. State two key differences.`,
+      `Explain the step-by-step mechanism or process involved in ${r2}.`,
+      `Cause & Effect: What happens when the standard parameters of ${r2} change? Explain with a scenario.`,
+      `State the primary principles governing ${r2} and write their practical importance.`,
+      `A student investigates a case involving ${r2}. What primary observation verifies the concept?`,
+      `Compare the advantages and limitations of relying on ${r2} in applied contexts.`,
+      `Draw a neat, labeled schematic representation or concept diagram illustrating ${r2}.`
+    ];
+    const secCPool = [
+      `Detailed Concept Analysis: Explain ${r2} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [${markC} Marks]`,
+      `Case-Study & Problem Solving: A student investigates a situation involving ${r2}. Suggest a hypothesis, list the experimental procedure, and state the expected outcome. [${markC} Marks]`,
+      `Comprehensive Application: How can the principles of ${r2} be utilized to resolve a practical challenge in ${n2}? Justify your approach with reasons. [${markC} Marks]`
+    ];
     return `${s2}
 ANNUAL / PERIODIC EXAMINATION: ${n2}
 Chapter / Topic: ${r2} | Class: ${t2}
 Time Allowed: ${userDuration} | Maximum Marks: ${userMarks} | Level: ${a2}
 
 GENERAL INSTRUCTIONS:
-1. All questions are compulsory. Maximum Marks: ${userMarks}.
-2. Time Allowed: ${userDuration}. Write neat and legible answers.
+1. The question paper consists of ${countA + countB + countC} questions across 3 sections.
+2. Section A contains ${countA} Objective questions of ${markA} mark each.
+3. Section B contains ${countB} Short Answer questions of ${markB} marks each.
+4. Section C contains ${countC} Long Answer / Application questions of ${markC} marks each.
+5. All questions are compulsory. Internal choice is provided where applicable.
 
---- SECTION A: OBJECTIVE QUESTIONS (${secAMarks} Marks \u2014 1 Mark Each) ---
-Q1. Multiple Choice: Which statement accurately describes ${r2}?
-    (a) Option A    (b) Option B    (c) Option C    (d) Option D
-Q2. State True or False: Principles of ${r2} apply universally under standard conditions.
-Q3. Fill in the blank: In ${n2}, ${r2} is fundamentally used to ________________.
-Q4. Define ${r2} in one sentence.
-${Array.from({ length: Math.max(0, secAMarks - 4) }, (_2, idx) => `Q${idx + 5}. Give one practical unit or daily-life example connected with ${r2}.`).join("\n")}
+--- SECTION A: OBJECTIVE QUESTIONS (${countA * markA} Marks \u2014 ${markA} Mark Each) ---
+${Array.from({ length: countA }, (_2, idx) => `Q${idx + 1}. ${secAPool[idx % secAPool.length]}`).join("\n\n")}
 
---- SECTION B: SHORT ANSWER QUESTIONS (${secBMarks} Marks) ---
-${Array.from({ length: qCountSecB }, (_2, idx) => `Q${secAMarks + idx + 1}. ${ka(idx, r2, a2)} [${Math.max(1, Math.floor(secBMarks / qCountSecB))} Marks]`).join("\n")}
+--- SECTION B: SHORT ANSWER QUESTIONS (${countB * markB} Marks \u2014 ${markB} Marks Each) ---
+${Array.from({ length: countB }, (_2, idx) => `Q${countA + idx + 1}. ${secBPool[idx % secBPool.length]} [${markB} Marks]`).join("\n\n")}
 
---- SECTION C: LONG ANSWER & APPLICATION (${secCMarks} Marks) ---
-Q${secAMarks + qCountSecB + 1}. Detailed Concept Analysis: Explain ${r2} in detail with a labeled diagram or flowchart. Discuss its primary mechanism and importance. [${Math.floor(secCMarks / 2)} Marks]
-Q${secAMarks + qCountSecB + 2}. Practical Problem Solving: Analyze a real-world case where principles of ${r2} are tested. Propose a logical solution step by step. [${secCMarks - Math.floor(secCMarks / 2)} Marks]
+--- SECTION C: LONG ANSWER & APPLICATION (${totalC} Marks) ---
+${Array.from({ length: countC }, (_2, idx) => `Q${countA + countB + idx + 1}. ${secCPool[idx % secCPool.length]}`).join("\n\n")}
 
-*** END OF QUESTION PAPER ***`;
+--- MARKING SCHEME & SUMMARY ---
+\u2022 Section A: ${countA * markA} Marks (${countA} Objective Questions)
+\u2022 Section B: ${countB * markB} Marks (${countB} Conceptual Short Questions)
+\u2022 Section C: ${totalC} Marks (${countC} Long Application Questions)
+TOTAL MARKS: ${userMarks} | END OF QUESTION PAPER`;
   }
   if (e2.includes(`Homework`)) {
     return `${s2}

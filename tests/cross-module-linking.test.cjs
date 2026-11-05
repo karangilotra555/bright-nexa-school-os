@@ -118,5 +118,11 @@ test('AI Teacher Tools and Homework dialog use dropdown selectors populated from
   assert.match(src, /<R label=\{`Class`\}>\s*<select/, 'Homework dialog Class must be a select dropdown');
   assert.match(src, /<R label=\{`Section`\}>\s*<select/, 'Homework dialog Section must be a select dropdown');
   assert.match(src, /<R label=\{`Subject`\}>\s*<select/, 'Homework dialog Subject must be a select dropdown');
+
+  // Question Paper generator distinct non-repeating pools
+  assert.match(src, /secAPool\s*=/, 'Question paper must have dedicated diverse Section A pool');
+  assert.match(src, /secBPool\s*=/, 'Question paper must have dedicated diverse Section B pool');
+  assert.match(src, /secCPool\s*=/, 'Question paper must have dedicated diverse Section C pool');
 });
+
 

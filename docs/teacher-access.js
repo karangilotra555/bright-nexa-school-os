@@ -86,7 +86,11 @@
       dropSession();notify('Institution is inactive. Contact school administration.',true);return;
     }
     put('schoolLabel',school.name);
-    put('membership',school.name+' · '+me.email+' · '+me.role.replaceAll('_',' '));
+    const myName=staffName(me);
+    put('membership',school.name+' · '+(myName&&myName!==me.email?myName+' · ':'')+me.email+' · '+me.role.replaceAll('_',' '));
+    if($('accountEmailDisplay'))put('accountEmailDisplay',me.email);
+    if($('accountRoleDisplay'))put('accountRoleDisplay',me.role.replaceAll('_',' ').toUpperCase());
+    if($('accountNameInput'))$('accountNameInput').value=(myName&&myName!==me.email)?myName:'';
     put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     display('loginSection',false);display('portalSection',true);display('logout',true);
@@ -178,6 +182,32 @@
     if(me.role!=='teacher')return [];
     return allClasses.filter(c=>allAssignments.some(a=>a.school_user_id===me.id&&a.class_id===c.id&&a.active&&a[action]));
   }
+  function staffName(s){
+    if(!s)return '';
+    if(s.name)return s.name;
+    if(identity&&identity.id===s.auth_user_id&&(identity.user_metadata?.full_name||identity.user_metadata?.name)){
+      return identity.user_metadata.full_name||identity.user_metadata.name;
+    }
+    try{
+      const saved=JSON.parse(localStorage.getItem('bright-nexa-school-os:staff-names:'+me?.institution_id)||'{}');
+      if(saved[s.email])return saved[s.email];
+      if(s.id&&saved[s.id])return saved[s.id];
+    }catch(_){}
+    try{
+      const ops=JSON.parse(localStorage.getItem('bright-nexa-school-os:operations:v1')||'{}');
+      const match=(ops.teachers||[]).find(t=>t.email?.toLowerCase()===s.email?.toLowerCase());
+      if(match?.name)return match.name;
+    }catch(_){}
+    const raw=String(s.email||'').split('@')[0].replace(/[0-9_.-]+$/g,'').replace(/[._-]/g,' ');
+    if(raw.trim()){
+      return raw.split(' ').filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    }
+    return s.email;
+  }
+  function staffLabel(s){
+    const name=staffName(s);
+    return name&&name!==s.email?`${name} (${s.email})`:s.email;
+  }
   function studentLabel(s){
     const c=allClasses.find(cls=>cls.id===s.class_id);
     const classStr=c?`${c.name}${c.section?' '+c.section:''}`:'';
@@ -225,7 +255,13 @@
     const current=writableClasses('can_assign_homework')[0];
     if(current)fillSubject(current.id);
     if(isAdmin()){
-      options('assignTeacher',allStaff.filter(s=>s.role==='teacher'&&s.status==='active'),s=>s.email);
+      options('assignTeacher',allStaff.filter(s=>s.role==='teacher'&&s.status==='active'),staffLabel);
+      const subList=$('assignSubjectList');
+      if(subList){
+        subList.replaceChildren();
+        const stdSubs=['Mathematics','Science','English','Hindi','Social Science','Sanskrit','Computer Science','Art','EVS','Physics','Chemistry','Biology'];
+        for(const sub of stdSubs){const o=document.createElement('option');o.value=sub;subList.appendChild(o);}
+      }
       options('assignClass',allClasses,className);
       options('studentClass',allClasses,className);
       if($('profileClassFilter'))options('profileClassFilter',[{id:'',name:'All accessible classes'}].concat(allClasses),c=>c.id?className(c):c.name);
@@ -277,7 +313,15 @@
   function renderAdmin(){
     const root=$('staffTable');root.replaceChildren();
     for(const staff of allStaff){
-      const tr=dom('tr');const email=dom('td',staff.email);
+      const tr=dom('tr');const email=dom('td');
+      const sName=staffName(staff);
+      if(sName&&sName!==staff.email){
+        email.append(dom('strong',sName));
+        email.append(document.createElement('br'));
+        email.append(dom('small',staff.email,'muted'));
+      }else{
+        email.textContent=staff.email;
+      }
       const role=dom('td');const roleSelect=newSelect(ROLES,staff.role);role.append(roleSelect);
       const status=dom('td');const statusSelect=newSelect(['active','disabled'],staff.status);status.append(statusSelect);
       if(staff.id===me.id){roleSelect.disabled=true;statusSelect.disabled=true}
@@ -331,6 +375,34 @@
   // Staff self-service password change. Authenticate the CURRENT password
   // with Supabase Auth, then use that freshly authenticated short-lived session
   // to perform the update. Roles and class permissions are not changed here.
+  
+  $('saveAccountNameButton')?.addEventListener('click',()=>run(async()=>{
+    const nextName=($('accountNameInput')?.value||'').trim();
+    if(!nextName)throw Error('Enter a staff display name.');
+    const button=$('saveAccountNameButton');button.disabled=true;
+    try{
+      if(session?.access_token){
+        await fetch(BASE+'/auth/v1/user',{
+          method:'PATCH',
+          headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+          body:JSON.stringify({data:{full_name:nextName,name:nextName}})
+        }).catch(()=>null);
+        if(identity){identity.user_metadata=identity.user_metadata||{};identity.user_metadata.full_name=nextName;identity.user_metadata.name=nextName;}
+      }
+      try{
+        const key='bright-nexa-school-os:staff-names:'+me.institution_id;
+        const current=JSON.parse(localStorage.getItem(key)||'{}');
+        current[me.email]=nextName;current[me.id]=nextName;
+        localStorage.setItem(key,JSON.stringify(current));
+      }catch(_){}
+      me.name=nextName;
+      const schoolRows=await api('institutions',query({select:'name',id:eq(me.institution_id)}));
+      const schoolName=schoolRows[0]?.name||'School';
+      put('membership',schoolName+' · '+nextName+' · '+me.email+' · '+me.role.replaceAll('_',' '));
+      renderSelects();if(isAdmin())renderAdmin();
+      notify('Account name saved as "'+nextName+'". It will now appear across all teacher menus and rosters.');
+    }finally{button.disabled=false;}
+  }));
   $('changePasswordForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const button=$('changePasswordButton'),form=e.currentTarget;
     if(button.disabled)return;
