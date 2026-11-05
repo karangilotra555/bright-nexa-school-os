@@ -110,15 +110,26 @@
       api('school_teacher_assignments',aQ),
       canAcademic()?api('school_homework',hQ):Promise.resolve([])
     ]);
-    if(isAdmin())allStaff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
-    else allStaff=[];
+    if(isAdmin()){
+      allStaff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
+      try{
+        const profs=await api('school_student_profiles',query({select:'student_id,details',institution_id:eq(institution_id),limit:'1000'}));
+        const pMap=new Map((profs||[]).map(p=>[p.student_id,p.details||{}]));
+        for(const s of allStudents){
+          const d=pMap.get(s.id);
+          if(d&&d.roll_number)s.roll_number=d.roll_number;
+        }
+      }catch(_){}
+    }else allStaff=[];
     allHomeworkFiles=await homeworkFiles.list(allHomework.map(h=>h.id));
     put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
     invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();await loadNotices();
   }
   let readProfile=null,editingStudent=null,profileGeneration=0;
   function clearProfileEditor(){profileGeneration++;readProfile=null;editingStudent=null;display('studentProfileForm',false);$('profileEditor').replaceChildren();}
-  $('profileStudent').addEventListener('change',clearProfileEditor);
+  $('profileClassFilter')?.addEventListener('change',()=>{renderProfileStudents();clearProfileEditor();});
+  $('profileSearchInput')?.addEventListener('input',()=>{renderProfileStudents();clearProfileEditor();});
+  $('profileStudent')?.addEventListener('change',()=>{updateSelectedStudentBadge();clearProfileEditor();});
   $('loadProfile').addEventListener('click',()=>run(async()=>{
     if(!isAdmin())throw Error('School admin required.');clearProfileEditor();const generation=profileGeneration,id=$('profileStudent').value;
     const student=allStudents.find(s=>s.id===id);if(!student)throw Error('Choose a student.');
@@ -126,12 +137,20 @@
     if(generation!==profileGeneration||$('profileStudent').value!==id)return;
     const core=await api('school_students',query({select:'id,name,dob',id:eq(id),institution_id:eq(me.institution_id)}));
     if(generation!==profileGeneration||$('profileStudent').value!==id||!core[0])return;
-    editingStudent=id;readProfile=window.BNStudentProfile.editor($('profileEditor'),{student:{...core[0],profile:rows[0]||{}}});display('studentProfileForm',true);
+    editingStudent=id;readProfile=window.BNStudentProfile.editor($('profileEditor'),{student:{...core[0],profile:rows[0]||{}}});display('studentProfileForm',true);updateSelectedStudentBadge();
   }));
   $('studentProfileForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin()||!readProfile||editingStudent!==$('profileStudent').value)throw Error('Load the student profile first.');
     const button=$('saveProfile');if(button.disabled)return;const payload=readProfile();button.disabled=true;
-    try{await api('rpc/school_save_student_profile','','POST',{p_student_id:editingStudent,...payload},'return=minimal');notify('Student details saved. Linked app and web accounts can refresh Profile.');}finally{button.disabled=false;}
+    try{
+      await api('rpc/school_save_student_profile','','POST',{p_student_id:editingStudent,...payload},'return=minimal');
+      const targetStudent=allStudents.find(s=>s.id===editingStudent);
+      if(targetStudent&&payload.p_profile?.details?.roll_number){
+        targetStudent.roll_number=payload.p_profile.details.roll_number;
+      }
+      renderProfileStudents();
+      notify('Student details saved. Linked app and web accounts can refresh Profile.');
+    }finally{button.disabled=false;}
   });});
   async function loadNotices(){
     const rows=await api('school_notices',query({select:'id,title,body,created_at',institution_id:eq(me.institution_id),order:'created_at.desc',limit:'100'}));
@@ -159,6 +178,47 @@
     if(me.role!=='teacher')return [];
     return allClasses.filter(c=>allAssignments.some(a=>a.school_user_id===me.id&&a.class_id===c.id&&a.active&&a[action]));
   }
+  function studentLabel(s){
+    const c=allClasses.find(cls=>cls.id===s.class_id);
+    const classStr=c?`${c.name}${c.section?' '+c.section:''}`:'';
+    const rollStr=s.roll_number?`Roll ${s.roll_number}`:'';
+    const parts=[rollStr,s.name,s.admission_number,classStr].filter(Boolean);
+    return parts.join(' · ');
+  }
+  function getFilteredProfileStudents(){
+    const filterClass=$('profileClassFilter')?.value||'';
+    const query=($('profileSearchInput')?.value||'').trim().toLowerCase();
+    return allStudents.filter(s=>{
+      if(filterClass&&s.class_id!==filterClass)return false;
+      if(!query)return true;
+      const nameMatch=(s.name||'').toLowerCase().includes(query);
+      const admMatch=(s.admission_number||'').toLowerCase().includes(query);
+      const rollMatch=String(s.roll_number||'').toLowerCase()===query||String(s.roll_number||'').toLowerCase().includes(query);
+      return nameMatch||admMatch||rollMatch;
+    });
+  }
+  function updateSelectedStudentBadge(){
+    const id=$('profileStudent')?.value;
+    const s=allStudents.find(st=>st.id===id);
+    const badge=$('profileSelectedBadge');
+    if(!badge)return;
+    if(!s){
+      display('profileSelectedBadge',false);
+      badge.textContent='';
+      return;
+    }
+    const c=allClasses.find(cls=>cls.id===s.class_id);
+    const classStr=c?className(c):'Assigned Class';
+    const rollText=s.roll_number?` · Roll No: ${s.roll_number}`:'';
+    badge.textContent=`Selected: ${s.name} (${s.admission_number}${rollText}) · Class: ${classStr}`;
+    display('profileSelectedBadge',true);
+  }
+  function renderProfileStudents(){
+    const filtered=getFilteredProfileStudents();
+    if($('profileStudentCount'))put('profileStudentCount',filtered.length);
+    options('profileStudent',filtered,studentLabel);
+    updateSelectedStudentBadge();
+  }
   function renderSelects(){
     options('attendanceClass',writableClasses('can_take_attendance'),className);
     options('homeworkClass',writableClasses('can_assign_homework'),className);
@@ -167,15 +227,30 @@
     if(isAdmin()){
       options('assignTeacher',allStaff.filter(s=>s.role==='teacher'&&s.status==='active'),s=>s.email);
       options('assignClass',allClasses,className);
-      options('studentClass',allClasses,className);options('profileStudent',allStudents,s=>s.admission_number+' · '+s.name);clearProfileEditor();
+      options('studentClass',allClasses,className);
+      if($('profileClassFilter'))options('profileClassFilter',[{id:'',name:'All accessible classes'}].concat(allClasses),c=>c.id?className(c):c.name);
+      renderProfileStudents();
+      clearProfileEditor();
     }
   }
   function fillSubject(classId){
+    const list=$('homeworkSubjectList');
+    if(list){
+      list.replaceChildren();
+      const standardSubjects=['Mathematics','Science','English','Hindi','Social Science','Sanskrit','Computer Science','Art','EVS','Physics','Chemistry','Biology'];
+      const aSubs=allAssignments.filter(a=>a.class_id===classId&&a.active&&a.can_assign_homework).map(x=>x.subject).filter(Boolean);
+      const allSubs=Array.from(new Set(aSubs.concat(standardSubjects)));
+      for(const s of allSubs){
+        const opt=document.createElement('option');
+        opt.value=s;
+        list.appendChild(opt);
+      }
+    }
     if(me.role!=='teacher')return;
     const a=allAssignments.filter(a=>a.school_user_id===me.id&&a.class_id===classId&&a.active&&a.can_assign_homework&&a.assignment_type==='subject_teacher');
     const classT=allAssignments.some(a=>a.school_user_id===me.id&&a.class_id===classId&&a.active&&a.can_assign_homework&&a.assignment_type==='class_teacher');
     if(a.length===1&&!classT){$('homeworkSubject').value=a[0].subject;$('homeworkSubject').readOnly=true}
-    else{$('homeworkSubject').readOnly=false;$('homeworkSubject').value=''}
+    else{$('homeworkSubject').readOnly=false;if(!a.some(x=>x.subject===$('homeworkSubject').value))$('homeworkSubject').value=''}
   }
   function renderHomework(){
     const root=$('homeworkList');root.replaceChildren();

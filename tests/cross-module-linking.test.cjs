@@ -104,3 +104,19 @@ test('Smart Timetable Generator links School OS classes, subjects and uses polis
     assert.match(html, /0284c7/, `${file} must use school primary blue focus outline`);
   }
 });
+
+test('AI Teacher Tools and Homework dialog use dropdown selectors populated from configured classes and subjects', () => {
+  const src = read('app-extracted/src/BrightNexaApp.jsx');
+  // AI Teacher Tools Ea component
+  assert.match(src, /function Ea\(\{ data, students \} = \{\}\)/, 'Ea must accept school data and students');
+  assert.match(src, /<R label=\{`Class \/ batch`\}>\s*<select/, 'AI Teacher Tools Class must be a select dropdown');
+  assert.match(src, /<R label=\{`Subject`\}>\s*<select/, 'AI Teacher Tools Subject must be a select dropdown');
+  assert.match(src, /<Ea data=\{i\} students=\{y\} \/>/, 'Ds must pass school data and students to Ea');
+
+  // Homework dialog Ii component
+  assert.match(src, /function Ii\(\{ initial: e, onClose: t, onSave: n, classes = \[\] \}\)/, 'Ii must accept configured classes');
+  assert.match(src, /<R label=\{`Class`\}>\s*<select/, 'Homework dialog Class must be a select dropdown');
+  assert.match(src, /<R label=\{`Section`\}>\s*<select/, 'Homework dialog Section must be a select dropdown');
+  assert.match(src, /<R label=\{`Subject`\}>\s*<select/, 'Homework dialog Subject must be a select dropdown');
+});
+

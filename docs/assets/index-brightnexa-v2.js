@@ -26288,7 +26288,7 @@ function Fi({ data: e2, onUpdate: t2 }) {
       onClick: () => p2(e3)
     },
     /* @__PURE__ */ w.createElement(_Component1, { size: 15 })
-  )))))), i2 && (n2 === `homework` ? /* @__PURE__ */ w.createElement(Ii, { initial: o2, onClose: m2, onSave: u2 }) : /* @__PURE__ */ w.createElement(Li, { initial: c2, onClose: m2, onSave: d2 })), whatsAppNoticeOpen && /* @__PURE__ */ w.createElement(
+  )))))), i2 && (n2 === `homework` ? /* @__PURE__ */ w.createElement(Ii, { initial: o2, onClose: m2, onSave: u2, classes: e2?.classes || [] }) : /* @__PURE__ */ w.createElement(Li, { initial: c2, onClose: m2, onSave: d2 })), whatsAppNoticeOpen && /* @__PURE__ */ w.createElement(
     WhatsAppNoticeDialog,
     {
       isOpen: whatsAppNoticeOpen,
@@ -26298,12 +26298,26 @@ function Fi({ data: e2, onUpdate: t2 }) {
     }
   ));
 }
-function Ii({ initial: e2, onClose: t2, onSave: n2 }) {
+function Ii({ initial: e2, onClose: t2, onSave: n2, classes = [] }) {
+  const configuredClasses = classes || [];
+  const classList = configuredClasses.length > 0 ? Array.from(new Set(configuredClasses.map((c3) => c3.name))).sort((a3, b2) => {
+    const standardOrder = ["nursery", "lkg", "ukg", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+    const ia2 = standardOrder.indexOf(String(a3).toLowerCase().replace(/^class\s*/i, ""));
+    const ib = standardOrder.indexOf(String(b2).toLowerCase().replace(/^class\s*/i, ""));
+    if (ia2 !== -1 && ib !== -1) return ia2 - ib;
+    if (ia2 !== -1) return -1;
+    if (ib !== -1) return 1;
+    return String(a3).localeCompare(String(b2));
+  }) : ["Nursery", "LKG", "UKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
   let [r2, i2] = (0, w.useState)(e2?.title || ``);
-  let [a2, o2] = (0, w.useState)(e2?.className || `6`);
-  let [s2, c2] = (0, w.useState)(e2?.section || `A`);
+  let [a2, o2] = (0, w.useState)(e2?.className || (classList.includes("6") ? "6" : classList[0]));
+  const currentSections = configuredClasses.length > 0 ? Array.from(new Set(configuredClasses.filter((c3) => c3.name === a2).map((c3) => c3.section).filter(Boolean))) : ["A", "B", "C", "D"];
+  const safeSections = currentSections.length > 0 ? currentSections : ["A"];
+  let [s2, c2] = (0, w.useState)(e2?.section || safeSections[0]);
   let [l2, u2] = (0, w.useState)(e2?.academicStream);
-  let [d2, f2] = (0, w.useState)(e2?.subject || `Mathematics`);
+  const currentClassObj = configuredClasses.find((c3) => c3.name === a2 && (!s2 || c3.section === s2)) || configuredClasses.find((c3) => c3.name === a2);
+  const subjectList = currentClassObj?.subjects && currentClassObj.subjects.length > 0 ? currentClassObj.subjects : ["Mathematics", "Science", "English", "Hindi", "Social Science", "Sanskrit", "Computer Science"];
+  let [d2, f2] = (0, w.useState)(e2?.subject || (subjectList.includes("Mathematics") ? "Mathematics" : subjectList[0]));
   let [p2, m2] = (0, w.useState)(
     e2?.dueDate || new Date(Date.now() + 864e5).toISOString().slice(0, 10)
   );
@@ -26356,17 +26370,23 @@ function Ii({ initial: e2, onClose: t2, onSave: n2 }) {
           onChange: (e3) => i2(e3.target.value)
         }
       )), /* @__PURE__ */ w.createElement(R, { label: `Class` }, /* @__PURE__ */ w.createElement(
-        Component839,
+        "select",
         {
           value: a2,
           onChange: (e3) => {
-            o2(e3.target.value);
-            if (e3.target.value !== `11` && e3.target.value !== `12`) {
+            const nextCls = e3.target.value;
+            o2(nextCls);
+            if (nextCls !== `11` && nextCls !== `12`) {
               u2(void 0);
             }
+            const availSecs = configuredClasses.length > 0 ? Array.from(new Set(configuredClasses.filter((c3) => c3.name === nextCls).map((c3) => c3.section).filter(Boolean))) : ["A", "B", "C", "D"];
+            if (availSecs.length > 0 && !availSecs.includes(s2)) {
+              c2(availSecs[0]);
+            }
           }
-        }
-      )), /* @__PURE__ */ w.createElement(R, { label: `Section` }, /* @__PURE__ */ w.createElement(Component840, { value: s2, onChange: (e3) => c2(e3.target.value) })), (a2 === `11` || a2 === `12`) && /* @__PURE__ */ w.createElement(R, { label: `Academic Stream *` }, /* @__PURE__ */ w.createElement(Component843, { value: l2 || ``, onChange: (e3) => u2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component841, { value: `` }, `Select Stream`), Bn.map((e3) => /* @__PURE__ */ w.createElement(Component842, { key: e3 }, e3)))), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement(Component844, { value: d2, onChange: (e3) => f2(e3.target.value) })), /* @__PURE__ */ w.createElement(R, { label: `Due date` }, /* @__PURE__ */ w.createElement(
+        },
+        classList.map((cls) => /* @__PURE__ */ w.createElement("option", { key: cls, value: cls }, cls.toLowerCase().startsWith("class") ? cls : `Class ${cls}`))
+      )), /* @__PURE__ */ w.createElement(R, { label: `Section` }, /* @__PURE__ */ w.createElement("select", { value: s2, onChange: (e3) => c2(e3.target.value) }, safeSections.map((sec) => /* @__PURE__ */ w.createElement("option", { key: sec, value: sec }, `Section ${sec}`)))), (a2 === `11` || a2 === `12`) && /* @__PURE__ */ w.createElement(R, { label: `Academic Stream *` }, /* @__PURE__ */ w.createElement(Component843, { value: l2 || ``, onChange: (e3) => u2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component841, { value: `` }, `Select Stream`), Bn.map((e3) => /* @__PURE__ */ w.createElement(Component842, { key: e3 }, e3)))), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("select", { value: d2, onChange: (e3) => f2(e3.target.value) }, subjectList.map((sub) => /* @__PURE__ */ w.createElement("option", { key: sub, value: sub }, sub)))), /* @__PURE__ */ w.createElement(R, { label: `Due date` }, /* @__PURE__ */ w.createElement(
         Component845,
         {
           type: `date`,
@@ -28851,10 +28871,22 @@ var Ta = [
   `Class Test Generator`,
   `School Notice Generator`
 ];
-function Ea() {
+function Ea({ data, students } = {}) {
+  const configuredClasses = data?.classes || [];
+  const dynamicClasses = buildDynamicClassList(configuredClasses, students || [], false);
+  const safeClassList = dynamicClasses.length > 0 ? dynamicClasses : ["Nursery", "LKG", "UKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
   let [e2, t2] = (0, w.useState)(Ta[0]);
-  let [n2, r2] = (0, w.useState)(`6`);
-  let [i2, a2] = (0, w.useState)(`Science`);
+  let [n2, r2] = (0, w.useState)(() => safeClassList.find((c3) => c3 === "6" || c3 === "Class 6" || c3 === "6-A") || safeClassList[0]);
+  const matchingClass = (configuredClasses || []).find(
+    (c3) => c3.name === n2 || `${c3.name}-${c3.section}` === n2 || `Class ${c3.name}` === n2
+  );
+  const classSubjects = matchingClass?.subjects && matchingClass.subjects.length > 0 ? matchingClass.subjects : [];
+  const allSchoolSubjects = Array.from(
+    new Set(
+      classSubjects.concat((configuredClasses || []).flatMap((c3) => c3.subjects || [])).concat(["Science", "Mathematics", "English", "Hindi", "Social Science", "Sanskrit", "Computer Science", "Environmental Studies", "Physics", "Chemistry", "Biology"]).filter(Boolean)
+    )
+  );
+  let [i2, a2] = (0, w.useState)(() => allSchoolSubjects.find((s3) => s3 === "Science") || allSchoolSubjects[0]);
   let [o2, s2] = (0, w.useState)(`Food Components`);
   let [c2, l2] = (0, w.useState)(`Medium`);
   let [u2, d2] = (0, w.useState)(`10`);
@@ -28918,7 +28950,21 @@ function Ea() {
     },
     /* @__PURE__ */ w.createElement(_Component30, { size: 15 }),
     n3
-  ))), /* @__PURE__ */ w.createElement(Component1367, { className: `ai-builder` }, /* @__PURE__ */ w.createElement(Component1347, null, e2), /* @__PURE__ */ w.createElement(Component1357, { className: `ai-input-grid` }, /* @__PURE__ */ w.createElement(R, { label: `Class / batch` }, /* @__PURE__ */ w.createElement("input", { value: n2, onChange: (e3) => r2(e3.target.value), placeholder: "e.g. 6 or 10-A" })), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("input", { value: i2, onChange: (e3) => a2(e3.target.value), placeholder: "e.g. Science" })), /* @__PURE__ */ w.createElement(R, { label: `Topic / Chapter`, wide: true }, /* @__PURE__ */ w.createElement("input", { value: o2, onChange: (e3) => s2(e3.target.value), placeholder: "e.g. Food Components" })), /* @__PURE__ */ w.createElement(R, { label: `Output Language` }, /* @__PURE__ */ w.createElement("select", { value: lang, onChange: (e3) => setLang(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "English" }, "English"), /* @__PURE__ */ w.createElement("option", { value: "Hindi" }, "Hindi (\u0939\u093F\u0902\u0926\u0940)"), /* @__PURE__ */ w.createElement("option", { value: "Bilingual" }, "Bilingual (English + Hindi)"))), e2.includes(`Lesson Plan`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Plan Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "40 Minutes" }, "40 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour (60 Min)"), /* @__PURE__ */ w.createElement("option", { value: "Double Period (80 Min)" }, "Double Period (80 Min)"))), /* @__PURE__ */ w.createElement(R, { label: `Difficulty / Depth` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Foundational / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Curriculum"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Advanced / Deep Concept")))), e2.includes(`Question Paper`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Time Allowed` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"), /* @__PURE__ */ w.createElement("option", { value: "1.5 Hours" }, "1.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2 Hours" }, "2 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2.5 Hours" }, "2.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "3 Hours" }, "3 Hours"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
+  ))), /* @__PURE__ */ w.createElement(Component1367, { className: `ai-builder` }, /* @__PURE__ */ w.createElement(Component1347, null, e2), /* @__PURE__ */ w.createElement(Component1357, { className: `ai-input-grid` }, /* @__PURE__ */ w.createElement(R, { label: `Class / batch` }, /* @__PURE__ */ w.createElement(
+    "select",
+    {
+      value: n2,
+      onChange: (e3) => {
+        const nextCls = e3.target.value;
+        r2(nextCls);
+        const match = (configuredClasses || []).find((c3) => c3.name === nextCls || `${c3.name}-${c3.section}` === nextCls);
+        if (match?.subjects && match.subjects.length > 0 && !match.subjects.includes(i2)) {
+          a2(match.subjects[0]);
+        }
+      }
+    },
+    safeClassList.map((cls) => /* @__PURE__ */ w.createElement("option", { key: cls, value: cls }, cls.toLowerCase().startsWith("class") ? cls : `Class ${cls}`))
+  )), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("select", { value: i2, onChange: (e3) => a2(e3.target.value) }, allSchoolSubjects.map((sub) => /* @__PURE__ */ w.createElement("option", { key: sub, value: sub }, sub)))), /* @__PURE__ */ w.createElement(R, { label: `Topic / Chapter`, wide: true }, /* @__PURE__ */ w.createElement("input", { value: o2, onChange: (e3) => s2(e3.target.value), placeholder: "e.g. Food Components" })), /* @__PURE__ */ w.createElement(R, { label: `Output Language` }, /* @__PURE__ */ w.createElement("select", { value: lang, onChange: (e3) => setLang(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "English" }, "English"), /* @__PURE__ */ w.createElement("option", { value: "Hindi" }, "Hindi (\u0939\u093F\u0902\u0926\u0940)"), /* @__PURE__ */ w.createElement("option", { value: "Bilingual" }, "Bilingual (English + Hindi)"))), e2.includes(`Lesson Plan`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Plan Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "40 Minutes" }, "40 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour (60 Min)"), /* @__PURE__ */ w.createElement("option", { value: "Double Period (80 Min)" }, "Double Period (80 Min)"))), /* @__PURE__ */ w.createElement(R, { label: `Difficulty / Depth` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Foundational / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Curriculum"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Advanced / Deep Concept")))), e2.includes(`Question Paper`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Time Allowed` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"), /* @__PURE__ */ w.createElement("option", { value: "1.5 Hours" }, "1.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2 Hours" }, "2 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2.5 Hours" }, "2.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "3 Hours" }, "3 Hours"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
     "input",
     {
       type: "number",
@@ -39010,7 +39056,7 @@ function Ds() {
       institution: e2.institution,
       onUpdate: j
     }
-  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, null) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement(
+  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, { data: i2, students: y2 }) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement(
     "iframe",
     {
       title: `Smart School Tools`,

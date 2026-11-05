@@ -28742,7 +28742,7 @@ function Fi({ data: e, onUpdate: t }) {
       </Component836>
       {i &&
         (n === `homework` ? (
-          <Ii initial={o} onClose={m} onSave={u} />
+          <Ii initial={o} onClose={m} onSave={u} classes={e?.classes || []} />
         ) : (
           <Li initial={c} onClose={m} onSave={d} />
         ))}
@@ -28757,12 +28757,37 @@ function Fi({ data: e, onUpdate: t }) {
     </Component837>
   );
 }
-function Ii({ initial: e, onClose: t, onSave: n }) {
+function Ii({ initial: e, onClose: t, onSave: n, classes = [] }) {
+  const configuredClasses = classes || [];
+  const classList = (configuredClasses.length > 0)
+    ? Array.from(new Set(configuredClasses.map(c => c.name))).sort((a, b) => {
+        const standardOrder = ['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+        const ia = standardOrder.indexOf(String(a).toLowerCase().replace(/^class\s*/i, ''));
+        const ib = standardOrder.indexOf(String(b).toLowerCase().replace(/^class\s*/i, ''));
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        if (ia !== -1) return -1;
+        if (ib !== -1) return 1;
+        return String(a).localeCompare(String(b));
+      })
+    : ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+
   let [r, i] = (0, w.useState)(e?.title || ``);
-  let [a, o] = (0, w.useState)(e?.className || `6`);
-  let [s, c] = (0, w.useState)(e?.section || `A`);
+  let [a, o] = (0, w.useState)(e?.className || (classList.includes('6') ? '6' : classList[0]));
+
+  const currentSections = (configuredClasses.length > 0)
+    ? Array.from(new Set(configuredClasses.filter(c => c.name === a).map(c => c.section).filter(Boolean)))
+    : ['A', 'B', 'C', 'D'];
+  const safeSections = currentSections.length > 0 ? currentSections : ['A'];
+
+  let [s, c] = (0, w.useState)(e?.section || safeSections[0]);
   let [l, u] = (0, w.useState)(e?.academicStream);
-  let [d, f] = (0, w.useState)(e?.subject || `Mathematics`);
+
+  const currentClassObj = configuredClasses.find(c => c.name === a && (!s || c.section === s)) || configuredClasses.find(c => c.name === a);
+  const subjectList = (currentClassObj?.subjects && currentClassObj.subjects.length > 0)
+    ? currentClassObj.subjects
+    : ['Mathematics', 'Science', 'English', 'Hindi', 'Social Science', 'Sanskrit', 'Computer Science'];
+
+  let [d, f] = (0, w.useState)(e?.subject || (subjectList.includes('Mathematics') ? 'Mathematics' : subjectList[0]));
   let [p, m] = (0, w.useState)(
     e?.dueDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10),
   );
@@ -28814,18 +28839,35 @@ function Ii({ initial: e, onClose: t, onSave: n }) {
             />
           </R>
           <R label={`Class`}>
-            <Component839
+            <select
               value={a}
               onChange={(e) => {
-                o(e.target.value);
-                if (e.target.value !== `11` && e.target.value !== `12`) {
+                const nextCls = e.target.value;
+                o(nextCls);
+                if (nextCls !== `11` && nextCls !== `12`) {
                   u(undefined);
                 }
+                const availSecs = (configuredClasses.length > 0)
+                  ? Array.from(new Set(configuredClasses.filter(c => c.name === nextCls).map(c => c.section).filter(Boolean)))
+                  : ['A', 'B', 'C', 'D'];
+                if (availSecs.length > 0 && !availSecs.includes(s)) {
+                  c(availSecs[0]);
+                }
               }}
-            />
+            >
+              {classList.map((cls) => (
+                <option key={cls} value={cls}>
+                  {cls.toLowerCase().startsWith('class') ? cls : `Class ${cls}`}
+                </option>
+              ))}
+            </select>
           </R>
           <R label={`Section`}>
-            <Component840 value={s} onChange={(e) => c(e.target.value)} />
+            <select value={s} onChange={(e) => c(e.target.value)}>
+              {safeSections.map((sec) => (
+                <option key={sec} value={sec}>{`Section ${sec}`}</option>
+              ))}
+            </select>
           </R>
           {(a === `11` || a === `12`) && (
             <R label={`Academic Stream *`}>
@@ -28838,7 +28880,11 @@ function Ii({ initial: e, onClose: t, onSave: n }) {
             </R>
           )}
           <R label={`Subject`}>
-            <Component844 value={d} onChange={(e) => f(e.target.value)} />
+            <select value={d} onChange={(e) => f(e.target.value)}>
+              {subjectList.map((sub) => (
+                <option key={sub} value={sub}>{sub}</option>
+              ))}
+            </select>
           </R>
           <R label={`Due date`}>
             <Component845
@@ -32310,10 +32356,30 @@ var Ta = [
   `Class Test Generator`,
   `School Notice Generator`,
 ];
-function Ea() {
+function Ea({ data, students } = {}) {
+  const configuredClasses = data?.classes || [];
+  const dynamicClasses = buildDynamicClassList(configuredClasses, students || [], false);
+  const safeClassList = dynamicClasses.length > 0
+    ? dynamicClasses
+    : ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+
   let [e, t] = (0, w.useState)(Ta[0]);
-  let [n, r] = (0, w.useState)(`6`);
-  let [i, a] = (0, w.useState)(`Science`);
+  let [n, r] = (0, w.useState)(() => safeClassList.find(c => c === '6' || c === 'Class 6' || c === '6-A') || safeClassList[0]);
+
+  const matchingClass = (configuredClasses || []).find(
+    c => c.name === n || `${c.name}-${c.section}` === n || `Class ${c.name}` === n
+  );
+  const classSubjects = matchingClass?.subjects && matchingClass.subjects.length > 0 ? matchingClass.subjects : [];
+  const allSchoolSubjects = Array.from(
+    new Set(
+      classSubjects
+        .concat((configuredClasses || []).flatMap(c => c.subjects || []))
+        .concat(['Science', 'Mathematics', 'English', 'Hindi', 'Social Science', 'Sanskrit', 'Computer Science', 'Environmental Studies', 'Physics', 'Chemistry', 'Biology'])
+        .filter(Boolean)
+    )
+  );
+
+  let [i, a] = (0, w.useState)(() => allSchoolSubjects.find(s => s === 'Science') || allSchoolSubjects[0]);
   let [o, s] = (0, w.useState)(`Food Components`);
   let [c, l] = (0, w.useState)(`Medium`);
   let [u, d] = (0, w.useState)(`10`);
@@ -32385,10 +32451,30 @@ function Ea() {
           <Component1347>{e}</Component1347>
           <Component1357 className={`ai-input-grid`}>
             <R label={`Class / batch`}>
-              <input value={n} onChange={(e) => r(e.target.value)} placeholder="e.g. 6 or 10-A" />
+              <select
+                value={n}
+                onChange={(e) => {
+                  const nextCls = e.target.value;
+                  r(nextCls);
+                  const match = (configuredClasses || []).find(c => c.name === nextCls || `${c.name}-${c.section}` === nextCls);
+                  if (match?.subjects && match.subjects.length > 0 && !match.subjects.includes(i)) {
+                    a(match.subjects[0]);
+                  }
+                }}
+              >
+                {safeClassList.map((cls) => (
+                  <option key={cls} value={cls}>
+                    {cls.toLowerCase().startsWith('class') ? cls : `Class ${cls}`}
+                  </option>
+                ))}
+              </select>
             </R>
             <R label={`Subject`}>
-              <input value={i} onChange={(e) => a(e.target.value)} placeholder="e.g. Science" />
+              <select value={i} onChange={(e) => a(e.target.value)}>
+                {allSchoolSubjects.map((sub) => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
             </R>
             <R label={`Topic / Chapter`} wide={true}>
               <input value={o} onChange={(e) => s(e.target.value)} placeholder="e.g. Food Components" />
@@ -44032,7 +44118,7 @@ function Ds() {
           ) : c === `Parent Messages` ? (
             <Ri students={y} />
           ) : c === `AI Teacher Tools` ? (
-            <Ea />
+            <Ea data={i} students={y} />
           ) : c === `Smart Tools` ? (
             <iframe
               title={`Smart School Tools`}

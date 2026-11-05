@@ -56,3 +56,21 @@ test('staff invitation function verifies actual Auth identity and admin membersh
  assert.match(fn,/redirectTo/);
  assert.doesNotMatch(fn, /serviceKey\s*=\s*["']eyJ/);
 });
+test('Cloud teacher portal has live student search, class filter, roll number display, and homework subject datalist', () => {
+ for (const file of ['teacher-access.html', 'docs/teacher-access.html']) {
+   const html = read(file);
+   assert.match(html, /id="profileClassFilter"/, `${file} must have profileClassFilter`);
+   assert.match(html, /id="profileSearchInput"/, `${file} must have profileSearchInput`);
+   assert.match(html, /id="profileSelectedBadge"/, `${file} must have profileSelectedBadge`);
+   assert.match(html, /id="homeworkSubjectList"/, `${file} must have homeworkSubjectList`);
+ }
+
+ for (const file of ['teacher-access.js', 'docs/teacher-access.js']) {
+   const js = read(file);
+   assert.match(js, /function studentLabel/, `${file} must format studentLabel with roll number`);
+   assert.match(js, /function getFilteredProfileStudents/, `${file} must filter students by class and query`);
+   assert.match(js, /function updateSelectedStudentBadge/, `${file} must display live selected student badge`);
+   assert.match(js, /homeworkSubjectList/, `${file} must populate homeworkSubjectList in fillSubject`);
+ }
+});
+

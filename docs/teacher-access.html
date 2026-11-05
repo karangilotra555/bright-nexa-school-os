@@ -100,7 +100,7 @@ tr td select{padding:7px;min-width:115px}
       <h3>Publish homework</h3>
       <div class="formgrid">
         <div><label for="homeworkClass">Class</label><select id="homeworkClass" required></select></div>
-        <div><label for="homeworkSubject">Subject</label><input id="homeworkSubject" required maxlength="80" placeholder="e.g. Mathematics"></div>
+        <div><label for="homeworkSubject">Subject</label><input id="homeworkSubject" required maxlength="80" placeholder="e.g. Mathematics" list="homeworkSubjectList"><datalist id="homeworkSubjectList"></datalist></div>
         <div><label for="homeworkDate">Due date (optional)</label><input id="homeworkDate" type="date"></div>
       </div>
       <div class="inputgroup"><label for="homeworkTitle">Task</label><input id="homeworkTitle" required maxlength="150" placeholder="Complete pages 12–14"></div>
@@ -109,7 +109,7 @@ tr td select{padding:7px;min-width:115px}
     </form>
   </div>
   <div data-view="notices" class="panel hidden"><h2>School notices</h2><button class="ghost" id="refreshNotices" type="button">↻ Refresh notices</button><div id="noticesList"></div></div>
-  <div data-view="profiles" class="panel hidden"><h2>Student profile details</h2><p class="muted">School admin updates these records. The linked student / parent sees the same details in the mobile app and web.</p><label for="profileStudent">Student</label><select id="profileStudent"></select><button class="ghost" type="button" id="loadProfile">Load profile</button><form id="studentProfileForm" class="hidden"><div id="profileEditor"></div><button class="primary" id="saveProfile" type="submit">Save student details</button></form></div><div data-view="account" class="panel hidden">
+  <div data-view="profiles" class="panel hidden"><h2>Student profile details</h2><p class="muted">School admin updates these records. The linked student / parent sees the same details in the mobile app and web.</p><div class="formgrid two"><div class="inputgroup"><label for="profileClassFilter">Filter by class</label><select id="profileClassFilter"><option value="">All accessible classes</option></select></div><div class="inputgroup"><label for="profileSearchInput">Search student (Name, Roll No, Admission No)</label><input type="search" id="profileSearchInput" placeholder="e.g. Aarav, 06, or BMS-2026-001" autocomplete="off"></div></div><div class="inputgroup" style="margin-bottom:12px"><label for="profileStudent">Student (<span id="profileStudentCount">0</span> available)</label><select id="profileStudent"></select></div><div id="profileSelectedBadge" class="notice hidden" style="margin-bottom:14px;border-left-color:#138ed8;background:#f0f8ff;color:#0b315e;font-weight:600"></div><button class="ghost" type="button" id="loadProfile">Load profile</button><form id="studentProfileForm" class="hidden"><div id="profileEditor"></div><button class="primary" id="saveProfile" type="submit">Save student details</button></form></div><div data-view="account" class="panel hidden">
     <h2>Change Password</h2>
     <p class="sub">Change your own staff login password. You must confirm your current password. School admin approval is not required.</p>
     <form id="changePasswordForm" autocomplete="off">
