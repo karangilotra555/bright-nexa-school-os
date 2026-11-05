@@ -19778,6 +19778,8 @@ function bnBroadcastStoreSync(institution, students, operations) {
 function _Component90({
   students: e2,
   classes = [],
+  profileRequest,
+  onProfileRequestHandled,
   onAddStudent: t2,
   onImportStudents: n2,
   onUpdateStudent: r2,
@@ -19788,6 +19790,12 @@ function _Component90({
   let u2 = (0, w.useRef)(null);
   let [d2, f2] = (0, w.useState)(null);
   let [p2, m2] = (0, w.useState)(null);
+  (0, w.useEffect)(() => {
+    if (!profileRequest) return;
+    const student = e2.find((student2) => student2.id === profileRequest.studentId);
+    if (student) f2(student);
+    onProfileRequestHandled?.();
+  }, [profileRequest, e2, onProfileRequestHandled]);
   let h2 = (0, w.useMemo)(() => {
     let t3 = a2.trim().toLocaleLowerCase();
     if (t3) {
@@ -20761,6 +20769,7 @@ function _r(e2) {
   return r2;
 }
 function _Component5({ student: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
+  const [maximized, setMaximized] = (0, w.useState)(false);
   let i2 = [
     [`Permanent Student ID`, e2.studentUniqueId],
     [`Admission Number`, e2.admissionNumber],
@@ -20823,6 +20832,7 @@ function _Component5({ student: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
       Component158,
       {
         className: `simple-modal student-profile-modal`,
+        style: maximized ? { width: "96vw", maxWidth: "96vw", height: "92vh", maxHeight: "92vh", display: "flex", flexDirection: "column" } : void 0,
         role: `dialog`,
         "aria-modal": `true`,
         "aria-label": `${o2} profile`
@@ -20830,7 +20840,7 @@ function _Component5({ student: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
       /* @__PURE__ */ w.createElement(Component150, null, /* @__PURE__ */ w.createElement(Component148, { className: `record-profile-heading` }, e2.photoDataUrl ? /* @__PURE__ */ w.createElement(Component142, { src: e2.photoDataUrl, alt: `${o2} photograph` }) : /* @__PURE__ */ w.createElement(Component143, { className: `record-avatar` }, pr(o2)), /* @__PURE__ */ w.createElement(Component147, null, /* @__PURE__ */ w.createElement(Component144, null, `Student Profile`), /* @__PURE__ */ w.createElement(Component145, null, o2), (e2.admissionNumber || e2.className || e2.section) && /* @__PURE__ */ w.createElement(Component146, null, [
         e2.admissionNumber,
         [e2.className, e2.section].filter(Boolean).join(`-`)
-      ].filter(Boolean).join(` \u2022 `)))), /* @__PURE__ */ w.createElement(
+      ].filter(Boolean).join(` \u2022 `)))), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "4px", flexShrink: 0 } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "icon-button", "aria-label": maximized ? "Restore" : "Maximize", title: maximized ? "Restore size" : "Maximize dialog", onClick: () => setMaximized((value) => !value) }, maximized ? "\u{1F5D7}" : "\u{1F5D6}"), /* @__PURE__ */ w.createElement(
         Component149,
         {
           className: `icon-button`,
@@ -20838,8 +20848,8 @@ function _Component5({ student: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
           "aria-label": `Close profile`
         },
         /* @__PURE__ */ w.createElement(St, { size: 21 })
-      )),
-      /* @__PURE__ */ w.createElement(Component157, { className: `simple-modal-body` }, i2.length > 0 && /* @__PURE__ */ w.createElement(Component151, { className: `profile-detail-grid` }, i2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component9, { label: e3, value: t3, key: e3 }))), a2.length > 0 && /* @__PURE__ */ w.createElement(Component152, { className: `stored-identity-grid` }, a2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component0, { title: e3, value: t3, key: e3 }))), /* @__PURE__ */ w.createElement(Component156, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component153, { className: `secondary-button danger`, onClick: r2 }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), `Delete Record`), /* @__PURE__ */ w.createElement(
+      ))),
+      /* @__PURE__ */ w.createElement(Component157, { className: `simple-modal-body`, style: maximized ? { flex: 1, minHeight: 0, maxHeight: "none", overflow: "auto" } : void 0 }, i2.length > 0 && /* @__PURE__ */ w.createElement(Component151, { className: `profile-detail-grid` }, i2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component9, { label: e3, value: t3, key: e3 }))), a2.length > 0 && /* @__PURE__ */ w.createElement(Component152, { className: `stored-identity-grid` }, a2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component0, { title: e3, value: t3, key: e3 }))), /* @__PURE__ */ w.createElement(Component156, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component153, { className: `secondary-button danger`, onClick: r2 }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), `Delete Record`), /* @__PURE__ */ w.createElement(
         Component154,
         {
           className: `secondary-button`,
@@ -22203,7 +22213,7 @@ function L({ title: e2, subtitle: t2, onClose: n2, children: r2 }) {
         Component390,
         {
           className: `simple-modal-body`,
-          style: maximized ? { flex: 1, maxHeight: "none", overflowY: "auto" } : void 0
+          style: maximized ? { flex: 1, minHeight: 0, maxHeight: "none", overflow: "auto" } : { overflowX: "auto" }
         },
         r2
       )
@@ -22304,50 +22314,51 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
   return /* @__PURE__ */ w.createElement(L, { title: "WhatsApp Web Companion & QR Connect", subtitle: "100% Free \u2022 Direct School Phone Integration \u2022 Zero API Charges", onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "16px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", borderRadius: "12px", background: connected ? "#ecfdf5" : "#fffbeb", border: `1px solid ${connected ? "#a7f3d0" : "#fde68a"}` } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", gap: "12px" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "28px" } }, connected ? "\u{1F7E2}" : "\u{1F4F1}"), /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "16px", color: connected ? "#065f46" : "#92400e", display: "block" } }, connected ? "WhatsApp Web Linked & Ready" : "WhatsApp Web Not Linked Yet"), /* @__PURE__ */ w.createElement("small", { style: { color: connected ? "#047857" : "#b45309" } }, connected ? "Your school WhatsApp session is linked in this browser. Outgoing notices will launch directly." : "Link your school mobile number via WhatsApp Web to send instant notices to parents."))), /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: toggle, style: { fontWeight: 600 } }, connected ? "Disconnect" : "Mark as Linked \u2705")), /* @__PURE__ */ w.createElement("div", { style: { padding: "16px", borderRadius: "12px", background: "var(--card-bg, #ffffff)", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("h3", { style: { margin: "0 0 12px", fontSize: "15px", color: "var(--navy, #1e293b)" } }, "\u{1F4F2} How to Scan QR & Connect School Phone:"), /* @__PURE__ */ w.createElement("ol", { style: { margin: 0, paddingLeft: "20px", lineHeight: "1.7", color: "var(--theme-text, #334155)", fontSize: "14px" } }, /* @__PURE__ */ w.createElement("li", null, "Apne school ke mobile phone me ", /* @__PURE__ */ w.createElement("strong", null, "WhatsApp"), " open karein."), /* @__PURE__ */ w.createElement("li", null, "Top-right me ", /* @__PURE__ */ w.createElement("strong", null, "\u22EE (3 Dots)"), " ya ", /* @__PURE__ */ w.createElement("strong", null, "Settings"), " par tap karke ", /* @__PURE__ */ w.createElement("strong", null, "Linked Devices (\u0932\u093F\u0902\u0915\u094D\u0921 \u0921\u093F\u0935\u093E\u0907\u0938\u0947\u0938)"), " chunein."), /* @__PURE__ */ w.createElement("li", null, /* @__PURE__ */ w.createElement("strong", null, "Link a Device (\u0921\u093F\u0935\u093E\u0907\u0938 \u0932\u093F\u0902\u0915 \u0915\u0930\u0947\u0902)"), " dabayein aur button click karne par aane wala ", /* @__PURE__ */ w.createElement("strong", null, "QR Code scan karein"), "."), /* @__PURE__ */ w.createElement("li", null, "Scan hote hi aapka browser WhatsApp se connect ho jayega aur session browser me safe rahega."))), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Close"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#25D366", borderColor: "#1ea952", fontWeight: 700, gap: "8px" }, onClick: handleOpenWeb }, /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"), /* @__PURE__ */ w.createElement("span", null, "Open WhatsApp Web & Scan QR")))));
 }
 function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = "Bright Nexa School", items = [] }) {
-  const [queue, setQueue] = (0, w.useState)(() => items.map((it, idx) => ({ ...it, id: it.id || "wa_" + idx, status: "pending" })));
+  const [queue, setQueue] = (0, w.useState)(() => items.map((item, index) => ({ ...item, id: item.id || "wa_" + index, status: "pending" })));
   const [currentIndex, setCurrentIndex] = (0, w.useState)(0);
   const [autoAdvance, setAutoAdvance] = (0, w.useState)(true);
-  const [countdown, setCountdown] = (0, w.useState)(0);
   (0, w.useEffect)(() => {
-    setQueue(items.map((it, idx) => ({ ...it, id: it.id || "wa_" + idx, status: "pending" })));
-    setCurrentIndex(0);
-    setCountdown(0);
-  }, [items]);
-  if (!isOpen || !queue.length) return null;
-  const currentItem = queue[currentIndex] || null;
-  const sentCount = queue.filter((x2) => x2.status === "sent").length;
-  const skippedCount = queue.filter((x2) => x2.status === "skipped").length;
-  const isDone = currentIndex >= queue.length;
-  const handleSend = (idx = currentIndex) => {
-    const item = queue[idx];
-    if (!item) return;
-    const url = bnBuildWhatsAppUrl(item.phone, item.text, "web");
-    window.open(url, "BN_WhatsApp_Runner", "width=1000,height=720,left=150,top=100");
-    const updated = [...queue];
-    updated[idx] = { ...item, status: "sent", sentAt: (/* @__PURE__ */ new Date()).toISOString() };
-    setQueue(updated);
-    if (idx === currentIndex) advanceNext(updated);
-  };
-  const handleSkip = () => {
-    const updated = [...queue];
-    updated[currentIndex] = { ...updated[currentIndex], status: "skipped" };
-    setQueue(updated);
-    advanceNext(updated);
-  };
-  const advanceNext = (q) => {
-    const next = currentIndex + 1;
-    setCurrentIndex(next);
-    if (next < q.length && autoAdvance) setCountdown(3);
-  };
-  (0, w.useEffect)(() => {
-    if (countdown > 0) {
-      const t2 = setTimeout(() => setCountdown(countdown - 1), 1e3);
-      return () => clearTimeout(t2);
-    } else if (countdown === 0 && autoAdvance && currentItem && currentItem.status === "pending" && currentIndex > 0) {
-      handleSend(currentIndex);
+    if (isOpen) {
+      setQueue(items.map((item, index) => ({ ...item, id: item.id || "wa_" + index, status: "pending" })));
+      setCurrentIndex(0);
     }
-  }, [countdown, autoAdvance, currentIndex]);
-  return /* @__PURE__ */ w.createElement(L, { title: title || "WhatsApp Queue Runner", subtitle: subtitle || `${schoolName} \u2022 ${sentCount} sent of ${queue.length} total`, onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "14px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", background: "var(--card-bg, #fff)", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "12px", alignItems: "center" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "13px", fontWeight: 600 } }, "Queue:"), /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#dcfce7", color: "#15803d" } }, "Sent: ", sentCount), /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#fef3c7", color: "#b45309" } }, "Remaining: ", queue.length - (sentCount + skippedCount)), skippedCount > 0 && /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#f1f5f9", color: "#64748b" } }, "Skipped: ", skippedCount)), /* @__PURE__ */ w.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", cursor: "pointer" } }, /* @__PURE__ */ w.createElement("input", { type: "checkbox", checked: autoAdvance, onChange: (e2) => setAutoAdvance(e2.target.checked) }), /* @__PURE__ */ w.createElement("span", null, "Auto-advance (3s delay)"))), !isDone && currentItem ? /* @__PURE__ */ w.createElement("div", { style: { padding: "16px", borderRadius: "12px", background: "#f8fafc", border: "2px solid #22c55e", display: "flex", flexDirection: "column", gap: "12px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "12px", textTransform: "uppercase", color: "#16a34a", fontWeight: 700 } }, "Active #", currentIndex + 1, " of ", queue.length), /* @__PURE__ */ w.createElement("h3", { style: { margin: "2px 0 0", fontSize: "17px", color: "#0f172a" } }, currentItem.name, currentItem.meta?.class ? ` \u2022 Class ${currentItem.meta.class}` : "", currentItem.meta?.admissionNumber ? ` (${currentItem.meta.admissionNumber})` : ""), /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b" } }, "\u{1F4DE} Parent Phone: ", /* @__PURE__ */ w.createElement("strong", null, currentItem.phone || "No phone recorded"))), countdown > 0 && /* @__PURE__ */ w.createElement("div", { style: { padding: "6px 12px", background: "#dbeafe", color: "#1e40af", borderRadius: "8px", fontWeight: 700, fontSize: "13px" } }, "Next in ", countdown, "s...")), /* @__PURE__ */ w.createElement("div", { style: { background: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontFamily: "monospace", whiteSpace: "pre-wrap", maxHeight: "130px", overflowY: "auto" } }, currentItem.text), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end", alignItems: "center" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: handleSkip, style: { fontWeight: 600 } }, "\u23ED\uFE0F Skip"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#22c55e", borderColor: "#16a34a", fontWeight: 700, fontSize: "14px", gap: "8px" }, onClick: () => handleSend(currentIndex), autoFocus: true }, /* @__PURE__ */ w.createElement("span", null, "\u{1F680}"), /* @__PURE__ */ w.createElement("span", null, "Send on WhatsApp (Enter)")))) : /* @__PURE__ */ w.createElement("div", { style: { padding: "24px", borderRadius: "12px", background: "#f0fdf4", border: "1px solid #bbf7d0", textAlign: "center", display: "flex", flexDirection: "column", gap: "8px" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "36px" } }, "\u{1F389}"), /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "18px", color: "#15803d" } }, "All Messages Processed!"), /* @__PURE__ */ w.createElement("p", { style: { margin: 0, color: "#166534", fontSize: "14px" } }, "Successfully processed ", sentCount, " sent and ", skippedCount, " skipped out of ", queue.length, " parents.")), /* @__PURE__ */ w.createElement("div", { style: { maxHeight: "200px", overflowY: "auto", border: "1px solid var(--line, #e2e8f0)", borderRadius: "8px" } }, /* @__PURE__ */ w.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "13px" } }, /* @__PURE__ */ w.createElement("thead", null, /* @__PURE__ */ w.createElement("tr", { style: { background: "var(--header-bg, #f1f5f9)", textAlign: "left" } }, /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "#"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Student / Parent"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Phone"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Status"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px", textAlign: "right" } }, "Action"))), /* @__PURE__ */ w.createElement("tbody", null, queue.map((item, idx) => /* @__PURE__ */ w.createElement("tr", { key: item.id, style: { borderTop: "1px solid var(--line, #e2e8f0)", background: idx === currentIndex ? "rgba(34, 197, 94, 0.08)" : "transparent" } }, /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px", color: "#64748b" } }, idx + 1), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, /* @__PURE__ */ w.createElement("strong", null, item.name), item.meta?.class ? /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b", display: "block" } }, "Class: ", item.meta.class) : null), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, item.phone || "\u2014"), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, item.status === "sent" ? /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#dcfce7", color: "#15803d" } }, "Sent \u2705") : item.status === "skipped" ? /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#f1f5f9", color: "#64748b" } }, "Skipped \u23ED\uFE0F") : /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#fef3c7", color: "#b45309" } }, "Pending")), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px", textAlign: "right" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button compact", style: { fontSize: "12px", padding: "4px 8px" }, onClick: () => handleSend(idx) }, "\u{1F4F1} Send")))))))));
+  }, [items, isOpen]);
+  if (!isOpen) return null;
+  const current = queue[currentIndex];
+  const confirmed = queue.filter((item) => item.status === "confirmed").length;
+  const skipped = queue.filter((item) => item.status === "skipped").length;
+  const remaining = queue.length - confirmed - skipped;
+  const update = (index, values) => setQueue((previous) => previous.map((item, i2) => i2 === index ? { ...item, ...values } : item));
+  const openDraft = (index) => {
+    const item = queue[index];
+    if (!item || ["confirmed", "skipped"].includes(item.status)) return;
+    const phone = bnNormalizePhone(item.phone);
+    if (!/^91[6-9]\d{9}$/.test(phone)) {
+      update(index, { status: "invalid", error: "A valid registered parent mobile number is required." });
+      return;
+    }
+    if (!String(item.text || "").trim()) {
+      update(index, { status: "invalid", error: "Message is empty." });
+      return;
+    }
+    let popup;
+    try {
+      popup = window.open(bnBuildWhatsAppUrl(phone, item.text, "web"), "BN_WhatsApp_Runner", "width=1000,height=720,left=150,top=100");
+    } catch (_2) {
+    }
+    setCurrentIndex(index);
+    update(index, popup ? { status: "opened", openedAt: (/* @__PURE__ */ new Date()).toISOString(), error: "" } : { status: "blocked", error: "Popup blocked. Allow popups for this site and retry." });
+  };
+  const nextPending = (index, status) => {
+    update(index, { status, ...status === "confirmed" ? { confirmedAt: (/* @__PURE__ */ new Date()).toISOString() } : {} });
+    if (autoAdvance) {
+      const next = queue.findIndex((item, i2) => i2 > index && !["confirmed", "skipped"].includes(item.status));
+      const earlier = queue.findIndex((item, i2) => i2 < index && !["confirmed", "skipped"].includes(item.status));
+      setCurrentIndex(next >= 0 ? next : earlier >= 0 ? earlier : queue.length);
+    }
+  };
+  const statusLabel = (item) => ({ pending: "Pending", opened: "Draft opened \u2014 unverified", confirmed: "Manually confirmed", skipped: "Skipped", invalid: "Invalid / missing details", blocked: "Popup blocked" })[item.status] || "Unverified";
+  return /* @__PURE__ */ w.createElement(L, { title: title || "WhatsApp reminder queue", subtitle: subtitle || `${schoolName} \u2022 ${queue.length} recipients`, onClose }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "14px" } }, /* @__PURE__ */ w.createElement("p", { role: "note", style: { margin: 0 } }, "This prepares a WhatsApp draft. Send it inside WhatsApp, then confirm here. Opening a draft does not verify sending or delivery."), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "space-between" } }, /* @__PURE__ */ w.createElement("div", null, "Verified sent: ", /* @__PURE__ */ w.createElement("strong", null, "0"), " \xB7 Manually confirmed: ", /* @__PURE__ */ w.createElement("strong", null, confirmed), " \xB7 Remaining: ", /* @__PURE__ */ w.createElement("strong", null, remaining), " \xB7 Skipped: ", /* @__PURE__ */ w.createElement("strong", null, skipped)), /* @__PURE__ */ w.createElement("label", null, /* @__PURE__ */ w.createElement("input", { type: "checkbox", checked: autoAdvance, onChange: (event) => setAutoAdvance(event.target.checked) }), " Next after confirmation or skip")), current && !["confirmed", "skipped"].includes(current.status) ? /* @__PURE__ */ w.createElement("div", { style: { padding: "16px", borderRadius: "12px", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("h3", null, current.name, current.meta?.class ? ` \u2022 Class ${current.meta.class}` : ""), /* @__PURE__ */ w.createElement("p", null, "Parent phone: ", /* @__PURE__ */ w.createElement("strong", null, current.phone || "No phone recorded")), current.error && /* @__PURE__ */ w.createElement("p", { role: "alert" }, current.error), /* @__PURE__ */ w.createElement("textarea", { "aria-label": "Reminder message", value: current.text || "", rows: 7, onChange: (event) => update(currentIndex, { text: event.target.value, status: "pending", error: "" }), style: { width: "100%", boxSizing: "border-box", resize: "vertical" } }), /* @__PURE__ */ w.createElement("p", { role: "status" }, statusLabel(current)), /* @__PURE__ */ w.createElement("div", { className: "modal-actions", style: { display: "flex", flexWrap: "wrap", gap: "10px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: () => nextPending(currentIndex, "skipped") }, "Skip"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", onClick: () => openDraft(currentIndex), disabled: !/^91[6-9]\d{9}$/.test(bnNormalizePhone(current.phone)) || !String(current.text || "").trim() }, "Open WhatsApp draft"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", disabled: current.status !== "opened", onClick: () => nextPending(currentIndex, "confirmed") }, "I sent it in WhatsApp"))) : /* @__PURE__ */ w.createElement("p", { role: "status" }, remaining ? "Select a pending recipient below." : `Queue reviewed: ${confirmed} manually confirmed, ${skipped} skipped. Sending and delivery have not been independently verified.`), !queue.length && /* @__PURE__ */ w.createElement("p", null, "No recipients are available."), /* @__PURE__ */ w.createElement("div", { style: { maxHeight: "280px", overflow: "auto", border: "1px solid var(--line, #e2e8f0)", borderRadius: "8px" } }, /* @__PURE__ */ w.createElement("table", { style: { width: "100%", minWidth: "540px", borderCollapse: "collapse" } }, /* @__PURE__ */ w.createElement("thead", null, /* @__PURE__ */ w.createElement("tr", null, /* @__PURE__ */ w.createElement("th", null, "Student / parent"), /* @__PURE__ */ w.createElement("th", null, "Phone"), /* @__PURE__ */ w.createElement("th", null, "Status"), /* @__PURE__ */ w.createElement("th", null, "Action"))), /* @__PURE__ */ w.createElement("tbody", null, queue.map((item, index) => /* @__PURE__ */ w.createElement("tr", { key: item.id }, /* @__PURE__ */ w.createElement("td", { style: { padding: "10px" } }, item.name), /* @__PURE__ */ w.createElement("td", null, item.phone || "No phone recorded"), /* @__PURE__ */ w.createElement("td", null, statusLabel(item)), /* @__PURE__ */ w.createElement("td", null, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button compact", onClick: () => setCurrentIndex(index) }, "View")))))))));
 }
 function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = "Bright Nexa School", schoolPhone = "" }) {
   const [ptmDate, setPtmDate] = (0, w.useState)(() => {
@@ -22362,7 +22373,7 @@ function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 
   const items = students.map((s2, idx) => ({
     id: s2.id || "ptm_" + idx,
     name: s2.name,
-    phone: s2.mobile || s2.guardianPhone || "",
+    phone: s2.parentMobile || s2.guardianPhone || s2.mobile || "",
     meta: { class: `${exam?.className || s2.className || ""}-${exam?.section || s2.section || ""}` },
     text: bnCreatePtmMessage({
       schoolName,
@@ -22993,7 +23004,7 @@ function Ur({
       items: absentRoster.map((student) => ({
         id: student.id,
         name: student.name,
-        phone: student.mobile || student.guardianPhone || "",
+        phone: student.parentMobile || student.guardianPhone || student.mobile || "",
         meta: { class: `${n2?.name || ""}-${n2?.section || ""}`, roll: student.rollNumber },
         text: bnCreateAbsenteeMessage({
           schoolName: "Haridwar Public School",
@@ -24505,7 +24516,7 @@ function PendingFeeReportDialog({ data, students, institution, filterLabel, onCl
       items: defaulters.map((row) => ({
         id: row.student.id,
         name: row.student.name,
-        phone: row.student.mobile || row.student.guardianPhone || "",
+        phone: row.student.parentMobile || row.student.guardianPhone || row.student.mobile || "",
         meta: {
           class: `${row.student.className || ""}-${row.student.section || ""}`,
           admissionNumber: row.student.admissionNumber || ""
@@ -37787,6 +37798,7 @@ function Ds() {
       return false;
     }
   });
+  let [studentProfileRequest, setStudentProfileRequest] = (0, w.useState)(null);
   let [globalSearch, setGlobalSearch] = (0, w.useState)("");
   let [searchDropdownOpen, setSearchDropdownOpen] = (0, w.useState)(false);
   let searchInputRef = (0, w.useRef)(null);
@@ -37806,23 +37818,6 @@ function Ds() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-  let searchResults = (0, w.useMemo)(() => {
-    let q = (globalSearch || "").trim().toLowerCase();
-    if (!q || q.length < 1) return { students: [], classes: [], receipts: [] };
-    let stus = (n2 || []).filter((s3) => {
-      let combined = [s3.name, s3.admissionNumber, s3.studentUniqueId, s3.className, s3.section, s3.fatherName, s3.mobile].filter(Boolean).join(" ").toLowerCase();
-      return combined.includes(q);
-    }).slice(0, 8);
-    let clss = (i2.classes || []).filter((c3) => {
-      let combined = [c3.name, c3.section, c3.academicStream].filter(Boolean).join(" ").toLowerCase();
-      return combined.includes(q);
-    }).slice(0, 5);
-    let rcts = (i2.feePayments || []).filter((f3) => {
-      let combined = [f3.receiptNumber, f3.category, f3.paymentMode, f3.remarks].filter(Boolean).join(" ").toLowerCase();
-      return combined.includes(q);
-    }).slice(0, 5);
-    return { students: stus, classes: clss, receipts: rcts };
-  }, [globalSearch, n2, i2.classes, i2.feePayments]);
   (0, w.useEffect)(() => {
     if (typeof BroadcastChannel === "undefined") return;
     let channel;
@@ -37878,6 +37873,29 @@ function Ds() {
     }
     return n2;
   }, [g2?.linkedStudentId, g2?.linkedTeacherId, n2, i2.teachers, v2]);
+  let searchResults = (0, w.useMemo)(() => {
+    let q = (globalSearch || "").trim().toLowerCase();
+    if (!q || q.length < 1) return { students: [], classes: [], receipts: [] };
+    let stus = (y2 || []).filter((s3) => {
+      let combined = [s3.name, s3.admissionNumber, s3.studentUniqueId, s3.className, s3.section, s3.fatherName, s3.parentMobile, s3.mobile].filter(Boolean).join(" ").toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 8);
+    let clss = (i2.classes || []).filter((c3) => {
+      let combined = [c3.name, c3.section, c3.academicStream].filter(Boolean).join(" ").toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 5);
+    let rcts = (i2.feePayments || []).filter((f3) => {
+      let combined = [f3.receiptNumber, f3.category, f3.paymentMode, f3.remarks].filter(Boolean).join(" ").toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 5);
+    return { students: stus, classes: clss, receipts: rcts };
+  }, [globalSearch, y2, i2.classes, i2.feePayments]);
+  const openStudentProfile = (studentId) => {
+    if (!y2.some((student) => student.id === studentId)) return;
+    setStudentProfileRequest({ studentId });
+    l2("Students");
+    setSearchDropdownOpen(false);
+  };
   let b2 = (0, w.useMemo)(() => Ts.filter((e3) => e3.roles.includes(v2)), [v2]);
   let x2 = e2.institution.institutionType === `Coaching Centre`;
   let S2 = {
@@ -38228,10 +38246,9 @@ function Ds() {
       onKeyDown: (e3) => {
         if (e3.key === "Enter") {
           if (searchResults.students.length > 0) {
-            l2("Students");
-            setSearchDropdownOpen(false);
+            openStudentProfile(searchResults.students[0].id);
           } else if (searchResults.classes.length > 0) {
-            l2("Class & Section Setup");
+            l2("Classes & Batches");
             setSearchDropdownOpen(false);
           } else if (searchResults.receipts.length > 0) {
             l2("Fees");
@@ -38267,8 +38284,7 @@ function Ds() {
         key: st.id,
         style: { padding: "8px", borderRadius: "6px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" },
         onClick: () => {
-          l2("Students");
-          setSearchDropdownOpen(false);
+          openStudentProfile(st.id);
         }
       },
       /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "13px", display: "block", color: "#0f172a" } }, st.name), /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b" } }, "Class ", st.className, st.section ? `-${st.section}` : "", " \u2022 Adm: ", st.admissionNumber || st.studentUniqueId || "N/A")),
@@ -38279,7 +38295,7 @@ function Ds() {
         key: cl.id,
         style: { padding: "8px", borderRadius: "6px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" },
         onClick: () => {
-          l2("Class & Section Setup");
+          l2("Classes & Batches");
           setSearchDropdownOpen(false);
         }
       },
@@ -38587,6 +38603,8 @@ function Ds() {
     {
       students: y2,
       classes: i2.classes,
+      profileRequest: studentProfileRequest,
+      onProfileRequestHandled: () => setStudentProfileRequest(null),
       onAddStudent: () => d2(true),
       onImportStudents: ue,
       onUpdateStudent: de,

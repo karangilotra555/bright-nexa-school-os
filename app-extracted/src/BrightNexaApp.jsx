@@ -20588,6 +20588,8 @@ function bnBroadcastStoreSync(institution, students, operations) {
 function _Component90({
   students: e,
   classes = [],
+  profileRequest,
+  onProfileRequestHandled,
   onAddStudent: t,
   onImportStudents: n,
   onUpdateStudent: r,
@@ -20598,6 +20600,12 @@ function _Component90({
   let u = (0, w.useRef)(null);
   let [d, f] = (0, w.useState)(null);
   let [p, m] = (0, w.useState)(null);
+  (0, w.useEffect)(() => {
+    if (!profileRequest) return;
+    const student = e.find(student => student.id === profileRequest.studentId);
+    if (student) f(student);
+    onProfileRequestHandled?.();
+  }, [profileRequest, e, onProfileRequestHandled]);
   let h = (0, w.useMemo)(() => {
     let t = a.trim().toLocaleLowerCase();
     if (t) {
@@ -21763,6 +21771,7 @@ function _r(e) {
   return r;
 }
 function _Component5({ student: e, onClose: t, onEdit: n, onDelete: r }) {
+  const [maximized, setMaximized] = (0, w.useState)(false);
   let i = [
     [`Permanent Student ID`, e.studentUniqueId],
     [`Admission Number`, e.admissionNumber],
@@ -21822,6 +21831,7 @@ function _Component5({ student: e, onClose: t, onEdit: n, onDelete: r }) {
     >
       <Component158
         className={`simple-modal student-profile-modal`}
+        style={maximized ? {width: '96vw', maxWidth: '96vw', height: '92vh', maxHeight: '92vh', display: 'flex', flexDirection: 'column'} : undefined}
         role={`dialog`}
         aria-modal={`true`}
         aria-label={`${o} profile`}
@@ -21848,6 +21858,8 @@ function _Component5({ student: e, onClose: t, onEdit: n, onDelete: r }) {
               )}
             </Component147>
           </Component148>
+          <div style={{display: 'flex', gap: '4px', flexShrink: 0}}>
+          <button type="button" className="icon-button" aria-label={maximized ? 'Restore' : 'Maximize'} title={maximized ? 'Restore size' : 'Maximize dialog'} onClick={() => setMaximized(value => !value)}>{maximized ? '🗗' : '🗖'}</button>
           <Component149
             className={`icon-button`}
             onClick={t}
@@ -21855,8 +21867,9 @@ function _Component5({ student: e, onClose: t, onEdit: n, onDelete: r }) {
           >
             <St size={21} />
           </Component149>
+          </div>
         </Component150>
-        <Component157 className={`simple-modal-body`}>
+        <Component157 className={`simple-modal-body`} style={maximized ? {flex: 1, minHeight: 0, maxHeight: 'none', overflow: 'auto'} : undefined}>
           {i.length > 0 && (
             <Component151 className={`profile-detail-grid`}>
               {i.map(([e, t]) => (
@@ -23599,7 +23612,7 @@ function L({ title: e, subtitle: t, onClose: n, children: r }) {
         </Component389>
         <Component390
           className={`simple-modal-body`}
-          style={maximized ? { flex: 1, maxHeight: 'none', overflowY: 'auto' } : undefined}
+          style={maximized ? { flex: 1, minHeight: 0, maxHeight: 'none', overflow: 'auto' } : { overflowX: 'auto' }}
         >
           {r}
         </Component390>
@@ -23737,156 +23750,68 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
 }
 
 function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = 'Bright Nexa School', items = [] }) {
-  const [queue, setQueue] = (0, w.useState)(() => items.map((it, idx) => ({ ...it, id: it.id || 'wa_' + idx, status: 'pending' })));
+  const [queue, setQueue] = (0, w.useState)(() => items.map((item, index) => ({...item, id: item.id || 'wa_' + index, status: 'pending'})));
   const [currentIndex, setCurrentIndex] = (0, w.useState)(0);
   const [autoAdvance, setAutoAdvance] = (0, w.useState)(true);
-  const [countdown, setCountdown] = (0, w.useState)(0);
-
   (0, w.useEffect)(() => {
-    setQueue(items.map((it, idx) => ({ ...it, id: it.id || 'wa_' + idx, status: 'pending' })));
-    setCurrentIndex(0);
-    setCountdown(0);
-  }, [items]);
-
-  if (!isOpen || !queue.length) return null;
-
-  const currentItem = queue[currentIndex] || null;
-  const sentCount = queue.filter(x => x.status === 'sent').length;
-  const skippedCount = queue.filter(x => x.status === 'skipped').length;
-  const isDone = currentIndex >= queue.length;
-
-  const handleSend = (idx = currentIndex) => {
-    const item = queue[idx];
-    if (!item) return;
-    const url = bnBuildWhatsAppUrl(item.phone, item.text, 'web');
-    window.open(url, 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100');
-    const updated = [...queue];
-    updated[idx] = { ...item, status: 'sent', sentAt: new Date().toISOString() };
-    setQueue(updated);
-    if (idx === currentIndex) advanceNext(updated);
-  };
-
-  const handleSkip = () => {
-    const updated = [...queue];
-    updated[currentIndex] = { ...updated[currentIndex], status: 'skipped' };
-    setQueue(updated);
-    advanceNext(updated);
-  };
-
-  const advanceNext = (q) => {
-    const next = currentIndex + 1;
-    setCurrentIndex(next);
-    if (next < q.length && autoAdvance) setCountdown(3);
-  };
-
-  (0, w.useEffect)(() => {
-    if (countdown > 0) {
-      const t = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(t);
-    } else if (countdown === 0 && autoAdvance && currentItem && currentItem.status === 'pending' && currentIndex > 0) {
-      handleSend(currentIndex);
+    if (isOpen) {
+      setQueue(items.map((item, index) => ({...item, id: item.id || 'wa_' + index, status: 'pending'})));
+      setCurrentIndex(0);
     }
-  }, [countdown, autoAdvance, currentIndex]);
-
-  return (
-    <L title={title || 'WhatsApp Queue Runner'} subtitle={subtitle || `${schoolName} • ${sentCount} sent of ${queue.length} total`} onClose={onClose}>
-      <div className="simple-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '10px', background: 'var(--card-bg, #fff)', border: '1px solid var(--line, #e2e8f0)' }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600 }}>Queue:</span>
-            <span className="tag" style={{ background: '#dcfce7', color: '#15803d' }}>Sent: {sentCount}</span>
-            <span className="tag" style={{ background: '#fef3c7', color: '#b45309' }}>Remaining: {queue.length - (sentCount + skippedCount)}</span>
-            {skippedCount > 0 && <span className="tag" style={{ background: '#f1f5f9', color: '#64748b' }}>Skipped: {skippedCount}</span>}
-          </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-            <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} />
-            <span>Auto-advance (3s delay)</span>
-          </label>
-        </div>
-
-        {!isDone && currentItem ? (
-          <div style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '2px solid #22c55e', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '12px', textTransform: 'uppercase', color: '#16a34a', fontWeight: 700 }}>
-                  Active #{currentIndex + 1} of {queue.length}
-                </span>
-                <h3 style={{ margin: '2px 0 0', fontSize: '17px', color: '#0f172a' }}>
-                  {currentItem.name}
-                  {currentItem.meta?.class ? ` • Class ${currentItem.meta.class}` : ''}
-                  {currentItem.meta?.admissionNumber ? ` (${currentItem.meta.admissionNumber})` : ''}
-                </h3>
-                <small style={{ color: '#64748b' }}>
-                  📞 Parent Phone: <strong>{currentItem.phone || 'No phone recorded'}</strong>
-                </small>
-              </div>
-              {countdown > 0 && (
-                <div style={{ padding: '6px 12px', background: '#dbeafe', color: '#1e40af', borderRadius: '8px', fontWeight: 700, fontSize: '13px' }}>
-                  Next in {countdown}s...
-                </div>
-              )}
-            </div>
-
-            <div style={{ background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: '130px', overflowY: 'auto' }}>
-              {currentItem.text}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
-              <button type="button" className="secondary-button" onClick={handleSkip} style={{ fontWeight: 600 }}>
-                ⏭️ Skip
-              </button>
-              <button type="button" className="primary-button" style={{ background: '#22c55e', borderColor: '#16a34a', fontWeight: 700, fontSize: '14px', gap: '8px' }} onClick={() => handleSend(currentIndex)} autoFocus>
-                <span>🚀</span>
-                <span>Send on WhatsApp (Enter)</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: '24px', borderRadius: '12px', background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: '36px' }}>🎉</span>
-            <strong style={{ fontSize: '18px', color: '#15803d' }}>All Messages Processed!</strong>
-            <p style={{ margin: 0, color: '#166534', fontSize: '14px' }}>
-              Successfully processed {sentCount} sent and {skippedCount} skipped out of {queue.length} parents.
-            </p>
-          </div>
-        )}
-
-        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--line, #e2e8f0)', borderRadius: '8px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ background: 'var(--header-bg, #f1f5f9)', textAlign: 'left' }}>
-                <th style={{ padding: '8px 12px' }}>#</th>
-                <th style={{ padding: '8px 12px' }}>Student / Parent</th>
-                <th style={{ padding: '8px 12px' }}>Phone</th>
-                <th style={{ padding: '8px 12px' }}>Status</th>
-                <th style={{ padding: '8px 12px', textAlign: 'right' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {queue.map((item, idx) => (
-                <tr key={item.id} style={{ borderTop: '1px solid var(--line, #e2e8f0)', background: idx === currentIndex ? 'rgba(34, 197, 94, 0.08)' : 'transparent' }}>
-                  <td style={{ padding: '8px 12px', color: '#64748b' }}>{idx + 1}</td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <strong>{item.name}</strong>
-                    {item.meta?.class ? <small style={{ color: '#64748b', display: 'block' }}>Class: {item.meta.class}</small> : null}
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>{item.phone || '—'}</td>
-                  <td style={{ padding: '8px 12px' }}>
-                    {item.status === 'sent' ? <span className="tag" style={{ background: '#dcfce7', color: '#15803d' }}>Sent ✅</span> : item.status === 'skipped' ? <span className="tag" style={{ background: '#f1f5f9', color: '#64748b' }}>Skipped ⏭️</span> : <span className="tag" style={{ background: '#fef3c7', color: '#b45309' }}>Pending</span>}
-                  </td>
-                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                    <button type="button" className="secondary-button compact" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleSend(idx)}>
-                      📱 Send
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+  }, [items, isOpen]);
+  if (!isOpen) return null;
+  const current = queue[currentIndex];
+  const confirmed = queue.filter(item => item.status === 'confirmed').length;
+  const skipped = queue.filter(item => item.status === 'skipped').length;
+  const remaining = queue.length - confirmed - skipped;
+  const update = (index, values) => setQueue(previous => previous.map((item, i) => i === index ? {...item, ...values} : item));
+  const openDraft = (index) => {
+    const item = queue[index];
+    if (!item || ['confirmed', 'skipped'].includes(item.status)) return;
+    const phone = bnNormalizePhone(item.phone);
+    if (!/^91[6-9]\d{9}$/.test(phone)) { update(index, {status: 'invalid', error: 'A valid registered parent mobile number is required.'}); return; }
+    if (!String(item.text || '').trim()) { update(index, {status: 'invalid', error: 'Message is empty.'}); return; }
+    let popup;
+    try { popup = window.open(bnBuildWhatsAppUrl(phone, item.text, 'web'), 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100'); } catch (_) {}
+    setCurrentIndex(index);
+    update(index, popup ? {status: 'opened', openedAt: new Date().toISOString(), error: ''} : {status: 'blocked', error: 'Popup blocked. Allow popups for this site and retry.'});
+  };
+  const nextPending = (index, status) => {
+    update(index, {status, ...(status === 'confirmed' ? {confirmedAt: new Date().toISOString()} : {})});
+    if (autoAdvance) {
+      const next = queue.findIndex((item, i) => i > index && !['confirmed', 'skipped'].includes(item.status));
+      const earlier = queue.findIndex((item, i) => i < index && !['confirmed', 'skipped'].includes(item.status));
+      setCurrentIndex(next >= 0 ? next : earlier >= 0 ? earlier : queue.length);
+    }
+  };
+  const statusLabel = item => ({pending: 'Pending', opened: 'Draft opened — unverified', confirmed: 'Manually confirmed', skipped: 'Skipped', invalid: 'Invalid / missing details', blocked: 'Popup blocked'})[item.status] || 'Unverified';
+  return <L title={title || 'WhatsApp reminder queue'} subtitle={subtitle || `${schoolName} • ${queue.length} recipients`} onClose={onClose}>
+    <div style={{display: 'flex', flexDirection: 'column', gap: '14px'}}>
+      <p role="note" style={{margin: 0}}>This prepares a WhatsApp draft. Send it inside WhatsApp, then confirm here. Opening a draft does not verify sending or delivery.</p>
+      <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'space-between'}}>
+        <div>Verified sent: <strong>0</strong> · Manually confirmed: <strong>{confirmed}</strong> · Remaining: <strong>{remaining}</strong> · Skipped: <strong>{skipped}</strong></div>
+        <label><input type="checkbox" checked={autoAdvance} onChange={event => setAutoAdvance(event.target.checked)} /> Next after confirmation or skip</label>
       </div>
-    </L>
-  );
+      {current && !['confirmed', 'skipped'].includes(current.status) ? <div style={{padding: '16px', borderRadius: '12px', border: '1px solid var(--line, #e2e8f0)'}}>
+        <h3>{current.name}{current.meta?.class ? ` • Class ${current.meta.class}` : ''}</h3>
+        <p>Parent phone: <strong>{current.phone || 'No phone recorded'}</strong></p>
+        {current.error && <p role="alert">{current.error}</p>}
+        <textarea aria-label="Reminder message" value={current.text || ''} rows={7} onChange={event => update(currentIndex, {text: event.target.value, status: 'pending', error: ''})} style={{width: '100%', boxSizing: 'border-box', resize: 'vertical'}} />
+        <p role="status">{statusLabel(current)}</p>
+        <div className="modal-actions" style={{display: 'flex', flexWrap: 'wrap', gap: '10px'}}>
+          <button type="button" className="secondary-button" onClick={() => nextPending(currentIndex, 'skipped')}>Skip</button>
+          <button type="button" className="primary-button" onClick={() => openDraft(currentIndex)} disabled={!/^91[6-9]\d{9}$/.test(bnNormalizePhone(current.phone)) || !String(current.text || '').trim()}>Open WhatsApp draft</button>
+          <button type="button" className="secondary-button" disabled={current.status !== 'opened'} onClick={() => nextPending(currentIndex, 'confirmed')}>I sent it in WhatsApp</button>
+        </div>
+      </div> : <p role="status">{remaining ? 'Select a pending recipient below.' : `Queue reviewed: ${confirmed} manually confirmed, ${skipped} skipped. Sending and delivery have not been independently verified.`}</p>}
+      {!queue.length && <p>No recipients are available.</p>}
+      <div style={{maxHeight: '280px', overflow: 'auto', border: '1px solid var(--line, #e2e8f0)', borderRadius: '8px'}}>
+        <table style={{width: '100%', minWidth: '540px', borderCollapse: 'collapse'}}><thead><tr><th>Student / parent</th><th>Phone</th><th>Status</th><th>Action</th></tr></thead><tbody>
+          {queue.map((item, index) => <tr key={item.id}><td style={{padding: '10px'}}>{item.name}</td><td>{item.phone || 'No phone recorded'}</td><td>{statusLabel(item)}</td><td><button type="button" className="secondary-button compact" onClick={() => setCurrentIndex(index)}>View</button></td></tr>)}
+        </tbody></table>
+      </div>
+    </div>
+  </L>;
 }
 
 function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 'Bright Nexa School', schoolPhone = '' }) {
@@ -23904,7 +23829,7 @@ function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 
   const items = students.map((s, idx) => ({
     id: s.id || 'ptm_' + idx,
     name: s.name,
-    phone: s.mobile || s.guardianPhone || '',
+    phone: s.parentMobile || s.guardianPhone || s.mobile || '',
     meta: { class: `${exam?.className || s.className || ''}-${exam?.section || s.section || ''}` },
     text: bnCreatePtmMessage({
       schoolName,
@@ -24667,7 +24592,7 @@ function Ur({
           items={absentRoster.map((student) => ({
             id: student.id,
             name: student.name,
-            phone: student.mobile || student.guardianPhone || '',
+            phone: student.parentMobile || student.guardianPhone || student.mobile || '',
             meta: { class: `${n?.name || ''}-${n?.section || ''}`, roll: student.rollNumber },
             text: bnCreateAbsenteeMessage({
               schoolName: 'Haridwar Public School',
@@ -26740,7 +26665,7 @@ function PendingFeeReportDialog({ data, students, institution, filterLabel, onCl
           items={defaulters.map((row) => ({
             id: row.student.id,
             name: row.student.name,
-            phone: row.student.mobile || row.student.guardianPhone || '',
+            phone: row.student.parentMobile || row.student.guardianPhone || row.student.mobile || '',
             meta: {
               class: `${row.student.className || ''}-${row.student.section || ''}`,
               admissionNumber: row.student.admissionNumber || ''
@@ -42464,6 +42389,7 @@ function Ds() {
       return false;
     }
   });
+  let [studentProfileRequest, setStudentProfileRequest] = (0, w.useState)(null);
   let [globalSearch, setGlobalSearch] = (0, w.useState)('');
   let [searchDropdownOpen, setSearchDropdownOpen] = (0, w.useState)(false);
   let searchInputRef = (0, w.useRef)(null);
@@ -42485,23 +42411,7 @@ function Ds() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  let searchResults = (0, w.useMemo)(() => {
-    let q = (globalSearch || '').trim().toLowerCase();
-    if (!q || q.length < 1) return { students: [], classes: [], receipts: [] };
-    let stus = (n || []).filter(s => {
-      let combined = [s.name, s.admissionNumber, s.studentUniqueId, s.className, s.section, s.fatherName, s.mobile].filter(Boolean).join(' ').toLowerCase();
-      return combined.includes(q);
-    }).slice(0, 8);
-    let clss = (i.classes || []).filter(c => {
-      let combined = [c.name, c.section, c.academicStream].filter(Boolean).join(' ').toLowerCase();
-      return combined.includes(q);
-    }).slice(0, 5);
-    let rcts = (i.feePayments || []).filter(f => {
-      let combined = [f.receiptNumber, f.category, f.paymentMode, f.remarks].filter(Boolean).join(' ').toLowerCase();
-      return combined.includes(q);
-    }).slice(0, 5);
-    return { students: stus, classes: clss, receipts: rcts };
-  }, [globalSearch, n, i.classes, i.feePayments]);
+
 
   (0, w.useEffect)(() => {
     if (typeof BroadcastChannel === 'undefined') return;
@@ -42559,6 +42469,29 @@ function Ds() {
     }
     return n;
   }, [g?.linkedStudentId, g?.linkedTeacherId, n, i.teachers, v]);
+  let searchResults = (0, w.useMemo)(() => {
+    let q = (globalSearch || '').trim().toLowerCase();
+    if (!q || q.length < 1) return { students: [], classes: [], receipts: [] };
+    let stus = (y || []).filter(s => {
+      let combined = [s.name, s.admissionNumber, s.studentUniqueId, s.className, s.section, s.fatherName, s.parentMobile, s.mobile].filter(Boolean).join(' ').toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 8);
+    let clss = (i.classes || []).filter(c => {
+      let combined = [c.name, c.section, c.academicStream].filter(Boolean).join(' ').toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 5);
+    let rcts = (i.feePayments || []).filter(f => {
+      let combined = [f.receiptNumber, f.category, f.paymentMode, f.remarks].filter(Boolean).join(' ').toLowerCase();
+      return combined.includes(q);
+    }).slice(0, 5);
+    return { students: stus, classes: clss, receipts: rcts };
+  }, [globalSearch, y, i.classes, i.feePayments]);
+  const openStudentProfile = (studentId) => {
+    if (!y.some(student => student.id === studentId)) return;
+    setStudentProfileRequest({studentId});
+    l('Students');
+    setSearchDropdownOpen(false);
+  };
   let b = (0, w.useMemo)(() => Ts.filter((e) => e.roles.includes(v)), [v]);
   let x = e.institution.institutionType === `Coaching Centre`;
   let S = {
@@ -42963,10 +42896,9 @@ function Ds() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     if (searchResults.students.length > 0) {
-                      l('Students');
-                      setSearchDropdownOpen(false);
+                      openStudentProfile(searchResults.students[0].id);
                     } else if (searchResults.classes.length > 0) {
-                      l('Class & Section Setup');
+                      l('Classes & Batches');
                       setSearchDropdownOpen(false);
                     } else if (searchResults.receipts.length > 0) {
                       l('Fees');
@@ -43013,8 +42945,7 @@ function Ds() {
                             key={st.id}
                             style={{ padding: '8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                             onClick={() => {
-                              l('Students');
-                              setSearchDropdownOpen(false);
+                              openStudentProfile(st.id);
                             }}
                           >
                             <div>
@@ -43036,7 +42967,7 @@ function Ds() {
                             key={cl.id}
                             style={{ padding: '8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                             onClick={() => {
-                              l('Class & Section Setup');
+                              l('Classes & Batches');
                               setSearchDropdownOpen(false);
                             }}
                           >
@@ -43476,6 +43407,8 @@ function Ds() {
             <_Component90
               students={y}
               classes={i.classes}
+              profileRequest={studentProfileRequest}
+              onProfileRequestHandled={() => setStudentProfileRequest(null)}
               onAddStudent={() => d(true)}
               onImportStudents={ue}
               onUpdateStudent={de}

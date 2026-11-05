@@ -111,7 +111,8 @@ test('WhatsAppQueue manages items, tracks progression, handles skip and completi
     onComplete: (progress) => {
       completed = true;
       assert.equal(progress.total, 3);
-      assert.equal(progress.sent, 2);
+      assert.equal(progress.sent, 0);
+      assert.equal(progress.confirmed, 2);
       assert.equal(progress.skipped, 1);
     }
   });
@@ -119,10 +120,15 @@ test('WhatsAppQueue manages items, tracks progression, handles skip and completi
   assert.equal(queue.items.length, 3);
   assert.equal(queue.getCurrent().name, 'Parent 1');
 
-  // Send first item without opening browser window in node environment
-  queue.sendCurrent(false);
-  assert.equal(queue.items[0].status, 'sent');
-  assert.ok(queue.items[0].sentAt);
+  // Opening a draft is not a send receipt; explicit manual confirmation progresses.
+  const priorWindow = global.window;
+  global.window = {open: () => ({closed:false})};
+  queue.sendCurrent();
+  assert.equal(queue.currentIndex, 0);
+  assert.equal(queue.items[0].status, 'opened');
+  queue.confirmCurrentSent();
+  assert.equal(queue.items[0].status, 'confirmed');
+  assert.ok(queue.items[0].confirmedAt);
   assert.equal(queue.currentIndex, 1);
 
   // Skip second item
@@ -131,7 +137,9 @@ test('WhatsAppQueue manages items, tracks progression, handles skip and completi
   assert.equal(queue.currentIndex, 2);
 
   // Send third item
-  queue.sendCurrent(false);
-  assert.equal(queue.items[2].status, 'sent');
+  queue.sendCurrent();
+  queue.confirmCurrentSent();
+  assert.equal(queue.items[2].status, 'confirmed');
+  if (priorWindow === undefined) delete global.window; else global.window = priorWindow;
   assert.equal(completed, true);
 });

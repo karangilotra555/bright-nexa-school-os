@@ -1,6 +1,6 @@
 /**
  * Bright Nexa School OS - WhatsApp School Operations Engine
- * 100% API-Free, Ban-Safe, Human-Paced WhatsApp Web & Queue Integration
+ * WhatsApp Web draft preparation and explicit manual confirmation
  * Covers:
  * 1. Daily Absentee Alerts (Attendance)
  * 2. Pending Fee Reminders (Fees)
@@ -37,7 +37,7 @@
       }
     }
 
-    return digits;
+    return '';
   }
 
   /**
@@ -46,6 +46,7 @@
    */
   function buildWhatsAppUrl(phone, text, target = 'web') {
     const cleanPhone = normalizeIndianPhone(phone);
+    if (!cleanPhone || !String(text || '').trim()) return '';
     const encodedText = encodeURIComponent(text || '');
 
     if (target === 'wa_me') {
@@ -216,15 +217,19 @@
 
     getProgress() {
       const sent = this.items.filter(x => x.status === 'sent').length;
+      const confirmed = this.items.filter(x => x.status === 'confirmed').length;
+      const opened = this.items.filter(x => x.status === 'opened').length;
       const skipped = this.items.filter(x => x.status === 'skipped').length;
       const total = this.items.length;
       return {
         currentIndex: this.currentIndex,
         sent,
+        confirmed,
+        opened,
         skipped,
         total,
-        remaining: total - (sent + skipped),
-        percent: total ? Math.round(((sent + skipped) / total) * 100) : 0,
+        remaining: total - (sent + confirmed + skipped),
+        percent: total ? Math.round(((sent + confirmed + skipped) / total) * 100) : 0,
         isRunning: this.isRunning,
         countdown: this.countdown
       };
@@ -255,17 +260,34 @@
     sendCurrent(openWindow = true) {
       const curr = this.getCurrent();
       if (!curr) return false;
-
-      curr.status = 'sent';
-      curr.sentAt = new Date().toISOString();
-
-      if (openWindow) {
-        const url = buildWhatsAppUrl(curr.phone, curr.text, 'web');
-        if (typeof window !== 'undefined' && typeof window.open === 'function') {
-          window.open(url, 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100');
-        }
+      const url = buildWhatsAppUrl(curr.phone, curr.text, 'web');
+      if (!url) {
+        curr.status = 'invalid';
+        this.notify();
+        return false;
       }
+      let popup = null;
+      try {
+        if (openWindow && typeof window !== 'undefined' && typeof window.open === 'function') {
+          popup = window.open(url, 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100');
+        }
+      } catch (_) {}
+      if (!popup) {
+        curr.status = 'blocked';
+        this.notify();
+        return false;
+      }
+      curr.status = 'opened';
+      curr.openedAt = new Date().toISOString();
+      this.notify();
+      return true;
+    }
 
+    confirmCurrentSent() {
+      const curr = this.getCurrent();
+      if (!curr || curr.status !== 'opened') return false;
+      curr.status = 'confirmed';
+      curr.confirmedAt = new Date().toISOString();
       this.advance();
       return true;
     }
@@ -324,8 +346,9 @@
         return;
       }
 
-      // Automatically trigger window open for the current item if running
-      this.sendCurrent(true);
+      // A browser draft is not a send receipt. Opening requires a user gesture;
+      // progressing requires explicit confirmation or skip.
+      this.notify();
     }
   }
 
