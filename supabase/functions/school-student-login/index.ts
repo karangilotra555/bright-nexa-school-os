@@ -66,7 +66,9 @@ export function handler(create=createClient){return async(req:Request)=>{
   if(rateError)return reply({error:'Login service unavailable'},503);
   if(!ok)return reply({error:'Too many attempts. Try again after 15 minutes.'},429);
   const {data:found,error:findError}=await admin.from('school_students').select('id').eq('institution_id',school).eq('admission_number',admission).eq('status','active').maybeSingle();
-  const s=found&&!findError?await student(found.id,school):null;
+  let studentId=found&&!findError?found.id:null;
+  if(!studentId){const {data:alias,error:aliasError}=await admin.from('school_student_profiles').select('student_id').eq('institution_id',school).eq('admission_login_alias',admission).maybeSingle();if(!aliasError)studentId=alias?.student_id;}
+  const s=studentId?await student(studentId,school):null;
   const invalid=()=>reply({error:'Admission number or password is incorrect. First login requires the mobile number saved by your school.'},401);
   if(!s)return invalid();
   const email=(await digest('student:'+s.institution_id+':'+s.id))+'@student.brightnexa.invalid';
@@ -88,3 +90,4 @@ export function handler(create=createClient){return async(req:Request)=>{
  }catch(_){return reply({error:'Unable to complete student login. Try again or contact the school office.'},500);}
 };}
 Deno.serve(handler());
+
