@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node -e \"console.log('Build completed successfully')\"",
     "start": "node server.js",
-    "test": "node --test tests/*.test.cjs"
+    "test": "node --test tests/*.test.cjs",
+    "deploy": "node scripts/deploy-render.cjs"
   },
   "author": "Karan Gilotra",
   "license": "ISC",

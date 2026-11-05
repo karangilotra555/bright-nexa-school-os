@@ -19644,7 +19644,7 @@ function bnCascadeStudentChanges(updatedStudent, oldStudent = null, operations =
     }
   };
 }
-function buildDynamicClassList(configuredClasses = [], studentList = []) {
+function buildDynamicClassList(configuredClasses = [], studentList = [], includeStandards = true) {
   const standardOrder = ["nursery", "lkg", "ukg", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
   const seen = /* @__PURE__ */ new Set();
   const result = [];
@@ -19660,7 +19660,9 @@ function buildDynamicClassList(configuredClasses = [], studentList = []) {
   }
   (configuredClasses || []).forEach((c2) => addClass(c2.name));
   (studentList || []).forEach((s2) => addClass(s2.className));
-  ["Nursery", "LKG", "UKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].forEach(addClass);
+  if (includeStandards || result.length === 0) {
+    ["Nursery", "LKG", "UKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].forEach(addClass);
+  }
   result.sort((a2, b2) => {
     const na2 = normalizeClassName(a2);
     const nb = normalizeClassName(b2);
@@ -19686,7 +19688,9 @@ function buildDynamicSectionList(selectedClass, configuredClasses = [], studentL
       set.add(s2.section.trim());
     }
   });
-  ["A", "B", "C", "D"].forEach((sec) => set.add(sec));
+  if (set.size === 0) {
+    return ["A"];
+  }
   return Array.from(set).sort();
 }
 function bnGetApiBase() {
@@ -20270,7 +20274,12 @@ function _Component6({
   initialStudent: r2
 }) {
   let [i2, a2] = (0, w.useState)(() => r2 ? _r(r2) : ur);
-  let availableClasses = (0, w.useMemo)(() => buildDynamicClassList(classes, e2), [classes, e2]);
+  let availableClasses = (0, w.useMemo)(() => {
+    if (classes && classes.length > 0) {
+      return buildDynamicClassList(classes.filter((c3) => c3.status !== "Inactive"), e2, false);
+    }
+    return buildDynamicClassList(classes, e2, true);
+  }, [classes, e2]);
   let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i2.className, classes, e2), [i2.className, classes, e2]);
   let [o2, s2] = (0, w.useState)({});
   let [c2, l2] = (0, w.useState)(``);
@@ -20456,6 +20465,7 @@ function _Component6({
           value: i2.className,
           onChange: (e3) => {
             p2(`className`, e3.target.value);
+            p2(`section`, ``);
             if (e3.target.value !== `11` && e3.target.value !== `12`) {
               p2(`academicStream`, void 0);
             }
@@ -26768,7 +26778,14 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
       src: n2.institution.logoDataUrl || `./bright-nexa-official-logo.jpg`,
       alt: `School logo`
     }
-  )), /* @__PURE__ */ w.createElement(Component907, { className: `report-inst-details` }, /* @__PURE__ */ w.createElement(Component901, { className: `report-school-title` }, n2.institution.name), /* @__PURE__ */ w.createElement(Component902, { className: `report-school-affil` }, `Affiliated to `, n2.institution.boardType || `Central Board of Secondary Education (CBSE)`, ` \u2022 School Code: 20458 \u2022 Affiliation No: 1730248`), /* @__PURE__ */ w.createElement(Component903, { className: `report-school-addr` }, n2.institution.address, `, `, n2.institution.city, `, `, n2.institution.state, n2.institution.pinCode ? ` - ${n2.institution.pinCode}` : ``, ` \u2022 Ph: `, n2.institution.contactNumber || `9876500000`, n2.institution.email ? ` \u2022 ${n2.institution.email}` : ``), /* @__PURE__ */ w.createElement(Component906, { className: `report-title-badge-wrap` }, /* @__PURE__ */ w.createElement(Component904, { className: `report-main-heading` }, n2.institution.institutionType === `Coaching Centre` ? `STUDENT PERFORMANCE REPORT` : `ANNUAL PROGRESS REPORT CARD`), /* @__PURE__ */ w.createElement(Component905, { className: `report-session-badge` }, `ACADEMIC SESSION: `, n2.institution.session))), /* @__PURE__ */ w.createElement(Component911, { className: `report-photo-box` }, /* @__PURE__ */ w.createElement(Component909, { className: `report-photo-inner` }, /* @__PURE__ */ w.createElement(Component908, null, `PHOTO`)), /* @__PURE__ */ w.createElement(Component910, null, `Affix Photo`))), /* @__PURE__ */ w.createElement(Component939, { className: `report-student-grid` }, /* @__PURE__ */ w.createElement(Component925, { className: `student-row` }, /* @__PURE__ */ w.createElement(Component915, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component913, null, `Student Name:`), /* @__PURE__ */ w.createElement(Component914, null, l2.name)), /* @__PURE__ */ w.createElement(Component918, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component916, null, `Roll No:`), /* @__PURE__ */ w.createElement(Component917, null, l2.rollNumber || `06`)), /* @__PURE__ */ w.createElement(Component921, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component919, null, `Admission / S.R. No:`), /* @__PURE__ */ w.createElement(Component920, null, l2.admissionNumber)), /* @__PURE__ */ w.createElement(Component924, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component922, null, `Class & Section:`), /* @__PURE__ */ w.createElement(Component923, null, [l2.className, l2.section, l2.academicStream].filter(Boolean).join(` - `)))), /* @__PURE__ */ w.createElement(Component938, { className: `student-row` }, /* @__PURE__ */ w.createElement(Component928, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component926, null, `Mother Name:`), /* @__PURE__ */ w.createElement(Component927, null, l2.motherName || `Neha Sharma`)), /* @__PURE__ */ w.createElement(Component931, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component929, null, `Father Name:`), /* @__PURE__ */ w.createElement(Component930, null, l2.fatherName || `Vikas Sharma`)), /* @__PURE__ */ w.createElement(Component934, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component932, null, `Date of Birth:`), /* @__PURE__ */ w.createElement(Component933, null, l2.dateOfBirth || `12/03/2014`)), /* @__PURE__ */ w.createElement(Component937, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component935, null, `Examination:`), /* @__PURE__ */ w.createElement(Component936, null, a2.name)))), /* @__PURE__ */ w.createElement(Component964, { className: `report-table-wrapper` }, /* @__PURE__ */ w.createElement(Component963, { className: `report-marks-table` }, /* @__PURE__ */ w.createElement(Component947, null, /* @__PURE__ */ w.createElement(Component946, null, /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(Component907, { className: `report-inst-details` }, /* @__PURE__ */ w.createElement(Component901, { className: `report-school-title` }, n2.institution.name), /* @__PURE__ */ w.createElement(Component902, { className: `report-school-affil` }, `Affiliated to `, n2.institution.boardType || `Central Board of Secondary Education (CBSE)`, ` \u2022 School Code: 20458 \u2022 Affiliation No: 1730248`), /* @__PURE__ */ w.createElement(Component903, { className: `report-school-addr` }, n2.institution.address, `, `, n2.institution.city, `, `, n2.institution.state, n2.institution.pinCode ? ` - ${n2.institution.pinCode}` : ``, ` \u2022 Ph: `, n2.institution.contactNumber || `9876500000`, n2.institution.email ? ` \u2022 ${n2.institution.email}` : ``), /* @__PURE__ */ w.createElement(Component906, { className: `report-title-badge-wrap` }, /* @__PURE__ */ w.createElement(Component904, { className: `report-main-heading` }, n2.institution.institutionType === `Coaching Centre` ? `STUDENT PERFORMANCE REPORT` : `ANNUAL PROGRESS REPORT CARD`), /* @__PURE__ */ w.createElement(Component905, { className: `report-session-badge` }, `ACADEMIC SESSION: `, n2.institution.session))), /* @__PURE__ */ w.createElement(Component911, { className: `report-photo-box` }, l2.photoDataUrl ? /* @__PURE__ */ w.createElement(
+    "img",
+    {
+      src: l2.photoDataUrl,
+      alt: l2.name,
+      style: { width: `100%`, height: `100%`, objectFit: `cover`, borderRadius: `4px` }
+    }
+  ) : /* @__PURE__ */ w.createElement(w.Fragment, null, /* @__PURE__ */ w.createElement(Component909, { className: `report-photo-inner` }, /* @__PURE__ */ w.createElement(Component908, null, `PHOTO`)), /* @__PURE__ */ w.createElement(Component910, null, `Affix Photo`)))), /* @__PURE__ */ w.createElement(Component939, { className: `report-student-grid` }, /* @__PURE__ */ w.createElement(Component925, { className: `student-row` }, /* @__PURE__ */ w.createElement(Component915, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component913, null, `Student Name:`), /* @__PURE__ */ w.createElement(Component914, null, l2.name)), /* @__PURE__ */ w.createElement(Component918, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component916, null, `Roll No:`), /* @__PURE__ */ w.createElement(Component917, null, l2.rollNumber || `-`)), /* @__PURE__ */ w.createElement(Component921, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component919, null, `Admission / S.R. No:`), /* @__PURE__ */ w.createElement(Component920, null, l2.admissionNumber)), /* @__PURE__ */ w.createElement(Component924, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component922, null, `Class & Section:`), /* @__PURE__ */ w.createElement(Component923, null, [l2.className, l2.section, l2.academicStream].filter(Boolean).join(` - `)))), /* @__PURE__ */ w.createElement(Component938, { className: `student-row` }, /* @__PURE__ */ w.createElement(Component928, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component926, null, `Mother Name:`), /* @__PURE__ */ w.createElement(Component927, null, l2.motherName || `Neha Sharma`)), /* @__PURE__ */ w.createElement(Component931, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component929, null, `Father Name:`), /* @__PURE__ */ w.createElement(Component930, null, l2.fatherName || `Vikas Sharma`)), /* @__PURE__ */ w.createElement(Component934, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component932, null, `Date of Birth:`), /* @__PURE__ */ w.createElement(Component933, null, l2.dateOfBirth || `12/03/2014`)), /* @__PURE__ */ w.createElement(Component937, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component935, null, `Examination:`), /* @__PURE__ */ w.createElement(Component936, null, a2.name)))), /* @__PURE__ */ w.createElement(Component964, { className: `report-table-wrapper` }, /* @__PURE__ */ w.createElement(Component963, { className: `report-marks-table` }, /* @__PURE__ */ w.createElement(Component947, null, /* @__PURE__ */ w.createElement(Component946, null, /* @__PURE__ */ w.createElement(
     Component940,
     {
       style: {

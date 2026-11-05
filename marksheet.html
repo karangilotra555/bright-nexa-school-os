@@ -1076,32 +1076,45 @@
       document.getElementById('attendance').textContent = student.attendance;
       document.getElementById('percentageText').textContent = student.percentage;
       document.getElementById('overallGrade').textContent = student.grade;
-      document.getElementById('overallGradePill').textContent = student.grade + (student.grade === 'A1' ? ' (Outstanding)' : (student.grade === 'A2' ? ' (Excellent)' : ' (Good)'));
+      document.getElementById('overallGradePill').textContent = student.grade + (student.grade === 'A1' ? ' (Outstanding)' : (student.grade === 'A2' ? ' (Excellent)' : (student.grade === 'B1' || student.grade === 'B2' ? ' (Good)' : (student.grade === '-' ? '' : ' (Needs Improvement)'))));
       document.getElementById('promotionText').textContent = student.promotion;
+
+      const photoFrame = document.querySelector('.student-photo-frame');
+      if (photoFrame) {
+        if (student.photoDataUrl) {
+          photoFrame.innerHTML = `<img src="${student.photoDataUrl}" alt="${student.name}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
+        } else {
+          photoFrame.innerHTML = `<div class="photo-inner-text">PASSPORT<br>PHOTO</div><div class="photo-stamp-badge">SEAL<br>OK</div>`;
+        }
+      }
 
       let tbodyHtml = '';
       let sumPt = 0, sumNb = 0, sumSe = 0, sumAnn = 0, sumTot = 0;
       (student.subjects || []).forEach((sub, i) => {
-        sumPt += sub.pt;
-        sumNb += sub.nb;
-        sumSe += sub.se;
-        sumAnn += sub.annual;
-        sumTot += sub.total;
+        const hasEntry = sub.hasEntry !== undefined ? sub.hasEntry : (sub.total > 0 || sub.grade !== '-');
+        if (hasEntry) {
+          sumPt += sub.pt;
+          sumNb += sub.nb;
+          sumSe += sub.se;
+          sumAnn += sub.annual;
+          sumTot += sub.total;
+        }
         tbodyHtml += `
           <tr>
             <td>${i + 1}</td>
             <td style="text-align: left; font-weight: 700;">${sub.name}</td>
-            <td>${sub.pt.toFixed(1)}</td>
-            <td>${sub.nb.toFixed(1)}</td>
-            <td>${sub.se.toFixed(1)}</td>
-            <td>${sub.annual.toFixed(1)}</td>
-            <td style="font-weight: 800;">${sub.total.toFixed(1)}</td>
-            <td style="font-weight: 800; color: ${sub.grade === 'A1' ? '#059669' : '#0284c7'};">${sub.grade}</td>
+            <td>${hasEntry ? sub.pt.toFixed(1) : '-'}</td>
+            <td>${hasEntry ? sub.nb.toFixed(1) : '-'}</td>
+            <td>${hasEntry ? sub.se.toFixed(1) : '-'}</td>
+            <td>${hasEntry ? sub.annual.toFixed(1) : '-'}</td>
+            <td style="font-weight: 800;">${hasEntry ? sub.total.toFixed(1) : '-'}</td>
+            <td style="font-weight: 800; color: ${sub.grade === 'A1' ? '#059669' : (sub.grade === '-' || sub.grade === 'E' ? '#dc2626' : '#0284c7')};">${sub.grade}</td>
           </tr>
         `;
       });
       document.getElementById('subjectTableBody').innerHTML = tbodyHtml;
-      document.getElementById('grandTotal').textContent = `${sumTot.toFixed(1)} / ${(student.subjects || []).length * 100}`;
+      const enteredSubs = (student.subjects || []).filter(s => s.hasEntry !== false && (s.total > 0 || s.grade !== '-'));
+      document.getElementById('grandTotal').textContent = enteredSubs.length > 0 ? `${sumTot.toFixed(1)} / ${enteredSubs.length * 100}` : '-';
     }
 
     function switchExam(val) {
@@ -1158,31 +1171,35 @@
           ];
 
           activeStudents = realStudents.map((s, idx) => {
-            const examRecord = (operations.examMarks || []).find(m => m.studentId === s.id) || {};
+            const studentMarks = (operations.marks || []).filter(m => m.studentId === s.id);
+            const studentAttendance = (operations.attendance || []).filter(a => a.studentId === s.id);
             const subjectMarks = [];
             let totalMarks = 0;
+            let enteredCount = 0;
             const subs = (operations.subjects && operations.subjects.length > 0) ? operations.subjects : defaultSubjects;
 
             subs.forEach((subName, sIdx) => {
               const sTitle = typeof subName === 'string' ? subName : (subName.name || `Subject ${sIdx + 1}`);
-              const entered = examRecord.marks?.[sTitle];
-              let pt, nb, se, annual, tot;
-              if (entered !== undefined && typeof entered === 'number') {
-                tot = Math.min(100, Math.max(0, entered));
+              const enteredMark = studentMarks.find(m => {
+                if (!m || !m.subject) return false;
+                const ms = m.subject.trim().toLowerCase();
+                const st = sTitle.trim().toLowerCase();
+                return ms === st || st.includes(ms) || ms.includes(st);
+              });
+
+              let pt = 0, nb = 0, se = 0, annual = 0, tot = 0, grade = '-';
+              if (enteredMark && typeof enteredMark.obtainedMarks === 'number') {
+                const maxM = (enteredMark.maximumMarks && enteredMark.maximumMarks > 0) ? enteredMark.maximumMarks : 100;
+                tot = Math.min(100, Math.max(0, parseFloat(((enteredMark.obtainedMarks / maxM) * 100).toFixed(1))));
                 pt = parseFloat((tot * 0.1).toFixed(1));
-                nb = 5.0;
-                se = 5.0;
+                nb = parseFloat((tot * 0.05).toFixed(1));
+                se = parseFloat((tot * 0.05).toFixed(1));
                 annual = parseFloat((tot - pt - nb - se).toFixed(1));
-              } else {
-                const base = 72 + ((idx * 7 + sIdx * 5) % 24);
-                pt = 8.5;
-                nb = 4.5;
-                se = 4.5;
-                annual = base - 17.5;
-                tot = base;
+                grade = calculateGrade(tot, 100);
+                totalMarks += tot;
+                enteredCount++;
               }
-              const grade = calculateGrade(tot, 100);
-              totalMarks += tot;
+
               subjectMarks.push({
                 name: sTitle,
                 pt: Math.max(0, pt),
@@ -1190,27 +1207,42 @@
                 se: Math.max(0, se),
                 annual: Math.max(0, annual),
                 total: tot,
-                grade: grade
+                grade: grade,
+                hasEntry: !!enteredMark
               });
             });
 
-            const maxMarks = subjectMarks.length * 100;
-            const pct = (totalMarks / maxMarks) * 100;
-            const overallGrade = calculateGrade(pct);
+            let pct = 0;
+            let overallGrade = '-';
+            let promotion = 'MARKS AWAITED / PENDING';
+            if (enteredCount > 0) {
+              pct = (totalMarks / (enteredCount * 100)) * 100;
+              overallGrade = calculateGrade(pct);
+              promotion = pct >= 33 ? `PROMOTED TO NEXT HIGHER CLASS WITH ACADEMIC DISTINCTION` : 'NEEDS IMPROVEMENT / COMPARTMENT';
+            }
+
+            let attendanceStr = 'Not Marked';
+            if (studentAttendance.length > 0) {
+              const totalDays = studentAttendance.length;
+              const presentDays = studentAttendance.filter(a => a.status === 'Present' || a.status === 'Late' || a.status === 'Half-Day').length;
+              const pctAtt = ((presentDays / totalDays) * 100).toFixed(1);
+              attendanceStr = `${presentDays} / ${totalDays} Days (${pctAtt}%)`;
+            }
 
             return {
               id: s.id,
               name: (s.name || 'STUDENT RECORD').toUpperCase(),
-              roll: s.rollNumber || String(idx + 1).padStart(2, '0'),
+              roll: s.rollNumber || '-',
               admission: s.admissionNumber || ('BMS-2026-' + String(idx + 1).padStart(3, '0')),
               classSec: `${s.className || 'Class VI'} ${s.section ? '- ' + s.section : '- A'}`.trim(),
-              mother: (s.motherName ? 'MRS. ' + s.motherName : 'MRS. GUARDIAN').toUpperCase(),
-              father: (s.fatherName ? 'MR. ' + s.fatherName : (s.guardianName ? 'MR. ' + s.guardianName : 'MR. PARENT')).toUpperCase(),
-              dob: s.dateOfBirth || '12-03-2014',
-              attendance: '202 / 212 Days (95.3%)',
-              percentage: pct.toFixed(1) + '%',
+              mother: (s.motherName ? 'MRS. ' + s.motherName : (s.mother ? 'MRS. ' + s.mother : 'MRS. GUARDIAN')).toUpperCase(),
+              father: (s.fatherName ? 'MR. ' + s.fatherName : (s.guardianName ? 'MR. ' + s.guardianName : (s.father ? 'MR. ' + s.father : 'MR. PARENT'))).toUpperCase(),
+              dob: s.dateOfBirth || s.dob || '12-03-2014',
+              attendance: attendanceStr,
+              percentage: enteredCount > 0 ? pct.toFixed(1) + '%' : '-',
               grade: overallGrade,
-              promotion: pct >= 33 ? `PROMOTED TO NEXT HIGHER CLASS WITH ACADEMIC DISTINCTION` : 'NEEDS IMPROVEMENT / COMPARTMENT',
+              promotion: promotion,
+              photoDataUrl: s.photoDataUrl || s.photoUrl || null,
               subjects: subjectMarks
             };
           });

@@ -20439,7 +20439,7 @@ function bnCascadeStudentChanges(updatedStudent, oldStudent = null, operations =
   };
 }
 
-function buildDynamicClassList(configuredClasses = [], studentList = []) {
+function buildDynamicClassList(configuredClasses = [], studentList = [], includeStandards = true) {
   const standardOrder = ['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const seen = new Set();
   const result = [];
@@ -20457,7 +20457,9 @@ function buildDynamicClassList(configuredClasses = [], studentList = []) {
 
   (configuredClasses || []).forEach(c => addClass(c.name));
   (studentList || []).forEach(s => addClass(s.className));
-  ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].forEach(addClass);
+  if (includeStandards || result.length === 0) {
+    ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].forEach(addClass);
+  }
 
   result.sort((a, b) => {
     const na = normalizeClassName(a);
@@ -20490,7 +20492,9 @@ function buildDynamicSectionList(selectedClass, configuredClasses = [], studentL
     }
   });
 
-  ['A', 'B', 'C', 'D'].forEach(sec => set.add(sec));
+  if (set.size === 0) {
+    return ['A'];
+  }
 
   return Array.from(set).sort();
 }
@@ -21209,7 +21213,12 @@ function _Component6({
   initialStudent: r,
 }) {
   let [i, a] = (0, w.useState)(() => (r ? _r(r) : ur));
-  let availableClasses = (0, w.useMemo)(() => buildDynamicClassList(classes, e), [classes, e]);
+  let availableClasses = (0, w.useMemo)(() => {
+    if (classes && classes.length > 0) {
+      return buildDynamicClassList(classes.filter(c => c.status !== 'Inactive'), e, false);
+    }
+    return buildDynamicClassList(classes, e, true);
+  }, [classes, e]);
   let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i.className, classes, e), [i.className, classes, e]);
   let [o, s] = (0, w.useState)({});
   let [c, l] = (0, w.useState)(``);
@@ -21414,6 +21423,7 @@ function _Component6({
                   value={i.className}
                   onChange={(e) => {
                     p(`className`, e.target.value);
+                    p(`section`, ``);
                     if (e.target.value !== `11` && e.target.value !== `12`) {
                       p(`academicStream`, undefined);
                     }
@@ -29392,10 +29402,20 @@ function Hi({ data: e, students: t, snapshot: n }) {
               </Component906>
             </Component907>
             <Component911 className={`report-photo-box`}>
-              <Component909 className={`report-photo-inner`}>
-                <Component908>{`PHOTO`}</Component908>
-              </Component909>
-              <Component910>{`Affix Photo`}</Component910>
+              {l.photoDataUrl ? (
+                <img
+                  src={l.photoDataUrl}
+                  alt={l.name}
+                  style={{ width: `100%`, height: `100%`, objectFit: `cover`, borderRadius: `4px` }}
+                />
+              ) : (
+                <>
+                  <Component909 className={`report-photo-inner`}>
+                    <Component908>{`PHOTO`}</Component908>
+                  </Component909>
+                  <Component910>{`Affix Photo`}</Component910>
+                </>
+              )}
             </Component911>
           </Component912>
           <Component939 className={`report-student-grid`}>
@@ -29406,7 +29426,7 @@ function Hi({ data: e, students: t, snapshot: n }) {
               </Component915>
               <Component918 className={`student-cell`}>
                 <Component916>{`Roll No:`}</Component916>
-                <Component917>{l.rollNumber || `06`}</Component917>
+                <Component917>{l.rollNumber || `-`}</Component917>
               </Component918>
               <Component921 className={`student-cell`}>
                 <Component919>{`Admission / S.R. No:`}</Component919>

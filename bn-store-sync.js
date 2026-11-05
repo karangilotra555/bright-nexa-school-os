@@ -266,7 +266,7 @@
     };
   }
 
-  function buildDynamicClassList(configuredClasses = [], studentList = []) {
+  function buildDynamicClassList(configuredClasses = [], studentList = [], includeStandards = true) {
     const standardOrder = ['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
     const seen = new Set();
     const result = [];
@@ -284,7 +284,9 @@
 
     (configuredClasses || []).forEach(c => addClass(c.name));
     (studentList || []).forEach(s => addClass(s.className));
-    ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].forEach(addClass);
+    if (includeStandards || result.length === 0) {
+      ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].forEach(addClass);
+    }
 
     result.sort((a, b) => {
       const na = normalizeClassName(a);
@@ -317,7 +319,9 @@
       }
     });
 
-    ['A', 'B', 'C', 'D'].forEach(sec => set.add(sec));
+    if (set.size === 0) {
+      return ['A'];
+    }
 
     return Array.from(set).sort();
   }
