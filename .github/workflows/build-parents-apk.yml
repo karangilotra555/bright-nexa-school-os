@@ -53,10 +53,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag='school-app-v0.4.0'
-          cp android-parents/app/build/outputs/apk/debug/app-debug.apk Bright-Nexa-School-v0.4.0.apk
+          tag='school-app-v0.5.0'
+          cp android-parents/app/build/outputs/apk/debug/app-debug.apk Bright-Nexa-School-v0.5.0.apk
           if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload "$tag" Bright-Nexa-School-v0.4.0.apk --clobber --repo "${{ github.repository }}"
+            gh release upload "$tag" Bright-Nexa-School-v0.5.0.apk --clobber --repo "${{ github.repository }}"
           else
-            gh release create "$tag" Bright-Nexa-School-v0.4.0.apk --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease --title 'Bright Nexa School App v0.4.0' --notes 'Teacher and student logins, homework photo/PDF file picker, in-app PDF and image viewer, and attendance calendar. The old demo APK used a temporary signing key; uninstall it first if Android reports a signing conflict. Cloud records are preserved.'
+            gh release create "$tag" Bright-Nexa-School-v0.5.0.apk --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease --title 'Bright Nexa School App v0.5.0' --notes 'Teacher and student logins, homework photo/PDF file picker, in-app PDF and image viewer, and attendance calendar. Uses the dedicated com.brightnexa.school package to avoid conflicts with older Parents/demo installations. Cloud records and passwords are preserved.'
           fi

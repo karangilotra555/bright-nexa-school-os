@@ -4,6 +4,7 @@
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:label="Bright Nexa School"
+        android:icon="@drawable/ic_bright_nexa"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:supportsRtl="true">
         <activity
