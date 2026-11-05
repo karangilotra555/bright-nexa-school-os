@@ -9,22 +9,23 @@ function create(fetcher){
   const res=await fetcher(BASE+path,{...options,cache:'no-store',headers:{apikey:KEY,...(session?{Authorization:'Bearer '+session.access_token}:{}),'Content-Type':'application/json',...options.headers}});
   const raw=await res.text();
   let body;try{body=raw?JSON.parse(raw):null;}catch(_){throw Error('Invalid response from school service');}
-  if(!res.ok){if(res.status===401){session=null;selected=null;}throw Error(body?.msg||body?.message||body?.error_description||'School connection unavailable');}
+  if(!res.ok){if(res.status===401){session=null;selected=null;}throw Error(body?.error||body?.msg||body?.message||body?.error_description||'School connection unavailable');}
   return body;
  }
  async function rows(table,filters){const all=[];for(let offset=0;;offset+=1000){const page=await request('/rest/v1/'+table+'?'+new URLSearchParams({select:'*',order:'id.asc',...filters,limit:'1000',offset:String(offset)}));all.push(...page);if(page.length<1000)return all;}}
- async function login(email,password){
+ async function login(admissionNumber,password){
   session=null;selected=null;
-  const next=await request('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});
-  if(!next.access_token||!next.user?.id)throw Error('Unable to verify parent account');
-  session=next;
-  try{
-   const guardians=await rows('school_guardians',{auth_user_id:'eq.'+session.user.id,status:'eq.active'});
-   if(!guardians.length)throw Error('No parent account is linked yet. Ask the school office to link your email to your child.');
-   const links=(await Promise.all(guardians.map(g=>rows('school_guardian_students',{order:'student_id.asc',guardian_id:'eq.'+g.id,institution_id:'eq.'+g.institution_id})))).flat();
-   if(!links.length)throw Error('Your parent account has no linked student. Contact the school office.');
-   return links;
-  }catch(e){await logout();throw e;}
+  const next=await request('/functions/v1/school-student-login',{method:'POST',body:JSON.stringify({action:'login',admissionNumber,password,schoolId:new URLSearchParams(typeof location==='undefined'?'':location.search).get('school')||undefined})});
+  if(!next.session?.access_token||!next.session?.user?.id)throw Error('Unable to verify student account');
+  session=next.session;
+  return {mustChangePassword:next.mustChangePassword===true,links:next.links||[]};
+ }
+ async function changePassword(newPassword){
+  if(!session)throw Error('Please log in again');
+  const next=await request('/functions/v1/school-student-login',{method:'POST',body:JSON.stringify({action:'change-password',newPassword})});
+  if(!next.session?.access_token)throw Error('Password changed. Please log in again.');
+  session=next.session;selected=null;
+  return next.links||[];
  }
  async function dashboard(link){
   if(!session)throw Error('Please log in again');
@@ -52,7 +53,7 @@ function create(fetcher){
   await request('/rest/v1/school_parent_leaves',{method:'POST',body:JSON.stringify({institution_id:selected.institution_id,student_id:selected.student_id,parent_auth_user_id:session.user.id,from_on:from,to_on:to,reason:reason.trim(),status:'pending'})});
  }
  async function logout(){try{if(session)await request('/auth/v1/logout',{method:'POST'});}finally{session=null;selected=null;}}
- return {login,dashboard,leave,logout};
+ return {login,changePassword,dashboard,leave,logout};
 }
 if(typeof module!=='undefined')module.exports={create};else root.BNParentsCloud=create(root.fetch.bind(root));
 })(typeof window!=='undefined'?window:globalThis);

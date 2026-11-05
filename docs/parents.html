@@ -52,12 +52,20 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
   <h1>School updates,<br>closer to you.</h1>
   <p>Welcome to <strong>Bright Nexa Parents</strong>. Log in to see your child's published school information.</p>
   <form id="loginForm">
-    <label class="field" for="adm">Parent email</label><input id="adm" name="adm" type="email" autocomplete="username" required placeholder="Email registered with school">
+    <label class="field" for="adm">Student admission number</label><input id="adm" name="adm" autocomplete="username" required placeholder="Enter admission number">
     <label class="field" for="dob">Password</label><input id="dob" name="dob" type="password" autocomplete="current-password" required>
     <div id="loginError" class="error" role="alert"></div>
     <button class="primary wide" type="submit">Continue securely →</button>
   </form>
-  <p class="notice">Use the parent account linked by your school. Only your linked children are visible.</p>
+  <p class="notice">First login: use the 10-digit registered guardian mobile number as password. Set your own password to continue.</p>
+</section>
+<section id="passwordGate" class="gate hidden" aria-label="Change password">
+ <div class="logo" aria-hidden="true">🔒</div><h1 id="passwordHeading">Set your password</h1>
+ <p>Use at least 8 characters with letters and numbers. Your mobile number will stop working as the password.</p>
+ <form id="passwordForm"><label class="field" for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+ <label class="field" for="confirmPassword">Confirm password</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+ <div id="passwordError" class="error" role="alert"></div><button class="primary wide" type="submit">Save password & continue →</button></form>
+ <button class="secondary wide" id="passwordCancel" type="button">Back to login</button>
 </section>
 <div id="app" class="hidden">
  <header class="top">
@@ -96,14 +104,14 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
       <div class="profileRow"><span>Bus stop</span><b id="studentBus"></b></div>
       <div class="profileRow"><span>School session</span><b id="schoolSession"></b></div>
     </div>
-    <div class="panel"><p class="notice">Only school-published records are displayed. If details are incorrect, contact your school's administration.</p><button class="secondary wide" id="refresh" type="button">↻ Refresh from school</button></div>
+    <div class="panel"><p class="notice">Only school-published records are displayed. If details are incorrect, contact your school's administration.</p><button class="secondary wide" id="changePassword" type="button">Change password</button><button class="secondary wide" id="refresh" type="button">↻ Refresh from school</button></div>
     <button class="secondary wide" id="logout" type="button">Log out</button>
   </div>
  </main>
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages"><span>✉</span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="parents-cloud.js?v=20261105"></script>
+<script src="parents-cloud.js?v=20261105-admission"></script>
 <script>
 (() => {
 'use strict';
@@ -113,7 +121,7 @@ const TOKEN_KEY='bn_parents_session';
 const cloud=window.BNParentsCloud;
 let token=null, data=null,links=[],loadGeneration=0;
 function setText(id,value){$(id).textContent=value==null||value===''?'—':String(value)}
-function show(id){$('loading').classList.add('hidden');$('gate').classList.toggle('hidden',id!=='gate');$('app').classList.toggle('hidden',id!=='app')}
+function show(id){$('loading').classList.add('hidden');$('gate').classList.toggle('hidden',id!=='gate');$('app').classList.toggle('hidden',id!=='app');$('passwordGate').classList.toggle('hidden',id!=='passwordGate')}
 function money(n){return n==null?'—':'₹'+Number(n).toLocaleString('en-IN')}
 function day(x){if(!x)return '';const d=new Date(x);return Number.isNaN(d.getTime())?String(x):d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
 function item(root,title,body,meta){const e=document.createElement('div');e.className='feedItem';const h=document.createElement('h3');h.textContent=title;e.append(h);if(body){const p=document.createElement('p');p.textContent=body;e.append(p)}if(meta){const t=document.createElement('time');t.textContent=meta;e.append(t)}root.append(e)}
@@ -140,7 +148,11 @@ function render(p){
 }
 async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0);$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(links[index]);if(generation!==loadGeneration)return;render(p);show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;data=null;show('gate');$('loginError').textContent=e.message}}
 function logout(){loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
-$('loginForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;$('loginError').textContent='';try{links=await cloud.login($('adm').value.trim(),$('dob').value);$('dob').value='';token=true;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();if(data)$('childPicker').selectedOptions[0].textContent=data.student.name}catch(err){token=null;$('loginError').textContent=err.message;show('gate')}finally{button.disabled=false}});
+async function openLinked(nextLinks){links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();if(data)$('childPicker').selectedOptions[0].textContent=data.student.name;}
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;$('loginError').textContent='';try{const result=await cloud.login($('adm').value.trim(),$('dob').value);$('dob').value='';if(result.mustChangePassword){show('passwordGate');$('passwordHeading').textContent='Set your password';$('newPassword').focus();return}await openLinked(result.links)}catch(err){token=null;$('loginError').textContent=err.message;show('gate')}finally{button.disabled=false}});
+$('passwordForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');$('passwordError').textContent='';if($('newPassword').value!==$('confirmPassword').value){$('passwordError').textContent='Passwords do not match.';return}button.disabled=true;try{const nextLinks=await cloud.changePassword($('newPassword').value);e.target.reset();await openLinked(nextLinks)}catch(err){$('passwordError').textContent=err.message}finally{button.disabled=false}});
+$('changePassword').addEventListener('click',()=>{show('passwordGate');$('passwordHeading').textContent='Change your password';$('passwordError').textContent='';});
+$('passwordCancel').addEventListener('click',()=>{ $('passwordForm').reset();logout(); });
 $('childPicker').addEventListener('change',()=>{data=null;show('gate');refresh()});
 $('leaveForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{await cloud.leave($('leaveFrom').value,$('leaveTo').value,$('leaveReason').value);$('leaveResult').textContent='Request submitted to school.';e.target.reset();await refresh();setTab('activity')}catch(err){$('leaveResult').textContent=err.message}finally{button.disabled=false}});
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
