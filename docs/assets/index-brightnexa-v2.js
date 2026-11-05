@@ -22543,8 +22543,36 @@ function Hr({ data: e2, students: t2, onUpdate: n2 }) {
   let [i2, a2] = (0, w.useState)(`students`);
   let [o2, s2] = (0, w.useState)(r2);
   let [c2, l2] = (0, w.useState)(r2.slice(0, 7));
-  let [u2, d2] = (0, w.useState)(e2.classes[0]?.id || ``);
-  let f2 = e2.classes.find((e3) => e3.id === u2);
+  let allClassesForAttendance = (0, w.useMemo)(() => {
+    const configured = (e2.classes || []).filter((cl) => cl.status !== "Inactive");
+    const configuredKeys = new Set(configured.map((cl) => normalizeClassName(cl.name) + "|" + normalizeSection(cl.section || "")));
+    const uncoveredMap = /* @__PURE__ */ new Map();
+    for (const stu of t2 || []) {
+      if (!stu.className) continue;
+      const nClass = normalizeClassName(stu.className);
+      const nSec = normalizeSection(stu.section || "");
+      const key = nClass + "|" + nSec;
+      if (!configuredKeys.has(key) && !uncoveredMap.has(key)) {
+        uncoveredMap.set(key, {
+          id: "virtual-" + key,
+          name: stu.className,
+          section: stu.section || "",
+          academicStream: stu.academicStream || void 0,
+          academicSession: e2.institution?.session || "",
+          status: "Active",
+          _virtual: true
+        });
+      }
+    }
+    const virtuals = Array.from(uncoveredMap.values()).sort((a3, b2) => {
+      const na2 = normalizeClassName(a3.name);
+      const nb = normalizeClassName(b2.name);
+      return na2.localeCompare(nb, void 0, { numeric: true });
+    });
+    return [...configured, ...virtuals];
+  }, [e2.classes, t2, e2.institution]);
+  let [u2, d2] = (0, w.useState)(() => allClassesForAttendance[0]?.id || ``);
+  let f2 = allClassesForAttendance.find((e3) => e3.id === u2);
   let p2 = t2.filter((e3) => ti(e3, f2));
   let m2 = ii(
     e2.holidays,
@@ -22637,7 +22665,8 @@ function Hr({ data: e2, students: t2, onUpdate: n2 }) {
       classId: u2,
       setClassId: d2,
       holiday: m2,
-      onUpdate: n2
+      onUpdate: n2,
+      allClasses: allClassesForAttendance
     }
   ), ` `, i2 === `teaching` && /* @__PURE__ */ w.createElement(
     Wr,
@@ -22730,7 +22759,8 @@ function Ur({
   classId: a2,
   setClassId: o2,
   holiday: s2,
-  onUpdate: c2
+  onUpdate: c2,
+  allClasses: attendanceClasses
 }) {
   let [l2, u2] = (0, w.useState)({});
   let [d2, f2] = (0, w.useState)(false);
@@ -22783,7 +22813,8 @@ function Ur({
       setValue: (e3) => {
         o2(e3);
         u2({});
-      }
+      },
+      allClasses: attendanceClasses
     }
   )), /* @__PURE__ */ w.createElement(Component410, { className: `attendance-totals` }, /* @__PURE__ */ w.createElement(Component403, null, `Total `, /* @__PURE__ */ w.createElement(Component402, null, t2.length)), /* @__PURE__ */ w.createElement(Component405, { className: `present` }, `Present `, /* @__PURE__ */ w.createElement(Component404, null, t2.filter((e3) => m2(e3.id) === `Present`).length)), /* @__PURE__ */ w.createElement(Component407, { className: `absent` }, `Absent `, /* @__PURE__ */ w.createElement(Component406, null, t2.filter((e3) => m2(e3.id) === `Absent`).length)), /* @__PURE__ */ w.createElement(Component409, null, `Not Marked `, /* @__PURE__ */ w.createElement(Component408, null, t2.filter((e3) => !m2(e3.id)).length))), /* @__PURE__ */ w.createElement(
     Component411,
@@ -23402,11 +23433,12 @@ function Xr({ statuses: e2, value: t2, setValue: n2, disabled: r2 }) {
     e3
   )));
 }
-function Zr({ data: e2, value: t2, setValue: n2 }) {
+function Zr({ data: e2, value: t2, setValue: n2, allClasses }) {
+  const displayClasses = allClasses || e2.classes.filter((e3) => e3.status !== `Inactive`);
   const Component538 = `option`;
   const Component539 = `option`;
   const Component540 = `select`;
-  return /* @__PURE__ */ w.createElement(Component540, { value: t2, onChange: (e3) => n2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component538, { value: `` }, `Select Academic Group`), e2.classes.filter((e3) => e3.status !== `Inactive`).map((e3) => /* @__PURE__ */ w.createElement(Component539, { value: e3.id, key: e3.id }, ni(e3), e3.academicSession ? ` \u2022 ${e3.academicSession}` : ``)));
+  return /* @__PURE__ */ w.createElement(Component540, { value: t2, onChange: (e3) => n2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component538, { value: `` }, `Select Academic Group`), displayClasses.map((e3) => /* @__PURE__ */ w.createElement(Component539, { value: e3.id, key: e3.id }, ni(e3), e3._virtual ? ` \u26A0\uFE0F` : ``, e3.academicSession ? ` \u2022 ${e3.academicSession}` : ``)));
 }
 function Qr({ holiday: e2 }) {
   const Component541 = `strong`;

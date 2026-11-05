@@ -24136,8 +24136,44 @@ function Hr({ data: e, students: t, onUpdate: n }) {
   let [i, a] = (0, w.useState)(`students`);
   let [o, s] = (0, w.useState)(r);
   let [c, l] = (0, w.useState)(r.slice(0, 7));
-  let [u, d] = (0, w.useState)(e.classes[0]?.id || ``);
-  let f = e.classes.find((e) => e.id === u);
+
+  // Build merged class list: configured classes PLUS virtual classes from students who have no matching class record
+  let allClassesForAttendance = (0, w.useMemo)(() => {
+    const configured = (e.classes || []).filter(cl => cl.status !== 'Inactive');
+    const configuredKeys = new Set(configured.map(cl => normalizeClassName(cl.name) + '|' + normalizeSection(cl.section || '')));
+    
+    // Find students whose class is NOT covered by any configured class
+    const uncoveredMap = new Map();
+    for (const stu of (t || [])) {
+      if (!stu.className) continue;
+      const nClass = normalizeClassName(stu.className);
+      const nSec = normalizeSection(stu.section || '');
+      const key = nClass + '|' + nSec;
+      if (!configuredKeys.has(key) && !uncoveredMap.has(key)) {
+        uncoveredMap.set(key, {
+          id: 'virtual-' + key,
+          name: stu.className,
+          section: stu.section || '',
+          academicStream: stu.academicStream || undefined,
+          academicSession: e.institution?.session || '',
+          status: 'Active',
+          _virtual: true
+        });
+      }
+    }
+
+    // Sort: configured first, then virtual (by class name naturally)
+    const virtuals = Array.from(uncoveredMap.values()).sort((a, b) => {
+      const na = normalizeClassName(a.name);
+      const nb = normalizeClassName(b.name);
+      return na.localeCompare(nb, undefined, { numeric: true });
+    });
+
+    return [...configured, ...virtuals];
+  }, [e.classes, t, e.institution]);
+
+  let [u, d] = (0, w.useState)(() => allClassesForAttendance[0]?.id || ``);
+  let f = allClassesForAttendance.find((e) => e.id === u);
   let p = t.filter((e) => ti(e, f));
   let m = ii(
     e.holidays,
@@ -24219,6 +24255,7 @@ function Hr({ data: e, students: t, onUpdate: n }) {
           setClassId={d}
           holiday={m}
           onUpdate={n}
+          allClasses={allClassesForAttendance}
         />
       )}
       {` `}
@@ -24336,6 +24373,7 @@ function Ur({
   setClassId: o,
   holiday: s,
   onUpdate: c,
+  allClasses: attendanceClasses,
 }) {
   let [l, u] = (0, w.useState)({});
   let [d, f] = (0, w.useState)(false);
@@ -24397,6 +24435,7 @@ function Ur({
               o(e);
               u({});
             }}
+            allClasses={attendanceClasses}
           />
         </R>
         <Component410 className={`attendance-totals`}>
@@ -25282,18 +25321,19 @@ function Xr({ statuses: e, value: t, setValue: n, disabled: r }) {
     </Component537>
   );
 }
-function Zr({ data: e, value: t, setValue: n }) {
+function Zr({ data: e, value: t, setValue: n, allClasses }) {
+  const displayClasses = allClasses || e.classes.filter((e) => e.status !== `Inactive`);
   const Component538 = `option`;
   const Component539 = `option`;
   const Component540 = `select`;
   return (
     <Component540 value={t} onChange={(e) => n(e.target.value)}>
       <Component538 value={``}>{`Select Academic Group`}</Component538>
-      {e.classes
-        .filter((e) => e.status !== `Inactive`)
+      {displayClasses
         .map((e) => (
           <Component539 value={e.id} key={e.id}>
             {ni(e)}
+            {e._virtual ? ` ⚠️` : ``}
             {e.academicSession ? ` • ${e.academicSession}` : ``}
           </Component539>
         ))}
