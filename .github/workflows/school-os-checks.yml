@@ -16,3 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Install isolated UI verification tools
+        run: npm install --prefix "$RUNNER_TEMP/bright-nexa-ui-checks" --no-audit --no-fund --ignore-scripts jsdom@31.0.0 esbuild@0.28.2
+      - name: Verify queue status, student profiles and modal controls
+        run: NODE_PATH="$RUNNER_TEMP/bright-nexa-ui-checks/node_modules" node scripts/check-queue-profile-ui.cjs
