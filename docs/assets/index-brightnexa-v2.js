@@ -21845,6 +21845,224 @@ function L({ title: e2, subtitle: t2, onClose: n2, children: r2 }) {
     )
   );
 }
+function bnNormalizePhone(phone) {
+  if (!phone) return "";
+  let digits = String(phone).replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  if (digits.length === 10) digits = "91" + digits;
+  return digits;
+}
+function bnBuildWhatsAppUrl(phone, text, target = "web") {
+  const clean = bnNormalizePhone(phone);
+  const enc = encodeURIComponent(text || "");
+  if (target === "wa_me") return `https://wa.me/${clean}?text=${enc}`;
+  return `https://web.whatsapp.com/send?phone=${clean}&text=${enc}`;
+}
+function bnCreateAbsenteeMessage({ schoolName = "Haridwar Public School", studentName = "Student", className = "", section = "", date = "", schoolPhone = "+91 7500058655" } = {}) {
+  const classLabel = [className, section].filter(Boolean).join("-");
+  const fDate = date ? (/* @__PURE__ */ new Date(date + "T00:00:00Z")).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "aaj";
+  return `\u{1F514} *${schoolName} \u2022 Attendance Notice*
+
+Namaste,
+Aapka bacha *${studentName}*${classLabel ? ` (Class: ${classLabel})` : ""} aaj *${fDate}* ko school me *ABSENT (Gairhaazir)* hai.
+
+Agar bacha kisi zaroori kaaran se nahi aa paya hai toh kripya school office ko suchit karein.
+\u{1F4DE} School Helpline: ${schoolPhone}
+
+_Dhanyawaad \u2022 ${schoolName}_`;
+}
+function bnCreateFeeMessage({ schoolName = "Haridwar Public School", studentName = "Student", admissionNumber = "", className = "", section = "", month = "", amountDue = 0, dueDate = "", schoolPhone = "+91 7500058655" } = {}) {
+  const classLabel = [className, section].filter(Boolean).join("-");
+  const inr = Number(amountDue || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  const fDue = dueDate ? (/* @__PURE__ */ new Date(dueDate + "T00:00:00Z")).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "turant";
+  return `\u{1F4B3} *${schoolName} \u2022 Fee Reminder*
+
+Namaste Parent,
+Aapke bache *${studentName}*${classLabel ? ` (Class: ${classLabel})` : ""}${admissionNumber ? ` [Adm No: ${admissionNumber}]` : ""} ki school fees pending hai:
+
+\u{1F4CC} *Total Baaki Fees:* \u20B9${inr}
+` + (month ? `\u{1F4C5} *Month / Session:* ${month}
+` : "") + `\u23F3 *Due Date:* ${fDue}
+
+Kripya baaki fees school accounts counter par ya authorized mode se jama karein.
+\u{1F4DE} Accounts Helpline: ${schoolPhone}
+
+_Dhanyawaad \u2022 ${schoolName}_`;
+}
+function bnCreatePtmMessage({ schoolName = "Haridwar Public School", studentName = "Student", className = "", section = "", examName = "Periodic Assessment", ptmDate = "", ptmTime = "9:00 AM - 12:30 PM", venue = "School Campus", schoolPhone = "+91 7500058655" } = {}) {
+  const classLabel = [className, section].filter(Boolean).join("-");
+  const fDate = ptmDate ? (/* @__PURE__ */ new Date(ptmDate + "T00:00:00Z")).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" }) : "Upcoming PTM";
+  return `\u{1F4DD} *${schoolName} \u2022 PTM & Report Card Invite*
+
+Respected Parents,
+*${examName}* ke report cards aur bache ki academic progress discuss karne ke liye Parent-Teacher Meeting (PTM) aayojit ki gayi hai.
+
+\u{1F464} *Student:* ${studentName}${classLabel ? ` (${classLabel})` : ""}
+\u{1F4C5} *Date:* ${fDate}
+\u23F0 *Timing:* ${ptmTime}
+\u{1F4CD} *Venue:* ${venue}
+
+Aapki upasthiti bache ke utsahwardhan ke liye zaroori hai. Kripya samay par padhaarein.
+\u{1F4DE} Sampark: ${schoolPhone}
+
+_Warm Regards \u2022 ${schoolName}_`;
+}
+function bnCreateNoticeMessage({ schoolName = "Haridwar Public School", title = "School Circular", description = "", startDate = "", reopeningDate = "", schoolPhone = "+91 7500058655" } = {}) {
+  return `\u{1F4E2} *${schoolName} \u2022 Official Circular*
+
+*Subject: ${title}*
+
+` + (description ? `${description}
+
+` : "") + (startDate ? `\u{1F4C5} *Effective From:* ${startDate}
+` : "") + (reopeningDate ? `\u{1F3EB} *School Reopens On:* ${reopeningDate}
+` : "") + `Kripya dhyan dein aur bacho ko nirdeshon ka paalan karne kahein.
+
+\u{1F4DE} Helpline: ${schoolPhone}
+
+_Issued by: Administration \u2022 ${schoolName}_`;
+}
+function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
+  if (!isOpen) return null;
+  const handleOpenWeb = () => {
+    window.open("https://web.whatsapp.com", "BN_WhatsApp_Web", "width=1020,height=720,left=150,top=100");
+  };
+  const toggle = () => {
+    const next = !connected;
+    setConnected(next);
+    try {
+      window.localStorage.setItem("bn_whatsapp_connected", String(next));
+    } catch {
+    }
+  };
+  return /* @__PURE__ */ w.createElement(L, { title: "WhatsApp Web Companion & QR Connect", subtitle: "100% Free \u2022 Direct School Phone Integration \u2022 Zero API Charges", onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "16px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", borderRadius: "12px", background: connected ? "#ecfdf5" : "#fffbeb", border: `1px solid ${connected ? "#a7f3d0" : "#fde68a"}` } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", gap: "12px" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "28px" } }, connected ? "\u{1F7E2}" : "\u{1F4F1}"), /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "16px", color: connected ? "#065f46" : "#92400e", display: "block" } }, connected ? "WhatsApp Web Linked & Ready" : "WhatsApp Web Not Linked Yet"), /* @__PURE__ */ w.createElement("small", { style: { color: connected ? "#047857" : "#b45309" } }, connected ? "Your school WhatsApp session is linked in this browser. Outgoing notices will launch directly." : "Link your school mobile number via WhatsApp Web to send instant notices to parents."))), /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: toggle, style: { fontWeight: 600 } }, connected ? "Disconnect" : "Mark as Linked \u2705")), /* @__PURE__ */ w.createElement("div", { style: { padding: "16px", borderRadius: "12px", background: "var(--card-bg, #ffffff)", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("h3", { style: { margin: "0 0 12px", fontSize: "15px", color: "var(--navy, #1e293b)" } }, "\u{1F4F2} How to Scan QR & Connect School Phone:"), /* @__PURE__ */ w.createElement("ol", { style: { margin: 0, paddingLeft: "20px", lineHeight: "1.7", color: "var(--theme-text, #334155)", fontSize: "14px" } }, /* @__PURE__ */ w.createElement("li", null, "Apne school ke mobile phone me ", /* @__PURE__ */ w.createElement("strong", null, "WhatsApp"), " open karein."), /* @__PURE__ */ w.createElement("li", null, "Top-right me ", /* @__PURE__ */ w.createElement("strong", null, "\u22EE (3 Dots)"), " ya ", /* @__PURE__ */ w.createElement("strong", null, "Settings"), " par tap karke ", /* @__PURE__ */ w.createElement("strong", null, "Linked Devices (\u0932\u093F\u0902\u0915\u094D\u0921 \u0921\u093F\u0935\u093E\u0907\u0938\u0947\u0938)"), " chunein."), /* @__PURE__ */ w.createElement("li", null, /* @__PURE__ */ w.createElement("strong", null, "Link a Device (\u0921\u093F\u0935\u093E\u0907\u0938 \u0932\u093F\u0902\u0915 \u0915\u0930\u0947\u0902)"), " dabayein aur button click karne par aane wala ", /* @__PURE__ */ w.createElement("strong", null, "QR Code scan karein"), "."), /* @__PURE__ */ w.createElement("li", null, "Scan hote hi aapka browser WhatsApp se connect ho jayega aur session browser me safe rahega."))), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Close"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#25D366", borderColor: "#1ea952", fontWeight: 700, gap: "8px" }, onClick: handleOpenWeb }, /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"), /* @__PURE__ */ w.createElement("span", null, "Open WhatsApp Web & Scan QR")))));
+}
+function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = "Haridwar Public School", items = [] }) {
+  const [queue, setQueue] = (0, w.useState)(() => items.map((it, idx) => ({ ...it, id: it.id || "wa_" + idx, status: "pending" })));
+  const [currentIndex, setCurrentIndex] = (0, w.useState)(0);
+  const [autoAdvance, setAutoAdvance] = (0, w.useState)(true);
+  const [countdown, setCountdown] = (0, w.useState)(0);
+  (0, w.useEffect)(() => {
+    setQueue(items.map((it, idx) => ({ ...it, id: it.id || "wa_" + idx, status: "pending" })));
+    setCurrentIndex(0);
+    setCountdown(0);
+  }, [items]);
+  if (!isOpen || !queue.length) return null;
+  const currentItem = queue[currentIndex] || null;
+  const sentCount = queue.filter((x2) => x2.status === "sent").length;
+  const skippedCount = queue.filter((x2) => x2.status === "skipped").length;
+  const isDone = currentIndex >= queue.length;
+  const handleSend = (idx = currentIndex) => {
+    const item = queue[idx];
+    if (!item) return;
+    const url = bnBuildWhatsAppUrl(item.phone, item.text, "web");
+    window.open(url, "BN_WhatsApp_Runner", "width=1000,height=720,left=150,top=100");
+    const updated = [...queue];
+    updated[idx] = { ...item, status: "sent", sentAt: (/* @__PURE__ */ new Date()).toISOString() };
+    setQueue(updated);
+    if (idx === currentIndex) advanceNext(updated);
+  };
+  const handleSkip = () => {
+    const updated = [...queue];
+    updated[currentIndex] = { ...updated[currentIndex], status: "skipped" };
+    setQueue(updated);
+    advanceNext(updated);
+  };
+  const advanceNext = (q) => {
+    const next = currentIndex + 1;
+    setCurrentIndex(next);
+    if (next < q.length && autoAdvance) setCountdown(3);
+  };
+  (0, w.useEffect)(() => {
+    if (countdown > 0) {
+      const t2 = setTimeout(() => setCountdown(countdown - 1), 1e3);
+      return () => clearTimeout(t2);
+    } else if (countdown === 0 && autoAdvance && currentItem && currentItem.status === "pending" && currentIndex > 0) {
+      handleSend(currentIndex);
+    }
+  }, [countdown, autoAdvance, currentIndex]);
+  return /* @__PURE__ */ w.createElement(L, { title: title || "WhatsApp Queue Runner", subtitle: subtitle || `${schoolName} \u2022 ${sentCount} sent of ${queue.length} total`, onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "14px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", background: "var(--card-bg, #fff)", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "12px", alignItems: "center" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "13px", fontWeight: 600 } }, "Queue:"), /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#dcfce7", color: "#15803d" } }, "Sent: ", sentCount), /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#fef3c7", color: "#b45309" } }, "Remaining: ", queue.length - (sentCount + skippedCount)), skippedCount > 0 && /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#f1f5f9", color: "#64748b" } }, "Skipped: ", skippedCount)), /* @__PURE__ */ w.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", cursor: "pointer" } }, /* @__PURE__ */ w.createElement("input", { type: "checkbox", checked: autoAdvance, onChange: (e2) => setAutoAdvance(e2.target.checked) }), /* @__PURE__ */ w.createElement("span", null, "Auto-advance (3s delay)"))), !isDone && currentItem ? /* @__PURE__ */ w.createElement("div", { style: { padding: "16px", borderRadius: "12px", background: "#f8fafc", border: "2px solid #22c55e", display: "flex", flexDirection: "column", gap: "12px" } }, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ w.createElement("div", null, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "12px", textTransform: "uppercase", color: "#16a34a", fontWeight: 700 } }, "Active #", currentIndex + 1, " of ", queue.length), /* @__PURE__ */ w.createElement("h3", { style: { margin: "2px 0 0", fontSize: "17px", color: "#0f172a" } }, currentItem.name, currentItem.meta?.class ? ` \u2022 Class ${currentItem.meta.class}` : "", currentItem.meta?.admissionNumber ? ` (${currentItem.meta.admissionNumber})` : ""), /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b" } }, "\u{1F4DE} Parent Phone: ", /* @__PURE__ */ w.createElement("strong", null, currentItem.phone || "No phone recorded"))), countdown > 0 && /* @__PURE__ */ w.createElement("div", { style: { padding: "6px 12px", background: "#dbeafe", color: "#1e40af", borderRadius: "8px", fontWeight: 700, fontSize: "13px" } }, "Next in ", countdown, "s...")), /* @__PURE__ */ w.createElement("div", { style: { background: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontFamily: "monospace", whiteSpace: "pre-wrap", maxHeight: "130px", overflowY: "auto" } }, currentItem.text), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end", alignItems: "center" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: handleSkip, style: { fontWeight: 600 } }, "\u23ED\uFE0F Skip"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#22c55e", borderColor: "#16a34a", fontWeight: 700, fontSize: "14px", gap: "8px" }, onClick: () => handleSend(currentIndex), autoFocus: true }, /* @__PURE__ */ w.createElement("span", null, "\u{1F680}"), /* @__PURE__ */ w.createElement("span", null, "Send on WhatsApp (Enter)")))) : /* @__PURE__ */ w.createElement("div", { style: { padding: "24px", borderRadius: "12px", background: "#f0fdf4", border: "1px solid #bbf7d0", textAlign: "center", display: "flex", flexDirection: "column", gap: "8px" } }, /* @__PURE__ */ w.createElement("span", { style: { fontSize: "36px" } }, "\u{1F389}"), /* @__PURE__ */ w.createElement("strong", { style: { fontSize: "18px", color: "#15803d" } }, "All Messages Processed!"), /* @__PURE__ */ w.createElement("p", { style: { margin: 0, color: "#166534", fontSize: "14px" } }, "Successfully processed ", sentCount, " sent and ", skippedCount, " skipped out of ", queue.length, " parents.")), /* @__PURE__ */ w.createElement("div", { style: { maxHeight: "200px", overflowY: "auto", border: "1px solid var(--line, #e2e8f0)", borderRadius: "8px" } }, /* @__PURE__ */ w.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "13px" } }, /* @__PURE__ */ w.createElement("thead", null, /* @__PURE__ */ w.createElement("tr", { style: { background: "var(--header-bg, #f1f5f9)", textAlign: "left" } }, /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "#"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Student / Parent"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Phone"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px" } }, "Status"), /* @__PURE__ */ w.createElement("th", { style: { padding: "8px 12px", textAlign: "right" } }, "Action"))), /* @__PURE__ */ w.createElement("tbody", null, queue.map((item, idx) => /* @__PURE__ */ w.createElement("tr", { key: item.id, style: { borderTop: "1px solid var(--line, #e2e8f0)", background: idx === currentIndex ? "rgba(34, 197, 94, 0.08)" : "transparent" } }, /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px", color: "#64748b" } }, idx + 1), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, /* @__PURE__ */ w.createElement("strong", null, item.name), item.meta?.class ? /* @__PURE__ */ w.createElement("small", { style: { color: "#64748b", display: "block" } }, "Class: ", item.meta.class) : null), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, item.phone || "\u2014"), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px" } }, item.status === "sent" ? /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#dcfce7", color: "#15803d" } }, "Sent \u2705") : item.status === "skipped" ? /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#f1f5f9", color: "#64748b" } }, "Skipped \u23ED\uFE0F") : /* @__PURE__ */ w.createElement("span", { className: "tag", style: { background: "#fef3c7", color: "#b45309" } }, "Pending")), /* @__PURE__ */ w.createElement("td", { style: { padding: "8px 12px", textAlign: "right" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button compact", style: { fontSize: "12px", padding: "4px 8px" }, onClick: () => handleSend(idx) }, "\u{1F4F1} Send")))))))));
+}
+function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = "Haridwar Public School" }) {
+  const [ptmDate, setPtmDate] = (0, w.useState)(() => {
+    const d2 = /* @__PURE__ */ new Date();
+    d2.setDate(d2.getDate() + 7);
+    return d2.toISOString().slice(0, 10);
+  });
+  const [ptmTime, setPtmTime] = (0, w.useState)("9:00 AM - 12:30 PM");
+  const [venue, setVenue] = (0, w.useState)("School Campus");
+  const [queueOpen, setQueueOpen] = (0, w.useState)(false);
+  if (!isOpen) return null;
+  const items = students.map((s2, idx) => ({
+    id: s2.id || "ptm_" + idx,
+    name: s2.name,
+    phone: s2.mobile || s2.guardianPhone || "",
+    meta: { class: `${exam?.className || s2.className || ""}-${exam?.section || s2.section || ""}` },
+    text: bnCreatePtmMessage({
+      schoolName,
+      studentName: s2.name,
+      className: exam?.className || s2.className || "",
+      section: exam?.section || s2.section || "",
+      examName: exam?.name || "Academic Assessment",
+      ptmDate,
+      ptmTime,
+      venue,
+      schoolPhone: "+91 7500058655"
+    })
+  }));
+  if (queueOpen) {
+    return /* @__PURE__ */ w.createElement(
+      WhatsAppQueueModal,
+      {
+        isOpen: true,
+        onClose: () => {
+          setQueueOpen(false);
+          onClose();
+        },
+        title: `PTM WhatsApp Queue \u2022 ${exam?.name || "Class Meeting"}`,
+        subtitle: `${schoolName} \u2022 ${students.length} Parents`,
+        schoolName,
+        items
+      }
+    );
+  }
+  return /* @__PURE__ */ w.createElement(L, { title: "PTM & Report Card WhatsApp Broadcast", subtitle: `${schoolName} \u2022 ${exam?.name || "Exam"} \u2022 ${students.length} students`, onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "14px" } }, /* @__PURE__ */ w.createElement("p", { style: { margin: 0, fontSize: "14px", color: "var(--muted)" } }, "Configure meeting details and send personalized invitations to all parents on WhatsApp."), /* @__PURE__ */ w.createElement(R, { label: "Meeting / PTM Date" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: ptmDate, onChange: (e2) => setPtmDate(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "PTM Timing (e.g. 9:00 AM to 1:00 PM)" }, /* @__PURE__ */ w.createElement("input", { type: "text", value: ptmTime, onChange: (e2) => setPtmTime(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "Venue / Meeting Location" }, /* @__PURE__ */ w.createElement("input", { type: "text", value: venue, onChange: (e2) => setVenue(e2.target.value) })), /* @__PURE__ */ w.createElement("div", { style: { padding: "12px", background: "var(--card-bg, #f8fafc)", borderRadius: "8px", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("strong", { style: { display: "block", fontSize: "13px", marginBottom: "6px" } }, "Message Preview:"), /* @__PURE__ */ w.createElement("pre", { style: { margin: 0, fontSize: "12px", fontFamily: "monospace", whiteSpace: "pre-wrap", maxHeight: "120px", overflowY: "auto" } }, items[0]?.text || "No students selected")), /* @__PURE__ */ w.createElement("div", { className: "modal-actions", style: { display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "10px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Cancel"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#22c55e", borderColor: "#16a34a", fontWeight: 700 }, disabled: !students.length, onClick: () => setQueueOpen(true) }, "\u{1F680} Start WhatsApp Queue (", students.length, " Parents)"))));
+}
+function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = "Haridwar Public School" }) {
+  const [noticeType, setNoticeType] = (0, w.useState)("holiday");
+  const [title, setTitle] = (0, w.useState)("Winter Vacation / Severe Cold Wave Holiday");
+  const [desc, setDesc] = (0, w.useState)("As per administrative guidelines and weather conditions, school will observe a holiday. Online homework tasks have been shared in the app.");
+  const [startDate, setStartDate] = (0, w.useState)(() => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
+  const [reopenDate, setReopenDate] = (0, w.useState)("");
+  if (!isOpen) return null;
+  const messageText = bnCreateNoticeMessage({
+    schoolName,
+    title,
+    description: desc,
+    startDate,
+    reopeningDate: reopenDate,
+    schoolPhone: "+91 7500058655"
+  });
+  const handleShareWhatsApp = () => {
+    const url = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
+    window.open(url, "BN_WhatsApp_Runner", "width=1000,height=720,left=150,top=100");
+  };
+  return /* @__PURE__ */ w.createElement(L, { title: "Emergency Circular / Chutti Notice Broadcast", subtitle: `${schoolName} \u2022 Instant WhatsApp Share for Weather, DM Orders & Circulars`, onClose }, /* @__PURE__ */ w.createElement("div", { className: "simple-modal-body", style: { display: "flex", flexDirection: "column", gap: "14px" } }, /* @__PURE__ */ w.createElement(R, { label: "Quick Notice Template" }, /* @__PURE__ */ w.createElement("select", { value: noticeType, onChange: (e2) => {
+    const t2 = e2.target.value;
+    setNoticeType(t2);
+    if (t2 === "holiday") {
+      setTitle("Winter Vacation / Severe Weather Holiday");
+      setDesc("As per DM / local authority orders and heavy cold/fog, the school will remain closed. Stay safe and warm.");
+    } else if (t2 === "rain") {
+      setTitle("Heavy Rain / Waterlogging Alert \u2014 School Closed");
+      setDesc("Due to incessant rainfall and waterlogging advisory, classes are suspended for student safety today.");
+    } else if (t2 === "circular") {
+      setTitle("Important School Circular & Guidelines");
+      setDesc("Dear Parents, please review this important circular regarding upcoming school events and guidelines.");
+    }
+  } }, /* @__PURE__ */ w.createElement("option", { value: "holiday" }, "\u2744\uFE0F Winter / Severe Cold Holiday (DM Order)"), /* @__PURE__ */ w.createElement("option", { value: "rain" }, "\u{1F327}\uFE0F Heavy Rain / Monsoon Alert"), /* @__PURE__ */ w.createElement("option", { value: "circular" }, "\u{1F4E2} General School Circular / Instructions"))), /* @__PURE__ */ w.createElement(R, { label: "Circular Title" }, /* @__PURE__ */ w.createElement("input", { type: "text", value: title, onChange: (e2) => setTitle(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "Notice Description & Instructions" }, /* @__PURE__ */ w.createElement("textarea", { rows: 3, value: desc, onChange: (e2) => setDesc(e2.target.value), style: { width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid var(--line, #cbd5e1)" } })), /* @__PURE__ */ w.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" } }, /* @__PURE__ */ w.createElement(R, { label: "Effective From" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: startDate, onChange: (e2) => setStartDate(e2.target.value) })), /* @__PURE__ */ w.createElement(R, { label: "Reopening Date (Optional)" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: reopenDate, onChange: (e2) => setReopenDate(e2.target.value) }))), /* @__PURE__ */ w.createElement("div", { style: { padding: "12px", background: "var(--card-bg, #f8fafc)", borderRadius: "8px", border: "1px solid var(--line, #e2e8f0)" } }, /* @__PURE__ */ w.createElement("strong", { style: { display: "block", fontSize: "13px", marginBottom: "6px" } }, "Ready-to-Send Message Preview:"), /* @__PURE__ */ w.createElement("pre", { style: { margin: 0, fontSize: "12px", fontFamily: "monospace", whiteSpace: "pre-wrap", maxHeight: "130px", overflowY: "auto" } }, messageText)), /* @__PURE__ */ w.createElement("div", { className: "modal-actions", style: { display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "10px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Close"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", style: { background: "#25D366", borderColor: "#1ea952", fontWeight: 700, gap: "8px" }, onClick: handleShareWhatsApp }, /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"), /* @__PURE__ */ w.createElement("span", null, "Open WhatsApp & Broadcast")))));
+}
 function R({ label: e2, wide: t2, children: n2 }) {
   const Component393 = `span`;
   const Component394 = `label`;
@@ -22178,11 +22396,13 @@ function Ur({
 }) {
   let [l2, u2] = (0, w.useState)({});
   let [d2, f2] = (0, w.useState)(false);
+  let [whatsAppAbsentOpen, setWhatsAppAbsentOpen] = (0, w.useState)(false);
   let p2 = e2.attendance.filter(
     (e3) => e3.date === r2 && (e3.classId && e3.classId === n2?.id || !e3.classId && e3.className === n2?.name && e3.section === n2?.section && e3.academicStream === n2?.academicStream)
   );
   let m2 = (e3) => l2[e3] || p2.find((t3) => t3.studentId === e3)?.status;
   let h2 = (e3) => u2(Object.fromEntries(t2.map((t3) => [t3.id, e3])));
+  let absentRoster = t2.filter((s3) => m2(s3.id) === "Absent");
   const Component401 = `input`;
   const Component402 = `strong`;
   const Component403 = `span`;
@@ -22267,6 +22487,23 @@ function Ur({
     },
     /* @__PURE__ */ w.createElement(_Component17, { size: 16 }),
     d2 ? `Saved` : `Save Marked Records`
+  ), absentRoster.length > 0 && /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button",
+      style: {
+        gap: "6px",
+        background: "#ecfdf5",
+        color: "#065f46",
+        borderColor: "#6ee7b7",
+        fontWeight: 700
+      },
+      onClick: () => setWhatsAppAbsentOpen(true),
+      title: "Send WhatsApp Absentee Notice to Parents"
+    },
+    /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"),
+    /* @__PURE__ */ w.createElement("span", null, "WhatsApp Absentees (", absentRoster.length, ")")
   ), p2.length > 0 && /* @__PURE__ */ w.createElement(
     Component412,
     {
@@ -22315,10 +22552,62 @@ function Ur({
         [e3.id]: t4
       }))
     }
+  ), m2(e3.id) === "Absent" && /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button compact",
+      style: {
+        padding: "3px 8px",
+        fontSize: "12px",
+        background: "#f0fdf4",
+        color: "#15803d",
+        borderColor: "#86efac",
+        fontWeight: 600,
+        marginLeft: "8px"
+      },
+      title: `Send WhatsApp notice to ${e3.name}`,
+      onClick: () => {
+        const txt = bnCreateAbsenteeMessage({
+          schoolName: "Haridwar Public School",
+          studentName: e3.name,
+          className: n2?.name || "",
+          section: n2?.section || "",
+          date: r2,
+          schoolPhone: "+91 7500058655"
+        });
+        const url = bnBuildWhatsAppUrl(e3.mobile || e3.guardianPhone || "", txt, "web");
+        window.open(url, "BN_WhatsApp_Runner", "width=1000,height=720,left=150,top=100");
+      }
+    },
+    "\u{1F4F1} WhatsApp"
   )))) : /* @__PURE__ */ w.createElement(
     $r,
     {
       text: n2 ? `No students are assigned to ${ni(n2)}.` : `Create a class or load the sample academic setup first.`
+    }
+  ), whatsAppAbsentOpen && /* @__PURE__ */ w.createElement(
+    WhatsAppQueueModal,
+    {
+      isOpen: whatsAppAbsentOpen,
+      onClose: () => setWhatsAppAbsentOpen(false),
+      title: `WhatsApp Absentee Alerts \u2022 Class ${n2?.name || ""}-${n2?.section || ""}`,
+      subtitle: `Haridwar Public School \u2022 ${absentRoster.length} Absent Students on ${r2}`,
+      schoolName: "Haridwar Public School",
+      items: absentRoster.map((student) => ({
+        id: student.id,
+        name: student.name,
+        phone: student.mobile || student.guardianPhone || "",
+        meta: { class: `${n2?.name || ""}-${n2?.section || ""}`, roll: student.rollNumber },
+        text: bnCreateAbsenteeMessage({
+          schoolName: "Haridwar Public School",
+          studentName: student.name,
+          className: n2?.name || "",
+          section: n2?.section || "",
+          date: r2,
+          schoolPhone: "+91 7500058655"
+        })
+      }))
     }
   ));
 }
@@ -23754,6 +24043,7 @@ function PendingFeeReportDialog({ data, students, institution, filterLabel, onCl
     const now = /* @__PURE__ */ new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, `0`)}-${String(now.getDate()).padStart(2, `0`)}`;
   });
+  const [whatsAppFeesOpen, setWhatsAppFeesOpen] = (0, w.useState)(false);
   let report, error;
   try {
     report = buildPendingFeeReport(data, students, institution, asOf);
@@ -23761,7 +24051,44 @@ function PendingFeeReportDialog({ data, students, institution, filterLabel, onCl
     error = failure.message;
   }
   const inr = (value) => `\u20B9${value.toLocaleString(`en-IN`, { maximumFractionDigits: 2 })}`;
-  return /* @__PURE__ */ w.createElement(L, { title: "Pending fees report", subtitle: `${institution.session} \u2022 ${filterLabel}`, onClose }, /* @__PURE__ */ w.createElement("p", null, "Read-only report for the current class, section, stream and search filters. Existing receipts and fee plans are unchanged."), /* @__PURE__ */ w.createElement(R, { label: "Compare due dates to" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: asOf, onChange: (event) => setAsOf(event.target.value) })), error ? /* @__PURE__ */ w.createElement("p", { role: "alert" }, error) : /* @__PURE__ */ w.createElement(w.Fragment, null, /* @__PURE__ */ w.createElement("div", { className: "student-summary clerk-fee-summary" }, /* @__PURE__ */ w.createElement(I, { label: "Overdue", value: inr(report.totals.overdue) }), /* @__PURE__ */ w.createElement(I, { label: "Due today", value: inr(report.totals.dueToday) }), /* @__PURE__ */ w.createElement(I, { label: "Future scheduled", value: inr(report.totals.upcoming) }), /* @__PURE__ */ w.createElement(I, { label: "No due date", value: inr(report.totals.unscheduled) })), /* @__PURE__ */ w.createElement("p", null, report.rows.length, " active student(s) with pending fees \u2022 Session outstanding: ", inr(report.totals.outstanding), "."), /* @__PURE__ */ w.createElement("p", null, "Future charges are not overdue. Fees without an explicit billing date are shown under No due date. Due today is not overdue. This date classifies current balances only; past receipts and fee-plan changes are not reconstructed."), /* @__PURE__ */ w.createElement("div", { className: "table-scroll" }, /* @__PURE__ */ w.createElement("table", { className: "clerk-receipt-table" }, /* @__PURE__ */ w.createElement("thead", null, /* @__PURE__ */ w.createElement("tr", null, /* @__PURE__ */ w.createElement("th", null, "Student"), /* @__PURE__ */ w.createElement("th", null, "Overdue"), /* @__PURE__ */ w.createElement("th", null, "Due today"), /* @__PURE__ */ w.createElement("th", null, "Future"), /* @__PURE__ */ w.createElement("th", null, "No due date"), /* @__PURE__ */ w.createElement("th", null, "Outstanding"), /* @__PURE__ */ w.createElement("th", null, "Earliest unpaid due"), /* @__PURE__ */ w.createElement("th", null, "Action"))), /* @__PURE__ */ w.createElement("tbody", null, report.rows.map((row) => /* @__PURE__ */ w.createElement("tr", { key: row.student.id }, /* @__PURE__ */ w.createElement("td", null, /* @__PURE__ */ w.createElement("strong", null, row.student.name), /* @__PURE__ */ w.createElement("small", null, row.student.studentUniqueId || row.student.admissionNumber, " \u2022 ", row.student.className, "-", row.student.section)), /* @__PURE__ */ w.createElement("td", null, inr(row.overdue)), /* @__PURE__ */ w.createElement("td", null, inr(row.dueToday)), /* @__PURE__ */ w.createElement("td", null, inr(row.upcoming)), /* @__PURE__ */ w.createElement("td", null, inr(row.unscheduled)), /* @__PURE__ */ w.createElement("td", null, inr(row.outstanding)), /* @__PURE__ */ w.createElement("td", null, row.earliestDue || `Not scheduled`), /* @__PURE__ */ w.createElement("td", null, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: () => onOpenStudent(row.student.id) }, "Open fee profile"))))))), !report.rows.length && /* @__PURE__ */ w.createElement("p", null, "No pending fees for the active students in these filters."), /* @__PURE__ */ w.createElement("div", { className: "modal-actions" }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Close"), /* @__PURE__ */ w.createElement(
+  const defaulters = report ? report.rows.filter((r2) => r2.overdue > 0 || r2.outstanding > 0) : [];
+  return /* @__PURE__ */ w.createElement(L, { title: "Pending fees report", subtitle: `${institution.session} \u2022 ${filterLabel}`, onClose }, /* @__PURE__ */ w.createElement("p", null, "Read-only report for the current class, section, stream and search filters. Existing receipts and fee plans are unchanged."), /* @__PURE__ */ w.createElement(R, { label: "Compare due dates to" }, /* @__PURE__ */ w.createElement("input", { type: "date", value: asOf, onChange: (event) => setAsOf(event.target.value) })), error ? /* @__PURE__ */ w.createElement("p", { role: "alert" }, error) : /* @__PURE__ */ w.createElement(w.Fragment, null, /* @__PURE__ */ w.createElement("div", { className: "student-summary clerk-fee-summary" }, /* @__PURE__ */ w.createElement(I, { label: "Overdue", value: inr(report.totals.overdue) }), /* @__PURE__ */ w.createElement(I, { label: "Due today", value: inr(report.totals.dueToday) }), /* @__PURE__ */ w.createElement(I, { label: "Future scheduled", value: inr(report.totals.upcoming) }), /* @__PURE__ */ w.createElement(I, { label: "No due date", value: inr(report.totals.unscheduled) })), /* @__PURE__ */ w.createElement("p", null, report.rows.length, " active student(s) with pending fees \u2022 Session outstanding: ", inr(report.totals.outstanding), "."), /* @__PURE__ */ w.createElement("p", null, "Future charges are not overdue. Fees without an explicit billing date are shown under No due date. Due today is not overdue. This date classifies current balances only; past receipts and fee-plan changes are not reconstructed."), /* @__PURE__ */ w.createElement("div", { className: "table-scroll" }, /* @__PURE__ */ w.createElement("table", { className: "clerk-receipt-table" }, /* @__PURE__ */ w.createElement("thead", null, /* @__PURE__ */ w.createElement("tr", null, /* @__PURE__ */ w.createElement("th", null, "Student"), /* @__PURE__ */ w.createElement("th", null, "Overdue"), /* @__PURE__ */ w.createElement("th", null, "Due today"), /* @__PURE__ */ w.createElement("th", null, "Future"), /* @__PURE__ */ w.createElement("th", null, "No due date"), /* @__PURE__ */ w.createElement("th", null, "Outstanding"), /* @__PURE__ */ w.createElement("th", null, "Earliest unpaid due"), /* @__PURE__ */ w.createElement("th", null, "Action"))), /* @__PURE__ */ w.createElement("tbody", null, report.rows.map((row) => /* @__PURE__ */ w.createElement("tr", { key: row.student.id }, /* @__PURE__ */ w.createElement("td", null, /* @__PURE__ */ w.createElement("strong", null, row.student.name), /* @__PURE__ */ w.createElement("small", null, row.student.studentUniqueId || row.student.admissionNumber, " \u2022 ", row.student.className, "-", row.student.section)), /* @__PURE__ */ w.createElement("td", null, inr(row.overdue)), /* @__PURE__ */ w.createElement("td", null, inr(row.dueToday)), /* @__PURE__ */ w.createElement("td", null, inr(row.upcoming)), /* @__PURE__ */ w.createElement("td", null, inr(row.unscheduled)), /* @__PURE__ */ w.createElement("td", null, inr(row.outstanding)), /* @__PURE__ */ w.createElement("td", null, row.earliestDue || `Not scheduled`), /* @__PURE__ */ w.createElement("td", null, /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "6px" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button compact", onClick: () => onOpenStudent(row.student.id) }, "Profile"), /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button compact",
+      style: { background: "#f0fdf4", color: "#15803d", borderColor: "#86efac", fontWeight: 600 },
+      title: `Send WhatsApp fee reminder to ${row.student.name}`,
+      onClick: () => {
+        const text = bnCreateFeeMessage({
+          schoolName: institution?.name || "Haridwar Public School",
+          studentName: row.student.name,
+          admissionNumber: row.student.admissionNumber || "",
+          className: row.student.className || "",
+          section: row.student.section || "",
+          month: institution?.session || "",
+          amountDue: row.overdue > 0 ? row.overdue : row.outstanding,
+          dueDate: row.earliestDue || asOf,
+          schoolPhone: "+91 7500058655"
+        });
+        const url = bnBuildWhatsAppUrl(row.student.mobile || row.student.guardianPhone || "", text, "web");
+        window.open(url, "BN_WhatsApp_Runner", "width=1000,height=720,left=150,top=100");
+      }
+    },
+    "\u{1F4F1} WhatsApp"
+  )))))))), !report.rows.length && /* @__PURE__ */ w.createElement("p", null, "No pending fees for the active students in these filters."), /* @__PURE__ */ w.createElement("div", { className: "modal-actions", style: { display: "flex", gap: "10px", alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" } }, /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", onClick: onClose }, "Close"), /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button",
+      disabled: !defaulters.length,
+      style: { background: "#ecfdf5", color: "#065f46", borderColor: "#6ee7b7", fontWeight: 700 },
+      onClick: () => setWhatsAppFeesOpen(true),
+      title: "Start WhatsApp Fee Reminder Queue for Defaulters"
+    },
+    /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"),
+    /* @__PURE__ */ w.createElement("span", null, "WhatsApp Defaulters Queue (", defaulters.length, ")")
+  ), /* @__PURE__ */ w.createElement(
     "button",
     {
       type: "button",
@@ -23770,7 +24097,36 @@ function PendingFeeReportDialog({ data, students, institution, filterLabel, onCl
       onClick: () => Ei(new Blob([`\uFEFF`, pendingFeeCsv(report)], { type: `text/csv;charset=utf-8` }), `pending-fees-${asOf}.csv`)
     },
     "Export detailed CSV"
-  ))));
+  ))), whatsAppFeesOpen && /* @__PURE__ */ w.createElement(
+    WhatsAppQueueModal,
+    {
+      isOpen: whatsAppFeesOpen,
+      onClose: () => setWhatsAppFeesOpen(false),
+      title: `WhatsApp Fee Reminder Queue \u2022 Session ${institution.session}`,
+      subtitle: `${institution.name || "Haridwar Public School"} \u2022 ${defaulters.length} Defaulters`,
+      schoolName: institution.name || "Haridwar Public School",
+      items: defaulters.map((row) => ({
+        id: row.student.id,
+        name: row.student.name,
+        phone: row.student.mobile || row.student.guardianPhone || "",
+        meta: {
+          class: `${row.student.className || ""}-${row.student.section || ""}`,
+          admissionNumber: row.student.admissionNumber || ""
+        },
+        text: bnCreateFeeMessage({
+          schoolName: institution.name || "Haridwar Public School",
+          studentName: row.student.name,
+          admissionNumber: row.student.admissionNumber || "",
+          className: row.student.className || "",
+          section: row.student.section || "",
+          month: institution.session,
+          amountDue: row.overdue > 0 ? row.overdue : row.outstanding,
+          dueDate: row.earliestDue || asOf,
+          schoolPhone: "+91 7500058655"
+        })
+      }))
+    }
+  ));
 }
 function _Component19({
   number: e2,
@@ -25225,6 +25581,7 @@ function Fi({ data: e2, onUpdate: t2 }) {
   let [i2, a2] = (0, w.useState)(false);
   let [o2, s2] = (0, w.useState)();
   let [c2, l2] = (0, w.useState)();
+  let [whatsAppNoticeOpen, setWhatsAppNoticeOpen] = (0, w.useState)(false);
   let u2 = (n3) => {
     let r3 = e2.homework.some((e3) => e3.id === n3.id);
     t2(
@@ -25322,7 +25679,26 @@ function Fi({ data: e2, onUpdate: t2 }) {
       eyebrow: `School communication`,
       title: `Homework & Notices`,
       subtitle: `Publish structured homework, notices, and school announcements`,
-      action: /* @__PURE__ */ w.createElement(
+      action: /* @__PURE__ */ w.createElement("div", { style: { display: `flex`, gap: `8px`, flexWrap: `wrap`, alignItems: `center` } }, /* @__PURE__ */ w.createElement(
+        "button",
+        {
+          type: "button",
+          className: "secondary-button",
+          style: {
+            borderColor: `#25D366`,
+            color: `#128C7E`,
+            fontWeight: 600,
+            display: `inline-flex`,
+            alignItems: `center`,
+            gap: `6px`,
+            fontSize: `13px`
+          },
+          title: "Share Emergency Circular or Weather / DM Holiday Notice via WhatsApp",
+          onClick: () => setWhatsAppNoticeOpen(true)
+        },
+        /* @__PURE__ */ w.createElement("span", { style: { fontSize: `14px` } }, "\u{1F4E2}"),
+        " WhatsApp Circular / Holiday"
+      ), /* @__PURE__ */ w.createElement(
         Component806,
         {
           className: `primary-button`,
@@ -25334,7 +25710,7 @@ function Fi({ data: e2, onUpdate: t2 }) {
         },
         /* @__PURE__ */ w.createElement(_Component2, { size: 18 }),
         n2 === `homework` ? `Assign homework` : `Create notice`
-      )
+      ))
     }
   ), /* @__PURE__ */ w.createElement(Component811, { className: `tab-bar` }, /* @__PURE__ */ w.createElement(
     Component808,
@@ -25404,7 +25780,14 @@ function Fi({ data: e2, onUpdate: t2 }) {
       onClick: () => p2(e3)
     },
     /* @__PURE__ */ w.createElement(_Component1, { size: 15 })
-  )))))), i2 && (n2 === `homework` ? /* @__PURE__ */ w.createElement(Ii, { initial: o2, onClose: m2, onSave: u2 }) : /* @__PURE__ */ w.createElement(Li, { initial: c2, onClose: m2, onSave: d2 })));
+  )))))), i2 && (n2 === `homework` ? /* @__PURE__ */ w.createElement(Ii, { initial: o2, onClose: m2, onSave: u2 }) : /* @__PURE__ */ w.createElement(Li, { initial: c2, onClose: m2, onSave: d2 })), whatsAppNoticeOpen && /* @__PURE__ */ w.createElement(
+    WhatsAppNoticeDialog,
+    {
+      isOpen: whatsAppNoticeOpen,
+      schoolName: e2?.institution?.name || e2?.school?.name || `Haridwar Public School`,
+      onClose: () => setWhatsAppNoticeOpen(false)
+    }
+  ));
 }
 function Ii({ initial: e2, onClose: t2, onSave: n2 }) {
   let [r2, i2] = (0, w.useState)(e2?.title || ``);
@@ -25649,6 +26032,7 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
   let o2 = t2.filter((e3) => !a2 || Ui(e3, a2));
   let [s2, c2] = (0, w.useState)(o2[0]?.id || ``);
   let l2 = t2.find((e3) => e3.id === s2);
+  let [whatsAppPtmOpen, setWhatsAppPtmOpen] = (0, w.useState)(false);
   let [u2, d2] = (0, w.useState)(``);
   let [f2, p2] = (0, w.useState)(`Promoted with best wishes.`);
   let m2 = (0, w.useMemo)(
@@ -25826,6 +26210,17 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
         },
         /* @__PURE__ */ w.createElement(Je, { size: 17 }),
         `Print / Save PDF`
+      ), /* @__PURE__ */ w.createElement(
+        "button",
+        {
+          type: "button",
+          className: "secondary-button",
+          style: { background: "#ecfdf5", color: "#065f46", borderColor: "#6ee7b7", fontWeight: 700 },
+          onClick: () => setWhatsAppPtmOpen(true),
+          title: "Send WhatsApp PTM & Report Card Notice to Parents"
+        },
+        /* @__PURE__ */ w.createElement("span", null, "\u{1F4F1}"),
+        /* @__PURE__ */ w.createElement("span", null, "WhatsApp PTM Notice")
       ))
     }
   ), /* @__PURE__ */ w.createElement(Component896, { className: `report-selectors` }, /* @__PURE__ */ w.createElement(R, { label: `Examination` }, /* @__PURE__ */ w.createElement(
@@ -25990,6 +26385,15 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
       className: `empty-state`
     },
     `Select an examination and student.`
+  ), whatsAppPtmOpen && /* @__PURE__ */ w.createElement(
+    WhatsAppPtmDialog,
+    {
+      isOpen: whatsAppPtmOpen,
+      onClose: () => setWhatsAppPtmOpen(false),
+      exam: a2,
+      students: o2,
+      schoolName: n2?.institution?.name || "Haridwar Public School"
+    }
   ));
 }
 function Ui(e2, t2) {
@@ -36966,24 +37370,24 @@ var Es = new Intl.NumberFormat(`en-IN`, {
   currency: `INR`,
   maximumFractionDigits: 0
 });
-// Keep the React section and browser hash history on the same route.
-function bnSectionSlug(label) {
-  return String(label).toLowerCase().replace(/&/g, ` `).replace(/[^a-z0-9]+/g, `-`).replace(/^-|-$/g, ``);
-}
-function bnSectionFromHash(hash, allowedSections) {
-  const slug = String(hash || ``).replace(/^#\/?/, ``).split(/[?&]/)[0].toLowerCase();
-  return allowedSections.find((section) => bnSectionSlug(section.label) === slug)?.label ?? `Dashboard`;
-}
 function Ds() {
   let [e2, t2] = (0, w.useState)(wn);
   let [n2, r2] = (0, w.useState)(Dn);
   let [i2, a2] = (0, w.useState)(Ai);
   let [o2, s2] = (0, w.useState)(false);
-  let [c2, l2] = (0, w.useState)(() => bnSectionFromHash(window.location.hash, Ts.filter((section) => section.roles.includes(Qt?.role ?? wn.role))));
+  let [c2, l2] = (0, w.useState)(`Dashboard`);
   let [u2, d2] = (0, w.useState)(false);
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
   let [g2] = (0, w.useState)(Qt);
+  let [whatsAppModalOpen, setWhatsAppModalOpen] = (0, w.useState)(false);
+  let [whatsAppConnected, setWhatsAppConnected] = (0, w.useState)(() => {
+    try {
+      return localStorage.getItem("bn_whatsapp_connected") === "true";
+    } catch {
+      return false;
+    }
+  });
   let _2 = (0, w.useMemo)(() => fn(e2.language), [e2.language]);
   let v2 = g2?.role ?? e2.role;
   (0, w.useEffect)(() => {
@@ -37011,20 +37415,6 @@ function Ds() {
     return n2;
   }, [g2?.linkedStudentId, g2?.linkedTeacherId, n2, i2.teachers, v2]);
   let b2 = (0, w.useMemo)(() => Ts.filter((e3) => e3.roles.includes(v2)), [v2]);
-  (0, w.useEffect)(() => {
-    const syncFromBrowserHistory = () => {
-      const section = bnSectionFromHash(window.location.hash, b2);
-      l2((previous) => previous === section ? previous : section);
-      s2(false);
-    };
-    window.addEventListener(`hashchange`, syncFromBrowserHistory);
-    window.addEventListener(`popstate`, syncFromBrowserHistory);
-    syncFromBrowserHistory();
-    return () => {
-      window.removeEventListener(`hashchange`, syncFromBrowserHistory);
-      window.removeEventListener(`popstate`, syncFromBrowserHistory);
-    };
-  }, [b2]);
   let x2 = e2.institution.institutionType === `Coaching Centre`;
   let S2 = {
     "School Profile": `Institute Profile`,
@@ -37108,9 +37498,6 @@ function Ds() {
     };
   }, []);
   let se = (e3) => {
-    if (!b2.some((section) => section.label === e3)) return;
-    const nextHash = `#/${bnSectionSlug(e3)}`;
-    if (window.location.hash !== nextHash) window.location.hash = nextHash;
     l2(e3);
     s2(false);
   };
@@ -37136,7 +37523,7 @@ function Ds() {
     a2(u3);
     ji(u3);
     d2(false);
-    se(`Students`);
+    l2(`Students`);
     p2(`${o3.name || o3.admissionNumber || `Student record`} added successfully`);
     window.setTimeout(() => p2(``), 3500);
   };
@@ -37347,13 +37734,50 @@ function Ds() {
     {
       className: `update-notice-button`,
       onClick: () => {
-        se(`Settings`);
+        l2(`Settings`);
+        s2(false);
       },
       title: `Version ${m2} is available`
     },
     /* @__PURE__ */ w.createElement(Ze, { size: 16 }),
     /* @__PURE__ */ w.createElement(Component2076, null, `Update v`, m2)
   ), /* @__PURE__ */ w.createElement(_Component40, { compact: true }), /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button compact bn-whatsapp-top-badge",
+      style: {
+        display: `inline-flex`,
+        alignItems: `center`,
+        gap: `6px`,
+        borderColor: whatsAppConnected ? `#25D366` : `var(--line, #cbd5e1)`,
+        background: whatsAppConnected ? `rgba(37, 211, 102, 0.12)` : `transparent`,
+        color: whatsAppConnected ? `#0e7039` : `inherit`,
+        fontWeight: 600,
+        fontSize: `12px`,
+        padding: `4px 10px`,
+        borderRadius: `20px`,
+        cursor: `pointer`,
+        height: `34px`
+      },
+      title: "Connect WhatsApp Web / Scan QR (Free Ban-Safe School Messaging)",
+      onClick: () => setWhatsAppModalOpen(true)
+    },
+    /* @__PURE__ */ w.createElement("span", { style: { fontSize: `14px` } }, "\u{1F4F1}"),
+    /* @__PURE__ */ w.createElement("span", null, "WhatsApp Web"),
+    /* @__PURE__ */ w.createElement(
+      "span",
+      {
+        style: {
+          display: `inline-block`,
+          width: `8px`,
+          height: `8px`,
+          borderRadius: `50%`,
+          background: whatsAppConnected ? `#25D366` : `#94a3b8`
+        }
+      }
+    )
+  ), /* @__PURE__ */ w.createElement(
     Component2078,
     {
       className: `language-indicator`,
@@ -37570,20 +37994,23 @@ function Ds() {
       institution: e2.institution,
       onUpdate: j
     }
-  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, null) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement("iframe", {
-    title: `Smart School Tools`,
-    src: `./smart-tools.html?embedded=1`,
-    loading: `lazy`,
-    style: {
-      display: `block`,
-      width: `100%`,
-      height: `calc(100vh - 160px)`,
-      minHeight: 580,
-      border: `none`,
-      borderRadius: 12,
-      background: `transparent`
+  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, null) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement(
+    "iframe",
+    {
+      title: `Smart School Tools`,
+      src: `./smart-tools.html?embedded=1`,
+      loading: `lazy`,
+      style: {
+        display: `block`,
+        width: `100%`,
+        height: `calc(100vh - 160px)`,
+        minHeight: 580,
+        border: `none`,
+        borderRadius: 12,
+        background: `transparent`
+      }
     }
-  }) : c2 === `Opportunity Desk` ? /* @__PURE__ */ w.createElement(
+  ) : c2 === `Opportunity Desk` ? /* @__PURE__ */ w.createElement(
     _Component95,
     {
       data: i2,
@@ -37635,7 +38062,15 @@ function Ds() {
         window.setTimeout(() => p2(``), 5e3);
       }
     }
-  ) : c2 === `Contact & Support` ? /* @__PURE__ */ w.createElement(Ss, null) : /* @__PURE__ */ w.createElement(Ms, { name: c2, onBack: () => se(`Dashboard`) }))), u2 && /* @__PURE__ */ w.createElement(_Component6, { students: n2, onClose: () => d2(false), onSave: ce }), f2 && /* @__PURE__ */ w.createElement(Component2138, { className: `success-toast`, role: `status` }, /* @__PURE__ */ w.createElement(A, { size: 19 }), /* @__PURE__ */ w.createElement(Component2137, null, f2)));
+  ) : c2 === `Contact & Support` ? /* @__PURE__ */ w.createElement(Ss, null) : /* @__PURE__ */ w.createElement(Ms, { name: c2, onBack: () => se(`Dashboard`) }))), u2 && /* @__PURE__ */ w.createElement(_Component6, { students: n2, onClose: () => d2(false), onSave: ce }), f2 && /* @__PURE__ */ w.createElement(Component2138, { className: `success-toast`, role: `status` }, /* @__PURE__ */ w.createElement(A, { size: 19 }), /* @__PURE__ */ w.createElement(Component2137, null, f2)), whatsAppModalOpen && /* @__PURE__ */ w.createElement(
+    WhatsAppConnectModal,
+    {
+      isOpen: whatsAppModalOpen,
+      onClose: () => setWhatsAppModalOpen(false),
+      connected: whatsAppConnected,
+      setConnected: setWhatsAppConnected
+    }
+  ));
 }
 function Os({ icon: _Component99, label: t2, value: n2, helper: r2, tone: i2 }) {
   const Component2140 = `div`;
@@ -37684,9 +38119,7 @@ function _Component89({ tone: e2, title: t2, detail: n2, onClick: r2, destinatio
       }
     },
     /* @__PURE__ */ w.createElement(Component2154, { className: `activity-dot ${e2}` }),
-    /* @__PURE__ */ w.createElement(Component2157, null,
-      /* @__PURE__ */ w.createElement(Component2155, null, t2),
-      /* @__PURE__ */ w.createElement(Component2156, null, n2)),
+    /* @__PURE__ */ w.createElement(Component2157, null, /* @__PURE__ */ w.createElement(Component2155, null, t2), /* @__PURE__ */ w.createElement(Component2156, null, n2)),
     /* @__PURE__ */ w.createElement(_Component88, { size: 17 })
   );
 }

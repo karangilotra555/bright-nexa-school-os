@@ -84,7 +84,7 @@
     if (mounting) return;
     mounting=true;
     try {
-      // Clean up legacy standalone Smart Tools shortcuts; the React sidebar now owns this module.
+      // Clean up legacy standalone smart-tools.html shortcuts; the React sidebar now owns this module.
       for(const id of ['bn-smart-tools-nav','bn-smart-tools-top'])document.getElementById(id)?.remove();
       const nav=document.querySelector('.navigation');
       const actions=document.querySelector('.topbar-actions');

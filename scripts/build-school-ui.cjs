@@ -11,7 +11,7 @@ const result=spawnSync(process.platform==='win32'?'npm.cmd':'npm',[
   'app-extracted/src/BrightNexaApp.jsx','--format=esm',
   '--jsx-factory=w.createElement','--jsx-fragment=w.Fragment',
   '--target=es2022','--outfile='+target,
-],{cwd:root,stdio:'inherit',shell:false});
+],{cwd:root,stdio:'inherit',shell:process.platform==='win32'});
 if(result.error)throw result.error;
 if(result.status!==0)process.exit(result.status||1);
 const bundle=fs.readFileSync(path.join(root,target));
@@ -20,7 +20,7 @@ const revision=crypto.createHash('sha256').update(bundle).digest('hex');
 for(const mirror of ['','docs','app-extracted/dist']){
   const file=path.join(root,mirror,'sw.js');
   const before=fs.readFileSync(file,'utf8');
-  const after=before.replace(/(url:"assets\/index-brightnexa-v2\.js",revision:)(?:null|"[a-f0-9]+")/,'$1"'+revision+'"');
+  const after=before.replace(/(url:"assets\/index-brightnexa-v2\.js",revision:)(?:null|"[^"]*")/,'$1"'+revision+'"');
   if(after===before&&!before.includes('revision:"'+revision+'"'))throw Error('Missing precache entry: '+file);
   fs.writeFileSync(file,after);
 }

@@ -23207,6 +23207,444 @@ function L({ title: e, subtitle: t, onClose: n, children: r }) {
     </Component392>
   );
 }
+// WhatsApp School Integration Helpers & Modals (100% API-Free, Ban-Safe)
+function bnNormalizePhone(phone) {
+  if (!phone) return '';
+  let digits = String(phone).replace(/\D+/g, '');
+  if (!digits) return '';
+  if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  if (digits.length === 10) digits = '91' + digits;
+  return digits;
+}
+
+function bnBuildWhatsAppUrl(phone, text, target = 'web') {
+  const clean = bnNormalizePhone(phone);
+  const enc = encodeURIComponent(text || '');
+  if (target === 'wa_me') return `https://wa.me/${clean}?text=${enc}`;
+  return `https://web.whatsapp.com/send?phone=${clean}&text=${enc}`;
+}
+
+function bnCreateAbsenteeMessage({ schoolName = 'Haridwar Public School', studentName = 'Student', className = '', section = '', date = '', schoolPhone = '+91 7500058655' } = {}) {
+  const classLabel = [className, section].filter(Boolean).join('-');
+  const fDate = date ? new Date(date + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'aaj';
+  return (
+    `🔔 *${schoolName} • Attendance Notice*\n\n` +
+    `Namaste,\n` +
+    `Aapka bacha *${studentName}*${classLabel ? ` (Class: ${classLabel})` : ''} aaj *${fDate}* ko school me *ABSENT (Gairhaazir)* hai.\n\n` +
+    `Agar bacha kisi zaroori kaaran se nahi aa paya hai toh kripya school office ko suchit karein.\n` +
+    `📞 School Helpline: ${schoolPhone}\n\n` +
+    `_Dhanyawaad • ${schoolName}_`
+  );
+}
+
+function bnCreateFeeMessage({ schoolName = 'Haridwar Public School', studentName = 'Student', admissionNumber = '', className = '', section = '', month = '', amountDue = 0, dueDate = '', schoolPhone = '+91 7500058655' } = {}) {
+  const classLabel = [className, section].filter(Boolean).join('-');
+  const inr = Number(amountDue || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  const fDue = dueDate ? new Date(dueDate + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'turant';
+  return (
+    `💳 *${schoolName} • Fee Reminder*\n\n` +
+    `Namaste Parent,\n` +
+    `Aapke bache *${studentName}*${classLabel ? ` (Class: ${classLabel})` : ''}${admissionNumber ? ` [Adm No: ${admissionNumber}]` : ''} ki school fees pending hai:\n\n` +
+    `📌 *Total Baaki Fees:* ₹${inr}\n` +
+    (month ? `📅 *Month / Session:* ${month}\n` : '') +
+    `⏳ *Due Date:* ${fDue}\n\n` +
+    `Kripya baaki fees school accounts counter par ya authorized mode se jama karein.\n` +
+    `📞 Accounts Helpline: ${schoolPhone}\n\n` +
+    `_Dhanyawaad • ${schoolName}_`
+  );
+}
+
+function bnCreatePtmMessage({ schoolName = 'Haridwar Public School', studentName = 'Student', className = '', section = '', examName = 'Periodic Assessment', ptmDate = '', ptmTime = '9:00 AM - 12:30 PM', venue = 'School Campus', schoolPhone = '+91 7500058655' } = {}) {
+  const classLabel = [className, section].filter(Boolean).join('-');
+  const fDate = ptmDate ? new Date(ptmDate + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }) : 'Upcoming PTM';
+  return (
+    `📝 *${schoolName} • PTM & Report Card Invite*\n\n` +
+    `Respected Parents,\n` +
+    `*${examName}* ke report cards aur bache ki academic progress discuss karne ke liye Parent-Teacher Meeting (PTM) aayojit ki gayi hai.\n\n` +
+    `👤 *Student:* ${studentName}${classLabel ? ` (${classLabel})` : ''}\n` +
+    `📅 *Date:* ${fDate}\n` +
+    `⏰ *Timing:* ${ptmTime}\n` +
+    `📍 *Venue:* ${venue}\n\n` +
+    `Aapki upasthiti bache ke utsahwardhan ke liye zaroori hai. Kripya samay par padhaarein.\n` +
+    `📞 Sampark: ${schoolPhone}\n\n` +
+    `_Warm Regards • ${schoolName}_`
+  );
+}
+
+function bnCreateNoticeMessage({ schoolName = 'Haridwar Public School', title = 'School Circular', description = '', startDate = '', reopeningDate = '', schoolPhone = '+91 7500058655' } = {}) {
+  return (
+    `📢 *${schoolName} • Official Circular*\n\n` +
+    `*Subject: ${title}*\n\n` +
+    (description ? `${description}\n\n` : '') +
+    (startDate ? `📅 *Effective From:* ${startDate}\n` : '') +
+    (reopeningDate ? `🏫 *School Reopens On:* ${reopeningDate}\n` : '') +
+    `Kripya dhyan dein aur bacho ko nirdeshon ka paalan karne kahein.\n\n` +
+    `📞 Helpline: ${schoolPhone}\n\n` +
+    `_Issued by: Administration • ${schoolName}_`
+  );
+}
+
+function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
+  if (!isOpen) return null;
+  const handleOpenWeb = () => {
+    window.open('https://web.whatsapp.com', 'BN_WhatsApp_Web', 'width=1020,height=720,left=150,top=100');
+  };
+  const toggle = () => {
+    const next = !connected;
+    setConnected(next);
+    try {
+      window.localStorage.setItem('bn_whatsapp_connected', String(next));
+    } catch {}
+  };
+  return (
+    <L title="WhatsApp Web Companion & QR Connect" subtitle="100% Free • Direct School Phone Integration • Zero API Charges" onClose={onClose}>
+      <div className="simple-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', background: connected ? '#ecfdf5' : '#fffbeb', border: `1px solid ${connected ? '#a7f3d0' : '#fde68a'}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '28px' }}>{connected ? '🟢' : '📱'}</span>
+            <div>
+              <strong style={{ fontSize: '16px', color: connected ? '#065f46' : '#92400e', display: 'block' }}>
+                {connected ? 'WhatsApp Web Linked & Ready' : 'WhatsApp Web Not Linked Yet'}
+              </strong>
+              <small style={{ color: connected ? '#047857' : '#b45309' }}>
+                {connected ? 'Your school WhatsApp session is linked in this browser. Outgoing notices will launch directly.' : 'Link your school mobile number via WhatsApp Web to send instant notices to parents.'}
+              </small>
+            </div>
+          </div>
+          <button type="button" className="secondary-button" onClick={toggle} style={{ fontWeight: 600 }}>
+            {connected ? 'Disconnect' : 'Mark as Linked ✅'}
+          </button>
+        </div>
+        <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--card-bg, #ffffff)', border: '1px solid var(--line, #e2e8f0)' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: 'var(--navy, #1e293b)' }}>📲 How to Scan QR & Connect School Phone:</h3>
+          <ol style={{ margin: 0, paddingLeft: '20px', lineHeight: '1.7', color: 'var(--theme-text, #334155)', fontSize: '14px' }}>
+            <li>Apne school ke mobile phone me <strong>WhatsApp</strong> open karein.</li>
+            <li>Top-right me <strong>⋮ (3 Dots)</strong> ya <strong>Settings</strong> par tap karke <strong>Linked Devices (लिंक्ड डिवाइसेस)</strong> chunein.</li>
+            <li><strong>Link a Device (डिवाइस लिंक करें)</strong> dabayein aur button click karne par aane wala <strong>QR Code scan karein</strong>.</li>
+            <li>Scan hote hi aapka browser WhatsApp se connect ho jayega aur session browser me safe rahega.</li>
+          </ol>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+          <button type="button" className="secondary-button" onClick={onClose}>Close</button>
+          <button type="button" className="primary-button" style={{ background: '#25D366', borderColor: '#1ea952', fontWeight: 700, gap: '8px' }} onClick={handleOpenWeb}>
+            <span>📱</span>
+            <span>Open WhatsApp Web & Scan QR</span>
+          </button>
+        </div>
+      </div>
+    </L>
+  );
+}
+
+function WhatsAppQueueModal({ isOpen, onClose, title, subtitle, schoolName = 'Haridwar Public School', items = [] }) {
+  const [queue, setQueue] = (0, w.useState)(() => items.map((it, idx) => ({ ...it, id: it.id || 'wa_' + idx, status: 'pending' })));
+  const [currentIndex, setCurrentIndex] = (0, w.useState)(0);
+  const [autoAdvance, setAutoAdvance] = (0, w.useState)(true);
+  const [countdown, setCountdown] = (0, w.useState)(0);
+
+  (0, w.useEffect)(() => {
+    setQueue(items.map((it, idx) => ({ ...it, id: it.id || 'wa_' + idx, status: 'pending' })));
+    setCurrentIndex(0);
+    setCountdown(0);
+  }, [items]);
+
+  if (!isOpen || !queue.length) return null;
+
+  const currentItem = queue[currentIndex] || null;
+  const sentCount = queue.filter(x => x.status === 'sent').length;
+  const skippedCount = queue.filter(x => x.status === 'skipped').length;
+  const isDone = currentIndex >= queue.length;
+
+  const handleSend = (idx = currentIndex) => {
+    const item = queue[idx];
+    if (!item) return;
+    const url = bnBuildWhatsAppUrl(item.phone, item.text, 'web');
+    window.open(url, 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100');
+    const updated = [...queue];
+    updated[idx] = { ...item, status: 'sent', sentAt: new Date().toISOString() };
+    setQueue(updated);
+    if (idx === currentIndex) advanceNext(updated);
+  };
+
+  const handleSkip = () => {
+    const updated = [...queue];
+    updated[currentIndex] = { ...updated[currentIndex], status: 'skipped' };
+    setQueue(updated);
+    advanceNext(updated);
+  };
+
+  const advanceNext = (q) => {
+    const next = currentIndex + 1;
+    setCurrentIndex(next);
+    if (next < q.length && autoAdvance) setCountdown(3);
+  };
+
+  (0, w.useEffect)(() => {
+    if (countdown > 0) {
+      const t = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(t);
+    } else if (countdown === 0 && autoAdvance && currentItem && currentItem.status === 'pending' && currentIndex > 0) {
+      handleSend(currentIndex);
+    }
+  }, [countdown, autoAdvance, currentIndex]);
+
+  return (
+    <L title={title || 'WhatsApp Queue Runner'} subtitle={subtitle || `${schoolName} • ${sentCount} sent of ${queue.length} total`} onClose={onClose}>
+      <div className="simple-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '10px', background: 'var(--card-bg, #fff)', border: '1px solid var(--line, #e2e8f0)' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>Queue:</span>
+            <span className="tag" style={{ background: '#dcfce7', color: '#15803d' }}>Sent: {sentCount}</span>
+            <span className="tag" style={{ background: '#fef3c7', color: '#b45309' }}>Remaining: {queue.length - (sentCount + skippedCount)}</span>
+            {skippedCount > 0 && <span className="tag" style={{ background: '#f1f5f9', color: '#64748b' }}>Skipped: {skippedCount}</span>}
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} />
+            <span>Auto-advance (3s delay)</span>
+          </label>
+        </div>
+
+        {!isDone && currentItem ? (
+          <div style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '2px solid #22c55e', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '12px', textTransform: 'uppercase', color: '#16a34a', fontWeight: 700 }}>
+                  Active #{currentIndex + 1} of {queue.length}
+                </span>
+                <h3 style={{ margin: '2px 0 0', fontSize: '17px', color: '#0f172a' }}>
+                  {currentItem.name}
+                  {currentItem.meta?.class ? ` • Class ${currentItem.meta.class}` : ''}
+                  {currentItem.meta?.admissionNumber ? ` (${currentItem.meta.admissionNumber})` : ''}
+                </h3>
+                <small style={{ color: '#64748b' }}>
+                  📞 Parent Phone: <strong>{currentItem.phone || 'No phone recorded'}</strong>
+                </small>
+              </div>
+              {countdown > 0 && (
+                <div style={{ padding: '6px 12px', background: '#dbeafe', color: '#1e40af', borderRadius: '8px', fontWeight: 700, fontSize: '13px' }}>
+                  Next in {countdown}s...
+                </div>
+              )}
+            </div>
+
+            <div style={{ background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: '130px', overflowY: 'auto' }}>
+              {currentItem.text}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
+              <button type="button" className="secondary-button" onClick={handleSkip} style={{ fontWeight: 600 }}>
+                ⏭️ Skip
+              </button>
+              <button type="button" className="primary-button" style={{ background: '#22c55e', borderColor: '#16a34a', fontWeight: 700, fontSize: '14px', gap: '8px' }} onClick={() => handleSend(currentIndex)} autoFocus>
+                <span>🚀</span>
+                <span>Send on WhatsApp (Enter)</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: '24px', borderRadius: '12px', background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span style={{ fontSize: '36px' }}>🎉</span>
+            <strong style={{ fontSize: '18px', color: '#15803d' }}>All Messages Processed!</strong>
+            <p style={{ margin: 0, color: '#166534', fontSize: '14px' }}>
+              Successfully processed {sentCount} sent and {skippedCount} skipped out of {queue.length} parents.
+            </p>
+          </div>
+        )}
+
+        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--line, #e2e8f0)', borderRadius: '8px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ background: 'var(--header-bg, #f1f5f9)', textAlign: 'left' }}>
+                <th style={{ padding: '8px 12px' }}>#</th>
+                <th style={{ padding: '8px 12px' }}>Student / Parent</th>
+                <th style={{ padding: '8px 12px' }}>Phone</th>
+                <th style={{ padding: '8px 12px' }}>Status</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {queue.map((item, idx) => (
+                <tr key={item.id} style={{ borderTop: '1px solid var(--line, #e2e8f0)', background: idx === currentIndex ? 'rgba(34, 197, 94, 0.08)' : 'transparent' }}>
+                  <td style={{ padding: '8px 12px', color: '#64748b' }}>{idx + 1}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <strong>{item.name}</strong>
+                    {item.meta?.class ? <small style={{ color: '#64748b', display: 'block' }}>Class: {item.meta.class}</small> : null}
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>{item.phone || '—'}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    {item.status === 'sent' ? <span className="tag" style={{ background: '#dcfce7', color: '#15803d' }}>Sent ✅</span> : item.status === 'skipped' ? <span className="tag" style={{ background: '#f1f5f9', color: '#64748b' }}>Skipped ⏭️</span> : <span className="tag" style={{ background: '#fef3c7', color: '#b45309' }}>Pending</span>}
+                  </td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                    <button type="button" className="secondary-button compact" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleSend(idx)}>
+                      📱 Send
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </L>
+  );
+}
+
+function WhatsAppPtmDialog({ isOpen, onClose, exam, students = [], schoolName = 'Haridwar Public School' }) {
+  const [ptmDate, setPtmDate] = (0, w.useState)(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
+  });
+  const [ptmTime, setPtmTime] = (0, w.useState)('9:00 AM - 12:30 PM');
+  const [venue, setVenue] = (0, w.useState)('School Campus');
+  const [queueOpen, setQueueOpen] = (0, w.useState)(false);
+
+  if (!isOpen) return null;
+
+  const items = students.map((s, idx) => ({
+    id: s.id || 'ptm_' + idx,
+    name: s.name,
+    phone: s.mobile || s.guardianPhone || '',
+    meta: { class: `${exam?.className || s.className || ''}-${exam?.section || s.section || ''}` },
+    text: bnCreatePtmMessage({
+      schoolName,
+      studentName: s.name,
+      className: exam?.className || s.className || '',
+      section: exam?.section || s.section || '',
+      examName: exam?.name || 'Academic Assessment',
+      ptmDate,
+      ptmTime,
+      venue,
+      schoolPhone: '+91 7500058655'
+    })
+  }));
+
+  if (queueOpen) {
+    return (
+      <WhatsAppQueueModal
+        isOpen={true}
+        onClose={() => {
+          setQueueOpen(false);
+          onClose();
+        }}
+        title={`PTM WhatsApp Queue • ${exam?.name || 'Class Meeting'}`}
+        subtitle={`${schoolName} • ${students.length} Parents`}
+        schoolName={schoolName}
+        items={items}
+      />
+    );
+  }
+
+  return (
+    <L title="PTM & Report Card WhatsApp Broadcast" subtitle={`${schoolName} • ${exam?.name || 'Exam'} • ${students.length} students`} onClose={onClose}>
+      <div className="simple-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <p style={{ margin: 0, fontSize: '14px', color: 'var(--muted)' }}>
+          Configure meeting details and send personalized invitations to all parents on WhatsApp.
+        </p>
+        <R label="Meeting / PTM Date">
+          <input type="date" value={ptmDate} onChange={(e) => setPtmDate(e.target.value)} />
+        </R>
+        <R label="PTM Timing (e.g. 9:00 AM to 1:00 PM)">
+          <input type="text" value={ptmTime} onChange={(e) => setPtmTime(e.target.value)} />
+        </R>
+        <R label="Venue / Meeting Location">
+          <input type="text" value={venue} onChange={(e) => setVenue(e.target.value)} />
+        </R>
+        <div style={{ padding: '12px', background: 'var(--card-bg, #f8fafc)', borderRadius: '8px', border: '1px solid var(--line, #e2e8f0)' }}>
+          <strong style={{ display: 'block', fontSize: '13px', marginBottom: '6px' }}>Message Preview:</strong>
+          <pre style={{ margin: 0, fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: '120px', overflowY: 'auto' }}>
+            {items[0]?.text || 'No students selected'}
+          </pre>
+        </div>
+        <div className="modal-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+          <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
+          <button type="button" className="primary-button" style={{ background: '#22c55e', borderColor: '#16a34a', fontWeight: 700 }} disabled={!students.length} onClick={() => setQueueOpen(true)}>
+            🚀 Start WhatsApp Queue ({students.length} Parents)
+          </button>
+        </div>
+      </div>
+    </L>
+  );
+}
+
+function WhatsAppNoticeDialog({ isOpen, onClose, schoolName = 'Haridwar Public School' }) {
+  const [noticeType, setNoticeType] = (0, w.useState)('holiday');
+  const [title, setTitle] = (0, w.useState)('Winter Vacation / Severe Cold Wave Holiday');
+  const [desc, setDesc] = (0, w.useState)('As per administrative guidelines and weather conditions, school will observe a holiday. Online homework tasks have been shared in the app.');
+  const [startDate, setStartDate] = (0, w.useState)(() => new Date().toISOString().slice(0, 10));
+  const [reopenDate, setReopenDate] = (0, w.useState)('');
+
+  if (!isOpen) return null;
+
+  const messageText = bnCreateNoticeMessage({
+    schoolName,
+    title,
+    description: desc,
+    startDate,
+    reopeningDate: reopenDate,
+    schoolPhone: '+91 7500058655'
+  });
+
+  const handleShareWhatsApp = () => {
+    const url = `https://web.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
+    window.open(url, 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100');
+  };
+
+  return (
+    <L title="Emergency Circular / Chutti Notice Broadcast" subtitle={`${schoolName} • Instant WhatsApp Share for Weather, DM Orders & Circulars`} onClose={onClose}>
+      <div className="simple-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <R label="Quick Notice Template">
+          <select value={noticeType} onChange={(e) => {
+            const t = e.target.value;
+            setNoticeType(t);
+            if (t === 'holiday') {
+              setTitle('Winter Vacation / Severe Weather Holiday');
+              setDesc('As per DM / local authority orders and heavy cold/fog, the school will remain closed. Stay safe and warm.');
+            } else if (t === 'rain') {
+              setTitle('Heavy Rain / Waterlogging Alert — School Closed');
+              setDesc('Due to incessant rainfall and waterlogging advisory, classes are suspended for student safety today.');
+            } else if (t === 'circular') {
+              setTitle('Important School Circular & Guidelines');
+              setDesc('Dear Parents, please review this important circular regarding upcoming school events and guidelines.');
+            }
+          }}>
+            <option value="holiday">❄️ Winter / Severe Cold Holiday (DM Order)</option>
+            <option value="rain">🌧️ Heavy Rain / Monsoon Alert</option>
+            <option value="circular">📢 General School Circular / Instructions</option>
+          </select>
+        </R>
+        <R label="Circular Title">
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </R>
+        <R label="Notice Description & Instructions">
+          <textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--line, #cbd5e1)' }} />
+        </R>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <R label="Effective From">
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </R>
+          <R label="Reopening Date (Optional)">
+            <input type="date" value={reopenDate} onChange={(e) => setReopenDate(e.target.value)} />
+          </R>
+        </div>
+        <div style={{ padding: '12px', background: 'var(--card-bg, #f8fafc)', borderRadius: '8px', border: '1px solid var(--line, #e2e8f0)' }}>
+          <strong style={{ display: 'block', fontSize: '13px', marginBottom: '6px' }}>Ready-to-Send Message Preview:</strong>
+          <pre style={{ margin: 0, fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: '130px', overflowY: 'auto' }}>
+            {messageText}
+          </pre>
+        </div>
+        <div className="modal-actions" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+          <button type="button" className="secondary-button" onClick={onClose}>Close</button>
+          <button type="button" className="primary-button" style={{ background: '#25D366', borderColor: '#1ea952', fontWeight: 700, gap: '8px' }} onClick={handleShareWhatsApp}>
+            <span>📱</span>
+            <span>Open WhatsApp & Broadcast</span>
+          </button>
+        </div>
+      </div>
+    </L>
+  );
+}
+
 function R({ label: e, wide: t, children: n }) {
   const Component393 = `span`;
   const Component394 = `label`;
@@ -23527,6 +23965,7 @@ function Ur({
 }) {
   let [l, u] = (0, w.useState)({});
   let [d, f] = (0, w.useState)(false);
+  let [whatsAppAbsentOpen, setWhatsAppAbsentOpen] = (0, w.useState)(false);
   let p = e.attendance.filter(
     (e) =>
       e.date === r &&
@@ -23538,6 +23977,7 @@ function Ur({
   );
   let m = (e) => l[e] || p.find((t) => t.studentId === e)?.status;
   let h = (e) => u(Object.fromEntries(t.map((t) => [t.id, e])));
+  let absentRoster = t.filter((s) => m(s.id) === 'Absent');
   const Component401 = `input`;
   const Component402 = `strong`;
   const Component403 = `span`;
@@ -23648,6 +24088,24 @@ function Ur({
           <_Component17 size={16} />
           {d ? `Saved` : `Save Marked Records`}
         </Component411>
+        {absentRoster.length > 0 && (
+          <button
+            type="button"
+            className="secondary-button"
+            style={{
+              gap: '6px',
+              background: '#ecfdf5',
+              color: '#065f46',
+              borderColor: '#6ee7b7',
+              fontWeight: 700
+            }}
+            onClick={() => setWhatsAppAbsentOpen(true)}
+            title="Send WhatsApp Absentee Notice to Parents"
+          >
+            <span>📱</span>
+            <span>WhatsApp Absentees ({absentRoster.length})</span>
+          </button>
+        )}
         {p.length > 0 && (
           <Component412
             className={`danger-button`}
@@ -23718,6 +24176,36 @@ function Ur({
                   }))
                 }
               />
+              {m(e.id) === 'Absent' && (
+                <button
+                  type="button"
+                  className="secondary-button compact"
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: '12px',
+                    background: '#f0fdf4',
+                    color: '#15803d',
+                    borderColor: '#86efac',
+                    fontWeight: 600,
+                    marginLeft: '8px'
+                  }}
+                  title={`Send WhatsApp notice to ${e.name}`}
+                  onClick={() => {
+                    const txt = bnCreateAbsenteeMessage({
+                      schoolName: 'Haridwar Public School',
+                      studentName: e.name,
+                      className: n?.name || '',
+                      section: n?.section || '',
+                      date: r,
+                      schoolPhone: '+91 7500058655'
+                    });
+                    const url = bnBuildWhatsAppUrl(e.mobile || e.guardianPhone || '', txt, 'web');
+                    window.open(url, 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100');
+                  }}
+                >
+                  📱 WhatsApp
+                </button>
+              )}
             </Component423>
           ))}
         </Component424>
@@ -23728,6 +24216,29 @@ function Ur({
               ? `No students are assigned to ${ni(n)}.`
               : `Create a class or load the sample academic setup first.`
           }
+        />
+      )}
+      {whatsAppAbsentOpen && (
+        <WhatsAppQueueModal
+          isOpen={whatsAppAbsentOpen}
+          onClose={() => setWhatsAppAbsentOpen(false)}
+          title={`WhatsApp Absentee Alerts • Class ${n?.name || ''}-${n?.section || ''}`}
+          subtitle={`Haridwar Public School • ${absentRoster.length} Absent Students on ${r}`}
+          schoolName="Haridwar Public School"
+          items={absentRoster.map((student) => ({
+            id: student.id,
+            name: student.name,
+            phone: student.mobile || student.guardianPhone || '',
+            meta: { class: `${n?.name || ''}-${n?.section || ''}`, roll: student.rollNumber },
+            text: bnCreateAbsenteeMessage({
+              schoolName: 'Haridwar Public School',
+              studentName: student.name,
+              className: n?.name || '',
+              section: n?.section || '',
+              date: r,
+              schoolPhone: '+91 7500058655'
+            })
+          }))}
         />
       )}
     </P.Fragment>
@@ -25711,10 +26222,12 @@ function PendingFeeReportDialog({ data, students, institution, filterLabel, onCl
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, `0`)}-${String(now.getDate()).padStart(2, `0`)}`;
   });
+  const [whatsAppFeesOpen, setWhatsAppFeesOpen] = (0, w.useState)(false);
   let report, error;
   try { report = buildPendingFeeReport(data, students, institution, asOf); }
   catch (failure) { error = failure.message; }
   const inr = (value) => `₹${value.toLocaleString(`en-IN`, { maximumFractionDigits: 2 })}`;
+  const defaulters = report ? report.rows.filter(r => r.overdue > 0 || r.outstanding > 0) : [];
   return (
     <L title="Pending fees report" subtitle={`${institution.session} • ${filterLabel}`} onClose={onClose}>
       <p>Read-only report for the current class, section, stream and search filters. Existing receipts and fee plans are unchanged.</p>
@@ -25734,16 +26247,83 @@ function PendingFeeReportDialog({ data, students, institution, filterLabel, onCl
             <td><strong>{row.student.name}</strong><small>{row.student.studentUniqueId || row.student.admissionNumber} • {row.student.className}-{row.student.section}</small></td>
             <td>{inr(row.overdue)}</td><td>{inr(row.dueToday)}</td><td>{inr(row.upcoming)}</td><td>{inr(row.unscheduled)}</td><td>{inr(row.outstanding)}</td>
             <td>{row.earliestDue || `Not scheduled`}</td>
-            <td><button type="button" className="secondary-button" onClick={() => onOpenStudent(row.student.id)}>Open fee profile</button></td>
+            <td>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button type="button" className="secondary-button compact" onClick={() => onOpenStudent(row.student.id)}>Profile</button>
+                <button
+                  type="button"
+                  className="secondary-button compact"
+                  style={{ background: '#f0fdf4', color: '#15803d', borderColor: '#86efac', fontWeight: 600 }}
+                  title={`Send WhatsApp fee reminder to ${row.student.name}`}
+                  onClick={() => {
+                    const text = bnCreateFeeMessage({
+                      schoolName: institution?.name || 'Haridwar Public School',
+                      studentName: row.student.name,
+                      admissionNumber: row.student.admissionNumber || '',
+                      className: row.student.className || '',
+                      section: row.student.section || '',
+                      month: institution?.session || '',
+                      amountDue: row.overdue > 0 ? row.overdue : row.outstanding,
+                      dueDate: row.earliestDue || asOf,
+                      schoolPhone: '+91 7500058655'
+                    });
+                    const url = bnBuildWhatsAppUrl(row.student.mobile || row.student.guardianPhone || '', text, 'web');
+                    window.open(url, 'BN_WhatsApp_Runner', 'width=1000,height=720,left=150,top=100');
+                  }}
+                >
+                  📱 WhatsApp
+                </button>
+              </div>
+            </td>
           </tr>)}</tbody>
         </table></div>
         {!report.rows.length && <p>No pending fees for the active students in these filters.</p>}
-        <div className="modal-actions">
+        <div className="modal-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button type="button" className="secondary-button" onClick={onClose}>Close</button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!defaulters.length}
+            style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#6ee7b7', fontWeight: 700 }}
+            onClick={() => setWhatsAppFeesOpen(true)}
+            title="Start WhatsApp Fee Reminder Queue for Defaulters"
+          >
+            <span>📱</span>
+            <span>WhatsApp Defaulters Queue ({defaulters.length})</span>
+          </button>
           <button type="button" className="primary-button" disabled={!report.rows.length}
             onClick={() => Ei(new Blob([`\uFEFF`, pendingFeeCsv(report)], { type: `text/csv;charset=utf-8` }), `pending-fees-${asOf}.csv`)}>Export detailed CSV</button>
         </div>
       </>}
+      {whatsAppFeesOpen && (
+        <WhatsAppQueueModal
+          isOpen={whatsAppFeesOpen}
+          onClose={() => setWhatsAppFeesOpen(false)}
+          title={`WhatsApp Fee Reminder Queue • Session ${institution.session}`}
+          subtitle={`${institution.name || 'Haridwar Public School'} • ${defaulters.length} Defaulters`}
+          schoolName={institution.name || 'Haridwar Public School'}
+          items={defaulters.map((row) => ({
+            id: row.student.id,
+            name: row.student.name,
+            phone: row.student.mobile || row.student.guardianPhone || '',
+            meta: {
+              class: `${row.student.className || ''}-${row.student.section || ''}`,
+              admissionNumber: row.student.admissionNumber || ''
+            },
+            text: bnCreateFeeMessage({
+              schoolName: institution.name || 'Haridwar Public School',
+              studentName: row.student.name,
+              admissionNumber: row.student.admissionNumber || '',
+              className: row.student.className || '',
+              section: row.student.section || '',
+              month: institution.session,
+              amountDue: row.overdue > 0 ? row.overdue : row.outstanding,
+              dueDate: row.earliestDue || asOf,
+              schoolPhone: '+91 7500058655'
+            })
+          }))}
+        />
+      )}
     </L>
   );
 }
@@ -27496,6 +28076,7 @@ function Fi({ data: e, onUpdate: t }) {
   let [i, a] = (0, w.useState)(false);
   let [o, s] = (0, w.useState)();
   let [c, l] = (0, w.useState)();
+  let [whatsAppNoticeOpen, setWhatsAppNoticeOpen] = (0, w.useState)(false);
   let u = (n) => {
     let r = e.homework.some((e) => e.id === n.id);
     t(
@@ -27598,17 +28179,36 @@ function Fi({ data: e, onUpdate: t }) {
         title={`Homework & Notices`}
         subtitle={`Publish structured homework, notices, and school announcements`}
         action={
-          <Component806
-            className={`primary-button`}
-            onClick={() => {
-              s(undefined);
-              l(undefined);
-              a(true);
-            }}
-          >
-            <_Component2 size={18} />
-            {n === `homework` ? `Assign homework` : `Create notice`}
-          </Component806>
+          <div style={{ display: `flex`, gap: `8px`, flexWrap: `wrap`, alignItems: `center` }}>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{
+                borderColor: `#25D366`,
+                color: `#128C7E`,
+                fontWeight: 600,
+                display: `inline-flex`,
+                alignItems: `center`,
+                gap: `6px`,
+                fontSize: `13px`
+              }}
+              title="Share Emergency Circular or Weather / DM Holiday Notice via WhatsApp"
+              onClick={() => setWhatsAppNoticeOpen(true)}
+            >
+              <span style={{ fontSize: `14px` }}>📢</span> WhatsApp Circular / Holiday
+            </button>
+            <Component806
+              className={`primary-button`}
+              onClick={() => {
+                s(undefined);
+                l(undefined);
+                a(true);
+              }}
+            >
+              <_Component2 size={18} />
+              {n === `homework` ? `Assign homework` : `Create notice`}
+            </Component806>
+          </div>
         }
       />
       <Component811 className={`tab-bar`}>
@@ -27734,6 +28334,13 @@ function Fi({ data: e, onUpdate: t }) {
         ) : (
           <Li initial={c} onClose={m} onSave={d} />
         ))}
+      {whatsAppNoticeOpen && (
+        <WhatsAppNoticeDialog
+          isOpen={whatsAppNoticeOpen}
+          schoolName={e?.institution?.name || e?.school?.name || `Haridwar Public School`}
+          onClose={() => setWhatsAppNoticeOpen(false)}
+        />
+      )}
     </Component837>
   );
 }
@@ -28065,6 +28672,7 @@ function Hi({ data: e, students: t, snapshot: n }) {
   let o = t.filter((e) => !a || Ui(e, a));
   let [s, c] = (0, w.useState)(o[0]?.id || ``);
   let l = t.find((e) => e.id === s);
+  let [whatsAppPtmOpen, setWhatsAppPtmOpen] = (0, w.useState)(false);
   let [u, d] = (0, w.useState)(``);
   let [f, p] = (0, w.useState)(`Promoted with best wishes.`);
   let m = (0, w.useMemo)(
@@ -28250,6 +28858,16 @@ function Hi({ data: e, students: t, snapshot: n }) {
               <Je size={17} />
               {`Print / Save PDF`}
             </Component883>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ background: '#ecfdf5', color: '#065f46', borderColor: '#6ee7b7', fontWeight: 700 }}
+              onClick={() => setWhatsAppPtmOpen(true)}
+              title="Send WhatsApp PTM & Report Card Notice to Parents"
+            >
+              <span>📱</span>
+              <span>WhatsApp PTM Notice</span>
+            </button>
           </div>
         }
       />
@@ -28647,6 +29265,15 @@ function Hi({ data: e, students: t, snapshot: n }) {
         <Component1005
           className={`empty-state`}
         >{`Select an examination and student.`}</Component1005>
+      )}
+      {whatsAppPtmOpen && (
+        <WhatsAppPtmDialog
+          isOpen={whatsAppPtmOpen}
+          onClose={() => setWhatsAppPtmOpen(false)}
+          exam={a}
+          students={o}
+          schoolName={n?.institution?.name || 'Haridwar Public School'}
+        />
       )}
     </Component1006>
   );
@@ -41392,6 +42019,14 @@ function Ds() {
   let [f, p] = (0, w.useState)(``);
   let [m, h] = (0, w.useState)(``);
   let [g] = (0, w.useState)(Qt);
+  let [whatsAppModalOpen, setWhatsAppModalOpen] = (0, w.useState)(false);
+  let [whatsAppConnected, setWhatsAppConnected] = (0, w.useState)(() => {
+    try {
+      return localStorage.getItem('bn_whatsapp_connected') === 'true';
+    } catch {
+      return false;
+    }
+  });
   let _ = (0, w.useMemo)(() => fn(e.language), [e.language]);
   let v = g?.role ?? e.role;
   (0, w.useEffect)(() => {
@@ -41803,6 +42438,38 @@ function Ds() {
               </Component2077>
             )}
             <_Component40 compact={true} />
+            <button
+              type="button"
+              className="secondary-button compact bn-whatsapp-top-badge"
+              style={{
+                display: `inline-flex`,
+                alignItems: `center`,
+                gap: `6px`,
+                borderColor: whatsAppConnected ? `#25D366` : `var(--line, #cbd5e1)`,
+                background: whatsAppConnected ? `rgba(37, 211, 102, 0.12)` : `transparent`,
+                color: whatsAppConnected ? `#0e7039` : `inherit`,
+                fontWeight: 600,
+                fontSize: `12px`,
+                padding: `4px 10px`,
+                borderRadius: `20px`,
+                cursor: `pointer`,
+                height: `34px`
+              }}
+              title="Connect WhatsApp Web / Scan QR (Free Ban-Safe School Messaging)"
+              onClick={() => setWhatsAppModalOpen(true)}
+            >
+              <span style={{ fontSize: `14px` }}>📱</span>
+              <span>WhatsApp Web</span>
+              <span
+                style={{
+                  display: `inline-block`,
+                  width: `8px`,
+                  height: `8px`,
+                  borderRadius: `50%`,
+                  background: whatsAppConnected ? `#25D366` : `#94a3b8`
+                }}
+              />
+            </button>
             <Component2078
               className={`language-indicator`}
               aria-label={`Interface language`}
@@ -42250,6 +42917,14 @@ function Ds() {
           <A size={19} />
           <Component2137>{f}</Component2137>
         </Component2138>
+      )}
+      {whatsAppModalOpen && (
+        <WhatsAppConnectModal
+          isOpen={whatsAppModalOpen}
+          onClose={() => setWhatsAppModalOpen(false)}
+          connected={whatsAppConnected}
+          setConnected={setWhatsAppConnected}
+        />
       )}
     </Component2139>
   );
