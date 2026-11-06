@@ -90,7 +90,7 @@ function validateInput(raw){
  contractFor(tool);
  const className=clean(request.className,60,'Class');
  const subject=clean(request.subject,90,'Subject');
- let topic=clean(request.topic,240,'Topic / Chapter');
+ let topic=clean(request.topic,240,'Topic / Chapter',{required:false})||'all';
  if(tool==='School Notice Generator'&&/^(all|सभी|full syllabus)$/i.test(topic)&&request.instructions?.trim().length>=20)topic=request.instructions.trim().slice(0,200);
  const topicScope=/^(all|full syllabus|entire syllabus|all chapters|सभी|पूरा पाठ्यक्रम)$/i.test(topic)?'general':'specific';
  ensure(!(topicScope==='general'&&tool==='School Notice Generator'),422,'Enter a specific notice topic and school details.');
