@@ -99,3 +99,24 @@ test('librarian may access library inventory and loan actions but not unrelated 
  assert.equal(permit({...lib,status:'INACTIVE'},scope('library.inventory.read')),false);
  assert.equal(permit({...lib,verified:false},scope('library.loans.write')),false);
 });
+
+
+test('core settings and irreversible deletion approvals require verified school owner',()=>{
+ const schoolOwner={verified:true,ownerVerified:true,status:'ACTIVE',schoolId:'school-1',role:'SCHOOL_ADMIN'};
+ const invitedAdmin={...schoolOwner,ownerVerified:false};
+ const principal={verified:true,ownerVerified:true,status:'ACTIVE',schoolId:'school-1',role:'PRINCIPAL'};
+ const accountant={verified:true,ownerVerified:true,status:'ACTIVE',schoolId:'school-1',role:'ACCOUNTANT'};
+ const librarian={verified:true,ownerVerified:true,status:'ACTIVE',schoolId:'school-1',role:'LIBRARIAN'};
+ for(const action of ['core.settings.manage','records.delete.approve']){
+  assert.equal(permit(schoolOwner,scope(action)),true);
+  assert.equal(permit(invitedAdmin,scope(action)),false);
+  assert.equal(permit({...schoolOwner,ownerVerified:undefined},scope(action)),false);
+  assert.equal(permit({...schoolOwner,schoolId:'school-2'},scope(action)),false);
+  for(const actor of [principal,accountant,librarian,teacher,subjectTeacher]){
+   assert.equal(permit(actor,scope(action)),false,actor.role+' '+action);
+  }
+  assert.equal(permit({...schoolOwner,deniedActions:[action]},scope(action)),false);
+ }
+ assert.equal(permit(schoolOwner,scope('audit.read')),true);
+ assert.equal(permit(principal,scope('audit.read')),false);
+});
