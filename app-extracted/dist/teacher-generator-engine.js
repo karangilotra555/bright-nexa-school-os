@@ -34,7 +34,7 @@ const FOOD_MCQ=[
 function choose(lang,en,hi){return lang==='Hindi'?hi:lang==='Bilingual'?en+'\n'+hi:en;}
 function safe(v,max,label){const s=String(v==null?'':v).trim();if(!s||s.length>max)throw Error(label+' must be 1–'+max+' characters.');return s;}
 function isFood(subject,topic){return /scien|evs|विज्ञान/i.test(subject)&&/food components|components of food|food nutrients|भोजन.*घटक|पोषक तत्व/i.test(topic);}
-function mins(s){const t=String(s||'45 Minutes').toLowerCase();if(/double period/.test(t))return 80;const h=t.match(/(\d+)\s*(?:hours?|hrs?)/),m=t.match(/(\d+)\s*(?:minutes?|mins?)/);if(h)return (+h[1]*60)+(m?+m[1]:0);if(m)return +m[1];const n=t.match(/\d+/);return n?+n[0]:45;}
+function mins(s){const t=String(s||'45 Minutes').toLowerCase();if(/double period/.test(t))return 80;const h=t.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)/),m=t.match(/(\d+)\s*(?:minutes?|mins?)/);if(h)return (Number(h[1])*60)+(m?+m[1]:0);if(m)return +m[1];const n=t.match(/\d+/);return n?+n[0]:45;}
 function parse(input){
  const x=input||{},tool=safe(x.tool,90,'Tool'),className=safe(x.className,90,'Class'),subject=safe(x.subject,100,'Subject'),topic=safe(x.topic,140,'Topic');
  if(!TOOLS.includes(tool))throw Error('Unknown generator type.');
@@ -169,9 +169,10 @@ function paperNumbered(q){
    : q.difficulty==='Medium'
      ? Array.from({length:12},(_,i)=>(i+2)%12)
      : Array.from({length:12},(_,i)=>i);
+ const timeShift=[45,60,90,120,150,180].indexOf(time)>=0?[45,60,90,120,150,180].indexOf(time):Math.floor(time/30)%12;
  const out=[];
  for(let i=0;i<q.count;i++){
-   const mark=marks[i],k=order[i];
+   const mark=marks[i],k=order[(i+timeShift)%12];
    let stem;
    if(mode==='quick'){
      const parts=FOOD_QUICK_GROUPS[k].slice(0,mark).map((part,j)=>'('+String.fromCharCode(97+j)+') '+choose(q.language,part[0],part[1]));
