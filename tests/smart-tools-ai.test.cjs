@@ -150,3 +150,22 @@ test('TDD: Smart Tools backend route requires school authentication and never ex
  assert.match(source,/smartToolsAI\.generate\(payload, token\)/);
  assert.doesNotMatch(fs.readFileSync('teacher-ai-cloud.js','utf8'),/x-goog-api-key|GEMINI_API_KEY|GROQ_API_KEY/);
 });
+
+
+test('TDD: teacher can request 10–20 distinct activities; never silently truncate count',()=>{
+ const input={...base,tool:'Activity Ideas Generator',count:20,activityFocus:'Quick Fun Games',instructions:'Make 20 Hindi word games'};
+ const req=svc.validateInput(input);
+ assert.equal(req.count,20);
+ assert.throws(()=>svc.validateInput({...input,count:21}),/20|count|activities/i);
+ const prompt=svc.promptFor(req,null);
+ assert.match(prompt.system,/Exactly 20 entries/);
+ const items=Array.from({length:20},(_,i)=>({title:'Hindi classroom game '+i,goal:'Practice vocabulary in small groups with clear learning outcome '+i,materials:['word cards'],steps:['Sort the words by grammatical function','Explain choices in Hindi to a partner'],minutes:6}));
+ const generated=svc.validateOutput(req,{activities:items});
+ assert.equal((generated.match(/Hindi classroom game /g)||[]).length,20);
+});
+test('TDD: a meaningful typed notice request works even when chapter input remains "all"',()=>{
+ const req=svc.validateInput({...base,tool:'School Notice Generator',topic:'all',instructions:'Make a school notice about the annual Hindi handwriting competition, only using confirmed details.'});
+ assert.equal(req.tool,'School Notice Generator');
+ assert.notEqual(req.topic,'all');
+ assert.match(svc.promptFor(req).user,/handwriting competition/);
+});
