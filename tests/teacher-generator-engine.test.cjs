@@ -40,3 +40,20 @@ test('invalid inputs are rejected rather than reported as generated successfully
  assert.throws(()=>gen.generate({...base,tool:'Workshop Generator'}),/Unknown generator/);
  assert.deepEqual(gen.assignMarks(5,13).reduce((a,b)=>a+b,0),13);
 });
+
+test('Print/PDF renders only reviewed draft text in A4 preview and does not print dashboard',()=>{
+ const created=[],head={appendChild(n){created.push(n)}},body={appendChild(n){created.push(n)}};
+ const document={title:'',head,body,createElement(tag){return {tag,textContent:''};}};
+ let printCount=0,focusCount=0;
+ const open=()=>({document,focus(){focusCount++},print(){printCount++}});
+ assert.equal(gen.printDraft('Edited\nTeacher answer',open),true);
+ assert.equal(printCount,1);assert.equal(focusCount,1);
+ assert.equal(created.find(n=>n.tag==='pre').textContent,'Edited\nTeacher answer');
+ assert.match(created.find(n=>n.tag==='style').textContent,/size:A4/);
+ assert.throws(()=>gen.printDraft(''),/Nothing to print/);
+});
+test('School OS print handlers use the draft printer instead of printing the whole dashboard',()=>{
+ const fs=require('node:fs'),src=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
+ assert.match(src,/BNTeacherGenerator\.printDraft\(f\)/);
+ assert.doesNotMatch(src,/<Component1363[\s\S]{0,180}window\.print\(\)/);
+});

@@ -32791,7 +32791,7 @@ function Ea({ data, students } = {}) {
                 </Component1362>
                 <Component1363
                   className={`secondary-button`}
-                  onClick={() => window.print()}
+                  onClick={() => {try{window.BNTeacherGenerator.printDraft(f)}catch(error){h(`Print failed: ${error.message}`)}}
                 >
                   <Je size={16} />
                   {`Print / PDF`}

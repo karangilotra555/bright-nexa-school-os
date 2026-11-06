@@ -29123,7 +29123,7 @@ function Ea({ data, students } = {}) {
     Component1363,
     {
       className: `secondary-button`,
-      onClick: () => window.print()
+      onClick: () => {try{window.BNTeacherGenerator.printDraft(f2)}catch(error){h2(`Print failed: ${error.message}`)}}
     },
     /* @__PURE__ */ w.createElement(Je, { size: 16 }),
     `Print / PDF`

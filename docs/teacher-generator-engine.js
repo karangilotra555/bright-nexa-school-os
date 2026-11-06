@@ -77,5 +77,20 @@ function generate(input){
  if(q.tool==='School Notice Generator')return head+'\n\n'+choose(q.language,'DRAFT CIRCULAR — AWAITING PRINCIPAL APPROVAL','प्रारूप सूचना — प्रधानाचार्य की स्वीकृति शेष')+'\n'+choose(q.language,'Subject','विषय')+': '+q.topic+'\n'+choose(q.language,'Class','कक्षा')+': '+q.className+' | '+choose(q.language,'Date and time','तिथि और समय')+': [CONFIRM]\n'+choose(q.language,'Venue','स्थान')+': [CONFIRM]\n'+choose(q.language,'Purpose and instructions','उद्देश्य और निर्देश')+': [SCHOOL MUST VERIFY]\n\n'+choose(q.language,'No mandatory attendance or event date is asserted until school approval.','विद्यालय की पुष्टि बिना अनिवार्य उपस्थिति या तिथि घोषित न करें।');
  throw Error('This generator is not available.');
 }
-return {TOOLS,generate,parse,assignMarks};
+function printDraft(text,openWindow){
+ const content=String(text==null?'':text).trim();
+ if(!content)throw Error('Nothing to print.');
+ const opener=openWindow||(typeof window!=='undefined'&&window.open&&window.open.bind(window));
+ if(typeof opener!=='function')throw Error('Print preview unavailable in this browser.');
+ const win=opener('','_blank','width=900,height=750');
+ if(!win||!win.document)throw Error('Pop-up blocked. Allow print pop-ups and retry.');
+ const d=win.document;d.title='Bright Nexa · Teacher Draft';
+ const style=d.createElement('style');
+ style.textContent='@page{size:A4;margin:16mm}body{font-family:Arial,sans-serif;color:#111}h1{font-size:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 monospace}';
+ const heading=d.createElement('h1');heading.textContent='Bright Nexa · Teacher-reviewed draft';
+ const pre=d.createElement('pre');pre.textContent=content;
+ d.head.appendChild(style);d.body.appendChild(heading);d.body.appendChild(pre);
+ win.focus();win.print();return true;
+}
+return {TOOLS,generate,parse,assignMarks,printDraft};
 });
