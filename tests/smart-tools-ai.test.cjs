@@ -65,7 +65,7 @@ test('TDD: 10 distinct activities must contain real materials, steps, goals and 
 });
 test('TDD: backend rejects generic, duplicate, and unverifiable assessment responses',()=>{
  const req=svc.validateInput(base),plan=svc.planAssessment(req);
- const questions=plan.questions.map((q,i)=>({id:q.id,text:'हिंदी भाषा में विभिन्न स्तर के शब्दों की तुलना और विश्लेषण कीजिए '+(i+1),answerGuide:'शब्दों के चयन और विश्लेषण के उचित कारण लिखें'}));
+ const questions=plan.questions.map((q,i)=>({id:q.id,text:'हिंदी भाषा में विभिन्न स्तर के शब्दों की तुलना और विश्लेषण कीजिए '+(i+1)+(q.type==='MCQ'?' (A) संज्ञा (B) क्रिया (C) विशेषण (D) सर्वनाम':''),answerGuide:'शब्दों के चयन और विश्लेषण के उचित कारण लिखें'}));
  assert.match(svc.validateOutput(req,{questions},plan),/हिंदी/);
  assert.throws(()=>svc.validateOutput(req,{questions:questions.map(q=>({...q,text:'Define all using your class notes or textbook.'}))},plan),/generic|placeholder|quality|repeat/i);
  assert.throws(()=>svc.validateOutput(req,{questions:questions.map(q=>({...q,text:questions[0].text}))},plan),/duplicate|repeat/i);
