@@ -356,7 +356,7 @@ function generate(input){
   return head+'\n\n'+scope+'\n\n'+choose(q.language,'Learning outcomes: classify examples, explain reasons, check misconceptions.','सीखने के लक्ष्य: उदाहरण वर्गीकृत करना, कारण समझाना, गलतफहमियाँ जाँचना।')+'\n\n'+choose(q.language,'KEY CONCEPTS AND EXAMPLES','मुख्य अवधारणाएँ व उदाहरण')+'\n'+context+'\n\n'+choose(q.language,'PERIOD PLAN','समय योजना')+' ('+duration+' min)\n'+timeline+'\n\n'+choose(q.language,'Assessment questions','मूल्यांकन प्रश्न')+':\n'+[0,1,2].map(i=>question(q,i)).join('\n')+'\n\n'+choose(q.language,'Homework: describe your meal and identify at least three nutrient sources, or cite your school textbook.','गृहकार्य: अपने भोजन के तीन पोषक स्रोत बताएं या पुस्तक से उदाहरण दें।');
  }
  if(['Question Paper Generator','Class Test Generator','Worksheet Generator'].includes(q.tool)){
-  const rows=q.tool==='Question Paper Generator'?paperNumbered(q):numbered(q,q.count,q.totalMarks,'practice');
+  const rows=paperNumbered(q);
   const instruction=choose(q.language,'Answer every question. Teacher must check syllabus and final answers.','सभी प्रश्न हल करें। शिक्षक पाठ्यक्रम और उत्तर जाँचें।');
   return head+'\n'+scope+'\n\n'+(rows.description?rows.description+'\n\n':'')+choose(q.language,'Time','समय')+': '+q.duration+' | '+choose(q.language,'Maximum marks','पूर्णांक')+': '+q.totalMarks+' | '+choose(q.language,'Questions','प्रश्न')+': '+q.count+'\n'+instruction+'\n\n'+rows.body+'\n\n'+choose(q.language,'MARKING CHECK','अंक जाँच')+': '+rows.sum+'/'+q.totalMarks+(rows.answers?'\n'+choose(q.language,'MCQ answer key (review)','बहुविकल्प उत्तर (जाँचें)')+': '+rows.answers:'');
  }
