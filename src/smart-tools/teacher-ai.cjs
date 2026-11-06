@@ -55,13 +55,26 @@ const ACADEMIC_TOOLS=new Set([
  'Homework Generator','Activity Ideas Generator','Class Test Generator'
 ]);
 function selectedGrade(name){
- const match=String(name||'').match(/(?:class|grade|standard|std|कक्षा)?\s*(?:-|:)?\s*(1[0-2]|[1-9])\b/i);
- return match?Number(match[1]):null;
+ const value=String(name||'').trim();
+ if(/\b(?:nursery|pre[- ]?nursery|playgroup|lkg|lower kg|ukg|upper kg|kindergarten|pre[- ]?primary)\b/i.test(value))
+  return {label:value,prePrimary:true};
+ const match=value.match(/(?:class|grade|standard|std|कक्षा)?\s*(?:-|:)?\s*(1[0-2]|[1-9])\b/i);
+ if(match)return {label:'Class '+Number(match[1]),grade:Number(match[1])};
+ const roman=value.match(/^(?:class\s*)?(XII|XI|IX|VIII|VII|VI|IV|III|II|X|V|I)$/i);
+ if(roman){
+  const numerals={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10,XI:11,XII:12};
+  return {label:'Class '+numerals[roman[1].toUpperCase()],grade:numerals[roman[1].toUpperCase()]};
+ }
+ return null;
 }
 function academicScope(req){
- const grade=selectedGrade(req.className);
- ensure(grade!==null,422,'Select a valid Class 1–12 for academic generation.');
- return 'Indian CBSE-aligned teaching context; use NCERT grade '+grade+' '+req.subject+
+ const level=selectedGrade(req.className);
+ ensure(level!==null,422,'Select a valid school class (Nursery/LKG/UKG or Class 1–12).');
+ if(level.prePrimary)return 'Indian early-childhood/pre-primary learning context ('+level.label+'). '+
+  'Use play-based, developmentally appropriate activities and simple literacy/numeracy foundations. '+
+  'Do NOT claim pre-primary has an official NCERT Class 1–12 textbook or a CBSE board exam pattern. '+
+  'Do not introduce higher-grade content or formal exam-style questions beyond the child level.';
+ return 'Indian CBSE-aligned teaching context; use NCERT grade '+level.grade+' '+req.subject+
   ' concepts appropriate to selected topic "'+req.topic+'". '+
   'Do not introduce advanced concepts from higher classes. The model has no independently verified textbook chapter index; '+
   'do NOT claim a chapter is officially included in NCERT unless confirmed by provided textbook material. '+
