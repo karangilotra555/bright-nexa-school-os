@@ -1,5 +1,5 @@
 /* Authenticated Smart Tools client — never stores provider keys or fabricated drafts. */
-(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.BNSmartToolsAI=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
+(function(root,factory){const api=factory();if(typeof window==='object')window.BNSmartToolsAI=api;else root.BNSmartToolsAI=api;if(typeof module==='object'&&module.exports)module.exports=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
  'use strict';
  const SESSION='bn_school_staff_session_v1';
  const SUPABASE='https://mrfvbwmyxndrakskqyas.supabase.co';

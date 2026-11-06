@@ -169,3 +169,79 @@ test('TDD: a meaningful typed notice request works even when chapter input remai
  assert.notEqual(req.topic,'all');
  assert.match(svc.promptFor(req).user,/handwriting competition/);
 });
+
+
+test('TDD RED: browser client always installs window.BNSmartToolsAI even when legacy CommonJS module is present',()=>{
+ const vm=require('node:vm');
+ const source=fs.readFileSync('teacher-ai-cloud.js','utf8');
+ const window={};
+ const module={exports:{}};
+ vm.runInNewContext(source,{window,globalThis:window,module});
+ assert.equal(typeof window.BNSmartToolsAI?.generate,'function','Browser client must never export exclusively to CommonJS');
+ assert.equal(typeof module.exports.generate,'function','Node/CommonJS consumers retain support');
+});
+test('TDD RED: missing AI client is recovered once via versioned, same-origin script and never a fake local generator',()=>{
+ const src=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
+ const bundle=fs.readFileSync('assets/index-brightnexa-v2.js','utf8');
+ for(const [name,code] of [['source',src],['bundle',bundle]]){
+  assert.match(code,/ensureSchoolAIClient/,'Client recovery guard missing from '+name);
+  assert.match(code,/document\.createElement\(['"]script['"]\)/,'A missing client needs real script loading in '+name);
+  assert.match(code,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/,'Cache/version mismatch in '+name);
+  assert.match(code,/script\.onerror/,'Network failure must be surfaced to teacher in '+name);
+  assert.doesNotMatch(code,/if\(!globalThis\.BNSmartToolsAI\)throw Error\('School AI client failed to load/);
+ }
+});
+test('TDD RED: cache reset version changes with the AI client while keeping existing data untouched',()=>{
+ for(const dir of ['','docs/','app-extracted/dist/']){
+  const html=fs.readFileSync(dir+'index.html','utf8');
+  assert.match(html,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
+  assert.match(html,/assets\/index-brightnexa-v2\.js\?v=20261106-client-recovery-v2/);
+  assert.match(html,/CACHE_VERSION = '20261106-client-recovery-v2'/);
+  const sw=fs.readFileSync(dir+'sw.js','utf8');
+  assert.match(sw,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
+  assert.doesNotMatch(html,/localStorage\.clear\(/);
+ }
+});
+
+
+test('client recovery: runtime loads exactly one versioned script and executes the real AI client',async()=>{
+ const vm=require('node:vm');
+ const src=fs.readFileSync('assets/index-brightnexa-v2.js','utf8');
+ const start=src.indexOf('let schoolAIClientLoad = null;');
+ const end=src.indexOf('function OaLegacy(',start);
+ assert.ok(start>=0&&end>start);
+ const window={}, scripts=[];
+ const document={
+  baseURI:'https://bright-nexa-school-os.onrender.com/index.html?openSchool=true',
+  createElement(tag){assert.equal(tag,'script');return {};},
+  head:{appendChild(script){scripts.push(script);}}
+ };
+ const context=vm.createContext({window,globalThis:window,document,URL,Promise,Error});
+ const real=vm.runInContext(src.slice(start,end)+';({Oa,ensureSchoolAIClient})',context);
+ const first=real.Oa({tool:'Lesson Plan Generator'});
+ const second=real.Oa({tool:'Activity Ideas Generator'});
+ assert.equal(scripts.length,1,'Concurrent calls must share a single client download');
+ assert.ok(scripts[0].src.startsWith('https://bright-nexa-school-os.onrender.com/teacher-ai-cloud.js?v=20261106-client-recovery-v2'));
+ assert.equal(scripts[0].async,true);
+ const calls=[];
+ window.BNSmartToolsAI={generate:async(input)=>{calls.push(input.tool);return 'real provider result for '+input.tool;}};
+ scripts[0].onload();
+ assert.equal(await first,'real provider result for Lesson Plan Generator');
+ assert.equal(await second,'real provider result for Activity Ideas Generator');
+ assert.deepEqual(calls,['Lesson Plan Generator','Activity Ideas Generator']);
+ const third=await real.Oa({tool:'School Notice Generator'});
+ assert.equal(third,'real provider result for School Notice Generator');
+ assert.equal(scripts.length,1,'Already initialized client must not download again');
+});
+test('client recovery: script network failure is visible and does not create any content',async()=>{
+ const vm=require('node:vm'),src=fs.readFileSync('assets/index-brightnexa-v2.js','utf8');
+ const start=src.indexOf('let schoolAIClientLoad = null;'),end=src.indexOf('function OaLegacy(',start);
+ const window={}, scripts=[];
+ const document={baseURI:'https://bright-nexa-school-os.onrender.com/index.html',createElement:()=>({}),head:{appendChild:s=>scripts.push(s)}};
+ const real=vm.runInNewContext(src.slice(start,end)+';({Oa})',{window,globalThis:window,document,URL,Promise,Error});
+ const pending=real.Oa({tool:'Question Paper Generator'});
+ assert.equal(scripts.length,1);
+ scripts[0].onerror();
+ await assert.rejects(pending,/could not be downloaded/);
+ assert.equal(window.BNSmartToolsAI,undefined,'Must not substitute a local placeholder generator');
+});

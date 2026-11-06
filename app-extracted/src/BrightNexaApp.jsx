@@ -32868,7 +32868,30 @@ function Ea({ data, students } = {}) {
   );
 }
 function Da(){return []; /* Existing local drafts retained, not authoritative. */}
-async function Oa(input){if(!globalThis.BNSmartToolsAI)throw Error('School AI client failed to load. Refresh and check your connection.');return await globalThis.BNSmartToolsAI.generate(input);}
+let schoolAIClientLoad = null;
+function ensureSchoolAIClient(){
+  if(typeof globalThis.BNSmartToolsAI?.generate === 'function')return Promise.resolve(globalThis.BNSmartToolsAI);
+  if(!schoolAIClientLoad){
+    schoolAIClientLoad = new Promise((resolve,reject)=>{
+      if(typeof document === 'undefined')return reject(Error('AI client can only load in a browser.'));
+      const script = document.createElement('script');
+      script.src = new URL('./teacher-ai-cloud.js?v=20261106-client-recovery-v2', document.baseURI).href;
+      script.async = true;
+      script.onload = ()=>{
+        const client = globalThis.BNSmartToolsAI;
+        if(client && typeof client.generate === 'function')resolve(client);
+        else reject(Error('School AI client script loaded but did not initialize. Clear the site cache and refresh.'));
+      };
+      script.onerror = ()=>reject(Error('School AI script could not be downloaded. Check network or browser security settings.'));
+      document.head.appendChild(script);
+    }).finally(()=>{schoolAIClientLoad=null;});
+  }
+  return schoolAIClientLoad;
+}
+async function Oa(input){
+  const client=await ensureSchoolAIClient();
+  return await client.generate(input);
+}
 function OaLegacy({
   tool: e,
   className: t,
