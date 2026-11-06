@@ -1,0 +1,6 @@
+# Precache revisions hash deployed bytes. Keep these assets identical on Windows
+# and Linux instead of allowing core.autocrlf to rewrite the offline shell.
+/index.html text eol=lf
+/docs/index.html text eol=lf
+/app-extracted/dist/index.html text eol=lf
+school-workspace-*.js text eol=lf

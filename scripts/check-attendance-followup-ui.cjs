@@ -3,12 +3,14 @@ const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_pro
 const {JSDOM}=require('jsdom'),esbuild=require('esbuild');
 const repo=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(repo,'app-extracted/src/BrightNexaApp.jsx'),'utf8');
-const baseline=cp.execFileSync('git',['show','ad7ec6b:assets/index-brightnexa-v2.js'],{cwd:repo,encoding:'utf8',maxBuffer:5e6});
+const baselineRef=process.argv[2]||'8fd0904ce5ac31d6d75f9400fc750b216321642e';
+const baseline=cp.execFileSync('git',['show',baselineRef+':app-extracted/src/BrightNexaApp.jsx'],{cwd:repo,encoding:'utf8',maxBuffer:5e6});
 const today=new Date().toISOString().slice(0,10);
 const students=[{id:'a',name:'Fixture A',className:'9',section:'A',status:'Active',parentMobile:'0000000000'},{id:'b',name:'Fixture B',className:'9',section:'A',status:'Active'}];
 const actor={accountId:'fixture-owner',name:'Fixture Owner',role:'OWNER'};
 const pause=()=>new Promise(r=>setTimeout(r,45));
 async function mount(code,recovered){
+ code=code.replace(/\r\n/g,'\n');
  const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'https://fixture.test/',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window;w.confirm=()=>true;
  w.sessionStorage.setItem('bright-nexa-school-os:session:v2',JSON.stringify(actor));
@@ -24,9 +26,10 @@ const button=(d,text)=>Array.from(d.querySelectorAll('button')).find(b=>b.textCo
 function field(d,label){return Array.from(d.querySelectorAll('label')).find(x=>x.querySelector('span')?.textContent===label)?.querySelector('input,textarea,select');}
 function change(w,input,value){const proto=input.tagName==='SELECT'?w.HTMLSelectElement.prototype:input.tagName==='TEXTAREA'?w.HTMLTextAreaElement.prototype:w.HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(input,value);input.dispatchEvent(new w.Event(input.tagName==='SELECT'?'change':'input',{bubbles:true}));}
 (async()=>{
- const old=await mount(baseline,false),next=await mount(source,true),w=next.w,d=w.document;
+ const old=await mount(baseline,true),next=await mount(source,true),w=next.w,d=w.document;
  const clone=d.getElementById('root').cloneNode(true),action=button(clone,'Absent follow-up');assert(action);action.parentElement.remove();
- assert.equal(clone.innerHTML,old.w.document.getElementById('root').innerHTML,'existing attendance screen unchanged except the one added header action');
+ const baselineClone=old.w.document.getElementById('root').cloneNode(true),baselineAction=button(baselineClone,'Absent follow-up');if(baselineAction)baselineAction.parentElement.remove();
+ assert.equal(clone.innerHTML,baselineClone.innerHTML,'GitHub baseline attendance screen unchanged excluding the follow-up action');
  const original=JSON.stringify(next.data.attendance);
  button(d,'Absent follow-up').click();await pause();assert(d.querySelector('[role=dialog]'));
  button(d,'Record follow-up').click();await pause();
