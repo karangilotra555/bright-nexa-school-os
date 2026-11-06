@@ -28967,6 +28967,7 @@ function Ea({ data, students } = {}) {
         } else if (n3.includes("Question Paper")) {
           setDuration("1 Hour");
           setTotalMarks("50");
+          d2("20");
         } else if (n3.includes("Class Test")) {
           setDuration("20 Minutes");
           setTotalMarks("15");
