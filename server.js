@@ -807,6 +807,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/sync/token' && req.method === 'POST') {
+    // Only an existing verified administrator or the server admin key may mint
+    // another privileged session. Client-supplied role/name do not grant access.
+    if (!verifyAdminAuth(req)) {
+      logAudit('UNAUTHORIZED_SYNC_TOKEN_ATTEMPT', clientIp, { path: pathname });
+      return sendJson(res, 401, { error: 'Administrative authentication required.' });
+    }
     try {
       const body = await parseJsonBody(req);
       const role = (body && body.role) || 'OWNER';
