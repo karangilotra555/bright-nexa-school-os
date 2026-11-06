@@ -20,7 +20,7 @@ test('question papers and class tests deliver exactly requested questions and ma
 test('Hindi and bilingual variants show meaningful subject content',()=>{
  const hi=gen.generate({...base,tool:'Lesson Plan Generator',language:'Hindi'});
  const bi=gen.generate({...base,tool:'Question Paper Generator',language:'Bilingual'});
- assert.match(hi,/कार्बोहाइड्रेट|प्रोटीन/);assert.match(bi,/Rice|चावल/);
+ assert.match(hi,/कार्बोहाइड्रेट|प्रोटीन/);assert.match(bi,/[ऀ-ॿ]/);assert.match(bi,/protein|meal|food|nutrient|starch/i);
 });
 test('remarks/remedial/parent and notices never invent grades, targets or compulsory events',()=>{
  for(const tool of ['Student Remark Generator','Weak Student Remedial Plan','Parent Message Generator','School Notice Generator']){
@@ -42,48 +42,50 @@ test('invalid inputs are rejected rather than reported as generated successfully
 });
 
 
-test('45-minute 50-mark paper has ten distinct five-part questions, never 5-mark MCQs',()=>{
- const paper=gen.generate({...base,tool:'Question Paper Generator',duration:'45 Minutes',difficulty:'Easy',count:10,totalMarks:50});
- const lines=paper.split('\n').filter(x=>/^Q\d+\./.test(x));
- assert.equal(lines.length,10);
- for(const line of lines){
-  assert.match(line,/Answer each part \(1 mark each\):/);
-  assert.equal((line.match(/\([a-e]\)/g)||[]).length,5);
-  assert.match(line,/\[5 marks\]$/);
- }
- assert.equal(lines.reduce((sum,line)=>sum+Number(line.match(/\[(\d+) marks?\]$/)[1]),0),50);
- assert.equal(new Set(lines).size,10);
- assert.doesNotMatch(paper,/\(A\).*?\[5 marks\]/);
-});
-test('3-hour paper changes the actual questions, not just the duration label',()=>{
- const input={...base,tool:'Question Paper Generator',count:10,totalMarks:50,difficulty:'Easy'};
- const short=gen.generate({...input,duration:'45 Minutes'});
- const long=gen.generate({...input,duration:'3 Hours'});
- const questions=s=>s.split('\n').filter(x=>/^Q\d+\./.test(x));
- assert.equal(questions(short).length,10);assert.equal(questions(long).length,10);
- assert.notDeepEqual(questions(short),questions(long));
- assert.match(long,/Longer reasoning, comparison and case-based questions/);
- assert.doesNotMatch(long,/Answer each part \(1 mark each\)/);
-});
 
-test('all six duration dropdown options produce distinct papers and fractional hours use correct blueprint',()=>{
+test('45-minute/50-mark/10-item combination is rejected instead of printing fake five-mark MCQs',()=>{
+ assert.throws(()=>gen.generate({...base,tool:'Question Paper Generator',duration:'45 Minutes',difficulty:'Easy',count:10,totalMarks:50}),/feasible time allocation/);
+ const paper=gen.buildPaper({...base,tool:'Question Paper Generator',duration:'45 Minutes',difficulty:'Easy',count:10,totalMarks:25});
+ const qs=paper.sections.flatMap(s=>s.questions);
+ assert.equal(qs.length,10);
+ assert.equal(qs.reduce((n,q)=>n+q.marks,0),25);
+ assert.ok(qs.every(q=>q.marks<=5));
+ assert.ok(qs.filter(q=>q.type==='MCQ').every(q=>q.marks===1));
+ assert.ok(qs.filter(q=>q.type==='Short Answer').every(q=>q.marks===2||q.marks===3));
+ assert.equal(paper.durationMinutes,45);
+});
+test('3-hour paper changes structures and contains authentic longer questions',()=>{
+ const input={...base,tool:'Question Paper Generator',count:10,totalMarks:25,difficulty:'Hard'};
+ const short=gen.buildPaper({...input,duration:'45 Minutes'});
+ const long=gen.buildPaper({...input,duration:'3 Hours'});
+ assert.ok(long.sections.length>short.sections.length);
+ assert.ok(long.sections.some(s=>s.kind==='Case Study'));
+ assert.ok(short.sections.every(s=>s.kind!=='Case Study'));
+ assert.equal(long.sections.flatMap(s=>s.questions).reduce((n,q)=>n+q.minutes,0),180);
+ assert.notDeepEqual(short.sections.flatMap(s=>s.questions).map(q=>q.en),long.sections.flatMap(s=>s.questions).map(q=>q.en));
+});
+test('all six duration dropdown options allocate exact marks and minutes without placeholder stems',()=>{
  const values=['45 Minutes','1 Hour','1.5 Hours','2 Hours','2.5 Hours','3 Hours'];
- const outputs=values.map(duration=>gen.generate({...base,tool:'Question Paper Generator',duration,difficulty:'Easy',count:10,totalMarks:50}));
- const questions=s=>s.split('\n').filter(x=>/^Q\d+\./.test(x)).join('\n');
- assert.equal(new Set(outputs.map(questions)).size,values.length);
- assert.match(outputs[2],/Conceptual questions with examples and explanations/); // 90 min, not 300
- assert.match(outputs[4],/Longer reasoning, comparison and case-based questions/); // 150 min
- assert.ok(outputs.every(s=>(s.match(/^Q\d+\./gm)||[]).length===10));
+ const minutes=[45,60,90,120,150,180];
+ const outputs=values.map(duration=>gen.buildPaper({...base,tool:'Question Paper Generator',duration,difficulty:'Easy',count:10,totalMarks:25}));
+ outputs.forEach((p,i)=>{
+  const qs=p.sections.flatMap(s=>s.questions);
+  assert.equal(qs.length,10);
+  assert.equal(qs.reduce((n,q)=>n+q.marks,0),25);
+  assert.equal(qs.reduce((n,q)=>n+q.minutes,0),minutes[i]);
+  assert.doesNotMatch(qs.map(q=>q.en).join(' '),/Option A|Option B|Characteristic 1/i);
+ });
+ assert.ok(outputs[5].sections.length>outputs[0].sections.length);
 });
-
-test('difficulty changes actual paper questions and unsupported chapters fail safely',()=>{
- const params={...base,tool:'Question Paper Generator',count:10,totalMarks:50,duration:'3 Hours'};
- const easy=gen.generate({...params,difficulty:'Easy'});
- const hard=gen.generate({...params,difficulty:'Hard'});
- assert.notDeepEqual(easy.split('\n').filter(x=>/^Q\d+\./.test(x)),hard.split('\n').filter(x=>/^Q\d+\./.test(x)));
- assert.throws(()=>gen.generate({...params,subject:'Math',topic:'Fractions'}),/No verified question bank/);
- assert.throws(()=>gen.generate({...params,count:13}),/Only 12 distinct reviewed/);
- assert.throws(()=>gen.generate({...params,count:2,totalMarks:50,duration:'45 Minutes'}),/at most 10 marks per question/);
+test('difficulty changes Bloom-level question content and unsupported chapters fail safely',()=>{
+ const params={...base,tool:'Question Paper Generator',count:10,totalMarks:25,duration:'3 Hours'};
+ const easy=gen.buildPaper({...params,difficulty:'Easy'});
+ const hard=gen.buildPaper({...params,difficulty:'Hard'});
+ assert.deepEqual(new Set(easy.sections.flatMap(s=>s.questions).map(q=>q.bloom)),new Set(['Remember','Understand']));
+ assert.ok(hard.sections.flatMap(s=>s.questions).every(q=>['Evaluate','Create'].includes(q.bloom)));
+ assert.notDeepEqual(easy.sections.flatMap(s=>s.questions).map(q=>q.en),hard.sections.flatMap(s=>s.questions).map(q=>q.en));
+ assert.throws(()=>gen.buildPaper({...params,subject:'Math',topic:'Fractions'}),/No verified question bank/);
+ assert.throws(()=>gen.buildPaper({...params,count:13,totalMarks:10}),/marks must be at least/);
 });
 
 test('Print/PDF renders only reviewed draft text in A4 preview and does not print dashboard',()=>{

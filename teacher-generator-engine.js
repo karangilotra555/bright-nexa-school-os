@@ -156,44 +156,192 @@ const FOOD_EXTENDED_QUESTIONS=[
  ['Describe how you would investigate fats in foods using paper and explain what a translucent spot indicates.','कागज से भोजन में वसा की जाँच और पारदर्शी निशान का अर्थ बताइए।'],
  ['Create a nutritious one-day food plan for an active school student and justify its balance and variety.','सक्रिय विद्यार्थी के लिए एक दिन का पौष्टिक भोजन तैयार कर संतुलन और विविधता का कारण दीजिए।']
 ];
-function paperNumbered(q){
- if(!q.food)throw Error('No verified question bank for this chapter. Add a school-approved chapter question bank before generating a question paper.');
- const time=mins(q.duration), marks=assignMarks(q.count,q.totalMarks);
- if(q.count>FOOD_QUICK_GROUPS.length)throw Error('Only 12 distinct reviewed Food Components questions are available. Reduce question count or add a verified school question bank.');
- if(time<15||time>300)throw Error('Paper duration must be between 15 minutes and 5 hours.');
- if(Math.max(...marks)>10)throw Error('This chapter supports at most 10 marks per question. Increase question count or reduce total marks.');
- const mode=time<=60?'quick':time>=150?'extended':'standard';
- if(mode==='quick'&&Math.max(...marks)>5)throw Error('For a short paper, use at most 5 marks per question. Increase questions, reduce marks or extend time.');
- const order=q.difficulty==='Hard'
-   ? Array.from({length:12},(_,i)=>11-i)
-   : q.difficulty==='Medium'
-     ? Array.from({length:12},(_,i)=>(i+2)%12)
-     : Array.from({length:12},(_,i)=>i);
- const timeShift=[45,60,90,120,150,180].indexOf(time)>=0?[45,60,90,120,150,180].indexOf(time):Math.floor(time/30)%12;
- const out=[];
- for(let i=0;i<q.count;i++){
-   const mark=marks[i],k=order[(i+timeShift)%12];
-   let stem;
-   if(mode==='quick'){
-     const parts=FOOD_QUICK_GROUPS[k].slice(0,mark).map((part,j)=>'('+String.fromCharCode(97+j)+') '+choose(q.language,part[0],part[1]));
-     stem=choose(q.language,'Answer each part (1 mark each): ','प्रत्येक भाग का उत्तर दें (प्रत्येक 1 अंक): ')+parts.join('; ');
-   }else if(mode==='extended'){
-     const prompt=FOOD_EXTENDED_QUESTIONS[k];
-     stem=choose(q.language,prompt[0],prompt[1]);
-     if(mark>=4)stem+=' '+choose(q.language,'Give reasons and relevant examples.','कारण तथा उचित उदाहरण दीजिए।');
-   }else{
-     const pair=FOOD_QUESTIONS[k];
-     stem=choose(q.language,pair[0],pair[1]);
-     if(mark>=4)stem+=' '+choose(q.language,'Support your answer with reasons and examples.','उत्तर में कारण और उदाहरण दीजिए।');
-   }
-   out.push('Q'+(i+1)+'. '+stem+' ['+mark+' '+(mark===1?'mark':'marks')+']');
+
+// Board-agnostic mark bands (1 objective, 2-3 short, 4 long, 5 case).
+// A board-specific blueprint must be supplied and approved by the school;
+// do not misrepresent these mark bands as a mandated CBSE scheme.
+const PAPER_BANK={
+ Easy:{
+  mcq:FOOD_MCQ.concat([
+   ['Which is an example of a body-building food? (A) Sugar (B) Lentils (C) Salt (D) Water','शरीर बनाने में सहायक भोजन कौन-सा है? (A) चीनी (B) दाल (C) नमक (D) पानी','B'],
+   ['Which is a source of roughage? (A) Ghee (B) Sugar (C) Vegetables (D) Oil','आहारीय रेशा किसमें मिलता है? (A) घी (B) चीनी (C) सब्जियाँ (D) तेल','C'],
+   ['Which food mainly provides fat? (A) Guava (B) Salt (C) Water (D) Groundnuts','कौन-सा भोजन मुख्यतः वसा देता है? (A) अमरूद (B) नमक (C) पानी (D) मूँगफली','D']
+  ]),
+  short:[
+   ['Name two food sources of carbohydrates.','कार्बोहाइड्रेट के दो खाद्य स्रोत लिखिए।'],
+   ['Name two protein-rich foods.','प्रोटीन वाले दो खाद्य पदार्थ लिखिए।'],
+   ['State two functions of water in the body.','शरीर में पानी के दो कार्य बताइए।'],
+   ['List three foods that provide different vitamins or minerals.','विभिन्न विटामिन या खनिज देने वाले तीन खाद्य पदार्थ लिखिए।'],
+   ['Name three foods containing dietary fibre.','आहारीय रेशा वाले तीन खाद्य पदार्थ लिखिए।'],
+   ['Name two common foods containing fats.','वसा वाले दो सामान्य खाद्य पदार्थ लिखिए।'],
+   ['List three major nutrient groups found in food.','भोजन के तीन मुख्य पोषक समूह लिखिए।'],
+   ['Name two foods useful for a growing child and the nutrients they supply.','बढ़ते बच्चे के लिए दो भोजन और उनके पोषक तत्व लिखिए।'],
+   ['Write three examples of foods belonging to different food groups.','अलग खाद्य समूहों से तीन भोजनों के उदाहरण लिखिए।'],
+   ['State the main role of carbohydrates and name two sources.','कार्बोहाइड्रेट का मुख्य काम और दो स्रोत लिखिए।']
+  ],
+  long:[
+   ['List four nutrient groups and give one food source for each.','चार पोषक समूह और प्रत्येक का एक स्रोत लिखिए।'],
+   ['Describe four components of a balanced diet in simple terms.','संतुलित आहार के चार घटक सरल शब्दों में बताइए।'],
+   ['Identify four foods from a daily meal and state their main nutrient contributions.','दैनिक भोजन की चार वस्तुओं के प्रमुख पोषक तत्व बताइए।'],
+   ['State four reasons why water, vegetables and a variety of foods matter.','पानी, सब्जियाँ और विविध भोजन के महत्व के चार कारण लिखिए।']
+  ],
+  case:[
+   ['A lunch box contains rice, dal, curd, vegetables and water. Identify five food contributions from this meal.','टिफिन में चावल, दाल, दही, सब्जी और पानी है। इस भोजन के पाँच पोषक योगदान बताइए।'],
+   ['A market basket contains whole wheat, lentils, spinach, peanuts and oranges. Identify the chief nutrient contribution of each.','बाजार की टोकरी में गेहूँ, दाल, पालक, मूँगफली और संतरे हैं। प्रत्येक का प्रमुख पोषक योगदान बताइए।'],
+   ['A pupil lists water, fruits, cereals, pulses and oils. State one useful function of each food group.','एक विद्यार्थी ने पानी, फल, अनाज, दाल और तेल गिनाए हैं। प्रत्येक समूह का एक उपयोग लिखिए।']
+  ]
+ },
+ Medium:{
+  mcq:[
+   ['A child needs a protein-rich addition to rice. Which is most suitable? (A) Sugar (B) Dal (C) Salt (D) Oil','चावल के साथ प्रोटीन बढ़ाने के लिए क्या चुनेंगे? (A) चीनी (B) दाल (C) नमक (D) तेल','B'],
+   ['Which meal has greater nutrient variety? (A) Only rice (B) Only chips (C) Rice, dal and vegetables (D) Only sweets','किस भोजन में पोषक विविधता अधिक है? (A) केवल चावल (B) केवल चिप्स (C) चावल, दाल और सब्जी (D) केवल मिठाई','C'],
+   ['Iodine turns a potato sample blue-black. What does this show? (A) Starch (B) Protein (C) Fat (D) Vitamin C','आयोडीन से आलू नीला-काला हुआ। यह किसकी उपस्थिति बताता है? (A) स्टार्च (B) प्रोटीन (C) वसा (D) विटामिन C','A'],
+   ['Which replacement adds more dietary fibre to refined flour snacks? (A) Oil (B) Salt (C) Sugar (D) Whole grains','मैदे के स्नैक्स में रेशा बढ़ाने के लिए क्या बदलेंगे? (A) तेल (B) नमक (C) चीनी (D) साबुत अनाज','D'],
+   ['An athlete sweats heavily after exercise. What should be restored first? (A) Only fats (B) Water (C) Only sugar (D) Only salt','व्यायाम के बाद बहुत पसीना आया। पहले किसकी पूर्ति जरूरी है? (A) केवल वसा (B) पानी (C) केवल चीनी (D) केवल नमक','B']
+  ],
+  short:[
+   ['Compare two meals, rice alone and rice with dal, for their protein contribution.','केवल चावल और दाल के साथ चावल की प्रोटीन मात्रा की तुलना कीजिए।'],
+   ['Explain why adding a vegetable makes a cereal-based meal more varied.','अनाज आधारित भोजन में सब्जी जोड़ने से विविधता क्यों बढ़ती है?'],
+   ['Apply the idea of food groups to suggest two improvements to a fried-snack lunch.','तले स्नैक्स वाले दोपहर के भोजन में खाद्य समूहों के आधार पर दो सुधार सुझाइए।'],
+   ['Explain how whole grains and refined sugar differ as sources of roughage.','साबुत अनाज और चीनी में रेशे के स्रोत के रूप में अंतर समझाइए।'],
+   ['Use the iodine test observation to explain why a food sample is considered starch-containing.','आयोडीन परीक्षण के परिणाम से भोजन में स्टार्च होने का कारण समझाइए।'],
+   ['Compare the principal roles of proteins and carbohydrates in a growing child.','बढ़ते बच्चे में प्रोटीन और कार्बोहाइड्रेट के मुख्य कार्यों की तुलना कीजिए।'],
+   ['Suggest three food changes that would improve nutrient variety in a breakfast of only sweets.','केवल मिठाई वाले नाश्ते में पोषण विविधता बढ़ाने के तीन बदलाव सुझाइए।'],
+   ['Explain why drinking water alone cannot replace a balanced meal.','केवल पानी पीना संतुलित भोजन का विकल्प क्यों नहीं है?'],
+   ['Classify rice, dal and peanuts into their primary nutrient groups.','चावल, दाल और मूँगफली को उनके प्रमुख पोषक समूहों में बाँटिए।'],
+   ['Explain how a fruit and a pulse complement an energy-rich rice meal.','फल और दाल ऊर्जा-प्रधान चावल के भोजन को कैसे संतुलित करते हैं?']
+  ],
+  long:[
+   ['Analyse a lunch consisting only of noodles and soft drinks; recommend four practical nutrient additions.','केवल नूडल्स और ठंडे पेय वाले भोजन का विश्लेषण कर चार पौष्टिक सुधार सुझाइए।'],
+   ['Compare the likely nutrient contributions of rice, dal, vegetables and groundnuts with reasons.','चावल, दाल, सब्जी और मूँगफली के पोषक योगदानों की कारण सहित तुलना कीजिए।'],
+   ['Analyse how roughage, water, vitamins and proteins contribute differently to a daily diet.','आहार में रेशा, पानी, विटामिन और प्रोटीन की अलग भूमिकाओं का विश्लेषण कीजिए।'],
+   ['Use food-test observations and food labels to classify sources of starch and fat.','भोजन परीक्षण तथा लेबल के आधार पर स्टार्च और वसा के स्रोतों का वर्गीकरण कीजिए।']
+  ],
+  case:[
+   ['A student eats rice, chips and a sweet drink daily. Propose five specific replacements or additions and explain their roles.','एक विद्यार्थी रोज चावल, चिप्स और मीठा पेय लेता है। पाँच बदलाव और उनके पोषक कारण दीजिए।'],
+   ['Two breakfast menus are: A, sweet tea and biscuits; B, roti, dal, fruit and water. Compare their food-group coverage in five points.','दो नाश्ते हैं: A, मीठी चाय-बिस्कुट; B, रोटी, दाल, फल और पानी। पाँच बिंदुओं में पोषण की तुलना कीजिए।'],
+   ['A sample gives a blue-black iodine test and an oily paper spot. Infer the nutrient groups and describe a balanced food pairing in five points.','नमूने में आयोडीन नीला-काला हुआ और कागज पर तेल का निशान दिखा। पोषक समूह और संतुलित भोजन के पाँच बिंदु लिखिए।']
+  ]
+ },
+ Hard:{
+  mcq:[
+   ['A food advertisement says a product with starch alone is a complete diet. Which assessment is best? (A) True for all children (B) Fats are unnecessary (C) Other nutrients are also required (D) Water is optional','विज्ञापन कहता है केवल स्टार्च वाला भोजन पूर्ण आहार है। सही मूल्यांकन? (A) हमेशा सही (B) वसा बेकार (C) अन्य पोषक भी जरूरी (D) पानी वैकल्पिक','C'],
+   ['Two meals supply similar calories, but one lacks vegetables. Which conclusion is justified? (A) Equal calories guarantee equal nutrition (B) Vitamin and fibre supply may differ (C) Vegetables supply no nutrients (D) Only sugar matters','दो भोजन समान ऊर्जा देते हैं, लेकिन एक में सब्जियाँ नहीं हैं। सही निष्कर्ष? (A) समान ऊर्जा मतलब समान पोषण (B) विटामिन-रेशे अलग हो सकते हैं (C) सब्जियाँ बेकार (D) केवल चीनी जरूरी','B'],
+   ['A blue-black iodine result proves which claim? (A) The entire meal is balanced (B) Protein is absent (C) Water is unsafe (D) Starch is present','आयोडीन का नीला-काला परिणाम किस दावे को साबित करता है? (A) पूरा भोजन संतुलित है (B) प्रोटीन नहीं है (C) पानी अशुद्ध है (D) स्टार्च मौजूद है','D'],
+   ['A plan removes all dietary fat despite varied foods. Which evaluation is strongest? (A) The plan may omit essential energy-rich nutrients (B) It is always healthiest (C) Protein replaces all fat functions (D) Water contains fat','विविध भोजन के बावजूद सारी वसा हटा दी गई। सर्वोत्तम मूल्यांकन? (A) आवश्यक वसा और ऊर्जा की कमी हो सकती है (B) हमेशा अच्छा (C) प्रोटीन सभी वसा का विकल्प (D) पानी में वसा है','A'],
+   ['A pupil concludes that a food with protein needs no other nutrients. Which objection is sound? (A) Proteins are never useful (B) Other nutrient groups serve distinct functions (C) Water is a carbohydrate (D) Minerals are only fats','विद्यार्थी कहता है प्रोटीन वाले भोजन में अन्य पोषक नहीं चाहिए। सही आपत्ति? (A) प्रोटीन बेकार (B) अन्य पोषकों के अलग कार्य हैं (C) पानी कार्बोहाइड्रेट है (D) खनिज ही वसा हैं','B']
+  ],
+  short:[
+   ['Evaluate the claim that any energy-rich meal must be nutritionally balanced. Give two reasons.','दावे का मूल्यांकन कीजिए कि ऊर्जा देने वाला हर भोजन संतुलित होता है। दो कारण दीजिए।'],
+   ['Explain why an iodine test alone cannot establish the nutritional completeness of a food.','केवल आयोडीन परीक्षण से भोजन का पूरा पोषण क्यों नहीं पता चल सकता?'],
+   ['Assess two weaknesses in a meal containing only refined flour and sugary drinks.','केवल मैदा और मीठे पेय वाले भोजन की दो पोषण कमियाँ बताइए।'],
+   ['Justify why two meals of equal size may offer very different nutrient benefits.','समान मात्रा वाले दो भोजनों का पोषण अलग क्यों हो सकता है? कारण दीजिए।'],
+   ['Evaluate the claim that adding water compensates for the absence of proteins in meals.','दावे का मूल्यांकन कीजिए कि पानी पीना भोजन में प्रोटीन की कमी पूरी कर देता है।'],
+   ['Construct a two-step method to compare fibre sources in everyday foods and justify it.','दैनिक भोजनों में रेशे के स्रोतों की तुलना की दो-चरणीय विधि और कारण बताइए।'],
+   ['Critique the idea that fat-rich food alone meets all the needs of a growing child.','इस विचार की आलोचना कीजिए कि वसा-प्रधान भोजन बढ़ते बच्चे की सभी जरूरतें पूरी करता है।'],
+   ['Suggest and defend two changes to make a snack-only food diary more balanced.','केवल स्नैक्स वाली आहार डायरी संतुलित बनाने के दो परिवर्तन और कारण दीजिए।'],
+   ['Evaluate whether drinking fruit juice alone provides a complete breakfast; justify your conclusion.','मूल्यांकन कीजिए कि क्या केवल फलों का रस पूरा नाश्ता है; कारण दीजिए।'],
+   ['Design two checks to determine whether a proposed lunch provides both protein and fibre.','प्रस्तावित भोजन में प्रोटीन और रेशा जाँचने के दो तरीके सुझाइए।']
+  ],
+  long:[
+   ['Design a four-point assessment rubric for a balanced school lunch, defending the nutritional role of each criterion.','संतुलित स्कूल भोजन के लिए चार-बिंदु मूल्यांकन मापदंड बनाएँ और प्रत्येक का पोषण तर्क दें।'],
+   ['Critically evaluate a food label advertising starch and fat as a complete set of nutrients; propose four corrections.','स्टार्च और वसा को पूर्ण पोषण बताने वाले लेबल की आलोचनात्मक समीक्षा कर चार सुधार दीजिए।'],
+   ['Develop a method to compare two breakfast menus for energy, growth, fibre and hydration, with reasons.','ऊर्जा, वृद्धि, रेशा और जल के आधार पर दो नाश्तों की तुलना की विधि कारण सहित बनाएँ।'],
+   ['Evaluate two food-test observations and explain four limits of inferring overall diet quality from them.','दो खाद्य परीक्षणों का मूल्यांकन कीजिए और उनसे पूरे आहार का स्तर समझने की चार सीमाएँ बताइए।']
+  ],
+  case:FOOD_EXTENDED_QUESTIONS
  }
- const descriptions={
-   quick:choose(q.language,'Short-answer, one-mark subparts designed for the selected short time limit.','चुनी गई छोटी अवधि के लिए एक-एक अंक के लघु प्रश्न।'),
-   standard:choose(q.language,'Conceptual questions with examples and explanations.','अवधारणात्मक प्रश्न, उदाहरण और व्याख्या।'),
-   extended:choose(q.language,'Longer reasoning, comparison and case-based questions.','तर्क, तुलना और परिस्थितियों पर आधारित विस्तृत प्रश्न।')
- };
- return {body:out.join('\n\n'),answers:'',sum:marks.reduce((a,b)=>a+b,0),description:descriptions[mode]};
+};
+function markDistribution(count,total,allowed){
+ const active=allowed.filter(m=>m<=total),minEach=count>=active.length?1:0;
+ let best=null;
+ function search(i,leftCount,leftMarks,counts){
+  if(i===active.length){
+   if(leftCount||leftMarks)return;
+   const diversity=counts.filter(n=>n>0).length;
+   // Spread question weights across sections without claiming a board mandate.
+   const score=counts.reduce((sum,n)=>sum+(n-count/active.length)**2,0)-diversity*.2;
+   if(!best||score<best.score)best={score,counts:[...counts]};
+   return;
+  }
+  const m=active[i],later=active.length-i-1;
+  for(let n=minEach;n<=leftCount-later*minEach;n++){
+   const remCount=leftCount-n,remMarks=leftMarks-n*m;
+   if(remMarks<0)break;
+   const rest=active.slice(i+1);
+   if(rest.length&&(remMarks<remCount*rest[0]||remMarks>remCount*rest[rest.length-1]))continue;
+   search(i+1,remCount,remMarks,[...counts,n]);
+  }
+ }
+ search(0,count,total,[]);
+ if(!best)throw Error('No feasible mark distribution for this question count, time limit and total marks. Choose fewer marks or more questions.');
+ return active.flatMap((m,i)=>Array(best.counts[i]).fill(m));
+}
+function buildPaper(input){
+ const q=parse({...input,tool:'Question Paper Generator'});
+ if(!q.food)throw Error('No verified question bank for this chapter. Add a school-approved question bank before publishing.');
+ const duration=mins(q.duration);
+ if(!Number.isFinite(duration)||duration<30||duration>180)throw Error('Duration must be between 30 and 180 minutes.');
+ // The school may configure a different official board pattern in the future.
+ const allowed=duration<=60?[1,2,3]:duration<150?[1,2,3,4]:[1,2,3,4,5];
+ if(q.totalMarks>Math.floor(duration/1.2))throw Error('Total marks exceed feasible time allocation for this duration. Increase time or reduce marks.');
+ if(q.totalMarks<q.count)throw Error('Total marks must be at least the number of questions.');
+ const marks=markDistribution(q.count,q.totalMarks,allowed);
+ const slots=Object.entries(marks.reduce((map,m)=>{(map[m]||(map[m]=[])).push(m);return map;},{}))
+   .flatMap(([m,items])=>items.map(()=>Number(m)));
+ const sections=[],questions=[];
+ const used=new Set();
+ const configs=[
+  {kind:'Objective',type:'MCQ',values:[1],labelHi:'वस्तुनिष्ठ प्रश्न'},
+  {kind:'Short Answer',type:'Short Answer',values:[2,3],labelHi:'लघु उत्तरीय प्रश्न'},
+  {kind:'Long Answer',type:'Long Answer',values:[4],labelHi:'दीर्घ उत्तरीय प्रश्न'},
+  {kind:'Case Study',type:'Case Study',values:[5],labelHi:'परिस्थिति आधारित प्रश्न'}
+ ];
+ const bank=PAPER_BANK[q.difficulty],selectionOffset=[45,60,90,120,150,180].indexOf(duration);
+ for(const config of configs){
+  const current=slots.filter(m=>config.values.includes(m));if(!current.length)continue;
+  const entries=[],pool=bank[config.type==='MCQ'?'mcq':config.type==='Short Answer'?'short':config.type==='Long Answer'?'long':'case'];
+  for(let j=0;j<current.length;j++){
+   const marks=current[j];
+   let chosen=null;
+   for(let x=0;x<pool.length;x++){
+    const candidate=pool[(j+x+Math.max(0,selectionOffset))%pool.length],key=candidate[0].trim().toLowerCase();
+    if(!used.has(key)){chosen=candidate;used.add(key);break}
+   }
+   if(!chosen)throw Error('Verified question pool exhausted. Reduce question count or add reviewed chapter questions.');
+   const pair=config.type==='MCQ'?chosen.slice(0,2):chosen;
+   const bloom=q.difficulty==='Easy'?(marks===1?'Remember':'Understand'):q.difficulty==='Medium'?(marks<=2?'Apply':'Analyze'):(marks<=2?'Evaluate':'Create');
+   const row={id:'Q'+(questions.length+1),type:config.type,bloom,marks,en:pair[0],hi:pair[1],minutes:1};
+   if(config.type==='MCQ')row.answer=chosen[2];
+   questions.push(row);entries.push(row);
+  }
+  sections.push({kind:config.kind,hi:config.labelHi,questions:entries,marks:entries.reduce((s,item)=>s+item.marks,0)});
+ }
+ // Allocate the exact duration using largest-remainder apportionment.
+ const weights=questions.map(item=>item.marks*(item.type==='MCQ'?.65:item.type==='Case Study'?1.35:1));
+ const remaining=duration-questions.length,totalWeight=weights.reduce((s,x)=>s+x,0);
+ const extras=weights.map(w=>remaining*w/totalWeight),floor=extras.map(Math.floor);
+ let residue=remaining-floor.reduce((s,n)=>s+n,0);
+ const ranking=extras.map((x,i)=>({i,r:x-floor[i]})).sort((a,b)=>b.r-a.r||a.i-b.i);
+ for(let i=0;i<residue;i++)floor[ranking[i].i]++;
+ questions.forEach((item,i)=>item.minutes+=floor[i]);
+ return {subject:q.subject,topic:q.topic,className:q.className,difficulty:q.difficulty,language:q.language,durationMinutes:duration,totalMarks:q.totalMarks,questionCount:q.count,sections};
+}
+
+
+function paperNumbered(q){
+ const p=buildPaper(q), lines=[],answers=[];
+ for(const section of p.sections){
+  lines.push(choose(q.language,'SECTION — '+section.kind, 'अनुभाग — '+section.hi)+' ('+section.marks+' '+(section.marks===1?'mark':'marks')+')');
+  for(const item of section.questions){
+   lines.push(item.id+'. '+choose(q.language,item.en,item.hi)+' ['+item.marks+' '+(item.marks===1?'mark':'marks')+']');
+   lines.push(choose(q.language,'Suggested time','प्रस्तावित समय')+': '+item.minutes+' min');
+   if(item.answer)answers.push(item.id+': '+item.answer);
+  }
+ }
+ return {body:lines.join('\n\n'),answers:answers.join('; '),sum:p.totalMarks,description:choose(q.language,
+ 'Question types and marks are aligned to the selected duration; this is a teacher-reviewed, board-agnostic blueprint.',
+ 'प्रश्न प्रकार तथा अंक चुनी हुई अवधि के अनुसार हैं; यह शिक्षक द्वारा जाँचा जाने वाला प्रारूप है, बोर्ड का आधिकारिक प्रारूप नहीं।')};
 }
 
 function generate(input){
@@ -208,7 +356,7 @@ function generate(input){
   return head+'\n\n'+scope+'\n\n'+choose(q.language,'Learning outcomes: classify examples, explain reasons, check misconceptions.','सीखने के लक्ष्य: उदाहरण वर्गीकृत करना, कारण समझाना, गलतफहमियाँ जाँचना।')+'\n\n'+choose(q.language,'KEY CONCEPTS AND EXAMPLES','मुख्य अवधारणाएँ व उदाहरण')+'\n'+context+'\n\n'+choose(q.language,'PERIOD PLAN','समय योजना')+' ('+duration+' min)\n'+timeline+'\n\n'+choose(q.language,'Assessment questions','मूल्यांकन प्रश्न')+':\n'+[0,1,2].map(i=>question(q,i)).join('\n')+'\n\n'+choose(q.language,'Homework: describe your meal and identify at least three nutrient sources, or cite your school textbook.','गृहकार्य: अपने भोजन के तीन पोषक स्रोत बताएं या पुस्तक से उदाहरण दें।');
  }
  if(['Question Paper Generator','Class Test Generator','Worksheet Generator'].includes(q.tool)){
-  const rows=q.tool==='Question Paper Generator'?paperNumbered(q):numbered(q,q.count,q.totalMarks,'practice');
+  const rows=paperNumbered(q);
   const instruction=choose(q.language,'Answer every question. Teacher must check syllabus and final answers.','सभी प्रश्न हल करें। शिक्षक पाठ्यक्रम और उत्तर जाँचें।');
   return head+'\n'+scope+'\n\n'+(rows.description?rows.description+'\n\n':'')+choose(q.language,'Time','समय')+': '+q.duration+' | '+choose(q.language,'Maximum marks','पूर्णांक')+': '+q.totalMarks+' | '+choose(q.language,'Questions','प्रश्न')+': '+q.count+'\n'+instruction+'\n\n'+rows.body+'\n\n'+choose(q.language,'MARKING CHECK','अंक जाँच')+': '+rows.sum+'/'+q.totalMarks+(rows.answers?'\n'+choose(q.language,'MCQ answer key (review)','बहुविकल्प उत्तर (जाँचें)')+': '+rows.answers:'');
  }
@@ -238,5 +386,5 @@ function printDraft(text,openWindow){
  d.head.appendChild(style);d.body.appendChild(heading);d.body.appendChild(pre);
  win.focus();win.print();return true;
 }
-return {TOOLS,generate,parse,assignMarks,printDraft};
+return {TOOLS,generate,buildPaper,parse,assignMarks,printDraft};
 });

@@ -46,10 +46,18 @@ function create(options){
  }
  async function list(){
   const m=await member();
-  const q=new URLSearchParams({select:'id,tool,class_label,subject,topic,language,content,created_at',institution_id:'eq.'+m.user.institution_id,author_school_user_id:'eq.'+m.user.id,order:'created_at.desc',limit:'30'});
-  const rows=await request('/rest/v1/school_teacher_drafts?'+q,m.token);
-  if(!Array.isArray(rows))throw Error('Supabase draft list returned an invalid response.');
-  return rows.map(item);
+  const limit=100,records=[],seen=new Set();
+  for(let offset=0;;offset+=limit){
+   const q=new URLSearchParams({select:'id,tool,class_label,subject,topic,language,content,created_at',institution_id:'eq.'+m.user.institution_id,author_school_user_id:'eq.'+m.user.id,order:'created_at.desc,id.desc',limit:String(limit),offset:String(offset)});
+   const rows=await request('/rest/v1/school_teacher_drafts?'+q,m.token);
+   if(!Array.isArray(rows))throw Error('Supabase draft list returned an invalid response.');
+   for(const row of rows){
+    if(!row?.id||seen.has(row.id))throw Error('Supabase draft pagination was inconsistent; refresh and retry.');
+    seen.add(row.id);records.push(item(row));
+   }
+   if(rows.length<limit)break;
+  }
+  return records;
  }
  async function save(draft){
   const d=draft||{},tool=clean(d.tool,100),className=clean(d.className,100),subject=clean(d.subject,120),topic=clean(d.topic,160),language=clean(d.language,20),content=String(d.content||'').trim();
