@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#061a36">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>Bright Nexa | Library</title>
+<style>
+:root{font:14px system-ui,-apple-system,"Segoe UI",sans-serif;color:#102640;background:#f3f7fb}*{box-sizing:border-box}body{margin:0}
+header{background:linear-gradient(110deg,#061a36,#0b315e);color:white;padding:18px 16px}header>div{max-width:1050px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+header a{color:#e8f7ff;font-weight:700;text-decoration:none}main{max-width:1050px;margin:auto;padding:20px 16px 60px}
+.panel{background:#fff;border:1px solid #dce6ef;border-radius:16px;padding:20px;margin:0 0 18px;box-shadow:0 5px 18px #061a3608}
+h1{font-size:21px;margin:0}h2{font-size:18px;margin:0 0 12px}p{line-height:1.5;color:#536982}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+label{display:block;font-size:12px;font-weight:700;color:#30455b}input,select{width:100%;min-height:46px;border:1px solid #cadbea;border-radius:10px;padding:10px;color:#102640;background:white;margin:5px 0 9px}
+button,.action{background:#138ed8;border:0;color:white;padding:11px 16px;border-radius:10px;cursor:pointer;font-weight:750;min-height:42px}.outline{background:#e8f4ff;color:#0b315e;border:1px solid #c4dff3}
+:focus-visible{outline:3px solid #ff7818;outline-offset:2px}.hidden{display:none!important}
+#status{padding:12px;border-radius:10px;margin:12px 0;background:#e8f6ef;color:#156348;white-space:pre-wrap}#status.error{background:#ffeff0;color:#8d2434}
+.table{overflow:auto}table{border-collapse:collapse;width:100%;min-width:560px}td,th{padding:10px;border-bottom:1px solid #edf1f5;text-align:left}th{font-size:12px;color:#526681}td{font-size:13px}
+.small{font-size:12px;color:#657991}.count{border-radius:20px;background:#e9f5ff;color:#0b315e;padding:5px 10px;font-size:12px;font-weight:700}
+@media(max-width:640px){.grid{grid-template-columns:1fr}.panel{padding:14px}button{min-height:48px}.row{align-items:stretch}}
+</style>
+<script src="./library.js?v=20261106-roles" defer></script>
+</head>
+<body>
+<header><div><div><h1>📚 Bright Nexa Library</h1><small id="schoolLabel">School inventory · Supabase</small></div><div class="row"><a href="./teacher-access.html">← Staff Portal</a><button id="logout" type="button" class="outline hidden">Log out</button></div></div></header>
+<main>
+<div id="status" class="hidden" role="status" aria-live="polite"></div>
+<section id="loginNotice" class="panel"><h2>School staff login required</h2><p>Sign in through the existing Teacher & Staff portal. Library access is limited to approved Librarian, School Admin and Principal accounts.</p><a class="action" style="display:inline-block;text-decoration:none" href="./teacher-access.html">Open Staff Login</a></section>
+<div id="dashboard" class="hidden">
+<section class="panel"><div class="row"><h2 style="flex:1">Library overview</h2><span class="count" id="bookCount">0 books</span><span class="count" id="loanCount">0 issued</span><button id="refresh" type="button" class="outline">Refresh from Supabase</button></div></section>
+<section id="editSections" class="grid">
+<div class="panel"><h2>Add physical book copy</h2><form id="addBook">
+<label>Accession number<input id="accession" required maxlength="64" placeholder="LIB-001"></label>
+<label>Book title<input id="title" required maxlength="240"></label>
+<label>Author<input id="author" maxlength="160"></label>
+<label>ISBN (optional)<input id="isbn" maxlength="30"></label>
+<button type="submit">Add to inventory</button></form></div>
+<div class="panel"><h2>Issue to enrolled student</h2><form id="issueBook">
+<label>Available copy<select id="issueItem" required></select></label>
+<label>Student (admission number)<select id="issueStudent" required></select></label>
+<label>Due date<input id="dueOn" type="date" required></label>
+<button type="submit">Issue book</button></form></div>
+</section>
+<section class="panel"><h2>Books inventory</h2><div class="table"><table><thead><tr><th>Accession</th><th>Title</th><th>Author</th><th>Status</th></tr></thead><tbody id="bookList"></tbody></table></div></section>
+<section class="panel"><h2>Active loans</h2><div class="table"><table><thead><tr><th>Book</th><th>Student</th><th>Issued</th><th>Due</th><th>Action</th></tr></thead><tbody id="returnList"></tbody></table></div></section>
+</div>
+</main></body></html>

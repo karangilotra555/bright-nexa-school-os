@@ -5,7 +5,7 @@ const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const ORIGIN = "https://karangilotra555.github.io";
 const RENDER_ORIGIN = "https://bright-nexa-school-os.onrender.com";
-const roles = new Set(["teacher", "principal", "accountant", "receptionist", "transport_staff"]);
+const roles = new Set(["teacher", "principal", "accountant", "librarian", "receptionist", "transport_staff"]);
 
 function respond(data: unknown, status = 200, allowedOrigin = ORIGIN) {
   return new Response(JSON.stringify(data), {

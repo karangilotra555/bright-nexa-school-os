@@ -6,7 +6,7 @@
   const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
   const TOKEN_KEY='bn_school_staff_session_v1';
-  const ROLES=['school_admin','principal','teacher','accountant','receptionist','transport_staff'];
+  const ROLES=['school_admin','principal','teacher','accountant','librarian','receptionist','transport_staff'];
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
   let rolePermissions=null;
@@ -258,7 +258,8 @@
     teacher:{classes:true,attendance:true,homework:true,notices:true,profiles:false},
     accountant:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
     receptionist:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
-    transport_staff:{classes:false,attendance:false,homework:false,notices:true,profiles:false}
+    transport_staff:{classes:false,attendance:false,homework:false,notices:true,profiles:false},
+    librarian:{classes:false,attendance:false,homework:false,notices:false,profiles:false}
   };
   function getRolePermissions(){return rolePermissions||DEFAULT_ROLE_PERMS;}
   async function loadRolePermissions(){
@@ -281,6 +282,7 @@
     const role=me?.role||'teacher';
     const isAdm=isAdmin();
     display('adminTab',isAdm);
+    display('librarianApp',isAdm||role==='librarian'||role==='principal');
     display('profilesTab',isAdm||isTabVisibleForRole('profiles',role));
     display('schoolOsAdminNav',isAdm);
     display('adminErpBanner',isAdm);
@@ -297,6 +299,8 @@
     if(staff.role==='school_admin'||staff.role==='principal'){
       return dom('span','👑 Full School Access (All classes & modules)','pill');
     }
+    if(staff.role==='librarian')return dom('span','📚 Library inventory and lending only','pill');
+    if(staff.role!=='teacher')return dom('span','Staff role: '+staff.role.replaceAll('_',' '),'pill');
     const container=dom('div');
     const assigns=allAssignments.filter(a=>a.school_user_id===staff.id&&a.active);
     if(assigns.length===0){
@@ -493,7 +497,7 @@
     if(matrixRoot){
       matrixRoot.replaceChildren();
       const currentRolePerms=getRolePermissions();
-      const manageableRoles=['teacher','accountant','receptionist','transport_staff'];
+      const manageableRoles=['teacher','accountant','receptionist','transport_staff','librarian'];
       const modules=['classes','attendance','homework','notices','profiles'];
       for(const r of manageableRoles){
         const rTr=dom('tr');
