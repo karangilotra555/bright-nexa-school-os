@@ -112,3 +112,16 @@ test('TDD: staff assignment list and name edits prefer saved display_name, and u
  assert.doesNotMatch(src,/schoolLabel\+' · '\+newName\+' · '\+me\.email/);
  assert.match(src,/if\(!perms\)return false/);
 });
+
+
+test('TDD: Class Test and Worksheet use the same validated cognitive blueprint, not an ignored difficulty argument',()=>{
+ for(const tool of ['Class Test Generator','Worksheet Generator']){
+  const input={...base,tool,language:'English',duration:'1.5 Hours',count:10,totalMarks:22};
+  const easy=engine.generate({...input,difficulty:'Easy'});
+  const hard=engine.generate({...input,difficulty:'Hard'});
+  assert.notEqual(easy,hard,tool+' difficulty must change questions');
+  assert.match(easy,/SECTION|marks/i);
+  assert.doesNotMatch(easy,/using your class notes|Option A|Option B/);
+  assert.throws(()=>engine.generate({...input,topic:'Unapproved chapter'}),/verified question bank/i);
+ }
+});
