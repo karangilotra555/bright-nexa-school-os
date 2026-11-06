@@ -100,10 +100,14 @@
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
     await reload();
-    const attendanceFirst=(me.role==='teacher'||new URLSearchParams(location.search).get('view')==='attendance')&&canAcademic()&&isTabVisibleForRole('attendance',me.role);
-    const landing=['classes','attendance','homework','notices','profiles','account'].find(view=>isTabVisibleForRole(view,me.role));
-    tab(attendanceFirst?'attendance':landing||'account');clearNotice();
-    if(attendanceFirst){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
+    const requested=new URLSearchParams(location.search).get('view');
+    const allowedViews=['classes','attendance','homework','notices','profiles','account'];
+    const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
+    const deepLink=allowedViews.includes(requested)&&isTabVisibleForRole(requested,me.role)?requested:null;
+    const defaultTeacher=me.role==='teacher'&&canAcademic()&&isTabVisibleForRole('attendance',me.role)?'attendance':null;
+    const openingView=deepLink||defaultTeacher||landing||'account';
+    tab(openingView);clearNotice();
+    if(openingView==='attendance'){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
   async function reload(){
     await loadRolePermissions();
