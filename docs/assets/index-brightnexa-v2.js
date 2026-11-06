@@ -19501,6 +19501,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
   let updatedTeachers = [...operations.teachers || []];
   let updatedTimetable = Array.isArray(operations.timetable) ? [...operations.timetable] : [];
   let changesCount = 0;
+  let linked = Object.fromEntries(["homework", "exams", "marks", "feePayments", "classFeeCharges", "studentFeeDues"].filter((k) => Array.isArray(operations[k])).map((k) => [k, [...operations[k]]]));
   for (const newClass of newClasses || []) {
     const oldClass = oldMap.get(newClass.id);
     if (!oldClass) continue;
@@ -19511,8 +19512,19 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
       continue;
     }
     changesCount++;
+    const matchesClass = (row) => row.classId ? row.classId === oldClass.id : isClassMatch(row.className, oldClass.name) && (!oldClass.section || isSectionMatch(row.section, oldClass.section)) && (!oldClass.academicStream || row.academicStream === oldClass.academicStream);
+    const affectedIds = new Set(updatedStudents.filter(matchesClass).map((s2) => s2.id));
+    for (const key of Object.keys(linked)) linked[key] = linked[key].map((row) => {
+      const matches = row.studentId ? affectedIds.has(row.studentId) : matchesClass(row);
+      return matches ? {
+        ...row,
+        className: newClass.name,
+        section: newClass.section ?? row.section,
+        ...Object.hasOwn(row, "academicStream") ? { academicStream: newClass.academicStream || "" } : {}
+      } : row;
+    });
     updatedStudents = updatedStudents.map((student) => {
-      const matchesOld = isClassMatch(student.className, oldClass.name) && (!oldClass.section || isSectionMatch(student.section, oldClass.section));
+      const matchesOld = matchesClass(student);
       if (matchesOld) {
         return {
           ...student,
@@ -19524,7 +19536,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
       return student;
     });
     updatedFeeStructures = updatedFeeStructures.map((fs2) => {
-      if (isClassMatch(fs2.className, oldClass.name)) {
+      if (isClassMatch(fs2.className, oldClass.name) && (!oldClass.academicStream || fs2.academicStream === oldClass.academicStream)) {
         return {
           ...fs2,
           className: newClass.name,
@@ -19534,7 +19546,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
       return fs2;
     });
     updatedAttendance = updatedAttendance.map((att) => {
-      const matchesOld = isClassMatch(att.className, oldClass.name) && (!oldClass.section || isSectionMatch(att.section, oldClass.section));
+      const matchesOld = att.studentId ? affectedIds.has(att.studentId) : matchesClass(att);
       if (matchesOld) {
         return {
           ...att,
@@ -19578,6 +19590,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
   }
   const updatedOperations = {
     ...operations,
+    ...linked,
     classes: newClasses,
     feeStructures: updatedFeeStructures,
     attendance: updatedAttendance,
@@ -19701,66 +19714,80 @@ function bnGetApiBase() {
   }
   return "";
 }
+function bnParentPayload(institution, students, operations) {
+  const active = students.filter((s2) => String(s2.status || "Active").toLowerCase() === "active");
+  const byId = new Map(active.map((s2) => [s2.id, s2]));
+  return {
+    attendance: (operations.attendance || []).filter((a2) => byId.has(a2.studentId)).map((a2) => ({
+      admissionNumber: byId.get(a2.studentId).admissionNumber,
+      day: a2.date,
+      status: String(a2.status).toUpperCase()
+    })),
+    fees: active.map((student) => ({
+      admissionNumber: student.admissionNumber,
+      dueRupees: Math.round(Xn(operations, student, institution).reduce((n2, row) => n2 + row.balance, 0) * 100) / 100
+    })),
+    homework: (operations.homework || []).map((h2) => ({
+      id: h2.id,
+      className: h2.className,
+      section: h2.section,
+      subject: h2.subject,
+      title: h2.title,
+      dueDate: h2.dueDate
+    })),
+    // The legacy parent endpoint has no audience field. Never widen a targeted notice.
+    notices: (operations.notices || []).filter((n2) => ["All", "All parents", "Parents and Students"].includes(n2.audience)).map((n2) => ({ id: n2.id, title: n2.title, body: n2.content || n2.message || n2.body }))
+  };
+}
 var bnSyncTimer = null;
-function bnScheduleCloudSync(institution, students, operations, setStatus) {
+var bnSyncQueue = Promise.resolve();
+var bnSyncGeneration = 0;
+function bnScheduleCloudSync(snapshot, students, operations, setStatus) {
   if (typeof window === "undefined") return;
-  if (setStatus) setStatus("syncing");
+  const generation = ++bnSyncGeneration;
+  const status = (value) => {
+    if (generation === bnSyncGeneration && setStatus) setStatus(value);
+  };
   if (bnSyncTimer) clearTimeout(bnSyncTimer);
-  bnSyncTimer = setTimeout(async () => {
-    try {
-      const apiBase = bnGetApiBase();
-      let token = localStorage.getItem("school_admin_token") || "local-admin-key";
-      const res = await fetch(apiBase + "/api/sync/snapshot", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({
-          institution,
-          students,
-          operations
-        })
-      });
+  let token;
+  try {
+    token = localStorage.getItem("school_admin_token");
+  } catch (_2) {
+  }
+  if (!token) {
+    status("local");
+    return;
+  }
+  status("syncing");
+  bnSyncTimer = setTimeout(() => {
+    bnSyncQueue = bnSyncQueue.catch(() => {
+    }).then(async () => {
+      if (generation !== bnSyncGeneration) return;
       try {
-        const attSummary = {};
-        (operations.attendance || []).forEach((a2) => {
-          if (!attSummary[a2.studentId]) attSummary[a2.studentId] = { total: 0, present: 0 };
-          attSummary[a2.studentId].total++;
-          if (a2.status === "Present") attSummary[a2.studentId].present++;
-        });
-        await fetch(apiBase + "/api/parent/admin/publish", {
+        const apiBase = bnGetApiBase();
+        const institution = snapshot.institution || snapshot;
+        const parent = bnParentPayload(institution, students, operations);
+        const headers = { "Content-Type": "application/json", Authorization: "Bearer " + token };
+        const res = await fetch(apiBase + "/api/sync/snapshot", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-          },
-          body: JSON.stringify({
-            students: (students || []).map((s2) => ({
-              id: s2.id,
-              admissionNumber: s2.admissionNumber,
-              name: s2.name,
-              fatherName: s2.fatherName,
-              motherName: s2.motherName,
-              parentMobile: s2.parentMobile,
-              className: s2.className,
-              section: s2.section,
-              dateOfBirth: s2.dateOfBirth,
-              enrollmentStatus: s2.status || "Active",
-              attendanceSummary: attSummary[s2.id] || { total: 0, present: 0 }
-            }))
-          })
+          headers,
+          body: JSON.stringify({ institution, students, operations })
         });
+        if (!res.ok) throw Error("School snapshot was not saved");
+        const result = await res.json();
+        if (result.success !== true) throw Error("School snapshot was not acknowledged");
+        const size = Math.max(1, ...Object.values(parent).map((rows) => rows.length));
+        for (let offset = 0; offset < size; offset += 1e3) {
+          const batch = Object.fromEntries(Object.entries(parent).map(([key, rows]) => [key, rows.slice(offset, offset + 1e3)]));
+          const published = await fetch(apiBase + "/api/parent/admin/publish", { method: "POST", headers, body: JSON.stringify(batch) });
+          if (!published.ok || (await published.json()).success !== true) throw Error("Parent records were not published");
+        }
+        status("synced");
       } catch (_2) {
+        status("pending");
       }
-      if (res && res.ok) {
-        if (setStatus) setStatus("synced");
-      } else {
-        if (setStatus) setStatus("local");
-      }
-    } catch (_2) {
-      if (setStatus) setStatus("local");
-    }
+    });
+    return bnSyncQueue;
   }, 1e3);
 }
 function bnBroadcastStoreSync(institution, students, operations) {
@@ -38249,6 +38276,52 @@ var Es = new Intl.NumberFormat(`en-IN`, {
   currency: `INR`,
   maximumFractionDigits: 0
 });
+function SchoolCloudDialog({ controller, client, status, error, onClose }) {
+  const [schools, setSchools] = w.useState([]);
+  const [selected, setSelected] = w.useState("");
+  const [busy, setBusy] = w.useState(false);
+  const [message, setMessage] = w.useState(error || "");
+  const [confirmed, setConfirmed] = w.useState(false);
+  const run = async (action) => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await action();
+    } catch (e2) {
+      setMessage(e2.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  w.useEffect(() => {
+    let active = true;
+    client.connect().then((rows) => {
+      if (active) {
+        setSchools(rows);
+        setSelected(rows[0]?.id || "");
+      }
+    }).catch((e2) => {
+      if (active) setMessage(e2.message);
+    });
+    return () => {
+      active = false;
+    };
+  }, [client]);
+  return /* @__PURE__ */ w.createElement("div", { className: "modal-backdrop" }, /* @__PURE__ */ w.createElement("section", { className: "modal", role: "dialog", "aria-modal": "true", "aria-labelledby": "school-cloud-title", style: { maxWidth: "650px", maxHeight: "90vh", overflowY: "auto", padding: "24px" } }, /* @__PURE__ */ w.createElement("h2", { id: "school-cloud-title" }, "School cloud connection"), /* @__PURE__ */ w.createElement("p", null, "School records are shared with the teacher and parent portals. Offline changes stay on this device until uploaded."), /* @__PURE__ */ w.createElement("p", { role: "status" }, "Status: ", status), message && /* @__PURE__ */ w.createElement("p", { role: "alert" }, message), /* @__PURE__ */ w.createElement("p", null, /* @__PURE__ */ w.createElement("a", { href: "./teacher-access.html" }, "Sign in with your school administrator account"), ", then return here."), /* @__PURE__ */ w.createElement("label", null, "School", /* @__PURE__ */ w.createElement("select", { "aria-label": "School cloud account", value: selected, onChange: (e2) => {
+    setSelected(e2.target.value);
+    setConfirmed(false);
+  } }, /* @__PURE__ */ w.createElement("option", { value: "" }, "Choose your school"), schools.map((s2) => /* @__PURE__ */ w.createElement("option", { key: s2.id, value: s2.id }, s2.name)))), /* @__PURE__ */ w.createElement("p", null, "Before opening cloud records or importing this device, a local recovery copy is saved. Import is allowed only when the school has no cloud workspace. Review local sample records before importing."), /* @__PURE__ */ w.createElement("label", null, /* @__PURE__ */ w.createElement("input", { type: "checkbox", checked: confirmed, onChange: (e2) => setConfirmed(e2.target.checked) }), " I have checked the selected school and the records on this device."), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "16px" } }, /* @__PURE__ */ w.createElement("button", { className: "primary-button", disabled: busy || !selected || !confirmed, onClick: () => run(async () => {
+    await controller.openSchool(selected);
+    onClose();
+  }) }, "Open school records"), /* @__PURE__ */ w.createElement("button", { className: "secondary-button", disabled: busy || !selected || !confirmed, onClick: () => run(async () => {
+    const result = await controller.uploadLocal(selected);
+    if (result.status === "synced") onClose();
+    else setMessage(result.error?.message || "Upload is pending. Your local records are preserved.");
+  }) }, "Import this device into empty workspace"), /* @__PURE__ */ w.createElement("button", { className: "secondary-button", disabled: busy, onClick: () => run(() => controller.sync()) }, "Refresh / retry pending upload"), /* @__PURE__ */ w.createElement("button", { className: "secondary-button", disabled: busy, onClick: () => run(async () => {
+    await controller.disconnect();
+    onClose();
+  }) }, "Disconnect this device"), /* @__PURE__ */ w.createElement("button", { className: "secondary-button", disabled: busy, onClick: onClose }, "Close")), status === "conflict" && /* @__PURE__ */ w.createElement("p", null, "Another device changed school records. Your unsent work is preserved. Opening school records saves a recovery copy before loading the current cloud version.")));
+}
 function Ds() {
   let [e2, t2] = (0, w.useState)(wn);
   let [n2, r2] = (0, w.useState)(Dn);
@@ -38259,7 +38332,80 @@ function Ds() {
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
   let [g2] = (0, w.useState)(Qt);
-  let [syncStatus, setSyncStatus] = (0, w.useState)("synced");
+  let [syncStatus, setSyncStatus] = (0, w.useState)("local");
+  const [workspaceReady, setWorkspaceReady] = w.useState(false);
+  const [cloudDialog, setCloudDialog] = w.useState(false);
+  const [cloudError, setCloudError] = w.useState("");
+  const [cloud, setCloud] = w.useState(null);
+  const latestWorkspace = w.useRef(null);
+  const lastWorkspace = w.useRef("");
+  latestWorkspace.current = { institution: e2, students: n2, operations: i2 };
+  w.useEffect(() => {
+    if (!workspaceReady || !window.BNWorkspaceCloud || !window.BNWorkspaceController || !window.BNWorkspacePersistence) return;
+    let active = true;
+    const client = window.BNWorkspaceCloud.create({ fetcher: window.fetch.bind(window), sessionStorage: window.sessionStorage, storage: window.localStorage });
+    const durableVersion = () => JSON.stringify([_n, vn, Di].map((key) => window.localStorage.getItem(key)));
+    const persistence = window.BNWorkspacePersistence.create({ open: Dt, getVersion: durableVersion, getLatest: () => ({ institution: wn(), students: Dn(), operations: Ai() }) });
+    const controller = window.BNWorkspaceController.create({
+      client,
+      storage: window.localStorage,
+      getSnapshot: () => latestWorkspace.current,
+      buildProjection: (snapshot) => window.BNWorkspaceCloud.buildProjection(snapshot, Xn),
+      applySnapshot: async (snapshot, canApply = () => true) => {
+        const next = { institution: snapshot.institution, students: snapshot.students, operations: Ni(snapshot.operations) };
+        const before = durableVersion();
+        const valid = () => canApply() && durableVersion() === before;
+        if (!await persistence.apply(next, valid) || !valid()) {
+          const error = new Error("Local records changed while opening cloud data. Your changes were retained; reopen the school after reviewing the conflict.");
+          error.code = "CONFLICT";
+          throw error;
+        }
+        Tn(next.institution);
+        On(next.students);
+        ji(next.operations);
+        lastWorkspace.current = JSON.stringify(next);
+        latestWorkspace.current = next;
+        if (active) {
+          t2(next.institution);
+          r2(next.students);
+          a2(next.operations);
+        }
+        bnBroadcastStoreSync(next.institution, next.students, next.operations);
+      },
+      onStatus: (state) => {
+        if (active) setSyncStatus(state === "loading" ? "syncing" : state);
+      },
+      onError: (error) => {
+        if (active) setCloudError(error?.message || String(error));
+      }
+    });
+    lastWorkspace.current = JSON.stringify(latestWorkspace.current);
+    controller.initialize().then(() => controller.sync()).catch((error) => {
+      if (active) setCloudError(error.message);
+    });
+    setCloud({ client, controller });
+    const refresh = () => controller.sync().catch((error) => {
+      if (active) setCloudError(error.message);
+    });
+    const timer = window.setInterval(refresh, 3e4);
+    window.addEventListener("online", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      active = false;
+      controller.dispose();
+      window.clearInterval(timer);
+      window.removeEventListener("online", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [workspaceReady]);
+  w.useEffect(() => {
+    if (!cloud || !workspaceReady) return;
+    const current = latestWorkspace.current;
+    const key = JSON.stringify(current);
+    if (key === lastWorkspace.current) return;
+    lastWorkspace.current = key;
+    cloud.controller.autosave(current).catch((error) => setCloudError(error.message));
+  }, [e2, n2, i2, cloud, workspaceReady]);
   let [whatsAppModalOpen, setWhatsAppModalOpen] = (0, w.useState)(false);
   let [whatsAppConnected, setWhatsAppConnected] = (0, w.useState)(() => {
     try {
@@ -38295,6 +38441,9 @@ function Ds() {
       channel = new BroadcastChannel("bright_nexa_store_sync");
       channel.onmessage = (event) => {
         if (event.data && event.data.type === "BN_STORE_SYNC") {
+          const currentId = latestWorkspace.current?.institution?.institution?.id;
+          const incomingId = event.data.institution?.institution?.id;
+          if (currentId && incomingId && currentId !== incomingId) return;
           if (event.data.institution) t2(event.data.institution);
           if (event.data.students) r2(event.data.students);
           if (event.data.operations) a2(event.data.operations);
@@ -38310,12 +38459,8 @@ function Ds() {
     };
   }, []);
   let triggerManualSync = () => {
-    setSyncStatus("syncing");
-    bnScheduleCloudSync(e2, n2, i2, (st) => {
-      setSyncStatus(st);
-      p2(st === "synced" ? "Cloud & Local synchronized successfully." : "Working in offline local mode.");
-      window.setTimeout(() => p2(""), 3e3);
-    });
+    setCloudDialog(true);
+    setCloudError("");
   };
   let _2 = (0, w.useMemo)(() => fn(e2.language), [e2.language]);
   let v2 = g2?.role ?? e2.role;
@@ -38444,6 +38589,13 @@ function Ds() {
       if (!c3) {
         ji(d3);
       }
+    }).then(() => {
+      if (o3) setWorkspaceReady(true);
+    }).catch((error) => {
+      if (o3) {
+        setCloudError("Local records could not be loaded: " + error.message);
+        setSyncStatus("local");
+      }
     });
     return () => {
       o3 = false;
@@ -38479,7 +38631,6 @@ function Ds() {
     p2(`${o3.name || o3.admissionNumber || `Student record`} added successfully`);
     window.setTimeout(() => p2(``), 3500);
     bnBroadcastStoreSync(c3, s3, u3);
-    bnScheduleCloudSync(c3, s3, u3, setSyncStatus);
   };
   let ue = (o3) => {
     let s3 = [...o3, ...n2];
@@ -38503,7 +38654,6 @@ function Ds() {
     a2(l3);
     ji(l3);
     bnBroadcastStoreSync(c3, s3, l3);
-    bnScheduleCloudSync(c3, s3, l3, setSyncStatus);
   };
   let de = (updatedSt) => {
     let s3 = n2.map((t3) => t3.id === updatedSt.id ? updatedSt : t3);
@@ -38519,7 +38669,6 @@ function Ds() {
     a2(o3);
     ji(o3);
     bnBroadcastStoreSync(e2, s3, o3);
-    bnScheduleCloudSync(e2, s3, o3, setSyncStatus);
   };
   let pe = (o3) => {
     let s3 = n2.filter((elem) => elem.id !== o3.id);
@@ -38543,7 +38692,6 @@ function Ds() {
     a2(l3);
     ji(l3);
     bnBroadcastStoreSync(c3, s3, l3);
-    bnScheduleCloudSync(c3, s3, l3, setSyncStatus);
   };
   let j = (nextOpsArg, actionArg, entityArg, descArg) => {
     let nextStudents = n2;
@@ -38566,7 +38714,6 @@ function Ds() {
     a2(audited);
     ji(audited);
     bnBroadcastStoreSync(e2, nextStudents, audited);
-    bnScheduleCloudSync(e2, nextStudents, audited, setSyncStatus);
   };
   const Component2051 = `img`;
   const Component2052 = `strong`;
@@ -38815,11 +38962,11 @@ function Ds() {
         cursor: `pointer`,
         height: `34px`
       },
-      title: "Cloud & Local Storage Status. Click to force instant cloud synchronization.",
+      title: "School cloud status. Click to connect, refresh, or recover a conflict.",
       onClick: () => triggerManualSync()
     },
     /* @__PURE__ */ w.createElement("span", { style: { fontSize: `13px` } }, syncStatus === "syncing" ? "\u{1F504}" : "\u2601\uFE0F"),
-    /* @__PURE__ */ w.createElement("span", null, syncStatus === "syncing" ? "Syncing..." : syncStatus === "synced" ? "Cloud & Local Synced" : "Local Mode"),
+    /* @__PURE__ */ w.createElement("span", null, syncStatus === "syncing" ? "Syncing..." : syncStatus === "synced" ? "School cloud synced" : syncStatus === "conflict" ? "Sync conflict" : syncStatus === "pending" ? "Upload pending" : "Local Mode"),
     /* @__PURE__ */ w.createElement(
       "span",
       {
@@ -39156,7 +39303,7 @@ function Ds() {
         window.setTimeout(() => p2(``), 5e3);
       }
     }
-  ) : c2 === `Contact & Support` ? /* @__PURE__ */ w.createElement(Ss, null) : /* @__PURE__ */ w.createElement(Ms, { name: c2, onBack: () => se(`Dashboard`) }))), u2 && /* @__PURE__ */ w.createElement(_Component6, { students: n2, classes: i2.classes, onClose: () => d2(false), onSave: ce }), f2 && /* @__PURE__ */ w.createElement(Component2138, { className: `success-toast`, role: `status` }, /* @__PURE__ */ w.createElement(A, { size: 19 }), /* @__PURE__ */ w.createElement(Component2137, null, f2)), whatsAppModalOpen && /* @__PURE__ */ w.createElement(
+  ) : c2 === `Contact & Support` ? /* @__PURE__ */ w.createElement(Ss, null) : /* @__PURE__ */ w.createElement(Ms, { name: c2, onBack: () => se(`Dashboard`) }))), cloudDialog && cloud && /* @__PURE__ */ w.createElement(SchoolCloudDialog, { controller: cloud.controller, client: cloud.client, status: syncStatus, error: cloudError, onClose: () => setCloudDialog(false) }), u2 && /* @__PURE__ */ w.createElement(_Component6, { students: n2, classes: i2.classes, onClose: () => d2(false), onSave: ce }), f2 && /* @__PURE__ */ w.createElement(Component2138, { className: `success-toast`, role: `status` }, /* @__PURE__ */ w.createElement(A, { size: 19 }), /* @__PURE__ */ w.createElement(Component2137, null, f2)), whatsAppModalOpen && /* @__PURE__ */ w.createElement(
     WhatsAppConnectModal,
     {
       isOpen: whatsAppModalOpen,

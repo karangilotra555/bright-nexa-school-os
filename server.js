@@ -738,7 +738,7 @@ const server = http.createServer(async (req, res) => {
             s.parentMobile || s.contactNumber || s.phone || "",
             s.busStop || s.transportRoute || "",
             s.address || "",
-            s.enrollmentStatus || "ACTIVE",
+            String(s.enrollmentStatus || s.status || "ACTIVE").toUpperCase(),
             now,
             now
           );

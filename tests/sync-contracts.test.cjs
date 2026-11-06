@@ -1,0 +1,19 @@
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');
+function fixture({snapshotOK=true,publishOK=true,token='fixture'}={}){
+ const src=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');const calls=[],states=[];
+ const ctx={window:{location:{hostname:'bright-nexa-school-os.onrender.com'}},localStorage:{getItem:()=>token},setTimeout:f=>{ctx.pending=f;return 1},clearTimeout:()=>{},Xn:()=>[{balance:1250}],fetch:async(url,o)=>{calls.push({url,body:JSON.parse(o.body)});return {ok:url.includes('/parent/')?publishOK:snapshotOK,json:async()=>({success:true})};}};
+ vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('function bnGetApiBase()'),src.indexOf('function bnBroadcastStoreSync')),ctx);
+ const student={id:'s1',admissionNumber:'ADM1',name:'Fixture',status:'Active',className:'6',section:'A'};
+ const ops={attendance:[{studentId:'s1',date:'2026-11-06',status:'Present'}],feeStructures:[],feePayments:[],homework:[{id:'h1',className:'6',section:'A',subject:'Math',title:'Practice',dueDate:'2026-11-07'}],notices:[{id:'n1',title:'Notice',message:'School notice',audience:'All'}]};
+ return {ctx,calls,states,run:async()=>{ctx.bnScheduleCloudSync({institution:{name:'Fixture School',session:'2026-2027'}},[student],ops,s=>states.push(s));if(ctx.pending)await ctx.pending();}};
+}
+test('sync flattens institution and publishes parent arrays and actual fee balance',async()=>{const f=fixture();await f.run();assert.equal(f.calls[0].body.institution.name,'Fixture School');const p=f.calls[1].body;assert.equal(p.attendance[0].status,'PRESENT');assert.equal(p.attendance[0].admissionNumber,'ADM1');assert.equal(p.fees[0].dueRupees,1250);assert.equal(p.homework[0].id,'h1');assert.equal(p.notices[0].body,'School notice');assert.equal(f.states.at(-1),'synced');});
+test('failed parent publication never reports synchronized',async()=>{const f=fixture({publishOK:false});await f.run();assert.notEqual(f.states.at(-1),'synced');});
+test('failed roster upload does not publish dependent parent records',async()=>{const f=fixture({snapshotOK:false});await f.run();assert.equal(f.calls.length,1);assert.notEqual(f.states.at(-1),'synced');});
+test('missing admin credential stays local without sending a dummy key',async()=>{const f=fixture({token:null});await f.run();assert.equal(f.calls.length,0);assert.equal(f.states.at(-1),'local');});
+for(const path of ['index.html','docs/index.html','app-extracted/dist/index.html'])test(path+' allows the configured sync API',()=>{const html=fs.readFileSync(path,'utf8');const csp=html.match(/connect-src ([^;]+)/)[1];assert.ok(csp.split(/\s+/).includes('https://bright-nexa-school-os-api.onrender.com'));});
+for(const file of ['bn-store-sync.js','app-extracted/src/BrightNexaApp.jsx'])test(file+' class rename updates dependent records without crossing streams',()=>{
+ let api;if(file.endsWith('.jsx')){const src=fs.readFileSync(file,'utf8');const ctx={};vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('function normalizeClassName('),src.indexOf('function bnGetApiBase()')),ctx);api=ctx;}else api=require('../bn-store-sync.js');
+ const result=api.bnCascadeClassroomChanges([{id:'c1',name:'11',section:'A',academicStream:'Science'}],[{id:'c1',name:'12',section:'B',academicStream:'Science'}],[{id:'s1',className:'11',section:'A',academicStream:'Science'},{id:'s2',className:'11',section:'A',academicStream:'Commerce'}],{homework:[{id:'h1',classId:'c1',className:'11',section:'A'}],exams:[{id:'e1',classId:'c1',className:'11',section:'A'}],marks:[{studentId:'s1',className:'11',section:'A'}],feePayments:[{studentId:'s1',className:'11',section:'A',amount:500}]});
+ assert.equal(result.updatedStudents[1].className,'11');for(const key of ['homework','exams','marks','feePayments'])assert.equal(result.updatedOperations[key][0].className,'12',key);assert.equal(result.updatedOperations.feePayments[0].amount,500);
+});

@@ -114,7 +114,7 @@ module.exports = function createParentPortal({ db, getInstitution, verifySession
         }
         const feeStmt=db.prepare('INSERT INTO parent_fees(admission_number,due_rupees,updated_at) VALUES(?,?,?) ON CONFLICT(admission_number) DO UPDATE SET due_rupees=excluded.due_rupees,updated_at=excluded.updated_at');
         for (const f of p.fees||[]) {
-          if (!belongs(f.admissionNumber) || !Number.isSafeInteger(f.dueRupees) || f.dueRupees<0 || f.dueRupees>100000000) throw Error('Invalid fee entry');
+          if (!belongs(f.admissionNumber) || (!Number.isFinite(f.dueRupees) || Math.abs(f.dueRupees * 100 - Math.round(f.dueRupees * 100)) > 1e-6) || f.dueRupees<0 || f.dueRupees>100000000) throw Error('Invalid fee entry');
           feeStmt.run(f.admissionNumber,f.dueRupees,now); updated++;
         }
         const hwStmt=db.prepare('INSERT INTO parent_homework(id,class_name,section,subject,title,due_date,published_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET class_name=excluded.class_name,section=excluded.section,subject=excluded.subject,title=excluded.title,due_date=excluded.due_date,published_at=excluded.published_at');

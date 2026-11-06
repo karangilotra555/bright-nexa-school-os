@@ -26,5 +26,9 @@ test('All three service workers reference the new mirrored bundle',()=>{
   const expected = crypto.createHash('sha256').update(bundles[0]).digest('hex');
   const sws=['sw.js','docs/sw.js','app-extracted/dist/sw.js'].map(p=>fs.readFileSync(path.join(root,p),'utf8'));
   assert.ok(sws.every(s=>s.includes('url:"assets/index-brightnexa-v2.js",revision:"'+expected+'"')));
-  assert.equal(sws[0],sws[1]);assert.equal(sws[0],sws[2]);
+  // Each deployment has its own HTML shell; its content hash may differ.
+  // workspace-offline-cache.test.cjs verifies every shell hash against its file.
+  const withoutShellHash=s=>s.replace(/("url":"index.html","revision":)"[^"]*"/,'$1"shell"');
+  assert.equal(withoutShellHash(sws[0]),withoutShellHash(sws[1]));
+  assert.equal(withoutShellHash(sws[0]),withoutShellHash(sws[2]));
 });

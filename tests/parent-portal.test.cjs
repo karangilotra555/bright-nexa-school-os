@@ -59,3 +59,5 @@ test('Parent leave is saved only for authenticated child',async()=>{
  assert.equal((await call('/api/parent/dashboard','GET','token2')).body.leaves.length,0);
  assert.equal((await call('/api/parent/admin/leaves','GET',null,{},true)).body.leaves.length,1);
 });
+
+test('parent publication preserves paise instead of rejecting valid balances',async()=>{const {call}=setup();const r=await call('/api/parent/admin/publish','POST',null,{fees:[{admissionNumber:'ADM001',dueRupees:1250.5}]},true);assert.equal(r.status,200);assert.equal((await call('/api/parent/dashboard','GET','token1')).body.fees.dueRupees,1250.5);});
