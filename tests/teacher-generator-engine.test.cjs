@@ -20,7 +20,7 @@ test('question papers and class tests deliver exactly requested questions and ma
 test('Hindi and bilingual variants show meaningful subject content',()=>{
  const hi=gen.generate({...base,tool:'Lesson Plan Generator',language:'Hindi'});
  const bi=gen.generate({...base,tool:'Question Paper Generator',language:'Bilingual'});
- assert.match(hi,/कार्बोहाइड्रेट|प्रोटीन/);assert.match(bi,/Rice|चावल/);
+ assert.match(hi,/कार्बोहाइड्रेट|प्रोटीन/);assert.match(bi,/[ऀ-ॿ]/);assert.match(bi,/protein|meal|food|nutrient|starch/i);
 });
 test('remarks/remedial/parent and notices never invent grades, targets or compulsory events',()=>{
  for(const tool of ['Student Remark Generator','Weak Student Remedial Plan','Parent Message Generator','School Notice Generator']){
