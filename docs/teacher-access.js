@@ -90,7 +90,7 @@
     }
     put('schoolLabel',school.name);
     const myName=staffName(me);
-    put('membership',school.name+' · '+(myName&&myName!==me.email?myName+' · ':'')+me.email+' · '+me.role.replaceAll('_',' '));
+    put('membership',school.name+' · '+(myName||me.email)+' · '+me.role.replaceAll('_',' '));
     if($('accountEmailDisplay'))put('accountEmailDisplay',me.email);
     if($('accountRoleDisplay'))put('accountRoleDisplay',me.role.replaceAll('_',' ').toUpperCase());
     if($('accountNameInput'))$('accountNameInput').value=(myName&&myName!==me.email)?myName:'';
@@ -348,7 +348,7 @@
   }
   function staffLabel(s){
     const name=staffName(s);
-    return name&&name!==s.email?`${name} (${s.email})`:s.email;
+    return name||s.email||'Unnamed staff member';
   }
   function studentLabel(s){
     const c=allClasses.find(cls=>cls.id===s.class_id);
