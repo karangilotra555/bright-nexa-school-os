@@ -65,6 +65,17 @@ test('3-hour paper changes the actual questions, not just the duration label',()
  assert.match(long,/Longer reasoning, comparison and case-based questions/);
  assert.doesNotMatch(long,/Answer each part \(1 mark each\)/);
 });
+
+test('all six duration dropdown options produce distinct papers and fractional hours use correct blueprint',()=>{
+ const values=['45 Minutes','1 Hour','1.5 Hours','2 Hours','2.5 Hours','3 Hours'];
+ const outputs=values.map(duration=>gen.generate({...base,tool:'Question Paper Generator',duration,difficulty:'Easy',count:10,totalMarks:50}));
+ const questions=s=>s.split('\n').filter(x=>/^Q\d+\./.test(x)).join('\n');
+ assert.equal(new Set(outputs.map(questions)).size,values.length);
+ assert.match(outputs[2],/Conceptual questions with examples and explanations/); // 90 min, not 300
+ assert.match(outputs[4],/Longer reasoning, comparison and case-based questions/); // 150 min
+ assert.ok(outputs.every(s=>(s.match(/^Q\d+\./gm)||[]).length===10));
+});
+
 test('difficulty changes actual paper questions and unsupported chapters fail safely',()=>{
  const params={...base,tool:'Question Paper Generator',count:10,totalMarks:50,duration:'3 Hours'};
  const easy=gen.generate({...params,difficulty:'Easy'});
