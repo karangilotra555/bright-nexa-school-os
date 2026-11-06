@@ -29,7 +29,11 @@ const ACTIONS = Object.freeze([
   'transport.read',
   'transport.write',
   'announcements.write',
-  'roles.manage'
+  'roles.manage',
+  'library.inventory.read',
+  'library.inventory.write',
+  'library.loans.read',
+  'library.loans.write'
 ]);
 
 const roleActions = {
@@ -47,6 +51,7 @@ const roleActions = {
   SUBJECT_TEACHER: [
     'students.read_basic','homework.read','homework.write','exams.read','exams.write'
   ],
+  LIBRARIAN: ['students.read_basic','library.inventory.read','library.inventory.write','library.loans.read','library.loans.write'],
   ACCOUNTANT: ['students.read_basic','fees.read','fees.write'],
   FRONT_DESK: ['students.read_basic','students.read_contact','admissions.manage'],
   TRANSPORT_STAFF: ['students.read_basic','transport.read','transport.write']

@@ -86,3 +86,16 @@ test('throws on denied privilege and role permission list is bounded',()=>{
  assert.equal(permit({verified:true,status:'ACTIVE',schoolId:'school-1',role:'SCHOOL_ADMIN'},scope('roles.manage')),true);
  assert.equal(permit({...teacher,assignments:[{...teacher.assignments[0],active:false}]},scope('attendance.write')),false);
 });
+
+test('librarian may access library inventory and loan actions but not unrelated academic or financial data',()=>{
+ const lib={verified:true,status:'ACTIVE',schoolId:'school-1',role:'LIBRARIAN'};
+ for(const action of ['students.read_basic','library.inventory.read','library.inventory.write','library.loans.read','library.loans.write']){
+  assert.equal(permit(lib,scope(action)),true,action);
+ }
+ for(const action of ['students.read_contact','attendance.read','attendance.write','homework.read','exams.write','fees.read','fees.write','admissions.manage','staff.manage','roles.manage','salary.read']){
+  assert.equal(permit(lib,scope(action)),false,action);
+ }
+ assert.equal(permit(lib,scope('library.loans.write','Class VI','A','Mathematics','school-2')),false);
+ assert.equal(permit({...lib,status:'INACTIVE'},scope('library.inventory.read')),false);
+ assert.equal(permit({...lib,verified:false},scope('library.loans.write')),false);
+});
