@@ -99,7 +99,7 @@ test('TDD: directory prefers verified display name without exposing redundant fa
  const src=fs.readFileSync(path.join(__dirname,'../teacher-access.js'),'utf8');
  const staffFn=src.slice(src.indexOf('function staffName(s)'),src.indexOf('function studentLabel(s)'));
  assert.match(staffFn,/display_name/);
- assert.doesNotMatch(staffFn,/\`\$\{name\} \(\$\{s\.email\}\\\)/);
+ assert.equal(staffFn.includes('(${s.email})'),false);
  const membership=src.slice(src.indexOf("put('membership'"),src.indexOf("put('membership'")+250);
  assert.doesNotMatch(membership,/\+me\.email\+/);
 });
