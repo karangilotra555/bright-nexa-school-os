@@ -20,8 +20,20 @@ const revision=crypto.createHash('sha256').update(bundle).digest('hex');
 for(const mirror of ['','docs','app-extracted/dist']){
   const file=path.join(root,mirror,'sw.js');
   const before=fs.readFileSync(file,'utf8');
-  const after=before.replace(/(url:"assets\/index-brightnexa-v2\.js",revision:)(?:null|"[^"]*")/,'$1"'+revision+'"');
+  let after=before.replace(/(url:"assets\/index-brightnexa-v2\.js",revision:)(?:null|"[^"]*")/,'$1"'+revision+'"');
   if(after===before&&!before.includes('revision:"'+revision+'"'))throw Error('Missing precache entry: '+file);
+  const assets=['index.html','school-workspace-cloud.js?v=20261106','school-workspace-controller.js?v=20261106','school-workspace-persistence.js?v=20261106'];
+  for(const url of assets){
+    const assetPath=path.join(root,mirror,url.split('?')[0]);
+    // Git stores these text assets with LF; hash the bytes deployed by CI too.
+    const bytes=Buffer.from(fs.readFileSync(assetPath,'utf8').replace(/\r\n/g,'\n'));
+    fs.writeFileSync(assetPath,bytes);
+    const hash=crypto.createHash('sha256').update(bytes).digest('hex');
+    const entry='{"url":'+JSON.stringify(url)+',"revision":'+JSON.stringify(hash)+'}';
+    const escaped=JSON.stringify(url).replace(/[.*+?^${}()|[\]\\]/g,character=>'\\'+character);
+    const pattern=new RegExp('\\{(?:"url"|url):'+escaped+',(?:"revision"|revision):(?:null|"[^"]*")\\},?', 'g');
+    after=after.replace(pattern,'').replace('e.precacheAndRoute([','e.precacheAndRoute(['+entry+',');
+  }
   fs.writeFileSync(file,after);
 }
 console.log('Source rebuilt; three bundle copies synchronized; precache revision updated.');

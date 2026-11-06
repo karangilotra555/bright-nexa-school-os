@@ -20273,6 +20273,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
   let updatedTeachers = [...(operations.teachers || [])];
   let updatedTimetable = Array.isArray(operations.timetable) ? [...operations.timetable] : [];
   let changesCount = 0;
+    let linked = Object.fromEntries(['homework','exams','marks','feePayments','classFeeCharges','studentFeeDues'].filter(k => Array.isArray(operations[k])).map(k => [k, [...operations[k]]]));
 
   for (const newClass of (newClasses || [])) {
     const oldClass = oldMap.get(newClass.id);
@@ -20287,10 +20288,19 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
     }
 
     changesCount++;
+      const matchesClass = row => row.classId ? row.classId === oldClass.id :
+        isClassMatch(row.className, oldClass.name) &&
+        (!oldClass.section || isSectionMatch(row.section, oldClass.section)) &&
+        (!oldClass.academicStream || row.academicStream === oldClass.academicStream);
+      const affectedIds = new Set(updatedStudents.filter(matchesClass).map(s => s.id));
+      for (const key of Object.keys(linked)) linked[key] = linked[key].map(row => {
+        const matches = row.studentId ? affectedIds.has(row.studentId) : matchesClass(row);
+        return matches ? {...row, className:newClass.name, section:newClass.section ?? row.section,
+          ...(Object.hasOwn(row,'academicStream') ? {academicStream:newClass.academicStream || ''} : {})} : row;
+      });
 
     updatedStudents = updatedStudents.map(student => {
-      const matchesOld = isClassMatch(student.className, oldClass.name) &&
-        (!oldClass.section || isSectionMatch(student.section, oldClass.section));
+      const matchesOld = matchesClass(student);
 
       if (matchesOld) {
         return {
@@ -20304,7 +20314,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
     });
 
     updatedFeeStructures = updatedFeeStructures.map(fs => {
-      if (isClassMatch(fs.className, oldClass.name)) {
+      if (isClassMatch(fs.className, oldClass.name) && (!oldClass.academicStream || fs.academicStream === oldClass.academicStream)) {
         return {
           ...fs,
           className: newClass.name,
@@ -20315,8 +20325,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
     });
 
     updatedAttendance = updatedAttendance.map(att => {
-      const matchesOld = isClassMatch(att.className, oldClass.name) &&
-        (!oldClass.section || isSectionMatch(att.section, oldClass.section));
+      const matchesOld = att.studentId ? affectedIds.has(att.studentId) : matchesClass(att);
 
       if (matchesOld) {
         return {
@@ -20365,6 +20374,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
 
   const updatedOperations = {
     ...operations,
+      ...linked,
     classes: newClasses,
     feeStructures: updatedFeeStructures,
     attendance: updatedAttendance,
@@ -20508,68 +20518,60 @@ function bnGetApiBase() {
   return '';
 }
 
+function bnParentPayload(institution, students, operations) {
+  const active = students.filter(s => String(s.status || 'Active').toLowerCase() === 'active');
+  const byId = new Map(active.map(s => [s.id, s]));
+  return {
+    attendance: (operations.attendance || []).filter(a => byId.has(a.studentId)).map(a => ({
+      admissionNumber: byId.get(a.studentId).admissionNumber,
+      day: a.date, status: String(a.status).toUpperCase()
+    })),
+    fees: active.map(student => ({admissionNumber: student.admissionNumber,
+      dueRupees: Math.round(Xn(operations, student, institution).reduce((n, row) => n + row.balance, 0) * 100) / 100})),
+    homework: (operations.homework || []).map(h => ({id:h.id, className:h.className,
+      section:h.section, subject:h.subject, title:h.title, dueDate:h.dueDate})),
+    // The legacy parent endpoint has no audience field. Never widen a targeted notice.
+    notices: (operations.notices || []).filter(n => ['All','All parents','Parents and Students'].includes(n.audience))
+      .map(n => ({id:n.id,title:n.title,body:n.content || n.message || n.body}))
+  };
+}
 var bnSyncTimer = null;
-function bnScheduleCloudSync(institution, students, operations, setStatus) {
+var bnSyncQueue = Promise.resolve();
+var bnSyncGeneration = 0;
+function bnScheduleCloudSync(snapshot, students, operations, setStatus) {
   if (typeof window === 'undefined') return;
-  if (setStatus) setStatus('syncing');
+  const generation = ++bnSyncGeneration;
+  const status = value => { if (generation === bnSyncGeneration && setStatus) setStatus(value); };
   if (bnSyncTimer) clearTimeout(bnSyncTimer);
-  bnSyncTimer = setTimeout(async () => {
-    try {
-      const apiBase = bnGetApiBase();
-      let token = localStorage.getItem('school_admin_token') || 'local-admin-key';
-      const res = await fetch(apiBase + '/api/sync/snapshot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({
-          institution,
-          students,
-          operations
-        })
-      });
-
+  let token;
+  try { token = localStorage.getItem('school_admin_token'); } catch (_) {}
+  if (!token) { status('local'); return; }
+  status('syncing');
+  bnSyncTimer = setTimeout(() => {
+    bnSyncQueue = bnSyncQueue.catch(() => {}).then(async () => {
+      if (generation !== bnSyncGeneration) return;
       try {
-        const attSummary = {};
-        (operations.attendance || []).forEach(a => {
-          if (!attSummary[a.studentId]) attSummary[a.studentId] = { total: 0, present: 0 };
-          attSummary[a.studentId].total++;
-          if (a.status === 'Present') attSummary[a.studentId].present++;
+        const apiBase = bnGetApiBase();
+        const institution = snapshot.institution || snapshot;
+        const parent = bnParentPayload(institution, students, operations);
+        const headers = {'Content-Type':'application/json', Authorization:'Bearer ' + token};
+        const res = await fetch(apiBase + '/api/sync/snapshot', {
+          method:'POST', headers, body:JSON.stringify({institution, students, operations})
         });
-
-        await fetch(apiBase + '/api/parent/admin/publish', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          },
-          body: JSON.stringify({
-            students: (students || []).map(s => ({
-              id: s.id,
-              admissionNumber: s.admissionNumber,
-              name: s.name,
-              fatherName: s.fatherName,
-              motherName: s.motherName,
-              parentMobile: s.parentMobile,
-              className: s.className,
-              section: s.section,
-              dateOfBirth: s.dateOfBirth,
-              enrollmentStatus: s.status || 'Active',
-              attendanceSummary: attSummary[s.id] || { total: 0, present: 0 }
-            }))
-          })
-        });
-      } catch (_) {}
-
-      if (res && res.ok) {
-        if (setStatus) setStatus('synced');
-      } else {
-        if (setStatus) setStatus('local');
-      }
-    } catch (_) {
-      if (setStatus) setStatus('local');
-    }
+        if (!res.ok) throw Error('School snapshot was not saved');
+        const result = await res.json();
+        if (result.success !== true) throw Error('School snapshot was not acknowledged');
+        // Bounded batches match the parent endpoint's 1000-record limit.
+        const size = Math.max(1, ...Object.values(parent).map(rows => rows.length));
+        for (let offset = 0; offset < size; offset += 1000) {
+          const batch = Object.fromEntries(Object.entries(parent).map(([key, rows]) => [key, rows.slice(offset, offset + 1000)]));
+          const published = await fetch(apiBase + '/api/parent/admin/publish', {method:'POST', headers, body:JSON.stringify(batch)});
+          if (!published.ok || (await published.json()).success !== true) throw Error('Parent records were not published');
+        }
+        status('synced');
+      } catch (_) { status('pending'); }
+    });
+    return bnSyncQueue;
   }, 1000);
 }
 
@@ -24142,7 +24144,7 @@ function Hr({ data: e, students: t, onUpdate: n }) {
   let allClassesForAttendance = (0, w.useMemo)(() => {
     const configured = (e.classes || []).filter(cl => cl.status !== 'Inactive');
     const configuredKeys = new Set(configured.map(cl => normalizeClassName(cl.name) + '|' + normalizeSection(cl.section || '')));
-    
+
     // Find students whose class is NOT covered by any configured class
     const uncoveredMap = new Map();
     for (const stu of (t || [])) {
@@ -43063,6 +43065,34 @@ var Es = new Intl.NumberFormat(`en-IN`, {
   currency: `INR`,
   maximumFractionDigits: 0,
 });
+function SchoolCloudDialog({controller, client, status, error, onClose}) {
+  const [schools, setSchools] = w.useState([]);
+  const [selected, setSelected] = w.useState('');
+  const [busy, setBusy] = w.useState(false);
+  const [message, setMessage] = w.useState(error || '');
+  const [confirmed, setConfirmed] = w.useState(false);
+  const run = async action => {setBusy(true);setMessage('');try {await action();} catch(e) {setMessage(e.message);} finally {setBusy(false);}};
+  w.useEffect(() => {let active=true;client.connect().then(rows=>{if(active){setSchools(rows);setSelected(rows[0]?.id||'');}}).catch(e=>{if(active)setMessage(e.message);});return()=>{active=false;};},[client]);
+  return <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-labelledby="school-cloud-title" style={{maxWidth:'650px',maxHeight:'90vh',overflowY:'auto',padding:'24px'}}>
+    <h2 id="school-cloud-title">School cloud connection</h2>
+    <p>School records are shared with the teacher and parent portals. Offline changes stay on this device until uploaded.</p>
+    <p role="status">Status: {status}</p>
+    {message && <p role="alert">{message}</p>}
+    <p><a href="./teacher-access.html">Sign in with your school administrator account</a>, then return here.</p>
+    <label>School<select aria-label="School cloud account" value={selected} onChange={e=>{setSelected(e.target.value);setConfirmed(false);}}><option value="">Choose your school</option>{schools.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+    <p>Before opening cloud records or importing this device, a local recovery copy is saved. Import is allowed only when the school has no cloud workspace. Review local sample records before importing.</p>
+    <label><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> I have checked the selected school and the records on this device.</label>
+    <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'16px'}}>
+      <button className="primary-button" disabled={busy||!selected||!confirmed} onClick={()=>run(async()=>{await controller.openSchool(selected);onClose();})}>Open school records</button>
+      <button className="secondary-button" disabled={busy||!selected||!confirmed} onClick={()=>run(async()=>{const result=await controller.uploadLocal(selected);if(result.status==='synced')onClose();else setMessage(result.error?.message||'Upload is pending. Your local records are preserved.');})}>Import this device into empty workspace</button>
+      <button className="secondary-button" disabled={busy} onClick={()=>run(()=>controller.sync())}>Refresh / retry pending upload</button>
+      <button className="secondary-button" disabled={busy} onClick={()=>run(async()=>{await controller.disconnect();onClose();})}>Disconnect this device</button>
+      <button className="secondary-button" disabled={busy} onClick={onClose}>Close</button>
+    </div>
+    {status==='conflict' && <p>Another device changed school records. Your unsent work is preserved. Opening school records saves a recovery copy before loading the current cloud version.</p>}
+  </section></div>;
+}
+
 function Ds() {
   let [e, t] = (0, w.useState)(wn);
   let [n, r] = (0, w.useState)(Dn);
@@ -43073,7 +43103,56 @@ function Ds() {
   let [f, p] = (0, w.useState)(``);
   let [m, h] = (0, w.useState)(``);
   let [g] = (0, w.useState)(Qt);
-  let [syncStatus, setSyncStatus] = (0, w.useState)('synced');
+  let [syncStatus, setSyncStatus] = (0, w.useState)('local');
+  const [workspaceReady, setWorkspaceReady] = w.useState(false);
+  const [cloudDialog, setCloudDialog] = w.useState(false);
+  const [cloudError, setCloudError] = w.useState('');
+  const [cloud, setCloud] = w.useState(null);
+  const latestWorkspace = w.useRef(null);
+  const lastWorkspace = w.useRef('');
+  latestWorkspace.current = {institution:e, students:n, operations:i};
+  w.useEffect(() => {
+    if (!workspaceReady || !window.BNWorkspaceCloud || !window.BNWorkspaceController || !window.BNWorkspacePersistence) return;
+    let active = true;
+    const client = window.BNWorkspaceCloud.create({fetcher:window.fetch.bind(window),sessionStorage:window.sessionStorage,storage:window.localStorage});
+    const durableVersion=()=>JSON.stringify([_n,vn,Di].map(key=>window.localStorage.getItem(key)));
+    const persistence = window.BNWorkspacePersistence.create({open:Dt,getVersion:durableVersion,getLatest:()=>({institution:wn(),students:Dn(),operations:Ai()})});
+    const controller = window.BNWorkspaceController.create({client,storage:window.localStorage,
+      getSnapshot:()=>latestWorkspace.current,
+      buildProjection:snapshot=>window.BNWorkspaceCloud.buildProjection(snapshot,Xn),
+      applySnapshot:async (snapshot, canApply=()=>true)=>{
+        const next={institution:snapshot.institution,students:snapshot.students,operations:Ni(snapshot.operations)};
+        // Persist before rendering so reopening the app cannot resurrect the previous workspace.
+        const before=durableVersion();
+        const valid=()=>canApply()&&durableVersion()===before;
+        if (!await persistence.apply(next,valid) || !valid()) {
+          const error=new Error('Local records changed while opening cloud data. Your changes were retained; reopen the school after reviewing the conflict.');
+          error.code='CONFLICT';throw error;
+        }
+        Tn(next.institution);On(next.students);ji(next.operations);
+        lastWorkspace.current=JSON.stringify(next);latestWorkspace.current=next;
+        if(active){t(next.institution);r(next.students);a(next.operations);}
+        bnBroadcastStoreSync(next.institution,next.students,next.operations);
+      },
+      onStatus:state=>{if(active)setSyncStatus(state==='loading'?'syncing':state);},
+      onError:error=>{if(active)setCloudError(error?.message||String(error));}
+    });
+    lastWorkspace.current=JSON.stringify(latestWorkspace.current);
+    controller.initialize().then(()=>controller.sync()).catch(error=>{if(active)setCloudError(error.message);});
+    setCloud({client,controller});
+    const refresh=()=>controller.sync().catch(error=>{if(active)setCloudError(error.message);});
+    const timer=window.setInterval(refresh,30000);
+    window.addEventListener('online',refresh);window.addEventListener('focus',refresh);
+    return()=>{active=false;controller.dispose();window.clearInterval(timer);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
+  },[workspaceReady]);
+  w.useEffect(()=>{
+    if(!cloud||!workspaceReady)return;
+    const current=latestWorkspace.current;const key=JSON.stringify(current);
+    if(key===lastWorkspace.current)return;
+    lastWorkspace.current=key;
+    cloud.controller.autosave(current).catch(error=>setCloudError(error.message));
+  },[e,n,i,cloud,workspaceReady]);
+
   let [whatsAppModalOpen, setWhatsAppModalOpen] = (0, w.useState)(false);
   let [whatsAppConnected, setWhatsAppConnected] = (0, w.useState)(() => {
     try {
@@ -43113,6 +43192,9 @@ function Ds() {
       channel = new BroadcastChannel('bright_nexa_store_sync');
       channel.onmessage = (event) => {
         if (event.data && event.data.type === 'BN_STORE_SYNC') {
+          const currentId=latestWorkspace.current?.institution?.institution?.id;
+          const incomingId=event.data.institution?.institution?.id;
+          if(currentId && incomingId && currentId !== incomingId)return;
           if (event.data.institution) t(event.data.institution);
           if (event.data.students) r(event.data.students);
           if (event.data.operations) a(event.data.operations);
@@ -43124,14 +43206,7 @@ function Ds() {
     };
   }, []);
 
-  let triggerManualSync = () => {
-    setSyncStatus('syncing');
-    bnScheduleCloudSync(e, n, i, (st) => {
-      setSyncStatus(st);
-      p(st === 'synced' ? 'Cloud & Local synchronized successfully.' : 'Working in offline local mode.');
-      window.setTimeout(() => p(''), 3000);
-    });
-  };
+  let triggerManualSync = () => {setCloudDialog(true);setCloudError('');};
   let _ = (0, w.useMemo)(() => fn(e.language), [e.language]);
   let v = g?.role ?? e.role;
   (0, w.useEffect)(() => {
@@ -43284,7 +43359,7 @@ function Ds() {
       if (!c) {
         ji(d);
       }
-    });
+    }).then(() => { if (o) setWorkspaceReady(true); }).catch(error => { if(o){setCloudError('Local records could not be loaded: '+error.message);setSyncStatus('local');} });
     return () => {
       o = false;
     };
@@ -43319,7 +43394,6 @@ function Ds() {
     p(`${o.name || o.admissionNumber || `Student record`} added successfully`);
     window.setTimeout(() => p(``), 3500);
     bnBroadcastStoreSync(c, s, u);
-    bnScheduleCloudSync(c, s, u, setSyncStatus);
   };
   let ue = (o) => {
     let s = [...o, ...n];
@@ -43343,7 +43417,6 @@ function Ds() {
     a(l);
     ji(l);
     bnBroadcastStoreSync(c, s, l);
-    bnScheduleCloudSync(c, s, l, setSyncStatus);
   };
   let de = (updatedSt) => {
     let s = n.map((t) => (t.id === updatedSt.id ? updatedSt : t));
@@ -43359,7 +43432,6 @@ function Ds() {
     a(o);
     ji(o);
     bnBroadcastStoreSync(e, s, o);
-    bnScheduleCloudSync(e, s, o, setSyncStatus);
   };
   let pe = (o) => {
     let s = n.filter((elem) => elem.id !== o.id);
@@ -43383,7 +43455,6 @@ function Ds() {
     a(l);
     ji(l);
     bnBroadcastStoreSync(c, s, l);
-    bnScheduleCloudSync(c, s, l, setSyncStatus);
   };
   let j = (nextOpsArg, actionArg, entityArg, descArg) => {
     let nextStudents = n;
@@ -43413,7 +43484,6 @@ function Ds() {
     a(audited);
     ji(audited);
     bnBroadcastStoreSync(e, nextStudents, audited);
-    bnScheduleCloudSync(e, nextStudents, audited, setSyncStatus);
   };
   const Component2051 = `img`;
   const Component2052 = `strong`;
@@ -43735,11 +43805,11 @@ function Ds() {
                 cursor: `pointer`,
                 height: `34px`
               }}
-              title="Cloud & Local Storage Status. Click to force instant cloud synchronization."
+              title="School cloud status. Click to connect, refresh, or recover a conflict."
               onClick={() => triggerManualSync()}
             >
               <span style={{ fontSize: `13px` }}>{syncStatus === 'syncing' ? '🔄' : '☁️'}</span>
-              <span>{syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'synced' ? 'Cloud & Local Synced' : 'Local Mode'}</span>
+              <span>{syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'synced' ? 'School cloud synced' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'pending' ? 'Upload pending' : 'Local Mode'}</span>
               <span
                 style={{
                   display: `inline-block`,
@@ -44226,6 +44296,7 @@ function Ds() {
           )}
         </Component2135>
       </Component2136>
+      {cloudDialog && cloud && <SchoolCloudDialog controller={cloud.controller} client={cloud.client} status={syncStatus} error={cloudError} onClose={()=>setCloudDialog(false)} />}
       {u && <_Component6 students={n} classes={i.classes} onClose={() => d(false)} onSave={ce} />}
       {f && (
         <Component2138 className={`success-toast`} role={`status`}>

@@ -92,6 +92,7 @@
     let updatedTeachers = [...(operations.teachers || [])];
     let updatedTimetable = Array.isArray(operations.timetable) ? [...operations.timetable] : [];
     let changesCount = 0;
+    let linked = Object.fromEntries(['homework','exams','marks','feePayments','classFeeCharges','studentFeeDues'].filter(k => Array.isArray(operations[k])).map(k => [k, [...operations[k]]]));
 
     for (const newClass of (newClasses || [])) {
       const oldClass = oldMap.get(newClass.id);
@@ -106,11 +107,20 @@
       }
 
       changesCount++;
+      const matchesClass = row => row.classId ? row.classId === oldClass.id :
+        isClassMatch(row.className, oldClass.name) &&
+        (!oldClass.section || isSectionMatch(row.section, oldClass.section)) &&
+        (!oldClass.academicStream || row.academicStream === oldClass.academicStream);
+      const affectedIds = new Set(updatedStudents.filter(matchesClass).map(s => s.id));
+      for (const key of Object.keys(linked)) linked[key] = linked[key].map(row => {
+        const matches = row.studentId ? affectedIds.has(row.studentId) : matchesClass(row);
+        return matches ? {...row, className:newClass.name, section:newClass.section ?? row.section,
+          ...(Object.hasOwn(row,'academicStream') ? {academicStream:newClass.academicStream || ''} : {})} : row;
+      });
 
       // 1. Cascade to Students
       updatedStudents = updatedStudents.map(student => {
-        const matchesOld = isClassMatch(student.className, oldClass.name) &&
-          (!oldClass.section || isSectionMatch(student.section, oldClass.section));
+        const matchesOld = matchesClass(student);
 
         if (matchesOld) {
           return {
@@ -125,7 +135,7 @@
 
       // 2. Cascade to Fee Structures
       updatedFeeStructures = updatedFeeStructures.map(fs => {
-        if (isClassMatch(fs.className, oldClass.name)) {
+        if (isClassMatch(fs.className, oldClass.name) && (!oldClass.academicStream || fs.academicStream === oldClass.academicStream)) {
           return {
             ...fs,
             className: newClass.name,
@@ -137,8 +147,7 @@
 
       // 3. Cascade to Attendance Records
       updatedAttendance = updatedAttendance.map(att => {
-        const matchesOld = isClassMatch(att.className, oldClass.name) &&
-          (!oldClass.section || isSectionMatch(att.section, oldClass.section));
+        const matchesOld = att.studentId ? affectedIds.has(att.studentId) : matchesClass(att);
 
         if (matchesOld) {
           return {
@@ -189,6 +198,7 @@
 
     const updatedOperations = {
       ...operations,
+      ...linked,
       classes: newClasses,
       feeStructures: updatedFeeStructures,
       attendance: updatedAttendance,

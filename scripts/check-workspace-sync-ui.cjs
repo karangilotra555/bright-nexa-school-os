@@ -1,0 +1,12 @@
+const fs=require('fs'),assert=require('node:assert/strict');
+const {JSDOM}=require('jsdom'),esbuild=require('esbuild');
+const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
+const bootstrap=source.lastIndexOf('sa();\nCt.createRoot');assert(bootstrap>0,'application bootstrap');
+const dom=new JSDOM('<div id="root"></div>',{url:'https://school.test',runScripts:'outside-only',pretendToBeVisual:true});
+const errors=[];dom.window.addEventListener('error',e=>errors.push(e.error));
+let opened=0,uploaded=0,closed=0;
+dom.window.__props={client:{connect:async()=>[{id:'school',name:'Fixture school'}]},controller:{openSchool:async()=>{opened++},uploadLocal:async()=>{uploaded++},sync:async()=>{},disconnect:async()=>{}},status:'local',onClose:()=>closed++};
+const code=source.slice(0,bootstrap)+'\nCt.createRoot(document.getElementById("root")).render(w.createElement(SchoolCloudDialog,window.__props));';
+dom.window.eval(esbuild.transformSync(code,{loader:'jsx',format:'iife',jsxFactory:'w.createElement',jsxFragment:'w.Fragment',target:'es2022'}).code);
+const wait=()=>new Promise(r=>setTimeout(r,80));
+(async()=>{await wait();const doc=dom.window.document;assert.equal(errors.length,0,String(errors));assert(doc.querySelector('[role=dialog]'));assert.equal(opened+uploaded,0);const buttons=[...doc.querySelectorAll('button')];const open=buttons.find(b=>b.textContent==='Open school records'),upload=buttons.find(b=>b.textContent.startsWith('Import this device'));assert(open.disabled&&upload.disabled);doc.querySelector('input[type=checkbox]').click();await wait();assert(!open.disabled);open.click();await wait();assert.equal(opened,1);assert.equal(uploaded,0);assert.equal(closed,1);console.log('PASS: cloud dialog renders, initial read does not upload, school confirmation gates destructive switches, open does not import.');dom.window.close();})().catch(e=>{console.error(e);dom.window.close();process.exitCode=1;});
