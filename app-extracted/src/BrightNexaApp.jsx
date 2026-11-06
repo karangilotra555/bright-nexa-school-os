@@ -44973,6 +44973,11 @@ function Fs({ children: e }) {
               disabled={l}
               onClick={Ge}
             >{`Open demo school`}</Component2192>
+            <a
+              className="secondary-button auth-secondary"
+              href="./teacher-access.html"
+              style={{display:'flex',justifyContent:'center',textDecoration:'none',marginTop:'10px'}}
+            >Log in to existing school</a>
             <Component2193>{`Starter records contain no real personal data. Edit or delete every record labelled “Sample” before live use.`}</Component2193>
           </Component2194>
         ) : a === `setup` ? (
