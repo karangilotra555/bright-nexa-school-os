@@ -32391,6 +32391,7 @@ function Ea({ data, students } = {}) {
   let [f, p] = (0, w.useState)(``);
   let [m, h] = (0, w.useState)(``);
   let [g, _] = (0, w.useState)(Da);
+  (0,w.useEffect)(()=>{let on=true;if(window.BNTeacherDrafts&&sessionStorage.getItem('bn_school_staff_session_v1'))window.BNTeacherDrafts.list().then(rows=>{if(on)_(rows)}).catch(()=>{});return()=>{on=false};},[]);
   const Component1345 = `button`;
   const Component1346 = `aside`;
   const Component1347 = `h2`;
@@ -32419,7 +32420,7 @@ function Ea({ data, students } = {}) {
       <F
         eyebrow={`Smart Academic Assistant`}
         title={`AI Teacher Tools`}
-        subtitle={`Create syllabus-aligned lesson plans, question papers, worksheets, and notices tailored to your exact class and time specifications.`}
+        subtitle={`Offline teacher-reviewed drafts, not AI-generated or syllabus verified. Check all answers before publishing.`}
       />
       <Component1368 className={`ai-workbench`}>
         <Component1346>
@@ -32742,6 +32743,7 @@ function Ea({ data, students } = {}) {
           <Component1358
             className={`primary-button`}
             onClick={() => {
+              try {
               p(
                 Oa({
                   tool: e,
@@ -32755,7 +32757,8 @@ function Ea({ data, students } = {}) {
                   totalMarks: totalMarks,
                 }),
               );
-              h(`Generated successfully. You can review, edit, or copy the content below.`);
+              h(`Offline draft ready. Check your class syllabus before use.`);
+              }catch(error){p(``);h(`Generation failed: ${error.message}`);}
             }}
           >
             <_Component30 size={17} />
@@ -32795,27 +32798,18 @@ function Ea({ data, students } = {}) {
                 </Component1363>
                 <Component1364
                   className={`primary-button`}
-                  onClick={() => {
-                    if (!f.trim()) {
-                      return;
-                    }
-                    let t = [
-                      {
-                        id: crypto.randomUUID(),
-                        tool: e,
-                        title: `${i}: ${o}`,
-                        content: f,
-                        createdAt: new Date().toISOString(),
-                      },
-                      ...g,
-                    ].slice(0, 30);
-                    _(t);
-                    localStorage.setItem(wa, JSON.stringify(t));
-                    h(`Template saved locally.`);
+                  onClick={async () => {
+                    if(!f.trim()){h(`Nothing to save.`);return;}
+                    try{
+                      if(!window.BNTeacherDrafts)throw Error('Cloud draft service unavailable.');
+                      const saved=await window.BNTeacherDrafts.save({tool:e,className:n,subject:i,topic:o,language:lang,content:f});
+                      _(previous=>[saved,...previous].slice(0,30));
+                      h(`Private draft saved in Supabase. Teacher review required.`);
+                    }catch(error){h(`Not saved: ${error.message}`);}
                   }}
                 >
                   <Qe size={16} />
-                  {`Save locally`}
+                  {`Save to Supabase`}
                 </Component1364>
               </Component1365>
             </P.Fragment>
@@ -32856,19 +32850,9 @@ function Ea({ data, students } = {}) {
     </Component1380>
   );
 }
-function Da() {
-  try {
-    let e = localStorage.getItem(wa);
-    if (e) {
-      return JSON.parse(e);
-    } else {
-      return [];
-    }
-  } catch {
-    return [];
-  }
-}
-function Oa({
+function Da(){return []; /* Existing local drafts retained, not authoritative. */}
+function Oa(input){if(!globalThis.BNTeacherGenerator)throw Error('Teacher generator failed to load. Refresh.');return globalThis.BNTeacherGenerator.generate(input);}
+function OaLegacy({
   tool: e,
   className: t,
   subject: n,

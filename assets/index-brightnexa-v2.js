@@ -28923,6 +28923,7 @@ function Ea({ data, students } = {}) {
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
   let [g2, _2] = (0, w.useState)(Da);
+  (0,w.useEffect)(()=>{let on=true;if(window.BNTeacherDrafts&&sessionStorage.getItem('bn_school_staff_session_v1'))window.BNTeacherDrafts.list().then(rows=>{if(on)_2(rows)}).catch(()=>{});return()=>{on=false};},[]);
   const Component1345 = `button`;
   const Component1346 = `aside`;
   const Component1347 = `h2`;
@@ -28951,7 +28952,7 @@ function Ea({ data, students } = {}) {
     {
       eyebrow: `Smart Academic Assistant`,
       title: `AI Teacher Tools`,
-      subtitle: `Create syllabus-aligned lesson plans, question papers, worksheets, and notices tailored to your exact class and time specifications.`
+      subtitle: `Offline teacher-reviewed drafts, not AI-generated or syllabus verified. Check all answers before publishing.`
     }
   ), /* @__PURE__ */ w.createElement(Component1368, { className: `ai-workbench` }, /* @__PURE__ */ w.createElement(Component1346, null, Ta.map((n3) => /* @__PURE__ */ w.createElement(
     Component1345,
@@ -29076,6 +29077,7 @@ function Ea({ data, students } = {}) {
     {
       className: `primary-button`,
       onClick: () => {
+        try {
         p2(
           Oa({
             tool: e2,
@@ -29089,7 +29091,8 @@ function Ea({ data, students } = {}) {
             totalMarks
           })
         );
-        h2(`Generated successfully. You can review, edit, or copy the content below.`);
+        h2(`Offline draft ready. Check your class syllabus before use.`);
+        }catch(error){p2(``);h2(`Generation failed: ${error.message}`);}
       }
     },
     /* @__PURE__ */ w.createElement(_Component30, { size: 17 }),
@@ -29128,27 +29131,18 @@ function Ea({ data, students } = {}) {
     Component1364,
     {
       className: `primary-button`,
-      onClick: () => {
-        if (!f2.trim()) {
-          return;
-        }
-        let t3 = [
-          {
-            id: crypto.randomUUID(),
-            tool: e2,
-            title: `${i2}: ${o2}`,
-            content: f2,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
-          },
-          ...g2
-        ].slice(0, 30);
-        _2(t3);
-        localStorage.setItem(wa, JSON.stringify(t3));
-        h2(`Template saved locally.`);
+      onClick: async () => {
+        if(!f2.trim()){h2(`Nothing to save.`);return;}
+        try{
+          if(!window.BNTeacherDrafts)throw Error('Cloud draft service unavailable.');
+          const saved=await window.BNTeacherDrafts.save({tool:e2,className:n2,subject:i2,topic:o2,language:lang,content:f2});
+          _2(previous=>[saved,...previous].slice(0,30));
+          h2(`Private draft saved in Supabase. Teacher review required.`);
+        }catch(error){h2(`Not saved: ${error.message}`);}
       }
     },
     /* @__PURE__ */ w.createElement(Qe, { size: 16 }),
-    `Save locally`
+    `Save to Supabase`
   ))), m2 && /* @__PURE__ */ w.createElement(Component1366, { className: `settings-message` }, /* @__PURE__ */ w.createElement(_Component17, { size: 15 }), m2))), /* @__PURE__ */ w.createElement(Component1375, { className: `saved-template-panel` }, /* @__PURE__ */ w.createElement(Component1371, null, /* @__PURE__ */ w.createElement(Component1369, null, `Saved templates`), /* @__PURE__ */ w.createElement(Component1370, null, g2.length, ` saved drafts \u2022 editable anytime`)), g2.slice(0, 6).map((e3) => /* @__PURE__ */ w.createElement(
     Component1374,
     {
@@ -29162,19 +29156,9 @@ function Ea({ data, students } = {}) {
     /* @__PURE__ */ w.createElement(Component1373, null, e3.tool, ` \u2022 `, new Date(e3.createdAt).toLocaleDateString(`en-IN`))
   ))));
 }
-function Da() {
-  try {
-    let e2 = localStorage.getItem(wa);
-    if (e2) {
-      return JSON.parse(e2);
-    } else {
-      return [];
-    }
-  } catch {
-    return [];
-  }
-}
-function Oa({
+function Da(){return []; /* Existing local drafts retained, not authoritative. */}
+function Oa(input){if(!globalThis.BNTeacherGenerator)throw Error('Teacher generator failed to load. Refresh.');return globalThis.BNTeacherGenerator.generate(input);}
+function OaLegacy({
   tool: e2,
   className: t2,
   subject: n2,
