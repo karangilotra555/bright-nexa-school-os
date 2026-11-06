@@ -202,3 +202,46 @@ test('TDD RED: cache reset version changes with the AI client while keeping exis
   assert.doesNotMatch(html,/localStorage\.clear\(/);
  }
 });
+
+
+test('client recovery: runtime loads exactly one versioned script and executes the real AI client',async()=>{
+ const vm=require('node:vm');
+ const src=fs.readFileSync('assets/index-brightnexa-v2.js','utf8');
+ const start=src.indexOf('let schoolAIClientLoad = null;');
+ const end=src.indexOf('function OaLegacy(',start);
+ assert.ok(start>=0&&end>start);
+ const window={}, scripts=[];
+ const document={
+  baseURI:'https://bright-nexa-school-os.onrender.com/index.html?openSchool=true',
+  createElement(tag){assert.equal(tag,'script');return {};},
+  head:{appendChild(script){scripts.push(script);}}
+ };
+ const context=vm.createContext({window,globalThis:window,document,URL,Promise,Error});
+ const real=vm.runInContext(src.slice(start,end)+';({Oa,ensureSchoolAIClient})',context);
+ const first=real.Oa({tool:'Lesson Plan Generator'});
+ const second=real.Oa({tool:'Activity Ideas Generator'});
+ assert.equal(scripts.length,1,'Concurrent calls must share a single client download');
+ assert.ok(scripts[0].src.startsWith('https://bright-nexa-school-os.onrender.com/teacher-ai-cloud.js?v=20261106-client-recovery-v2'));
+ assert.equal(scripts[0].async,true);
+ const calls=[];
+ window.BNSmartToolsAI={generate:async(input)=>{calls.push(input.tool);return 'real provider result for '+input.tool;}};
+ scripts[0].onload();
+ assert.equal(await first,'real provider result for Lesson Plan Generator');
+ assert.equal(await second,'real provider result for Activity Ideas Generator');
+ assert.deepEqual(calls,['Lesson Plan Generator','Activity Ideas Generator']);
+ const third=await real.Oa({tool:'School Notice Generator'});
+ assert.equal(third,'real provider result for School Notice Generator');
+ assert.equal(scripts.length,1,'Already initialized client must not download again');
+});
+test('client recovery: script network failure is visible and does not create any content',async()=>{
+ const vm=require('node:vm'),src=fs.readFileSync('assets/index-brightnexa-v2.js','utf8');
+ const start=src.indexOf('let schoolAIClientLoad = null;'),end=src.indexOf('function OaLegacy(',start);
+ const window={}, scripts=[];
+ const document={baseURI:'https://bright-nexa-school-os.onrender.com/index.html',createElement:()=>({}),head:{appendChild:s=>scripts.push(s)}};
+ const real=vm.runInNewContext(src.slice(start,end)+';({Oa})',{window,globalThis:window,document,URL,Promise,Error});
+ const pending=real.Oa({tool:'Question Paper Generator'});
+ assert.equal(scripts.length,1);
+ scripts[0].onerror();
+ await assert.rejects(pending,/could not be downloaded/);
+ assert.equal(window.BNSmartToolsAI,undefined,'Must not substitute a local placeholder generator');
+});
