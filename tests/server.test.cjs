@@ -7,6 +7,7 @@ before(async()=>{
  fs.copyFileSync('server.js',path.join(dir,'server.js'));
  fs.copyFileSync('parent-portal.cjs',path.join(dir,'parent-portal.cjs'));
  fs.cpSync('scripts',path.join(dir,'scripts'),{recursive:true});
+ fs.cpSync('src/smart-tools',path.join(dir,'src/smart-tools'),{recursive:true});
  fs.copyFileSync('student-portal.html',path.join(dir,'student-portal.html'));
  fs.copyFileSync('index.html',path.join(dir,'index.html'));
  child=spawn(process.execPath,['server.js'],{cwd:dir,env:{...process.env,PORT:'0',ADMIN_API_KEY:'test-only-admin',SESSION_SECRET:'test-only-session'}});

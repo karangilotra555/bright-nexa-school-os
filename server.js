@@ -371,6 +371,7 @@ function verifyAdminAuth(req) {
 const handleParentApi = require('./parent-portal.cjs')({
   db, getInstitution, verifySessionToken, verifyAdminAuth, parseJsonBody, sendJson, logAudit
 });
+const smartToolsAI = require('./src/smart-tools/teacher-ai.cjs').createService();
 
 const server = http.createServer(async (req, res) => {
   // CORS Preflight
@@ -388,6 +389,22 @@ const server = http.createServer(async (req, res) => {
   const clientIp = getClientIp(req);
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
+
+  // Private AI generation. Supabase JWT and tenant membership are verified
+  // server-side before any paid provider request; never accept a browser role.
+  if (pathname === '/api/smart-tools/generate') {
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'POST required.' });
+    try {
+      const auth = String(req.headers.authorization || '');
+      const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+      const payload = await parseJsonBody(req);
+      const generated = await smartToolsAI.generate(payload, token);
+      return sendJson(res, 200, generated);
+    } catch (err) {
+      const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 502;
+      return sendJson(res, status, { error: status === 502 && !err.status ? 'School AI is temporarily unavailable.' : err.message });
+    }
+  }
 
   // Parent portal: scoped student reads, leave requests, admin publishing.
   if (pathname.startsWith('/api/parent/')) {
