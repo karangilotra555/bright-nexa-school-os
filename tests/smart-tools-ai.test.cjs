@@ -169,3 +169,36 @@ test('TDD: a meaningful typed notice request works even when chapter input remai
  assert.notEqual(req.topic,'all');
  assert.match(svc.promptFor(req).user,/handwriting competition/);
 });
+
+
+test('TDD RED: browser client always installs window.BNSmartToolsAI even when legacy CommonJS module is present',()=>{
+ const vm=require('node:vm');
+ const source=fs.readFileSync('teacher-ai-cloud.js','utf8');
+ const window={};
+ const module={exports:{}};
+ vm.runInNewContext(source,{window,globalThis:window,module});
+ assert.equal(typeof window.BNSmartToolsAI?.generate,'function','Browser client must never export exclusively to CommonJS');
+ assert.equal(typeof module.exports.generate,'function','Node/CommonJS consumers retain support');
+});
+test('TDD RED: missing AI client is recovered once via versioned, same-origin script and never a fake local generator',()=>{
+ const src=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
+ const bundle=fs.readFileSync('assets/index-brightnexa-v2.js','utf8');
+ for(const [name,code] of [['source',src],['bundle',bundle]]){
+  assert.match(code,/ensureSchoolAIClient/,'Client recovery guard missing from '+name);
+  assert.match(code,/document\.createElement\(['"]script['"]\)/,'A missing client needs real script loading in '+name);
+  assert.match(code,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/,'Cache/version mismatch in '+name);
+  assert.match(code,/script\.onerror/,'Network failure must be surfaced to teacher in '+name);
+  assert.doesNotMatch(code,/if\(!globalThis\.BNSmartToolsAI\)throw Error\('School AI client failed to load/);
+ }
+});
+test('TDD RED: cache reset version changes with the AI client while keeping existing data untouched',()=>{
+ for(const dir of ['','docs/','app-extracted/dist/']){
+  const html=fs.readFileSync(dir+'index.html','utf8');
+  assert.match(html,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
+  assert.match(html,/assets\/index-brightnexa-v2\.js\?v=20261106-client-recovery-v2/);
+  assert.match(html,/CACHE_VERSION = '20261106-client-recovery-v2'/);
+  const sw=fs.readFileSync(dir+'sw.js','utf8');
+  assert.match(sw,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
+  assert.doesNotMatch(html,/localStorage\.clear\(/);
+ }
+});
