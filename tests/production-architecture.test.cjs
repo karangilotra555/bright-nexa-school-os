@@ -93,3 +93,13 @@ test('TDD: role permission source is tenant-scoped Supabase RLS, no browser auth
  assert.match(migrations,/staff_module_enabled/);
  assert.match(migrations,/teacher_can/);
 });
+
+
+test('TDD: directory prefers verified display name without exposing redundant fallback email',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../teacher-access.js'),'utf8');
+ const staffFn=src.slice(src.indexOf('function staffName(s)'),src.indexOf('function studentLabel(s)'));
+ assert.match(staffFn,/display_name/);
+ assert.doesNotMatch(staffFn,/\`\$\{name\} \(\$\{s\.email\}\\\)/);
+ const membership=src.slice(src.indexOf("put('membership'"),src.indexOf("put('membership'")+250);
+ assert.doesNotMatch(membership,/\+me\.email\+/);
+});
