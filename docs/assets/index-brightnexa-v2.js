@@ -28920,6 +28920,8 @@ function Ea({ data, students } = {}) {
   let [duration, setDuration] = (0, w.useState)(`45 Minutes`);
   let [totalMarks, setTotalMarks] = (0, w.useState)(`25`);
   let [lang, setLang] = (0, w.useState)(`English`);
+  let [teacherInstructions, setTeacherInstructions] = (0, w.useState)(``);
+  let [generating, setGenerating] = (0, w.useState)(false);
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
   let [g2, _2] = (0, w.useState)(Da);
@@ -28952,7 +28954,7 @@ function Ea({ data, students } = {}) {
     {
       eyebrow: `Smart Academic Assistant`,
       title: `AI Teacher Tools`,
-      subtitle: `Offline teacher-reviewed drafts, not AI-generated or syllabus verified. Check all answers before publishing.`
+      subtitle: `AI-powered school content from teacher instructions. Review accuracy and syllabus before publishing.`
     }
   ), /* @__PURE__ */ w.createElement(Component1368, { className: `ai-workbench` }, /* @__PURE__ */ w.createElement(Component1346, null, Ta.map((n3) => /* @__PURE__ */ w.createElement(
     Component1345,
@@ -28992,7 +28994,7 @@ function Ea({ data, students } = {}) {
       }
     },
     safeClassList.map((cls) => /* @__PURE__ */ w.createElement("option", { key: cls, value: cls }, cls.toLowerCase().startsWith("class") ? cls : `Class ${cls}`))
-  )), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("select", { value: i2, onChange: (e3) => a2(e3.target.value) }, allSchoolSubjects.map((sub) => /* @__PURE__ */ w.createElement("option", { key: sub, value: sub }, sub)))), /* @__PURE__ */ w.createElement(R, { label: `Topic / Chapter`, wide: true }, /* @__PURE__ */ w.createElement("input", { value: o2, onChange: (e3) => s2(e3.target.value), placeholder: "e.g. Food Components" })), /* @__PURE__ */ w.createElement(R, { label: `Output Language` }, /* @__PURE__ */ w.createElement("select", { value: lang, onChange: (e3) => setLang(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "English" }, "English"), /* @__PURE__ */ w.createElement("option", { value: "Hindi" }, "Hindi (\u0939\u093F\u0902\u0926\u0940)"), /* @__PURE__ */ w.createElement("option", { value: "Bilingual" }, "Bilingual (English + Hindi)"))), e2.includes(`Lesson Plan`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Plan Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "40 Minutes" }, "40 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour (60 Min)"), /* @__PURE__ */ w.createElement("option", { value: "Double Period (80 Min)" }, "Double Period (80 Min)"))), /* @__PURE__ */ w.createElement(R, { label: `Difficulty / Depth` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Foundational / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Curriculum"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Advanced / Deep Concept")))), e2.includes(`Question Paper`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Time Allowed` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"), /* @__PURE__ */ w.createElement("option", { value: "1.5 Hours" }, "1.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2 Hours" }, "2 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2.5 Hours" }, "2.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "3 Hours" }, "3 Hours"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("select", { value: i2, onChange: (e3) => a2(e3.target.value) }, allSchoolSubjects.map((sub) => /* @__PURE__ */ w.createElement("option", { key: sub, value: sub }, sub)))), /* @__PURE__ */ w.createElement(R, { label: `Topic / Chapter`, wide: true }, /* @__PURE__ */ w.createElement("input", { value: o2, onChange: (e3) => s2(e3.target.value), placeholder: "e.g. Food Components" })), /* @__PURE__ */ w.createElement(R, { label: `Teacher Instructions`, wide: true }, /* @__PURE__ */ w.createElement('textarea', { value: teacherInstructions, onChange: (e3) => setTeacherInstructions(e3.target.value), rows: 3, maxLength: 2500, placeholder: 'Type what you need, e.g. Class 6 Hindi, 50 marks, 3 hours, grammar, comprehension and writing. Give answer key.' })), /* @__PURE__ */ w.createElement(R, { label: `Output Language` }, /* @__PURE__ */ w.createElement("select", { value: lang, onChange: (e3) => setLang(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "English" }, "English"), /* @__PURE__ */ w.createElement("option", { value: "Hindi" }, "Hindi (\u0939\u093F\u0902\u0926\u0940)"), /* @__PURE__ */ w.createElement("option", { value: "Bilingual" }, "Bilingual (English + Hindi)"))), e2.includes(`Lesson Plan`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Plan Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "40 Minutes" }, "40 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour (60 Min)"), /* @__PURE__ */ w.createElement("option", { value: "Double Period (80 Min)" }, "Double Period (80 Min)"))), /* @__PURE__ */ w.createElement(R, { label: `Difficulty / Depth` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Foundational / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Curriculum"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Advanced / Deep Concept")))), e2.includes(`Question Paper`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Time Allowed` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"), /* @__PURE__ */ w.createElement("option", { value: "1.5 Hours" }, "1.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2 Hours" }, "2 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2.5 Hours" }, "2.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "3 Hours" }, "3 Hours"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
     "input",
     {
       type: "number",
@@ -29076,27 +29078,25 @@ function Ea({ data, students } = {}) {
     Component1358,
     {
       className: `primary-button`,
-      onClick: () => {
-        try {
-        p2(
-          Oa({
-            tool: e2,
-            className: n2,
-            subject: i2,
-            topic: o2,
-            language: lang,
-            difficulty: c2,
-            count: Number(u2) || 10,
-            duration,
-            totalMarks
-          })
-        );
-        h2(`Offline draft ready. Check your class syllabus before use.`);
-        }catch(error){p2(``);h2(`Generation failed: ${error.message}`);}
+      disabled: generating,
+      onClick: async () => {
+        if(generating)return;
+        setGenerating(true);p2(``);h2(`AI is generating from your instructions…`);
+        try{
+          const output=await Oa({
+            tool:e2,className:n2,subject:i2,topic:o2,language:lang,
+            difficulty:c2,count:Number(u2)||10,duration,totalMarks,
+            instructions:teacherInstructions,
+            evidence:(e2==='Student Remark Generator'||e2==='Weak Student Remedial Plan')?teacherInstructions:'',
+            activityFocus:e2==='Activity Ideas Generator'?(c2==='Easy'?'Quick Fun Games':c2==='Hard'?'Research & Discovery':'Hands-on & Experiential'):''
+          });
+          p2(output);h2(`AI draft generated. Review facts, syllabus and answers before publishing.`);
+        }catch(error){p2(``);h2(`Not generated: ${error.message}`);}
+        finally{setGenerating(false);}
       }
     },
     /* @__PURE__ */ w.createElement(_Component30, { size: 17 }),
-    `Generate ${e2.replace(` Generator`, ``)}`
+    generating ? `Generating with AI…` : `Generate ${e2.replace(` Generator`, ``)}`
   ), f2 && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component1361, { className: `ai-output` }, /* @__PURE__ */ w.createElement(Component1359, null, `Editable teacher-reviewed output`), /* @__PURE__ */ w.createElement(
     Component1360,
     {
@@ -29157,7 +29157,7 @@ function Ea({ data, students } = {}) {
   ))));
 }
 function Da(){return []; /* Existing local drafts retained, not authoritative. */}
-function Oa(input){if(!globalThis.BNTeacherGenerator)throw Error('Teacher generator failed to load. Refresh.');return globalThis.BNTeacherGenerator.generate(input);}
+async function Oa(input){if(!globalThis.BNSmartToolsAI)throw Error('School AI client failed to load. Refresh and check your connection.');return await globalThis.BNSmartToolsAI.generate(input);}
 function OaLegacy({
   tool: e2,
   className: t2,
