@@ -239,7 +239,9 @@ const PAPER_BANK={
    ['Evaluate the claim that adding water compensates for the absence of proteins in meals.','दावे का मूल्यांकन कीजिए कि पानी पीना भोजन में प्रोटीन की कमी पूरी कर देता है।'],
    ['Construct a two-step method to compare fibre sources in everyday foods and justify it.','दैनिक भोजनों में रेशे के स्रोतों की तुलना की दो-चरणीय विधि और कारण बताइए।'],
    ['Critique the idea that fat-rich food alone meets all the needs of a growing child.','इस विचार की आलोचना कीजिए कि वसा-प्रधान भोजन बढ़ते बच्चे की सभी जरूरतें पूरी करता है।'],
-   ['Suggest and defend two changes to make a snack-only food diary more balanced.','केवल स्नैक्स वाली आहार डायरी संतुलित बनाने के दो परिवर्तन और कारण दीजिए।']
+   ['Suggest and defend two changes to make a snack-only food diary more balanced.','केवल स्नैक्स वाली आहार डायरी संतुलित बनाने के दो परिवर्तन और कारण दीजिए।'],
+   ['Evaluate whether drinking fruit juice alone provides a complete breakfast; justify your conclusion.','मूल्यांकन कीजिए कि क्या केवल फलों का रस पूरा नाश्ता है; कारण दीजिए।'],
+   ['Design two checks to determine whether a proposed lunch provides both protein and fibre.','प्रस्तावित भोजन में प्रोटीन और रेशा जाँचने के दो तरीके सुझाइए।']
   ],
   long:[
    ['Design a four-point assessment rubric for a balanced school lunch, defending the nutritional role of each criterion.','संतुलित स्कूल भोजन के लिए चार-बिंदु मूल्यांकन मापदंड बनाएँ और प्रत्येक का पोषण तर्क दें।'],
@@ -283,6 +285,7 @@ function buildPaper(input){
  // The school may configure a different official board pattern in the future.
  const allowed=duration<=60?[1,2,3]:duration<150?[1,2,3,4]:[1,2,3,4,5];
  if(q.totalMarks>Math.floor(duration/1.2))throw Error('Total marks exceed feasible time allocation for this duration. Increase time or reduce marks.');
+ if(q.totalMarks<q.count)throw Error('Total marks must be at least the number of questions.');
  const marks=markDistribution(q.count,q.totalMarks,allowed);
  const slots=Object.entries(marks.reduce((map,m)=>{(map[m]||(map[m]=[])).push(m);return map;},{}))
    .flatMap(([m,items])=>items.map(()=>Number(m)));
