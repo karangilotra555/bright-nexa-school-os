@@ -126,3 +126,27 @@ test('TDD: teacher instructions are sent by the authenticated frontend without a
  assert.match(source,/await Oa\(/);
  assert.doesNotMatch(source,/Offline draft ready\. Check your class syllabus before use\./);
 });
+
+
+test('TDD: all served entrypoints load the AI client before the actual React bundle, with consistent mirrors',()=>{
+ const fs=require('node:fs');
+ const bases=['','docs/','app-extracted/dist/'];
+ for(const prefix of bases){
+  const html=fs.readFileSync(prefix+'index.html','utf8');
+  const client=html.indexOf('teacher-ai-cloud.js?v=');
+  const bundle=html.indexOf('assets/index-brightnexa-v2.js?v=');
+  assert.ok(client>0&&bundle>client,'AI client must load before the school app: '+prefix);
+  const js=fs.readFileSync(prefix+'assets/index-brightnexa-v2.js','utf8');
+  assert.match(js,/BNSmartToolsAI/);
+  assert.match(js,/Teacher Instructions/);
+  assert.doesNotMatch(js,/Offline draft ready\. Check your class syllabus before use/);
+ }
+ const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
+ assert.match(source,/generating\s*\?\s*[\x60'"]Generating with AI/);
+});
+test('TDD: Smart Tools backend route requires school authentication and never exposes a provider secret',()=>{
+ const source=fs.readFileSync('server.js','utf8');
+ assert.match(source,/pathname === '\/api\/smart-tools\/generate'/);
+ assert.match(source,/smartToolsAI\.generate\(payload, token\)/);
+ assert.doesNotMatch(fs.readFileSync('teacher-ai-cloud.js','utf8'),/x-goog-api-key|GEMINI_API_KEY|GROQ_API_KEY/);
+});
