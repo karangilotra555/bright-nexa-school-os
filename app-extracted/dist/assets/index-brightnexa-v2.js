@@ -39888,6 +39888,14 @@ function Fs({ children: e2 }) {
       onClick: Ge2
     },
     `Open demo school`
+  ), /* @__PURE__ */ w.createElement(
+    "a",
+    {
+      className: "secondary-button auth-secondary",
+      href: "./teacher-access.html",
+      style: { display: "flex", justifyContent: "center", textDecoration: "none", marginTop: "10px" }
+    },
+    "Log in to existing school"
   ), /* @__PURE__ */ w.createElement(Component2193, null, `Starter records contain no real personal data. Edit or delete every record labelled \u201CSample\u201D before live use.`)) : a2 === `setup` ? /* @__PURE__ */ w.createElement(Component2289, { className: `auth-card auth-setup-card` }, /* @__PURE__ */ w.createElement(
     Component2195,
     {
