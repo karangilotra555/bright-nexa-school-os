@@ -158,8 +158,8 @@ const FOOD_EXTENDED_QUESTIONS=[
 ];
 function paperNumbered(q){
  if(!q.food)throw Error('No verified question bank for this chapter. Add a school-approved chapter question bank before generating a question paper.');
- if(q.count>FOOD_QUICK_GROUPS.length)throw Error('Only 12 distinct reviewed Food Components questions are available. Reduce question count or add a verified school question bank.');
  const time=mins(q.duration), marks=assignMarks(q.count,q.totalMarks);
+ if(q.count>FOOD_QUICK_GROUPS.length)throw Error('Only 12 distinct reviewed Food Components questions are available. Reduce question count or add a verified school question bank.');
  if(time<15||time>300)throw Error('Paper duration must be between 15 minutes and 5 hours.');
  if(Math.max(...marks)>10)throw Error('This chapter supports at most 10 marks per question. Increase question count or reduce total marks.');
  const mode=time<=60?'quick':time>=150?'extended':'standard';
