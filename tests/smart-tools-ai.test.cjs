@@ -99,3 +99,30 @@ test('TDD: client must call authenticated backend, never ship provider key or fa
  assert.match(client,/api\/smart-tools\/generate/);
  assert.doesNotMatch(client,/GEMINI_API_KEY|GROQ_API_KEY|x-goog-api-key/);
 });
+
+
+test('TDD: free-form teacher instructions override defaults when explicit, without losing school guardrails',()=>{
+ const p=svc.validateInput({...base,subject:'Science',topic:'all',totalMarks:25,count:10,duration:'45 Minutes',instructions:'Class 6 Hindi ka 50 marks paper 3 hours ka banao. Grammar, comprehension and essay writing. Answer key bhi do.'});
+ assert.equal(p.className,'6');assert.equal(p.subject,'Hindi');assert.equal(p.totalMarks,50);assert.equal(p.durationMinutes,180);
+ assert.ok(p.count>=12,'50 marks needs a proper mixed paper, not ten five-mark questions');
+ const plan=svc.planAssessment(p);assert.equal(plan.totalMarks,50);
+ assert.equal(plan.questions.reduce((n,q)=>n+q.minutes,0),180);
+ const prompt=svc.promptFor(p,plan);
+ assert.match(prompt.user,/Grammar, comprehension and essay writing/);
+ assert.match(prompt.system,/teacher instructions|teacher's instructions/i);
+});
+test('TDD: unstructured instructions are preserved, validated and provider prompt is not generic',()=>{
+ const p=svc.validateInput({...base,topic:'all',instructions:'Students will practise मुहावरे, paragraph writing, and reading comprehension. Include answer keys.'});
+ assert.match(p.instructions,/मुहावरे/);
+ const prompt=svc.promptFor(p,svc.planAssessment(p));
+ assert.match(prompt.user,/paragraph writing/);
+ assert.doesNotMatch(prompt.system,/use your class notes/i);
+ assert.throws(()=>svc.validateInput({...base,instructions:'x'.repeat(4000)}),/instruction|long/i);
+});
+test('TDD: teacher instructions are sent by the authenticated frontend without a local-template fallback',()=>{
+ const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
+ assert.match(source,/Teacher Instructions/);
+ assert.match(source,/instructions:\s*teacherInstructions/);
+ assert.match(source,/await Oa\(/);
+ assert.doesNotMatch(source,/Offline draft ready\. Check your class syllabus before use\./);
+});
