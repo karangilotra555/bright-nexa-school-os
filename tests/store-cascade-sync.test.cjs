@@ -156,3 +156,49 @@ test('isClassMatch links variations for Exam and Marks modules', () => {
   assert.equal(isClassMatch('Class 6', '6th'), true);
   assert.equal(isClassMatch('Class 9', 'Class 10'), false);
 });
+
+test('bnCascadeClassroomChanges isolates academicStream so Science and Commerce students in same grade are not co-modified', () => {
+  const oldClasses = [
+    { id: 'c11-sci', name: 'Class 11', section: 'A', academicStream: 'Science' },
+    { id: 'c11-comm', name: 'Class 11', section: 'A', academicStream: 'Commerce' }
+  ];
+  const newClasses = [
+    { id: 'c11-sci', name: 'Class 11', section: 'A-Medical', academicStream: 'Science' },
+    { id: 'c11-comm', name: 'Class 11', section: 'A', academicStream: 'Commerce' }
+  ];
+
+  const students = [
+    { id: 's-sci', name: 'Rohan Sharma', className: 'Class 11', section: 'A', academicStream: 'Science' },
+    { id: 's-comm', name: 'Ananya Gupta', className: 'Class 11', section: 'A', academicStream: 'Commerce' }
+  ];
+
+  const operations = {
+    feeStructures: [
+      { id: 'fs-sci', className: 'Class 11', category: 'Science Lab Fee', academicStream: 'Science', amount: 2000 },
+      { id: 'fs-comm', className: 'Class 11', category: 'Commerce Accounts Fee', academicStream: 'Commerce', amount: 1500 }
+    ],
+    attendance: [
+      { id: 'att-sci', studentId: 's-sci', className: 'Class 11', section: 'A', academicStream: 'Science', status: 'Present' },
+      { id: 'att-comm', studentId: 's-comm', className: 'Class 11', section: 'A', academicStream: 'Commerce', status: 'Present' }
+    ]
+  };
+
+  const result = bnCascadeClassroomChanges(oldClasses, newClasses, students, operations);
+
+  // Science student updated to A-Medical
+  const sciStudent = result.updatedStudents.find(s => s.id === 's-sci');
+  assert.equal(sciStudent.section, 'A-Medical');
+
+  // Commerce student MUST remain untouched in section A
+  const commStudent = result.updatedStudents.find(s => s.id === 's-comm');
+  assert.equal(commStudent.section, 'A', 'Commerce student section must not be changed by Science class update');
+  assert.equal(commStudent.academicStream, 'Commerce');
+
+  // Fee structure isolation
+  const commFee = result.updatedOperations.feeStructures.find(f => f.id === 'fs-comm');
+  assert.equal(commFee.academicStream, 'Commerce');
+
+  // Attendance isolation
+  const commAtt = result.updatedOperations.attendance.find(a => a.id === 'att-comm');
+  assert.equal(commAtt.section, 'A', 'Commerce attendance must not be mutated by Science class update');
+});

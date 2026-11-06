@@ -174,7 +174,51 @@
       left.append(dom('div',count+' accessible students','muted'));
       const assignments=allAssignments.filter(a=>a.class_id===c.id&&(isAdmin()||a.school_user_id===me.id));
       const flags=assignments.map(a=>a.assignment_type==='subject_teacher'?a.subject:'Class Teacher').join(', ');
-      line.append(left,dom('span',flags||'School access','pill'));root.append(line);
+      const right=dom('div',undefined,'flex');
+      right.style.gap='6px';
+      right.style.alignItems='center';
+      right.style.flexWrap='wrap';
+      right.append(dom('span',flags||'School access','pill'));
+
+      if(canAcademic()){
+        const attBtn=dom('button','📋 Attendance','ghost');
+        attBtn.type='button';
+        attBtn.style.padding='4px 8px';
+        attBtn.style.fontSize='12px';
+        attBtn.addEventListener('click',()=>{
+          if($('attendanceClass')){$('attendanceClass').value=c.id;invalidateRoster();}
+          tab('attendance');
+          run(loadAttendance);
+        });
+
+        const hwBtn=dom('button','📝 Homework','ghost');
+        hwBtn.type='button';
+        hwBtn.style.padding='4px 8px';
+        hwBtn.style.fontSize='12px';
+        hwBtn.addEventListener('click',()=>{
+          if($('homeworkClass')){$('homeworkClass').value=c.id;fillSubject(c.id);}
+          tab('homework');
+        });
+
+        right.append(attBtn,hwBtn);
+      }
+
+      if(isAdmin()){
+        const stuBtn=dom('button','👥 Students','ghost');
+        stuBtn.type='button';
+        stuBtn.style.padding='4px 8px';
+        stuBtn.style.fontSize='12px';
+        stuBtn.addEventListener('click',()=>{
+          if($('profileClassFilter')){
+            $('profileClassFilter').value=c.id;
+            $('profileClassFilter').dispatchEvent(new Event('change'));
+          }
+          tab('profiles');
+        });
+        right.append(stuBtn);
+      }
+
+      line.append(left,right);root.append(line);
     }
   }
   function writableClasses(action){
