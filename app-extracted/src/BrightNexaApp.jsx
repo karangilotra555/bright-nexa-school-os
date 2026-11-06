@@ -32430,6 +32430,10 @@ function Ea({ data, students } = {}) {
               className={e === n ? `active` : ``}
               onClick={() => {
                 t(n);
+                p('');h('');
+                d('10');
+                setDuration('45 Minutes');
+                setTotalMarks('25');
                 if (n.includes('Lesson Plan')) {
                   setDuration('45 Minutes');
                 } else if (n.includes('Question Paper')) {
@@ -32443,6 +32447,8 @@ function Ea({ data, students } = {}) {
                   setDuration('25-30 Minutes');
                 } else if (n.includes('Weak Student')) {
                   setDuration('2 Weeks');
+                } else if (n.includes('Student Remark')) {
+                  setDuration('Term 1 / Periodic Test');
                 }
               }}
               key={n}
@@ -32454,6 +32460,7 @@ function Ea({ data, students } = {}) {
         </Component1346>
         <Component1367 className={`ai-builder`}>
           <Component1347>{e}</Component1347>
+          {!sessionStorage.getItem('bn_school_staff_session_v1') && <p><a href="./teacher-access.html">Sign in with your school account to use AI</a>. Return to School OS in this tab after signing in.</p>}
           <Component1357 className={`ai-input-grid`}>
             <R label={`Class / batch`}>
               <select
@@ -32759,7 +32766,6 @@ function Ea({ data, students } = {}) {
                   tool: e,
                   className: n,
                   subject: i,
-                  topic: teacherInstructions.trim().slice(0,200) || "all",
                   language: lang,
                   difficulty: c,
                   count: Number(u) || 10,

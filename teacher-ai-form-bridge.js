@@ -7,11 +7,10 @@
   function normalize(input) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) return input;
     var request = Object.assign({}, input);
-    var suggestions = String(request.instructions || '').trim();
     // The legacy UI includes a stale Topic/Chapter value even when the teacher
     // never requested it. Never let that hidden value drive generation.
     // The teacher's optional notes are the only source for a chapter/focus.
-    request.topic = suggestions ? suggestions.slice(0, 200) : 'all';
+    delete request.topic;
     return request;
   }
   function bridgeAI() {

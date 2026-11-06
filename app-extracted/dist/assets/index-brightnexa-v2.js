@@ -28913,8 +28913,7 @@ function Ea({ data, students } = {}) {
       classSubjects.concat((configuredClasses || []).flatMap((c3) => c3.subjects || [])).concat(["Science", "Mathematics", "English", "Hindi", "Social Science", "Sanskrit", "Computer Science", "Environmental Studies", "Physics", "Chemistry", "Biology"]).filter(Boolean)
     )
   );
-  let [i2, a2] = (0, w.useState)(() => allSchoolSubjects.find((s3) => s3 === "Science") || allSchoolSubjects[0]);
-  let [o2, s2] = (0, w.useState)(`Food Components`);
+  let [i2, a2] = (0, w.useState)(() => allSchoolSubjects.find((s2) => s2 === "Science") || allSchoolSubjects[0]);
   let [c2, l2] = (0, w.useState)(`Medium`);
   let [u2, d2] = (0, w.useState)(`10`);
   let [duration, setDuration] = (0, w.useState)(`45 Minutes`);
@@ -28925,7 +28924,16 @@ function Ea({ data, students } = {}) {
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
   let [g2, _2] = (0, w.useState)(Da);
-  (0,w.useEffect)(()=>{let on=true;if(window.BNTeacherDrafts&&sessionStorage.getItem('bn_school_staff_session_v1'))window.BNTeacherDrafts.list().then(rows=>{if(on)_2(rows)}).catch(()=>{});return()=>{on=false};},[]);
+  (0, w.useEffect)(() => {
+    let on2 = true;
+    if (window.BNTeacherDrafts && sessionStorage.getItem("bn_school_staff_session_v1")) window.BNTeacherDrafts.list().then((rows) => {
+      if (on2) _2(rows);
+    }).catch(() => {
+    });
+    return () => {
+      on2 = false;
+    };
+  }, []);
   const Component1345 = `button`;
   const Component1346 = `aside`;
   const Component1347 = `h2`;
@@ -28962,6 +28970,11 @@ function Ea({ data, students } = {}) {
       className: e2 === n3 ? `active` : ``,
       onClick: () => {
         t2(n3);
+        p2("");
+        h2("");
+        d2("10");
+        setDuration("45 Minutes");
+        setTotalMarks("25");
         if (n3.includes("Lesson Plan")) {
           setDuration("45 Minutes");
         } else if (n3.includes("Question Paper")) {
@@ -28975,13 +28988,15 @@ function Ea({ data, students } = {}) {
           setDuration("25-30 Minutes");
         } else if (n3.includes("Weak Student")) {
           setDuration("2 Weeks");
+        } else if (n3.includes("Student Remark")) {
+          setDuration("Term 1 / Periodic Test");
         }
       },
       key: n3
     },
     /* @__PURE__ */ w.createElement(_Component30, { size: 15 }),
     n3
-  ))), /* @__PURE__ */ w.createElement(Component1367, { className: `ai-builder` }, /* @__PURE__ */ w.createElement(Component1347, null, e2), /* @__PURE__ */ w.createElement(Component1357, { className: `ai-input-grid` }, /* @__PURE__ */ w.createElement(R, { label: `Class / batch` }, /* @__PURE__ */ w.createElement(
+  ))), /* @__PURE__ */ w.createElement(Component1367, { className: `ai-builder` }, /* @__PURE__ */ w.createElement(Component1347, null, e2), !sessionStorage.getItem("bn_school_staff_session_v1") && /* @__PURE__ */ w.createElement("p", null, /* @__PURE__ */ w.createElement("a", { href: "./teacher-access.html" }, "Sign in with your school account to use AI"), ". Return to School OS in this tab after signing in."), /* @__PURE__ */ w.createElement(Component1357, { className: `ai-input-grid` }, /* @__PURE__ */ w.createElement(R, { label: `Class / batch` }, /* @__PURE__ */ w.createElement(
     "select",
     {
       value: n2,
@@ -28995,7 +29010,16 @@ function Ea({ data, students } = {}) {
       }
     },
     safeClassList.map((cls) => /* @__PURE__ */ w.createElement("option", { key: cls, value: cls }, cls.toLowerCase().startsWith("class") ? cls : `Class ${cls}`))
-  )), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("select", { value: i2, onChange: (e3) => a2(e3.target.value) }, allSchoolSubjects.map((sub) => /* @__PURE__ */ w.createElement("option", { key: sub, value: sub }, sub)))), null /* topic provided via optional suggestions */, /* @__PURE__ */ w.createElement(R, { label: `Suggestions / Chapter (optional)`, wide: true }, /* @__PURE__ */ w.createElement('textarea', { value: teacherInstructions, onChange: (e3) => setTeacherInstructions(e3.target.value), rows: 3, maxLength: 2500, placeholder: 'Optional: chapter/topic or extra guidance, e.g. Food Components — explain with easy examples. Leave blank for general class-wise content.' })), /* @__PURE__ */ w.createElement(R, { label: `Output Language` }, /* @__PURE__ */ w.createElement("select", { value: lang, onChange: (e3) => setLang(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "English" }, "English"), /* @__PURE__ */ w.createElement("option", { value: "Hindi" }, "Hindi (\u0939\u093F\u0902\u0926\u0940)"), /* @__PURE__ */ w.createElement("option", { value: "Bilingual" }, "Bilingual (English + Hindi)"))), e2.includes(`Lesson Plan`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Plan Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "40 Minutes" }, "40 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour (60 Min)"), /* @__PURE__ */ w.createElement("option", { value: "Double Period (80 Min)" }, "Double Period (80 Min)"))), /* @__PURE__ */ w.createElement(R, { label: `Difficulty / Depth` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Foundational / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Curriculum"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Advanced / Deep Concept")))), e2.includes(`Question Paper`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Time Allowed` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"), /* @__PURE__ */ w.createElement("option", { value: "1.5 Hours" }, "1.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2 Hours" }, "2 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2.5 Hours" }, "2.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "3 Hours" }, "3 Hours"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("select", { value: i2, onChange: (e3) => a2(e3.target.value) }, allSchoolSubjects.map((sub) => /* @__PURE__ */ w.createElement("option", { key: sub, value: sub }, sub)))), /* @__PURE__ */ w.createElement(R, { label: `Suggestions / Chapter (optional)`, wide: true }, /* @__PURE__ */ w.createElement(
+    "textarea",
+    {
+      value: teacherInstructions,
+      onChange: (e3) => setTeacherInstructions(e3.target.value),
+      rows: 3,
+      maxLength: 2500,
+      placeholder: "Optional: chapter/topic or extra guidance, e.g. Food Components \u2014 explain with easy examples. Leave blank for general class-wise content."
+    }
+  )), /* @__PURE__ */ w.createElement(R, { label: `Output Language` }, /* @__PURE__ */ w.createElement("select", { value: lang, onChange: (e3) => setLang(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "English" }, "English"), /* @__PURE__ */ w.createElement("option", { value: "Hindi" }, "Hindi (\u0939\u093F\u0902\u0926\u0940)"), /* @__PURE__ */ w.createElement("option", { value: "Bilingual" }, "Bilingual (English + Hindi)"))), e2.includes(`Lesson Plan`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Plan Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "40 Minutes" }, "40 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour (60 Min)"), /* @__PURE__ */ w.createElement("option", { value: "Double Period (80 Min)" }, "Double Period (80 Min)"))), /* @__PURE__ */ w.createElement(R, { label: `Difficulty / Depth` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Foundational / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Curriculum"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Advanced / Deep Concept")))), e2.includes(`Question Paper`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Time Allowed` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"), /* @__PURE__ */ w.createElement("option", { value: "1.5 Hours" }, "1.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2 Hours" }, "2 Hours"), /* @__PURE__ */ w.createElement("option", { value: "2.5 Hours" }, "2.5 Hours"), /* @__PURE__ */ w.createElement("option", { value: "3 Hours" }, "3 Hours"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
     "input",
     {
       type: "number",
@@ -29081,23 +29105,36 @@ function Ea({ data, students } = {}) {
       className: `primary-button`,
       disabled: generating,
       onClick: async () => {
-        if(generating)return;
-        setGenerating(true);p2(``);h2(`AI is generating from your instructions…`);
-        try{
-          const output=await Oa({
-            tool:e2,className:n2,subject:i2,topic:teacherInstructions.trim().slice(0,200)||"all",language:lang,
-            difficulty:c2,count:Number(u2)||10,duration,totalMarks,
-            instructions:teacherInstructions,
-            evidence:(e2==='Student Remark Generator'||e2==='Weak Student Remedial Plan')?teacherInstructions:'',
-            activityFocus:e2==='Activity Ideas Generator'?(c2==='Easy'?'Quick Fun Games':c2==='Hard'?'Research & Discovery':'Hands-on & Experiential'):''
+        if (generating) return;
+        setGenerating(true);
+        p2(``);
+        h2(`AI is generating from your instructions\u2026`);
+        try {
+          const output = await Oa({
+            tool: e2,
+            className: n2,
+            subject: i2,
+            language: lang,
+            difficulty: c2,
+            count: Number(u2) || 10,
+            duration,
+            totalMarks,
+            instructions: teacherInstructions,
+            evidence: e2 === "Student Remark Generator" || e2 === "Weak Student Remedial Plan" ? teacherInstructions : "",
+            activityFocus: e2 === "Activity Ideas Generator" ? c2 === "Easy" ? "Quick Fun Games" : c2 === "Hard" ? "Research & Discovery" : "Hands-on & Experiential" : ""
           });
-          p2(output);h2(`AI draft generated. Review facts, syllabus and answers before publishing.`);
-        }catch(error){p2(``);h2(`Not generated: ${error.message}`);}
-        finally{setGenerating(false);}
+          p2(output);
+          h2(`AI draft generated. Review facts, syllabus and answers before publishing.`);
+        } catch (error) {
+          p2(``);
+          h2(`Not generated: ${error.message}`);
+        } finally {
+          setGenerating(false);
+        }
       }
     },
     /* @__PURE__ */ w.createElement(_Component30, { size: 17 }),
-    generating ? `Generating with AI…` : `Generate ${e2.replace(` Generator`, ``)}`
+    generating ? `Generating with AI\u2026` : `Generate ${e2.replace(` Generator`, ``)}`
   ), f2 && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component1361, { className: `ai-output` }, /* @__PURE__ */ w.createElement(Component1359, null, `Editable teacher-reviewed output`), /* @__PURE__ */ w.createElement(
     Component1360,
     {
@@ -29124,7 +29161,13 @@ function Ea({ data, students } = {}) {
     Component1363,
     {
       className: `secondary-button`,
-      onClick: () => {try{window.BNTeacherGenerator.printDraft(f2)}catch(error){h2(`Print failed: ${error.message}`)}}
+      onClick: () => {
+        try {
+          window.BNTeacherGenerator.printDraft(f2);
+        } catch (error) {
+          h2(`Print failed: ${error.message}`);
+        }
+      }
     },
     /* @__PURE__ */ w.createElement(Je, { size: 16 }),
     `Print / PDF`
@@ -29133,13 +29176,18 @@ function Ea({ data, students } = {}) {
     {
       className: `primary-button`,
       onClick: async () => {
-        if(!f2.trim()){h2(`Nothing to save.`);return;}
-        try{
-          if(!window.BNTeacherDrafts)throw Error('Cloud draft service unavailable.');
-          const saved=await window.BNTeacherDrafts.save({tool:e2,className:n2,subject:i2,topic:teacherInstructions.trim().slice(0,200)||"all",language:lang,content:f2});
-          _2(previous=>[saved,...previous].slice(0,30));
+        if (!f2.trim()) {
+          h2(`Nothing to save.`);
+          return;
+        }
+        try {
+          if (!window.BNTeacherDrafts) throw Error("Cloud draft service unavailable.");
+          const saved = await window.BNTeacherDrafts.save({ tool: e2, className: n2, subject: i2, topic: teacherInstructions.trim().slice(0, 200) || "all", language: lang, content: f2 });
+          _2((previous) => [saved, ...previous].slice(0, 30));
           h2(`Private draft saved in Supabase. Teacher review required.`);
-        }catch(error){h2(`Not saved: ${error.message}`);}
+        } catch (error) {
+          h2(`Not saved: ${error.message}`);
+        }
       }
     },
     /* @__PURE__ */ w.createElement(Qe, { size: 16 }),
@@ -29157,29 +29205,33 @@ function Ea({ data, students } = {}) {
     /* @__PURE__ */ w.createElement(Component1373, null, e3.tool, ` \u2022 `, new Date(e3.createdAt).toLocaleDateString(`en-IN`))
   ))));
 }
-function Da(){return []; /* Existing local drafts retained, not authoritative. */}
+function Da() {
+  return [];
+}
 let schoolAIClientLoad = null;
-function ensureSchoolAIClient(){
-  if(typeof globalThis.BNSmartToolsAI?.generate === 'function')return Promise.resolve(globalThis.BNSmartToolsAI);
-  if(!schoolAIClientLoad){
-    schoolAIClientLoad = new Promise((resolve,reject)=>{
-      if(typeof document === 'undefined')return reject(Error('AI client can only load in a browser.'));
-      const script = document.createElement('script');
-      script.src = new URL('./teacher-ai-cloud.js?v=20261106-client-recovery-v2', document.baseURI).href;
+function ensureSchoolAIClient() {
+  if (typeof globalThis.BNSmartToolsAI?.generate === "function") return Promise.resolve(globalThis.BNSmartToolsAI);
+  if (!schoolAIClientLoad) {
+    schoolAIClientLoad = new Promise((resolve, reject) => {
+      if (typeof document === "undefined") return reject(Error("AI client can only load in a browser."));
+      const script = document.createElement("script");
+      script.src = new URL("./teacher-ai-cloud.js?v=20261106-client-recovery-v2", document.baseURI).href;
       script.async = true;
-      script.onload = ()=>{
+      script.onload = () => {
         const client = globalThis.BNSmartToolsAI;
-        if(client && typeof client.generate === 'function')resolve(client);
-        else reject(Error('School AI client script loaded but did not initialize. Clear the site cache and refresh.'));
+        if (client && typeof client.generate === "function") resolve(client);
+        else reject(Error("School AI client script loaded but did not initialize. Clear the site cache and refresh."));
       };
-      script.onerror = ()=>reject(Error('School AI script could not be downloaded. Check network or browser security settings.'));
+      script.onerror = () => reject(Error("School AI script could not be downloaded. Check network or browser security settings."));
       document.head.appendChild(script);
-    }).finally(()=>{schoolAIClientLoad=null;});
+    }).finally(() => {
+      schoolAIClientLoad = null;
+    });
   }
   return schoolAIClientLoad;
 }
-async function Oa(input){
-  const client=await ensureSchoolAIClient();
+async function Oa(input) {
+  const client = await ensureSchoolAIClient();
   return await client.generate(input);
 }
 function OaLegacy({

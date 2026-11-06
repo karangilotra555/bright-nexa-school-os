@@ -16,13 +16,18 @@ if(result.error)throw result.error;
 if(result.status!==0)process.exit(result.status||1);
 const bundle=fs.readFileSync(path.join(root,target));
 for(const mirror of ['docs','app-extracted/dist'])fs.writeFileSync(path.join(root,mirror,target),bundle);
+for(const name of ['teacher-ai-cloud.js','teacher-ai-form-bridge.js']){
+  const content=fs.readFileSync(path.join(root,name),'utf8').replace(/\r\n/g,'\n');
+  for(const mirror of ['','docs','app-extracted/dist'])fs.writeFileSync(path.join(root,mirror,name),content);
+}
 const revision=crypto.createHash('sha256').update(bundle).digest('hex');
 for(const mirror of ['','docs','app-extracted/dist']){
   const file=path.join(root,mirror,'sw.js');
   const before=fs.readFileSync(file,'utf8');
   let after=before.replace(/(url:"assets\/index-brightnexa-v2\.js",revision:)(?:null|"[^"]*")/,'$1"'+revision+'"');
   if(after===before&&!before.includes('revision:"'+revision+'"'))throw Error('Missing precache entry: '+file);
-  const assets=['index.html','school-workspace-cloud.js?v=20261106','school-workspace-controller.js?v=20261106','school-workspace-persistence.js?v=20261106'];
+  const html=fs.readFileSync(path.join(root,mirror,'index.html'),'utf8');
+  const assets=['index.html',...Array.from(html.matchAll(/src="\.\/((?:school-workspace-|teacher-)[^"/]+\.js\?v=[^"]+)"/g),m=>m[1])];
   for(const url of assets){
     const assetPath=path.join(root,mirror,url.split('?')[0]);
     // Git stores these text assets with LF; hash the bytes deployed by CI too.

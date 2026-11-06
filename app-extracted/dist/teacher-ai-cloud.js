@@ -12,7 +12,7 @@
   async function session(){
    let s;try{s=JSON.parse(store.getItem(SESSION)||'null')}catch(_){}
    if(!s?.access_token)throw Error('Sign in via Teachers & Staff (school cloud account) to use AI. Local Mode alone does not authorize AI usage.');
-   if(Number(s.expires_at)<=Date.now()/1000+60){
+   if(!Number.isFinite(Number(s.expires_at))||Number(s.expires_at)<=Date.now()/1000+90){
     if(!s.refresh_token)throw Error('Teacher session expired. Sign in again.');
     const res=await network(SUPABASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:PUBLISHABLE,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token}),cache:'no-store'});
     let data;try{data=await res.json()}catch{throw Error('Cloud login refresh failed.')}
