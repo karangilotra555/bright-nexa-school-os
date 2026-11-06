@@ -32693,7 +32693,7 @@ function Ea({ data, students } = {}) {
                     value={u}
                     onChange={(e) => d(e.target.value.replace(/\D/g, ``))}
                     min="2"
-                    max="8"
+                    max="20"
                     placeholder="e.g. 3"
                   />
                 </R>
