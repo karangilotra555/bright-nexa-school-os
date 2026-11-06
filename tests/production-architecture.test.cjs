@@ -103,3 +103,12 @@ test('TDD: directory prefers verified display name without exposing redundant fa
  const membership=src.slice(src.indexOf("put('membership'"),src.indexOf("put('membership'")+250);
  assert.doesNotMatch(membership,/\+me\.email\+/);
 });
+
+
+test('TDD: staff assignment list and name edits prefer saved display_name, and unknown roles are hidden',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../teacher-access.js'),'utf8');
+ assert.match(src,/left\.append\(dom\('strong',staffLabel\(staff\)/);
+ assert.doesNotMatch(src,/staff\?\.email\|\|'Teacher'/);
+ assert.doesNotMatch(src,/schoolLabel\+' · '\+newName\+' · '\+me\.email/);
+ assert.match(src,/if\(!perms\)return false/);
+});
