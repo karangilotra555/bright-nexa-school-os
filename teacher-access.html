@@ -50,22 +50,27 @@ button.danger{color:#a82b3f;background:#fff2f3;border:1px solid #f6c8d0;border-r
 tr td select{padding:7px;min-width:115px}
 .footer{font-size:12px;color:#78879a;text-align:center}
 .notice{border-left:4px solid #ff7818;background:#fff7ed;padding:11px 13px;border-radius:8px;font-size:13px;color:#82511b;margin-bottom:16px}
-.portal-layout{display:flex;gap:20px;align-items:flex-start;margin-top:16px}
-.portal-nav{width:230px;flex-shrink:0;background:#ffffff;border:1px solid #dce6ef;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(6,26,54,0.04);position:sticky;top:16px}
-.portal-nav-title{font-size:11px;font-weight:800;color:#8a99a8;text-transform:uppercase;letter-spacing:.5px;margin:10px 8px 6px}
+.portal-layout{display:flex;gap:22px;align-items:flex-start;margin-top:16px}
+.portal-nav{width:260px;flex-shrink:0;background:radial-gradient(circle at 12% 0, #138ed838, #0000 32%), linear-gradient(180deg, #061a36 0%, #030f23 100%);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:14px;box-shadow:0 8px 32px rgba(4,19,38,0.35);position:sticky;top:16px;color:#fff}
+.portal-nav-brand{display:flex;align-items:center;gap:11px;padding:4px 6px 14px;border-bottom:1px solid rgba(255,255,255,0.12);margin-bottom:12px}
+.portal-nav-brand strong{font-size:16px;font-weight:800;color:#fff;display:block;letter-spacing:-0.2px}
+.portal-nav-brand small{color:#9fb0c8;font-size:11px;display:block;margin-top:1px}
+.portal-nav-title{font-size:11px;font-weight:800;color:#7e98b7;text-transform:uppercase;letter-spacing:.6px;margin:12px 8px 6px}
 .portal-nav-title:first-child{margin-top:2px}
-.portal-nav-divider{height:1px;background:#e9eff5;margin:12px 4px}
-.nav-btn,.nav-link{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid transparent;background:transparent;border-radius:10px;color:#334b68;padding:10px 12px;font-size:13px;font-weight:700;text-decoration:none;transition:all .15s;cursor:pointer}
-.nav-btn:hover,.nav-link:hover{background:#f1f7fc;color:#0b315e}
-.nav-btn.active{background:#0b315e;color:#fff;border-color:#0b315e}
-.nav-icon{font-size:14px;width:18px;text-align:center}
+.portal-nav-divider{height:1px;background:rgba(255,255,255,0.1);margin:12px 4px}
+.nav-btn,.nav-link{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:0;background:transparent;border-radius:9px;color:#aebbd0;padding:9px 12px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s ease-in-out;cursor:pointer;margin:2px 0}
+.nav-btn:hover,.nav-link:hover{background:rgba(255,255,255,0.08);color:#ffffff}
+.nav-btn.active{background:linear-gradient(90deg, #138ed83d, #ff781814);color:#ffffff;font-weight:700;box-shadow:inset 3px 0 #ff7818}
+.nav-icon{font-size:15px;width:18px;text-align:center;display:inline-flex;align-items:center;justify-content:center}
+.portal-nav-foot{color:#72d8f7;background:#138ed829;border:1px solid #24c4f42e;border-radius:12px;padding:10px 12px;margin-top:14px;font-size:11px;line-height:1.35}
+.portal-nav-foot strong{display:block;color:#e0f8ff;font-size:12px;font-weight:750;margin-bottom:2px}
 .portal-content{flex:1;min-width:0}
 .role-matrix th,.role-matrix td{text-align:center;padding:9px 12px}
 .role-matrix td:first-child,.role-matrix th:first-child{text-align:left}
 @media(max-width:850px){
   .portal-layout{flex-direction:column}
-  .portal-nav{width:100%;position:static;display:flex;flex-wrap:wrap;gap:6px;padding:10px}
-  .portal-nav-title,.portal-nav-divider,.nav-link{display:none}
+  .portal-nav{width:100%;position:static;display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-radius:14px}
+  .portal-nav-brand,.portal-nav-title,.portal-nav-divider,.portal-nav-foot,.nav-link{display:none}
   .nav-btn{width:auto;padding:8px 12px}
 }
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
@@ -94,6 +99,13 @@ tr td select{padding:7px;min-width:115px}
 
   <div class="portal-layout">
     <aside class="portal-nav" role="navigation" aria-label="Portal Navigation">
+      <div class="portal-nav-brand">
+        <img src="./bright-nexa-official-logo.jpg" alt="Bright Nexa" style="width:36px;height:36px;border-radius:10px;object-fit:cover;box-shadow:0 0 0 1px #4ac4f659, 0 4px 14px #138ed847">
+        <div>
+          <strong>Bright Nexa</strong>
+          <small>School OS</small>
+        </div>
+      </div>
       <div class="portal-nav-title">Menu & Functions</div>
       <button class="active nav-btn" data-tab="classes" type="button"><span class="nav-icon">🏫</span> Classes</button>
       <button class="nav-btn" data-tab="attendance" type="button"><span class="nav-icon">📋</span> Attendance</button>
@@ -124,6 +136,10 @@ tr td select{padding:7px;min-width:115px}
       <a href="./index.html" class="nav-link"><span class="nav-icon">⬅️</span> School OS Desktop</a>
       <a href="./smart-tools.html" class="nav-link"><span class="nav-icon">🧠</span> Smart Tools</a>
       <a href="./parents.html" class="nav-link"><span class="nav-icon">👨‍👩‍👧</span> Parent Portal</a>
+      <div class="portal-nav-foot">
+        <strong>🛡️ Lifetime Free Core</strong>
+        <span>Institutional data is fully secured and encrypted</span>
+      </div>
     </aside>
 
     <div class="portal-content">
