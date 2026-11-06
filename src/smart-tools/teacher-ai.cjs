@@ -88,7 +88,8 @@ function validateInput(raw){
  contractFor(tool);
  const className=clean(request.className,60,'Class');
  const subject=clean(request.subject,90,'Subject');
- const topic=clean(request.topic,240,'Topic / Chapter');
+ let topic=clean(request.topic,240,'Topic / Chapter');
+ if(tool==='School Notice Generator'&&/^(all|सभी|full syllabus)$/i.test(topic)&&request.instructions?.trim().length>=20)topic=request.instructions.trim().slice(0,200);
  const topicScope=/^(all|full syllabus|entire syllabus|all chapters|सभी|पूरा पाठ्यक्रम)$/i.test(topic)?'general':'specific';
  ensure(!(topicScope==='general'&&tool==='School Notice Generator'),422,'Enter a specific notice topic and school details.');
  const difficulty=clean(request.difficulty||'Medium',20,'Difficulty');
@@ -100,7 +101,7 @@ function validateInput(raw){
  if(ASSESSMENTS.has(tool)||tool==='Lesson Plan Generator'||tool==='Homework Generator'||tool==='Activity Ideas Generator')
   ensure(Number.isInteger(durationMinutes)&&durationMinutes>=10&&durationMinutes<=180,422,'Select a valid duration (10–180 minutes).');
  const count=Number(request.count==null?10:request.count);
- ensure(Number.isInteger(count)&&count>=2&&count<=50,422,'Count must be between 2 and 50.');
+ ensure(Number.isInteger(count)&&count>=2&&count<=(tool==='Activity Ideas Generator'?20:tool==='Homework Generator'?10:50),422,tool==='Activity Ideas Generator'?'Activities count must be between 2 and 20.':tool==='Homework Generator'?'Homework count must be between 2 and 10.':'Count must be between 2 and 50.');
  const totalMarks=Number(request.totalMarks==null?25:request.totalMarks);
  if(ASSESSMENTS.has(tool))ensure(Number.isInteger(totalMarks)&&totalMarks>=5&&totalMarks<=100,422,'Total marks must be an integer between 5 and 100.');
  const evidence=clean(request.evidence,1800,'Observed evidence',{required:false});
@@ -215,7 +216,7 @@ function validateOutput(input,response,blueprint){
  }
  if(kind==='activities'||kind==='tasks'){
   const key=kind==='activities'?'activities':'tasks',items=response[key];
-  const expected=Math.min(15,req.count);
+  const expected=req.count;
   ensure(Array.isArray(items)&&items.length===expected,502,'AI must return exactly '+expected+' distinct '+key+'.');
   const labels=[];
   const lines=[header];
@@ -259,8 +260,8 @@ function promptFor(req,blueprint){
  }else if(req.tool==='Activity Ideas Generator'||req.tool==='Homework Generator'){
   const key=req.tool==='Activity Ideas Generator'?'activities':'tasks';
   common.push(req.tool==='Activity Ideas Generator'?'Design playable, engaging, subject-specific classroom activities, not repeated generic exercises. Respect requested activity focus: '+req.activityFocus:'Create unique, independent and assessable student practice tasks with practical steps.');
-  common.push('Exactly '+Math.min(15,req.count)+' entries with different ideas and concrete timings.');
-  format={[key]:Array.from({length:Math.min(15,req.count)},()=>({title:'Unique activity title',goal:'Specific learning goal',materials:['simple real materials'],steps:['Detailed step 1','Detailed step 2'],minutes:7}))};
+  common.push('Exactly '+req.count+' entries with different ideas and concrete timings.');
+  format={[key]:Array.from({length:req.count},()=>({title:'Unique activity title',goal:'Specific learning goal',materials:['simple real materials'],steps:['Detailed step 1','Detailed step 2'],minutes:7}))};
  }else{
   const instructions={
    'Lesson Plan Generator':'Produce measurable objectives, prerequisites, concrete teaching examples, a period-by-period plan whose durations sum to '+req.durationMinutes+' minutes, differentiated teaching, formative checks and an exit ticket.',
