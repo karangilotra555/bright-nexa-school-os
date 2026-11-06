@@ -1,6 +1,6 @@
 const fs=require('fs'),assert=require('node:assert/strict');
 const {JSDOM}=require('jsdom'),esbuild=require('esbuild');
-const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
+const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8').replace(/\r\n/g,'\n');
 const bootstrap=source.lastIndexOf('sa();\nCt.createRoot');assert(bootstrap>0,'application bootstrap');
 const dom=new JSDOM('<div id="root"></div>',{url:'https://school.test',runScripts:'outside-only',pretendToBeVisual:true});
 const errors=[];dom.window.addEventListener('error',e=>errors.push(e.error));
