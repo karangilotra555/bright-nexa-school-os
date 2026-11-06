@@ -32388,6 +32388,8 @@ function Ea({ data, students } = {}) {
   let [duration, setDuration] = (0, w.useState)(`45 Minutes`);
   let [totalMarks, setTotalMarks] = (0, w.useState)(`25`);
   let [lang, setLang] = (0, w.useState)(`English`);
+  let [teacherInstructions, setTeacherInstructions] = (0, w.useState)(``);
+  let [generating, setGenerating] = (0, w.useState)(false);
   let [f, p] = (0, w.useState)(``);
   let [m, h] = (0, w.useState)(``);
   let [g, _] = (0, w.useState)(Da);
@@ -32420,7 +32422,7 @@ function Ea({ data, students } = {}) {
       <F
         eyebrow={`Smart Academic Assistant`}
         title={`AI Teacher Tools`}
-        subtitle={`Offline teacher-reviewed drafts, not AI-generated or syllabus verified. Check all answers before publishing.`}
+        subtitle={`AI-powered school content from teacher instructions. Review accuracy and syllabus before publishing.`}
       />
       <Component1368 className={`ai-workbench`}>
         <Component1346>
@@ -32481,6 +32483,15 @@ function Ea({ data, students } = {}) {
             </R>
             <R label={`Topic / Chapter`} wide={true}>
               <input value={o} onChange={(e) => s(e.target.value)} placeholder="e.g. Food Components" />
+            </R>
+            <R label={`Teacher Instructions`} wide={true}>
+              <textarea
+                value={teacherInstructions}
+                onChange={(e) => setTeacherInstructions(e.target.value)}
+                rows={3}
+                maxLength={2500}
+                placeholder="Type what you need, e.g. Class 6 Hindi, 50 marks, 3 hours, grammar, comprehension and writing. Give answer key."
+              />
             </R>
             <R label={`Output Language`}>
               <select value={lang} onChange={(e) => setLang(e.target.value)}>
@@ -32742,10 +32753,12 @@ function Ea({ data, students } = {}) {
           </Component1357>
           <Component1358
             className={`primary-button`}
-            onClick={() => {
+            disabled={generating}
+            onClick={async () => {
+              if(generating)return;
+              setGenerating(true);p(``);h(`AI is generating from your instructions…`);
               try {
-              p(
-                Oa({
+                const output = await Oa({
                   tool: e,
                   className: n,
                   subject: i,
@@ -32753,16 +32766,20 @@ function Ea({ data, students } = {}) {
                   language: lang,
                   difficulty: c,
                   count: Number(u) || 10,
-                  duration: duration,
-                  totalMarks: totalMarks,
-                }),
-              );
-              h(`Offline draft ready. Check your class syllabus before use.`);
-              }catch(error){p(``);h(`Generation failed: ${error.message}`);}
+                  duration,
+                  totalMarks,
+                  instructions: teacherInstructions,
+                  evidence: (e==='Student Remark Generator'||e==='Weak Student Remedial Plan')?teacherInstructions:'',
+                  activityFocus: e==='Activity Ideas Generator'?(c==='Easy'?'Quick Fun Games':c==='Hard'?'Research & Discovery':'Hands-on & Experiential'):'',
+                });
+                p(output);
+                h(`AI draft generated. Review facts, syllabus and answers before publishing.`);
+              }catch(error){p(``);h(`Not generated: ${error.message}`);}
+              finally{setGenerating(false);}
             }}
           >
             <_Component30 size={17} />
-            {`Generate ${e.replace(` Generator`, ``)}`}
+            {generating ? `Generating with AI…` : `Generate ${e.replace(` Generator`, ``)}`}
           </Component1358>
           {f && (
             <P.Fragment>
@@ -32851,7 +32868,7 @@ function Ea({ data, students } = {}) {
   );
 }
 function Da(){return []; /* Existing local drafts retained, not authoritative. */}
-function Oa(input){if(!globalThis.BNTeacherGenerator)throw Error('Teacher generator failed to load. Refresh.');return globalThis.BNTeacherGenerator.generate(input);}
+async function Oa(input){if(!globalThis.BNSmartToolsAI)throw Error('School AI client failed to load. Refresh and check your connection.');return await globalThis.BNSmartToolsAI.generate(input);}
 function OaLegacy({
   tool: e,
   className: t,
