@@ -256,7 +256,7 @@
   }
   const DEFAULT_ROLE_PERMS={
     teacher:{classes:true,attendance:true,homework:true,notices:true,profiles:false},
-    accountant:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
+    accountant:{classes:true,attendance:false,homework:false,notices:true,profiles:false},
     receptionist:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
     transport_staff:{classes:false,attendance:false,homework:false,notices:true,profiles:false},
     librarian:{classes:false,attendance:false,homework:false,notices:false,profiles:false}
@@ -268,6 +268,7 @@
     if(!Array.isArray(rows))throw Error('Supabase role permissions could not be loaded.');
     const next=Object.fromEntries(Object.entries(DEFAULT_ROLE_PERMS).map(([role,modules])=>[role,{...modules}]));
     for(const row of rows){if(next[row.role]&&Object.prototype.hasOwnProperty.call(next[row.role],row.module_key))next[row.role][row.module_key]=row.enabled===true;}
+    if(next.accountant)next.accountant.profiles=false; // Finance-only role cannot open student PII.
     rolePermissions=next;return next;
   }
   function isTabVisibleForRole(tabName,role){
@@ -509,7 +510,8 @@
           const mTd=dom('td');
           const cb=document.createElement('input');
           cb.type='checkbox';
-          cb.checked=Boolean(currentRolePerms[r]?.[m]);
+          cb.checked=Boolean(currentRolePerms[r]?.[m])&&!(r==='accountant'&&m==='profiles');
+          if(r==='accountant'&&m==='profiles'){cb.disabled=true;cb.title='Finance-only: student profiles restricted in Supabase';}
           checks[m]=cb;
           mTd.append(cb);
           rTr.append(mTd);
