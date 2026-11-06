@@ -41,6 +41,40 @@ test('invalid inputs are rejected rather than reported as generated successfully
  assert.deepEqual(gen.assignMarks(5,13).reduce((a,b)=>a+b,0),13);
 });
 
+
+test('45-minute 50-mark paper has ten distinct five-part questions, never 5-mark MCQs',()=>{
+ const paper=gen.generate({...base,tool:'Question Paper Generator',duration:'45 Minutes',difficulty:'Easy',count:10,totalMarks:50});
+ const lines=paper.split('\n').filter(x=>/^Q\d+\./.test(x));
+ assert.equal(lines.length,10);
+ for(const line of lines){
+  assert.match(line,/Answer each part \(1 mark each\):/);
+  assert.equal((line.match(/\([a-e]\)/g)||[]).length,5);
+  assert.match(line,/\[5 marks\]$/);
+ }
+ assert.equal(lines.reduce((sum,line)=>sum+Number(line.match(/\[(\d+) marks?\]$/)[1]),0),50);
+ assert.equal(new Set(lines).size,10);
+ assert.doesNotMatch(paper,/\(A\).*?\[5 marks\]/);
+});
+test('3-hour paper changes the actual questions, not just the duration label',()=>{
+ const input={...base,tool:'Question Paper Generator',count:10,totalMarks:50,difficulty:'Easy'};
+ const short=gen.generate({...input,duration:'45 Minutes'});
+ const long=gen.generate({...input,duration:'3 Hours'});
+ const questions=s=>s.split('\n').filter(x=>/^Q\d+\./.test(x));
+ assert.equal(questions(short).length,10);assert.equal(questions(long).length,10);
+ assert.notDeepEqual(questions(short),questions(long));
+ assert.match(long,/Longer reasoning, comparison and case-based questions/);
+ assert.doesNotMatch(long,/Answer each part \(1 mark each\)/);
+});
+test('difficulty changes actual paper questions and unsupported chapters fail safely',()=>{
+ const params={...base,tool:'Question Paper Generator',count:10,totalMarks:50,duration:'3 Hours'};
+ const easy=gen.generate({...params,difficulty:'Easy'});
+ const hard=gen.generate({...params,difficulty:'Hard'});
+ assert.notDeepEqual(easy.split('\n').filter(x=>/^Q\d+\./.test(x)),hard.split('\n').filter(x=>/^Q\d+\./.test(x)));
+ assert.throws(()=>gen.generate({...params,subject:'Math',topic:'Fractions'}),/No verified question bank/);
+ assert.throws(()=>gen.generate({...params,count:13}),/Only 12 distinct reviewed/);
+ assert.throws(()=>gen.generate({...params,count:2,totalMarks:50,duration:'45 Minutes'}),/at most 10 marks per question/);
+});
+
 test('Print/PDF renders only reviewed draft text in A4 preview and does not print dashboard',()=>{
  const created=[],head={appendChild(n){created.push(n)}},body={appendChild(n){created.push(n)}};
  const document={title:'',head,body,createElement(tag){return {tag,textContent:''};}};
