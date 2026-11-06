@@ -273,6 +273,8 @@
     const isAdm=isAdmin();
     display('adminTab',isAdm);
     display('profilesTab',isAdm||isTabVisibleForRole('profiles',role));
+    display('schoolOsAdminNav',isAdm);
+    display('adminErpBanner',isAdm);
     document.querySelectorAll('[data-tab]').forEach(btn=>{
       const t=btn.dataset.tab;
       if(t==='admin')btn.classList.toggle('hidden',!isAdm);

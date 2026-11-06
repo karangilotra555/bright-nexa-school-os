@@ -20,6 +20,10 @@ test('Staff portal has staff name editing, clear per-staff permissions, and left
 
     // 4. Role-based module visibility section
     assert.match(html, /id="rolePermissions"|id="moduleVisibility"|class="role-matrix"/, `${file} must include role module visibility configuration`);
+
+    // 5. School OS ERP Admin functions matching desktop sidebar
+    assert.match(html, /id="schoolOsAdminNav"/, `${file} must include School OS ERP admin modules section`);
+    assert.match(html, /id="adminErpBanner"/, `${file} must include admin ERP banner with launch button`);
   }
 
   for (const file of ['teacher-access.js', 'docs/teacher-access.js']) {

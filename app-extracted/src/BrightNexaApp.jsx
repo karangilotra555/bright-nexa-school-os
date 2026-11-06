@@ -43098,7 +43098,13 @@ function Ds() {
   let [n, r] = (0, w.useState)(Dn);
   let [i, a] = (0, w.useState)(Ai);
   let [o, s] = (0, w.useState)(false);
-  let [c, l] = (0, w.useState)(`Dashboard`);
+  let [c, l] = (0, w.useState)(() => {
+    try {
+      const t = new URLSearchParams(window.location.search).get('tab');
+      if (t) return t;
+    } catch (_) {}
+    return 'Dashboard';
+  });
   let [u, d] = (0, w.useState)(false);
   let [f, p] = (0, w.useState)(``);
   let [m, h] = (0, w.useState)(``);
@@ -43138,7 +43144,18 @@ function Ds() {
       onError:error=>{if(active)setCloudError(error?.message||String(error));}
     });
     lastWorkspace.current=JSON.stringify(latestWorkspace.current);
-    controller.initialize().then(()=>controller.sync()).catch(error=>{if(active)setCloudError(error.message);});
+    controller.initialize().then(async()=>{
+      await controller.sync();
+      try{
+        const params=new URLSearchParams(window.location.search);
+        if((params.get('openSchool')==='true'||params.get('tab'))&&!controller.state().binding){
+          const schools=await client.connect();
+          if(schools&&schools.length>0){
+            await controller.openSchool(schools[0].id);
+          }
+        }
+      }catch(_){}
+    }).catch(error=>{if(active)setCloudError(error.message);});
     setCloud({client,controller});
     const refresh=()=>controller.sync().catch(error=>{if(active)setCloudError(error.message);});
     const timer=window.setInterval(refresh,30000);

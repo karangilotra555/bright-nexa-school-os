@@ -38327,7 +38327,14 @@ function Ds() {
   let [n2, r2] = (0, w.useState)(Dn);
   let [i2, a2] = (0, w.useState)(Ai);
   let [o2, s2] = (0, w.useState)(false);
-  let [c2, l2] = (0, w.useState)(`Dashboard`);
+  let [c2, l2] = (0, w.useState)(() => {
+    try {
+      const t3 = new URLSearchParams(window.location.search).get("tab");
+      if (t3) return t3;
+    } catch (_3) {
+    }
+    return "Dashboard";
+  });
   let [u2, d2] = (0, w.useState)(false);
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
@@ -38380,7 +38387,19 @@ function Ds() {
       }
     });
     lastWorkspace.current = JSON.stringify(latestWorkspace.current);
-    controller.initialize().then(() => controller.sync()).catch((error) => {
+    controller.initialize().then(async () => {
+      await controller.sync();
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if ((params.get("openSchool") === "true" || params.get("tab")) && !controller.state().binding) {
+          const schools = await client.connect();
+          if (schools && schools.length > 0) {
+            await controller.openSchool(schools[0].id);
+          }
+        }
+      } catch (_3) {
+      }
+    }).catch((error) => {
       if (active) setCloudError(error.message);
     });
     setCloud({ client, controller });

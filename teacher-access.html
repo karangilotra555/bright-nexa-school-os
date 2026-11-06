@@ -103,6 +103,22 @@ tr td select{padding:7px;min-width:115px}
       <button id="adminTab" data-tab="admin" class="nav-btn hidden" type="button"><span class="nav-icon">🛡️</span> Roles & Permissions</button>
       <button class="nav-btn" data-tab="account" type="button"><span class="nav-icon">🔐</span> My Account</button>
       
+      <div id="schoolOsAdminNav" class="hidden">
+        <div class="portal-nav-divider"></div>
+        <div class="portal-nav-title">School OS ERP (Admin)</div>
+        <a href="./index.html?tab=Dashboard" class="nav-link"><span class="nav-icon">⊞</span> Dashboard</a>
+        <a href="./index.html?tab=School Profile" class="nav-link"><span class="nav-icon">⚙️</span> School Profile</a>
+        <a href="./index.html?tab=Students" class="nav-link"><span class="nav-icon">🎓</span> Students</a>
+        <a href="./index.html?tab=Teachers" class="nav-link"><span class="nav-icon">👤</span> Teachers</a>
+        <a href="./index.html?tab=Non-Teaching Staff" class="nav-link"><span class="nav-icon">💼</span> Non-Teaching Staff</a>
+        <a href="./index.html?tab=Transport & Routes" class="nav-link"><span class="nav-icon">🚌</span> Transport & Routes</a>
+        <a href="./index.html?tab=Infrastructure & Assets" class="nav-link"><span class="nav-icon">🏢</span> Infrastructure & Assets</a>
+        <a href="./index.html?tab=Classes & Batches" class="nav-link"><span class="nav-icon">👥</span> Class & Section Setup</a>
+        <a href="./index.html?tab=Attendance" class="nav-link"><span class="nav-icon">📅</span> Attendance</a>
+        <a href="./index.html?tab=Fees" class="nav-link"><span class="nav-icon">₹</span> Fees</a>
+        <a href="./index.html?tab=Expenses & Budget" class="nav-link"><span class="nav-icon">✉️</span> Expenses & Budget</a>
+      </div>
+
       <div class="portal-nav-divider"></div>
       <div class="portal-nav-title">Quick Actions</div>
       <a href="./index.html" class="nav-link"><span class="nav-icon">⬅️</span> School OS Desktop</a>
@@ -111,6 +127,13 @@ tr td select{padding:7px;min-width:115px}
     </aside>
 
     <div class="portal-content">
+      <div id="adminErpBanner" class="notice hidden" style="background:#eaf4fe;border-left-color:#138ed8;color:#0b315e;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+        <div>
+          <strong style="display:block;font-size:14px;color:#0b315e">Full School OS ERP (Admin Access)</strong>
+          <span style="font-size:12px;color:#476587">You are logged in as School Admin. To access the complete School OS modules (Dashboard, Fees, Teachers, Transport, Infrastructure & Budget from your screenshot), launch the full ERP application.</span>
+        </div>
+        <a href="./index.html?openSchool=true" class="primary" style="text-decoration:none;display:inline-flex;align-items:center;padding:9px 15px;border-radius:9px;font-size:13px;font-weight:750;background:#138ed8;color:#fff;white-space:nowrap">🚀 Launch Full School OS ERP</a>
+      </div>
       <div class="cards">
         <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>
         <div class="card"><b id="countStudents">0</b><small>Accessible students</small></div>
