@@ -80,7 +80,7 @@
     await ensureToken();
     identity=await responseJson(await fetch(BASE+'/auth/v1/user',{headers:{
       apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'}));
-    const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status',auth_user_id:eq(identity.id)}));
+    const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status,display_name',auth_user_id:eq(identity.id)}));
     me=memberships.find(x=>x.auth_user_id===identity.id&&x.status==='active')||null;
     if(!me){dropSession();notify('Your school has not activated this staff account. Ask the school administrator to invite you.',true);return}
     const schoolRows=await api('institutions',query({select:'id,name,status',id:eq(me.institution_id)}));
@@ -119,7 +119,7 @@
       canAcademic()?api('school_homework',hQ):Promise.resolve([])
     ]);
     if(isAdmin()){
-      allStaff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
+      allStaff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id,display_name',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
       try{
         const profs=await api('school_student_profiles',query({select:'student_id,details',institution_id:eq(institution_id),limit:'1000'}));
         const pMap=new Map((profs||[]).map(p=>[p.student_id,p.details||{}]));
@@ -238,24 +238,14 @@
     if(me.role!=='teacher')return [];
     return allClasses.filter(c=>allAssignments.some(a=>a.school_user_id===me.id&&a.class_id===c.id&&a.active&&a[action]));
   }
-  function saveStaffName(keyOrEmail,name){
-    if(!name)return;
-    const instId=me?.institution_id;
-    if(!instId)return;
-    try{
-      const key='bright-nexa-school-os:staff-names:'+instId;
-      const current=JSON.parse(localStorage.getItem(key)||'{}');
-      current[keyOrEmail]=name;
-      localStorage.setItem(key,JSON.stringify(current));
-    }catch(_){}
-  }
-  function updateStaffName(staff,newName){
-    if(!newName||!staff)return;
-    saveStaffName(staff.email,newName);
-    if(staff.id)saveStaffName(staff.id,newName);
-    staff.name=newName;
+  async function updateStaffName(staff,newName){
+    if(!isAdmin()||!staff?.id)throw Error('School admin required to change staff names.');
+    if(!newName||newName.length>120)throw Error('Staff name must be 1 to 120 characters.');
+    const saved=await api('school_users',query({id:eq(staff.id),institution_id:eq(me.institution_id)}),'PATCH',{display_name:newName});
+    if(!Array.isArray(saved)||saved.length!==1||saved[0].display_name!==newName)throw Error('Supabase did not confirm the staff name change.');
+    staff.display_name=newName;
     if(staff.id===me?.id){
-      me.name=newName;
+      me.display_name=newName;
       const schoolLabel=$('schoolLabel')?.textContent||'School';
       put('membership',schoolLabel+' · '+newName+' · '+me.email+' · '+me.role.replaceAll('_',' '));
     }
@@ -340,25 +330,12 @@
   }
   function staffName(s){
     if(!s)return '';
-    if(s.name)return s.name;
-    if(identity&&identity.id===s.auth_user_id&&(identity.user_metadata?.full_name||identity.user_metadata?.name)){
-      return identity.user_metadata.full_name||identity.user_metadata.name;
+    if(s.display_name)return s.display_name;
+    if(identity&&identity.id===s.auth_user_id){
+      const own=identity.user_metadata?.full_name||identity.user_metadata?.name;
+      if(own)return own;
     }
-    try{
-      const saved=JSON.parse(localStorage.getItem('bright-nexa-school-os:staff-names:'+me?.institution_id)||'{}');
-      if(saved[s.email])return saved[s.email];
-      if(s.id&&saved[s.id])return saved[s.id];
-    }catch(_){}
-    try{
-      const ops=JSON.parse(localStorage.getItem('bright-nexa-school-os:operations:v1')||'{}');
-      const match=(ops.teachers||[]).find(t=>t.email?.toLowerCase()===s.email?.toLowerCase());
-      if(match?.name)return match.name;
-    }catch(_){}
-    const raw=String(s.email||'').split('@')[0].replace(/[0-9_.-]+$/g,'').replace(/[._-]/g,' ');
-    if(raw.trim()){
-      return raw.split(' ').filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
-    }
-    return s.email;
+    return s.email||'';
   }
   function staffLabel(s){
     const name=staffName(s);
@@ -486,11 +463,11 @@
       editBtn.style.padding='2px 6px';editBtn.style.fontSize='11px';
       editBtn.addEventListener('click',()=>{
         const newName=window.prompt('Enter name for '+staff.email+':',sName);
-        if(newName&&newName.trim()){
-          updateStaffName(staff,newName.trim());
+        if(newName&&newName.trim())run(async()=>{
+          await updateStaffName(staff,newName.trim());
           renderAdmin();renderSelects();
-          notify('Name updated to "'+newName.trim()+'".');
-        }
+          notify('Cloud name updated to "'+newName.trim()+'".');
+        });
       });
       nameRow.append(editBtn);
       email.append(nameRow);
@@ -597,20 +574,14 @@
     if(!nextName)throw Error('Enter a staff display name.');
     const button=$('saveAccountNameButton');button.disabled=true;
     try{
-      if(session?.access_token){
-        await fetch(BASE+'/auth/v1/user',{
-          method:'PATCH',
-          headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
-          body:JSON.stringify({data:{full_name:nextName,name:nextName}})
-        }).catch(()=>null);
-        if(identity){identity.user_metadata=identity.user_metadata||{};identity.user_metadata.full_name=nextName;identity.user_metadata.name=nextName;}
-      }
-      try{
-        const key='bright-nexa-school-os:staff-names:'+me.institution_id;
-        const current=JSON.parse(localStorage.getItem(key)||'{}');
-        current[me.email]=nextName;current[me.id]=nextName;
-        localStorage.setItem(key,JSON.stringify(current));
-      }catch(_){}
+      const savedIdentity=await responseJson(await fetch(BASE+'/auth/v1/user',{
+        method:'PUT',
+        headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({data:{full_name:nextName,name:nextName}})
+      }));
+      if(savedIdentity.id!==identity.id)throw Error('Supabase Auth did not confirm the name change.');
+      identity.user_metadata={...identity.user_metadata,...savedIdentity.user_metadata};
+      if(isAdmin())await updateStaffName(me,nextName);
       me.name=nextName;
       const schoolRows=await api('institutions',query({select:'name',id:eq(me.institution_id)}));
       const schoolName=schoolRows[0]?.name||'School';
@@ -722,12 +693,14 @@
     const invEmail=$('inviteEmail').value.trim();
     const invRole=$('inviteRole').value;
     const invName=($('inviteName')?.value||'').trim();
-    if(invName)saveStaffName(invEmail,invName);
     const r=await responseJson(await fetch(BASE+'/functions/v1/school-invite-staff',{
       method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
       body:JSON.stringify({email:invEmail,role:invRole})
     }));
-    e.target.reset();await reload();notify('Invitation requested for '+(invName?invName+' ('+r.email+')':r.email)+'. Check email delivery and Auth redirect settings.');
+    e.target.reset();await reload();
+    const invited=allStaff.find(st=>st.email?.toLowerCase()===invEmail.toLowerCase());
+    if(invName&&invited)await updateStaffName(invited,invName);
+    notify('Invitation requested for '+(invName?invName+' ('+r.email+')':r.email)+'. Check email activation.');
   })});
   $('classForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
