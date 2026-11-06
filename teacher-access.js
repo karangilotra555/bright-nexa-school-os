@@ -251,7 +251,7 @@
     if(staff.id===me?.id){
       me.display_name=newName;
       const schoolLabel=$('schoolLabel')?.textContent||'School';
-      put('membership',schoolLabel+' · '+newName+' · '+me.email+' · '+me.role.replaceAll('_',' '));
+      put('membership',schoolLabel+' · '+newName+' · '+me.role.replaceAll('_',' '));
     }
   }
   const DEFAULT_ROLE_PERMS={
@@ -276,7 +276,7 @@
     if(tabName==='admin')return false;
     if(tabName==='account')return true;
     const perms=getRolePermissions()[role]||DEFAULT_ROLE_PERMS[role];
-    if(!perms)return true;
+    if(!perms)return false;
     return Boolean(perms[tabName]);
   }
   function applyNavigationVisibility(){
@@ -541,7 +541,7 @@
       const c=allClasses.find(x=>x.id===a.class_id);
       const staff=allStaff.find(x=>x.id===a.school_user_id);
       const line=dom('div',undefined,'rowlist');const left=dom('div');
-      left.append(dom('strong',(staff?.email||'Teacher')+' · '+(c?className(c):'Class')));
+      left.append(dom('strong',staffLabel(staff)+' · '+(c?className(c):'Class')));
       const detail=(a.assignment_type==='subject_teacher'?a.subject+' · ':'Class teacher · ')+
         [a.can_view_roster?'Roster':'',a.can_take_attendance?'Attendance':'',a.can_assign_homework?'Homework':'',a.can_enter_marks?'Marks':''].filter(Boolean).join(', ');
       left.append(dom('div',detail,'muted'));line.append(left);
