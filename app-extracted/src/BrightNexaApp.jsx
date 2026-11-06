@@ -32382,7 +32382,6 @@ function Ea({ data, students } = {}) {
   );
 
   let [i, a] = (0, w.useState)(() => allSchoolSubjects.find(s => s === 'Science') || allSchoolSubjects[0]);
-  let [o, s] = (0, w.useState)(`Food Components`);
   let [c, l] = (0, w.useState)(`Medium`);
   let [u, d] = (0, w.useState)(`10`);
   let [duration, setDuration] = (0, w.useState)(`45 Minutes`);
@@ -32481,16 +32480,13 @@ function Ea({ data, students } = {}) {
                 ))}
               </select>
             </R>
-            <R label={`Topic / Chapter`} wide={true}>
-              <input value={o} onChange={(e) => s(e.target.value)} placeholder="e.g. Food Components" />
-            </R>
-            <R label={`Teacher Instructions`} wide={true}>
+            <R label={`Suggestions / Chapter (optional)`} wide={true}>
               <textarea
                 value={teacherInstructions}
                 onChange={(e) => setTeacherInstructions(e.target.value)}
                 rows={3}
                 maxLength={2500}
-                placeholder="Type what you need, e.g. Class 6 Hindi, 50 marks, 3 hours, grammar, comprehension and writing. Give answer key."
+                placeholder="Optional: chapter/topic or extra guidance, e.g. Food Components — explain with easy examples. Leave blank for general class-wise content."
               />
             </R>
             <R label={`Output Language`}>
@@ -32762,7 +32758,7 @@ function Ea({ data, students } = {}) {
                   tool: e,
                   className: n,
                   subject: i,
-                  topic: o,
+                  topic: teacherInstructions.trim().slice(0,200) || "all",
                   language: lang,
                   difficulty: c,
                   count: Number(u) || 10,
@@ -32819,7 +32815,7 @@ function Ea({ data, students } = {}) {
                     if(!f.trim()){h(`Nothing to save.`);return;}
                     try{
                       if(!window.BNTeacherDrafts)throw Error('Cloud draft service unavailable.');
-                      const saved=await window.BNTeacherDrafts.save({tool:e,className:n,subject:i,topic:o,language:lang,content:f});
+                      const saved=await window.BNTeacherDrafts.save({tool:e,className:n,subject:i,topic:teacherInstructions.trim().slice(0,200)||"all",language:lang,content:f});
                       _(previous=>[saved,...previous].slice(0,30));
                       h(`Private draft saved in Supabase. Teacher review required.`);
                     }catch(error){h(`Not saved: ${error.message}`);}
