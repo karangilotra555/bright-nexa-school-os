@@ -638,7 +638,7 @@
   $('homeworkClass').addEventListener('change',()=>fillSubject($('homeworkClass').value));
   $('loadAttendance').addEventListener('click',()=>run(loadAttendance));
   let currentRoster=[],rosterScope=null,rosterGeneration=0;
-  function invalidateRoster(){rosterGeneration++;currentRoster=[];rosterScope=null;$('rosterList').replaceChildren();display('saveAttendance',false);}
+  function invalidateRoster(){rosterGeneration++;currentRoster=[];rosterScope=null;$('rosterList').replaceChildren();display('saveAttendance',false);display('markRemainingPresent',false);}
   $('attendanceClass').addEventListener('change',invalidateRoster);
   $('attendanceDate').addEventListener('change',invalidateRoster);
   async function loadAttendance(){
@@ -654,13 +654,22 @@
       const line=dom('div',undefined,'rowlist');
       const left=dom('div');left.append(dom('strong',student.name));
       left.append(dom('small',student.admission_number,'muted'));
-      const select=newSelect(['present','absent','late','excused'],records.find(r=>r.student_id===student.id)?.status||'present');
+      const status=records.find(r=>r.student_id===student.id)?.status||'';
+      const select=newSelect(['','present','absent','late','excused'],status);
+      select.children[0].textContent='Not marked';
+      select.value=status;
+      select.setAttribute('aria-label','Attendance for '+student.name);
       select.dataset.studentId=student.id;select.dataset.classId=cls;
       line.append(left,select);root.append(line);
     }
     display('saveAttendance',currentRoster.length>0);
+    display('markRemainingPresent',currentRoster.length>0);
     if(!currentRoster.length)root.append(dom('p','No students are published for this class.'));
   }
+  $('markRemainingPresent').addEventListener('click',()=>{
+    if(!rosterScope||rosterScope.classId!==$('attendanceClass').value||rosterScope.day!==$('attendanceDate').value)return;
+    for(const select of $('rosterList').querySelectorAll('select[data-student-id]'))if(!select.value)select.value='present';
+  });
   $('saveAttendance').addEventListener('click',()=>run(async()=>{
     const cls=$('attendanceClass').value,day=$('attendanceDate').value;
     const selects=[...$('rosterList').querySelectorAll('select[data-student-id]')];
@@ -668,6 +677,7 @@
     if(!writableClasses('can_take_attendance').some(c=>c.id===cls))throw Error('You are not assigned to this attendance class.');
     if(rosterScope.classId!==cls||rosterScope.day!==day)throw Error('Class or date changed. Reload roster.');
     if(selects.some(s=>s.dataset.classId!==cls))throw Error('Class changed. Reload roster.');
+    if(selects.some(s=>!['present','absent','late','excused'].includes(s.value)))throw Error('Mark every student before saving attendance.');
     const records=selects.map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:me.institution_id,day,status:s.value,recorded_by:me.id}));
     const button=$('saveAttendance');if(button.disabled)return;button.disabled=true;
     try{await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=minimal');
