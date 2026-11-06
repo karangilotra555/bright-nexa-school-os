@@ -1,6 +1,6 @@
-# School workspace migration (prepared, not deployed)
+# School workspace migration
 
-`supabase/migrations/20261105200548_school_workspace_sync.sql` was generated with the Supabase CLI. It contains no seed data, account creation, local-data import or hosted execution. The existing local store remains available. Connecting/importing a school's local workspace must be a separate, explicit UI action.
+`supabase/migrations/20261105200548_school_workspace_sync.sql` was generated with the Supabase CLI. It contains no seed data, account creation or local-data import. The schema migration was applied to the existing Supabase project on 2026-11-06 after the user selected the free deployment path. The existing local store remains available. Connecting/importing a school's local workspace must be a separate, explicit UI action.
 
 ## API contract
 
@@ -32,7 +32,7 @@ The attendance constraint previously tied historical attendance to the student's
 
 ## Verification performed
 
-Read-only inspection of live schema columns, constraints, grants, RLS policies, role helper and fee view informed this migration. No school records were queried or changed. The migration and RPCs execute successfully in disposable PGlite PostgreSQL with fixture tables and authenticated RLS. Run:
+Read-only inspection of live schema columns, constraints, grants, RLS policies, role helper and fee view informed this migration. During initial preparation no school records were queried or changed. During the free rollout, nine affected tables were exported to a private local backup outside the repository, restored offline, and compared field-for-field before and after the hosted migration. All 60 backed-up rows were preserved. The migration and RPCs execute successfully in disposable PGlite PostgreSQL with fixture tables and authenticated RLS. Run:
 
 ```powershell
 $env:PGLITE_MODULE='C:\Users\Zion\bn-sync-test-tools\node_modules\@electric-sql\pglite'
@@ -41,13 +41,26 @@ node tests/workspace-database.cjs
 
 The module can instead resolve through a normal development installation of `@electric-sql/pglite`. The fixture verifies atomic initial import, natural-key reconciliation, preserving custom fields, immutable decimal fee corrections and removal offsets, no duplicate fee writes, stale-revision rejection, cross-school denial, unauthorized/teacher workspace denial, teacher attendance revision invalidation, relational overlays, attendance surviving a transfer, rejected mapped deletions and rejection of existing external fee history.
 
-The fixture deliberately approximates the existing schema and does not prove every production policy, extension, trigger or dependent view. It does not simulate simultaneous sessions or PostgREST serialization. No production advisor run, staging migration, deployed RPC call or browser end-to-end cloud write has been performed. The repository does not contain a complete baseline migration suitable for recreating the production database from scratch.
+The fixture deliberately approximates the existing schema and does not prove every production policy, extension, trigger or dependent view. It does not simulate simultaneous sessions or PostgREST serialization. Production security advisors were checked before and after migration; the same existing findings remained. No paid staging branch was created. Browser end-to-end cloud writes and simultaneous hosted sessions remain unverified. The repository does not contain a complete baseline migration suitable for recreating the production database from scratch.
 
-## Deployment and recovery gate
+## Free rollout verification (2026-11-06)
 
-1. Obtain a verified schema/data backup and test restoration in an isolated staging project. Keep sensitive exports outside the repository.
-2. Apply this migration to that staging clone, run the behavioral checks against its real policies, test two-session stale saves/teacher writes and run Supabase security/performance advisors. Verify decimal fee view dependencies and restored grants. A dependent object can make the `DROP VIEW` fail safely; no `CASCADE` is used.
-3. Exercise owner import with explicit fixtures, teacher updates, parent reads, conflict resolution and unsupported deletion messaging. Review any existing fee ledger before import. Confirm the exact institution and preserve a local backup.
-4. Only then apply the reviewed schema migration under the separately authorized deployment process. Migration execution is transactional. Applying schema alone does not upload a local workspace.
+Paid branching was rejected by the user. A separate project was quoted at $0 but could not be created because the account already had two free projects. No project was paused, deleted or upgraded.
 
-For application rollback, disable the cloud adapter and retain local backups/pending work. Keep new database tables and mappings until recovery has been reviewed. Do not blindly reverse decimal amounts to bigint or restore the old attendance FK after transfers: either can lose data or fail validation. Preserve appended fee adjustments as audit history. If schema recovery is required, use the tested staging restore procedure; no restore claim is made here.
+The production schema catalog (35 tables, 73 policies, constraints, grants, functions and triggers) was restored into disposable local PGlite. Nine affected tables (60 rows) were separately backed up outside the repository and restored there. Migration preserved every backed-up field. Actual catalog policies were exercised with isolated fixture accounts: admin import, assigned teacher attendance update, parent visibility, workspace denial for teacher/parent, and stale admin revision rejection passed. Auth functions are stubbed in this local check; it is not a full hosted Auth/Storage backup or a browser end-to-end test.
+
+Run with private local exports (never commit exports):
+
+```text
+node scripts/check-production-schema.cjs <catalog.json> <affected-records.json>
+```
+
+The workspace migration was then applied transactionally to the existing free project. A live read-back confirmed all nine backed-up tables remained unchanged. No local workspace or demo records were automatically imported. Production security advisors added no new findings; pre-existing definer-function and password-protection warnings remain for separate review.
+
+Existing external fees still require reconciliation before workspace import. The explicit school confirmation in the UI must be used before importing records. Hosted authenticated end-to-end and genuinely simultaneous-session tests remain outstanding; do not describe the demo as fully production-verified.
+
+## Recovery
+
+The private backup is scoped to the affected school tables and schema metadata. It does not back up Auth accounts/passwords, Storage objects, or every project table. Offline restoration of that scope passed. A full disaster-recovery drill remains outstanding.
+
+For application rollback, revert the application release to 3211e4b and retain local backups/pending work. Keep new database tables and mappings until recovery has been reviewed. Do not blindly reverse decimal amounts to bigint or restore the old attendance FK after transfers: either can lose data or fail validation. Preserve appended fee adjustments as audit history.
