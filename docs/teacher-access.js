@@ -94,9 +94,7 @@
     put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     display('loginSection',false);display('portalSection',true);display('logout',true);
-    display('adminTab',isAdmin());display('profilesTab',isAdmin());
-    document.querySelector('[data-tab="attendance"]').classList.toggle('hidden',!canAcademic());
-    document.querySelector('[data-tab="homework"]').classList.toggle('hidden',!canAcademic());
+    applyNavigationVisibility();
     await reload();
     const attendanceFirst=(me.role==='teacher'||new URLSearchParams(location.search).get('view')==='attendance')&&canAcademic();
     tab(attendanceFirst?'attendance':'classes');clearNotice();
@@ -225,6 +223,103 @@
     if(me.role==='school_admin'||me.role==='principal')return allClasses;
     if(me.role!=='teacher')return [];
     return allClasses.filter(c=>allAssignments.some(a=>a.school_user_id===me.id&&a.class_id===c.id&&a.active&&a[action]));
+  }
+  function saveStaffName(keyOrEmail,name){
+    if(!name)return;
+    const instId=me?.institution_id;
+    if(!instId)return;
+    try{
+      const key='bright-nexa-school-os:staff-names:'+instId;
+      const current=JSON.parse(localStorage.getItem(key)||'{}');
+      current[keyOrEmail]=name;
+      localStorage.setItem(key,JSON.stringify(current));
+    }catch(_){}
+  }
+  function updateStaffName(staff,newName){
+    if(!newName||!staff)return;
+    saveStaffName(staff.email,newName);
+    if(staff.id)saveStaffName(staff.id,newName);
+    staff.name=newName;
+    if(staff.id===me?.id){
+      me.name=newName;
+      const schoolLabel=$('schoolLabel')?.textContent||'School';
+      put('membership',schoolLabel+' · '+newName+' · '+me.email+' · '+me.role.replaceAll('_',' '));
+    }
+  }
+  const DEFAULT_ROLE_PERMS={
+    teacher:{classes:true,attendance:true,homework:true,notices:true,profiles:false},
+    accountant:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
+    receptionist:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
+    transport_staff:{classes:false,attendance:false,homework:false,notices:true,profiles:false}
+  };
+  function getRolePermissions(){
+    if(!me?.institution_id)return DEFAULT_ROLE_PERMS;
+    try{
+      const saved=localStorage.getItem('bright-nexa-school-os:role-permissions:'+me.institution_id);
+      if(saved)return Object.assign({},DEFAULT_ROLE_PERMS,JSON.parse(saved));
+    }catch(_){}
+    return DEFAULT_ROLE_PERMS;
+  }
+  function isTabVisibleForRole(tabName,role){
+    if(role==='school_admin'||role==='principal')return true;
+    if(tabName==='admin')return false;
+    if(tabName==='account')return true;
+    const perms=getRolePermissions()[role]||DEFAULT_ROLE_PERMS[role];
+    if(!perms)return true;
+    return Boolean(perms[tabName]);
+  }
+  function applyNavigationVisibility(){
+    const role=me?.role||'teacher';
+    const isAdm=isAdmin();
+    display('adminTab',isAdm);
+    display('profilesTab',isAdm||isTabVisibleForRole('profiles',role));
+    document.querySelectorAll('[data-tab]').forEach(btn=>{
+      const t=btn.dataset.tab;
+      if(t==='admin')btn.classList.toggle('hidden',!isAdm);
+      else if(t==='profiles')btn.classList.toggle('hidden',!(isAdm||isTabVisibleForRole('profiles',role)));
+      else if(t!=='account'){
+        btn.classList.toggle('hidden',!isTabVisibleForRole(t,role));
+      }
+    });
+  }
+  function getStaffPermissionsSummary(staff){
+    if(staff.role==='school_admin'||staff.role==='principal'){
+      return dom('span','👑 Full School Access (All classes & modules)','pill');
+    }
+    const container=dom('div');
+    const assigns=allAssignments.filter(a=>a.school_user_id===staff.id&&a.active);
+    if(assigns.length===0){
+      const noAssign=dom('span','⚠️ No classes assigned','pill');
+      noAssign.style.background='#fff8e6';noAssign.style.color='#8a6100';
+      container.append(noAssign);
+    }else{
+      for(const a of assigns){
+        const c=allClasses.find(cls=>cls.id===a.class_id);
+        const cName=c?className(c):'Class';
+        const rights=[a.can_view_roster?'Roster':'',a.can_take_attendance?'Attendance':'',a.can_assign_homework?'Homework':'',a.can_enter_marks?'Marks':''].filter(Boolean).join(', ');
+        const item=dom('div',`${cName} (${rights||'View'})`);
+        item.style.fontSize='12px';item.style.marginBottom='2px';
+        container.append(item);
+      }
+    }
+    const assignBtn=dom('button','+ Assign / Edit Rights','ghost');
+    assignBtn.type='button';
+    assignBtn.style.padding='2px 6px';assignBtn.style.fontSize='11px';assignBtn.style.marginTop='4px';
+    assignBtn.addEventListener('click',()=>{
+      const teacherSelect=$('assignTeacher');
+      if(teacherSelect){
+        teacherSelect.value=staff.id;
+        teacherSelect.dispatchEvent(new Event('change'));
+      }
+      const assignSec=$('assignmentForm');
+      if(assignSec){
+        assignSec.scrollIntoView({behavior:'smooth'});
+        assignSec.style.outline='3px solid #ff7818';
+        setTimeout(()=>assignSec.style.outline='',2000);
+      }
+    });
+    container.append(assignBtn);
+    return container;
   }
   function staffName(s){
     if(!s)return '';
@@ -357,16 +452,32 @@
   function renderAdmin(){
     const root=$('staffTable');root.replaceChildren();
     for(const staff of allStaff){
-      const tr=dom('tr');const email=dom('td');
+      const tr=dom('tr');
+      const email=dom('td');
       const sName=staffName(staff);
-      if(sName&&sName!==staff.email){
-        email.append(dom('strong',sName));
-        email.append(document.createElement('br'));
-        email.append(dom('small',staff.email,'muted'));
-      }else{
-        email.textContent=staff.email;
-      }
+      const nameRow=dom('div');
+      nameRow.style.display='flex';
+      nameRow.style.alignItems='center';
+      nameRow.style.gap='6px';
+      nameRow.append(dom('strong',sName||staff.email));
+      const editBtn=dom('button','✏️','ghost');
+      editBtn.type='button';
+      editBtn.title='Edit staff name';
+      editBtn.style.padding='2px 6px';editBtn.style.fontSize='11px';
+      editBtn.addEventListener('click',()=>{
+        const newName=window.prompt('Enter name for '+staff.email+':',sName);
+        if(newName&&newName.trim()){
+          updateStaffName(staff,newName.trim());
+          renderAdmin();renderSelects();
+          notify('Name updated to "'+newName.trim()+'".');
+        }
+      });
+      nameRow.append(editBtn);
+      email.append(nameRow);
+      email.append(dom('small',staff.email,'muted'));
+
       const role=dom('td');const roleSelect=newSelect(ROLES,staff.role);role.append(roleSelect);
+      const perms=dom('td');perms.append(getStaffPermissionsSummary(staff));
       const status=dom('td');const statusSelect=newSelect(['active','disabled'],staff.status);status.append(statusSelect);
       if(staff.id===me.id){roleSelect.disabled=true;statusSelect.disabled=true}
       const action=dom('td');const save=dom('button','Save','ghost');
@@ -375,7 +486,49 @@
         await api('school_users',query({id:eq(staff.id),institution_id:eq(me.institution_id)}),'PATCH',{role:roleSelect.value,status:statusSelect.value});
         await reload();notify('Staff permissions updated.');
       }));
-      action.append(save);tr.append(email,role,status,action);root.append(tr);
+      action.append(save);tr.append(email,role,perms,status,action);root.append(tr);
+    }
+    const matrixRoot=$('rolePermissionsBody');
+    if(matrixRoot){
+      matrixRoot.replaceChildren();
+      const currentRolePerms=getRolePermissions();
+      const manageableRoles=['teacher','accountant','receptionist','transport_staff'];
+      const modules=['classes','attendance','homework','notices','profiles'];
+      for(const r of manageableRoles){
+        const rTr=dom('tr');
+        const roleNameTd=dom('td');
+        roleNameTd.append(dom('strong',r.replaceAll('_',' ').toUpperCase()));
+        rTr.append(roleNameTd);
+        const checks={};
+        for(const m of modules){
+          const mTd=dom('td');
+          const cb=document.createElement('input');
+          cb.type='checkbox';
+          cb.checked=Boolean(currentRolePerms[r]?.[m]);
+          checks[m]=cb;
+          mTd.append(cb);
+          rTr.append(mTd);
+        }
+        const actTd=dom('td');
+        const saveRoleBtn=dom('button','Save','ghost');
+        saveRoleBtn.type='button';
+        saveRoleBtn.style.padding='4px 8px';
+        saveRoleBtn.addEventListener('click',()=>{
+          currentRolePerms[r]={
+            classes:checks.classes.checked,
+            attendance:checks.attendance.checked,
+            homework:checks.homework.checked,
+            notices:checks.notices.checked,
+            profiles:checks.profiles.checked
+          };
+          localStorage.setItem('bright-nexa-school-os:role-permissions:'+me.institution_id,JSON.stringify(currentRolePerms));
+          applyNavigationVisibility();
+          notify('Permissions saved for '+r.replaceAll('_',' ')+'.');
+        });
+        actTd.append(saveRoleBtn);
+        rTr.append(actTd);
+        matrixRoot.append(rTr);
+      }
     }
     const listing=$('assignmentsList');clearChildren(listing);
     for(const a of allAssignments){
@@ -547,11 +700,15 @@
   $('inviteForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
     await ensureToken();
+    const invEmail=$('inviteEmail').value.trim();
+    const invRole=$('inviteRole').value;
+    const invName=($('inviteName')?.value||'').trim();
+    if(invName)saveStaffName(invEmail,invName);
     const r=await responseJson(await fetch(BASE+'/functions/v1/school-invite-staff',{
       method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
-      body:JSON.stringify({email:$('inviteEmail').value.trim(),role:$('inviteRole').value})
+      body:JSON.stringify({email:invEmail,role:invRole})
     }));
-    e.target.reset();await reload();notify('Invitation requested for '+r.email+'. Check email delivery and Auth redirect settings.');
+    e.target.reset();await reload();notify('Invitation requested for '+(invName?invName+' ('+r.email+')':r.email)+'. Check email delivery and Auth redirect settings.');
   })});
   $('classForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');

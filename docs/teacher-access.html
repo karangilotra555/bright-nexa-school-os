@@ -50,6 +50,24 @@ button.danger{color:#a82b3f;background:#fff2f3;border:1px solid #f6c8d0;border-r
 tr td select{padding:7px;min-width:115px}
 .footer{font-size:12px;color:#78879a;text-align:center}
 .notice{border-left:4px solid #ff7818;background:#fff7ed;padding:11px 13px;border-radius:8px;font-size:13px;color:#82511b;margin-bottom:16px}
+.portal-layout{display:flex;gap:20px;align-items:flex-start;margin-top:16px}
+.portal-nav{width:230px;flex-shrink:0;background:#ffffff;border:1px solid #dce6ef;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(6,26,54,0.04);position:sticky;top:16px}
+.portal-nav-title{font-size:11px;font-weight:800;color:#8a99a8;text-transform:uppercase;letter-spacing:.5px;margin:10px 8px 6px}
+.portal-nav-title:first-child{margin-top:2px}
+.portal-nav-divider{height:1px;background:#e9eff5;margin:12px 4px}
+.nav-btn,.nav-link{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid transparent;background:transparent;border-radius:10px;color:#334b68;padding:10px 12px;font-size:13px;font-weight:700;text-decoration:none;transition:all .15s;cursor:pointer}
+.nav-btn:hover,.nav-link:hover{background:#f1f7fc;color:#0b315e}
+.nav-btn.active{background:#0b315e;color:#fff;border-color:#0b315e}
+.nav-icon{font-size:14px;width:18px;text-align:center}
+.portal-content{flex:1;min-width:0}
+.role-matrix th,.role-matrix td{text-align:center;padding:9px 12px}
+.role-matrix td:first-child,.role-matrix th:first-child{text-align:left}
+@media(max-width:850px){
+  .portal-layout{flex-direction:column}
+  .portal-nav{width:100%;position:static;display:flex;flex-wrap:wrap;gap:6px;padding:10px}
+  .portal-nav-title,.portal-nav-divider,.nav-link{display:none}
+  .nav-btn{width:auto;padding:8px 12px}
+}
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
 @media(max-width:470px){.bar{flex-wrap:wrap}.bar>.flex{width:100%}.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
 </style>
@@ -73,19 +91,31 @@ tr td select{padding:7px;min-width:115px}
 <section id="portalSection" class="hidden">
   <div class="row"><div><h1 id="hello">School workspace</h1><p class="sub" id="membership"></p></div><span class="pill" id="rolePill">VERIFIED ROLE</span></div>
   <div class="notice">Your school controls your assigned classes and permissions. Saved attendance and homework are available to the linked student / parent account.</div>
-  <div class="cards">
-    <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>
-    <div class="card"><b id="countStudents">0</b><small>Accessible students</small></div>
-    <div class="card"><b id="countHomework">0</b><small>Homework posts</small></div>
-  </div>
-  <div class="tabs" role="navigation">
-    <button class="active" data-tab="classes" type="button">Classes</button>
-    <button data-tab="attendance" type="button">Attendance</button>
-    <button data-tab="homework" type="button">Homework</button>
-    <button data-tab="notices" type="button">School notices</button>
-    <button id="profilesTab" data-tab="profiles" class="hidden" type="button">Student Profiles</button><button id="adminTab" data-tab="admin" class="hidden" type="button">Roles & Permissions</button>
-    <button data-tab="account" type="button">🔐 My Account</button>
-  </div>
+
+  <div class="portal-layout">
+    <aside class="portal-nav" role="navigation" aria-label="Portal Navigation">
+      <div class="portal-nav-title">Menu & Functions</div>
+      <button class="active nav-btn" data-tab="classes" type="button"><span class="nav-icon">🏫</span> Classes</button>
+      <button class="nav-btn" data-tab="attendance" type="button"><span class="nav-icon">📋</span> Attendance</button>
+      <button class="nav-btn" data-tab="homework" type="button"><span class="nav-icon">📝</span> Homework</button>
+      <button class="nav-btn" data-tab="notices" type="button"><span class="nav-icon">📢</span> School notices</button>
+      <button id="profilesTab" data-tab="profiles" class="nav-btn hidden" type="button"><span class="nav-icon">👥</span> Student Profiles</button>
+      <button id="adminTab" data-tab="admin" class="nav-btn hidden" type="button"><span class="nav-icon">🛡️</span> Roles & Permissions</button>
+      <button class="nav-btn" data-tab="account" type="button"><span class="nav-icon">🔐</span> My Account</button>
+      
+      <div class="portal-nav-divider"></div>
+      <div class="portal-nav-title">Quick Actions</div>
+      <a href="./index.html" class="nav-link"><span class="nav-icon">⬅️</span> School OS Desktop</a>
+      <a href="./smart-tools.html" class="nav-link"><span class="nav-icon">🧠</span> Smart Tools</a>
+      <a href="./parents.html" class="nav-link"><span class="nav-icon">👨‍👩‍👧</span> Parent Portal</a>
+    </aside>
+
+    <div class="portal-content">
+      <div class="cards">
+        <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>
+        <div class="card"><b id="countStudents">0</b><small>Accessible students</small></div>
+        <div class="card"><b id="countHomework">0</b><small>Homework posts</small></div>
+      </div>
   <div data-view="classes" class="panel"><div class="row"><h2>My accessible classes</h2><button class="ghost" id="reload" type="button">↻ Refresh</button></div><div id="classesList"></div></div>
   <div data-view="attendance" class="panel hidden">
     <h2>Class attendance</h2><div class="formgrid two">
@@ -147,14 +177,35 @@ tr td select{padding:7px;min-width:115px}
   <div data-view="admin" class="hidden">
     <div class="panel">
       <h2>Invite school staff</h2>
-      <form id="inviteForm" class="formgrid">
+      <form id="inviteForm" class="formgrid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <div><label for="inviteName">Staff Name</label><input type="text" id="inviteName" placeholder="e.g. Karan Gilotra"></div>
         <div><label for="inviteEmail">Email</label><input type="email" id="inviteEmail" required placeholder="teacher@school.in"></div>
         <div><label for="inviteRole">Base role</label><select id="inviteRole"><option value="teacher">Teacher</option><option value="principal">Principal</option><option value="accountant">Accountant</option><option value="receptionist">Reception</option><option value="transport_staff">Transport</option></select></div>
         <button class="primary" type="submit">Email invitation</button>
       </form>
       <p class="muted">Invitation creates a staff identity in your school only. Login works after email activation.</p>
     </div>
-    <div class="panel"><h2>Staff accounts & access</h2><div class="tablewrap"><table><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody id="staffTable"></tbody></table></div></div>
+    <div class="panel"><h2>Staff accounts & access</h2><div class="tablewrap"><table><thead><tr><th>Staff Member</th><th>Role</th><th>Permissions & Assigned Access</th><th>Status</th><th>Action</th></tr></thead><tbody id="staffTable"></tbody></table></div></div>
+    <div class="panel" id="rolePermissions">
+      <h2>Module Visibility & Permissions by Role</h2>
+      <p class="muted">Configure which portal modules are visible for each staff role ("kisko kya dikhana hai aur kya nahi").</p>
+      <div class="tablewrap">
+        <table class="role-matrix">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Classes</th>
+              <th>Attendance</th>
+              <th>Homework</th>
+              <th>School Notices</th>
+              <th>Student Profiles</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="rolePermissionsBody"></tbody>
+        </table>
+      </div>
+    </div>
     <div class="panel">
       <h2>Create class / section</h2>
       <form id="classForm" class="formgrid">
@@ -194,6 +245,8 @@ tr td select{padding:7px;min-width:115px}
       </form>
     </div>
   </div>
+  </div>
+</div>
 </section>
 <div class="footer">Bright Nexa School OS · Cloud Teacher Access · © 2026</div>
 </main>
