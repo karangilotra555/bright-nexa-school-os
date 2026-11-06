@@ -30,6 +30,9 @@ const ACTIONS = Object.freeze([
   'transport.write',
   'announcements.write',
   'roles.manage',
+  'core.settings.manage',
+  'records.delete.approve',
+  'audit.read',
   'library.inventory.read',
   'library.inventory.write',
   'library.loans.read',
@@ -81,6 +84,13 @@ function authorizeStaff(actor, request) {
   const baseActions = ROLE_ACTIONS[actor.role];
   if (!baseActions) return deny('UNKNOWN_ROLE');
   if (!baseActions.includes(request.action)) return deny('ROLE_DENIED');
+
+  // These actions require a separately verified school OWNER, not simply a
+  // user who was invited as an administrator. The server must independently
+  // establish ownership from canonical school membership/ownership records.
+  // Missing proof is denied; a browser-supplied flag must never be trusted.
+  if ((request.action === 'core.settings.manage' || request.action === 'records.delete.approve')
+      && actor.ownerVerified !== true) return deny('OWNER_VERIFICATION_REQUIRED');
 
   // Optional custom permission restriction. Never grant something outside the role.
   // Used by the school admin to turn specific rights OFF for an individual staff member.
