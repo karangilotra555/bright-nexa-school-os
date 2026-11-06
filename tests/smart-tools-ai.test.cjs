@@ -29,7 +29,7 @@ test('TDD: each supported Smart Tool has a specific contract and rejects blank/g
  assert.equal(svc.TOOLS.length,10);
  assert.equal(new Set(svc.TOOLS).size,10);
  for(const tool of svc.TOOLS)assert.equal(typeof svc.contractFor(tool),'object',tool);
- assert.throws(()=>svc.validateInput({...base,topic:'',tool:'Activity Ideas Generator'}),/topic/i);
+ assert.equal(svc.validateInput({...base,topic:'',tool:'Activity Ideas Generator'}).topic,'all');
  assert.throws(()=>svc.validateInput({...base,tool:'School Notice Generator',topic:'all'}),/specific|topic/i);
  assert.throws(()=>svc.validateInput({...base,tool:'Student Remark Generator'}),/evidence/i);
  assert.throws(()=>svc.validateInput({...base,tool:'Weak Student Remedial Plan'}),/evidence/i);
@@ -101,15 +101,29 @@ test('TDD: client must call authenticated backend, never ship provider key or fa
 });
 
 
-test('TDD: free-form teacher instructions override defaults when explicit, without losing school guardrails',()=>{
+test('TDD: dropdown selections govern the request; optional suggestions must not override class or marks',()=>{
  const p=svc.validateInput({...base,subject:'Science',topic:'all',totalMarks:25,count:10,duration:'45 Minutes',instructions:'Class 6 Hindi ka 50 marks paper 3 hours ka banao. Grammar, comprehension and essay writing. Answer key bhi do.'});
- assert.equal(p.className,'6');assert.equal(p.subject,'Hindi');assert.equal(p.totalMarks,50);assert.equal(p.durationMinutes,180);
- assert.ok(p.count>=12,'50 marks needs a proper mixed paper, not ten five-mark questions');
- const plan=svc.planAssessment(p);assert.equal(plan.totalMarks,50);
- assert.equal(plan.questions.reduce((n,q)=>n+q.minutes,0),180);
+ assert.equal(p.className,'6');
+ assert.equal(p.subject,'Science');
+ assert.equal(p.totalMarks,25);
+ assert.equal(p.durationMinutes,45);
+ assert.equal(p.count,10);
+ const plan=svc.planAssessment(p);
+ assert.equal(plan.totalMarks,25);
+ assert.equal(plan.questions.reduce((n,q)=>n+q.minutes,0),45);
  const prompt=svc.promptFor(p,plan);
  assert.match(prompt.user,/Grammar, comprehension and essay writing/);
- assert.match(prompt.system,/teacher instructions|teacher's instructions/i);
+ assert.match(prompt.system,/AUTHORITATIVE|form settings/i);
+});
+test('TDD: no separate topic field and teacher suggestions are used for generated and saved drafts',()=>{
+ const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
+ const bundle=fs.readFileSync('assets/index-brightnexa-v2.js','utf8');
+ assert.doesNotMatch(source,/label=\{`Topic \/ Chapter`\}/);
+ assert.doesNotMatch(bundle,/label: `Topic \/ Chapter`/);
+ assert.match(source,/Suggestions \/ Chapter \(optional\)/);
+ assert.match(source,/topic:\s*teacherInstructions\.trim\(\)/);
+ assert.match(bundle,/topic:teacherInstructions\.trim\(\)/);
+ assert.match(source,/d\('20'\)/,'50-mark paper should default to a feasible 20 questions');
 });
 test('TDD: unstructured instructions are preserved, validated and provider prompt is not generic',()=>{
  const p=svc.validateInput({...base,topic:'all',instructions:'Students will practise मुहावरे, paragraph writing, and reading comprehension. Include answer keys.'});
@@ -121,7 +135,7 @@ test('TDD: unstructured instructions are preserved, validated and provider promp
 });
 test('TDD: teacher instructions are sent by the authenticated frontend without a local-template fallback',()=>{
  const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
- assert.match(source,/Teacher Instructions/);
+ assert.match(source,/Suggestions \/ Chapter \(optional\)/);
  assert.match(source,/instructions:\s*teacherInstructions/);
  assert.match(source,/await Oa\(/);
  assert.doesNotMatch(source,/Offline draft ready\. Check your class syllabus before use\./);
@@ -138,7 +152,7 @@ test('TDD: all served entrypoints load the AI client before the actual React bun
   assert.ok(client>0&&bundle>client,'AI client must load before the school app: '+prefix);
   const js=fs.readFileSync(prefix+'assets/index-brightnexa-v2.js','utf8');
   assert.match(js,/BNSmartToolsAI/);
-  assert.match(js,/Teacher Instructions/);
+  assert.match(js,/Suggestions \/ Chapter \(optional\)/);
   assert.doesNotMatch(js,/Offline draft ready\. Check your class syllabus before use/);
  }
  const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');
@@ -195,8 +209,8 @@ test('TDD RED: cache reset version changes with the AI client while keeping exis
  for(const dir of ['','docs/','app-extracted/dist/']){
   const html=fs.readFileSync(dir+'index.html','utf8');
   assert.match(html,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
-  assert.match(html,/assets\/index-brightnexa-v2\.js\?v=20261106-client-recovery-v2/);
-  assert.match(html,/CACHE_VERSION = '20261106-client-recovery-v2'/);
+  assert.match(html,/assets\/index-brightnexa-v2\.js\?v=20261106-optional-topic-v3/);
+  assert.match(html,/CACHE_VERSION = '20261106-optional-topic-v3'/);
   const sw=fs.readFileSync(dir+'sw.js','utf8');
   assert.match(sw,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
   assert.doesNotMatch(html,/localStorage\.clear\(/);
