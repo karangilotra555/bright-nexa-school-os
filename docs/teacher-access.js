@@ -9,6 +9,7 @@
   const ROLES=['school_admin','principal','teacher','accountant','receptionist','transport_staff'];
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
+  let rolePermissions=null;
   const homeworkFiles=window.BNHomeworkFiles.create({base:BASE,key:APIKEY,token:async()=>{await ensureToken();return session?.access_token;}});
   const values=v=>v==null?'':String(v);
   function notify(msg,isError=false){
@@ -64,12 +65,14 @@
     for(const row of records){const o=dom('option',label(row));o.value=row.id;s.append(o)}
   }
   function dropSession(){
-    session=null;me=null;identity=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
+    session=null;me=null;identity=null;rolePermissions=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);invalidateRoster();clearProfileEditor();
     display('portalSection',false);display('loginSection',true);display('logout',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   function tab(name){
+    if(name==='admin'&&!isAdmin())return;
+    if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
   }
@@ -93,14 +96,17 @@
     if($('accountNameInput'))$('accountNameInput').value=(myName&&myName!==me.email)?myName:'';
     put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
+    await loadRolePermissions();
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
     await reload();
-    const attendanceFirst=(me.role==='teacher'||new URLSearchParams(location.search).get('view')==='attendance')&&canAcademic();
-    tab(attendanceFirst?'attendance':'classes');clearNotice();
+    const attendanceFirst=(me.role==='teacher'||new URLSearchParams(location.search).get('view')==='attendance')&&canAcademic()&&isTabVisibleForRole('attendance',me.role);
+    const landing=['classes','attendance','homework','notices','profiles','account'].find(view=>isTabVisibleForRole(view,me.role));
+    tab(attendanceFirst?'attendance':landing||'account');clearNotice();
     if(attendanceFirst){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
   async function reload(){
+    await loadRolePermissions();
     const institution_id=me.institution_id;
     const cQ=query({select:'id,institution_id,name,section,academic_year',institution_id:eq(institution_id),order:'name.asc',limit:'500'});
     const sQ=query({select:'id,name,admission_number,class_id,institution_id,status',institution_id:eq(institution_id),status:eq('active'),limit:'1000'});
@@ -133,13 +139,16 @@
   $('profileSearchInput')?.addEventListener('input',()=>{renderProfileStudents();clearProfileEditor();});
   $('profileStudent')?.addEventListener('change',()=>{updateSelectedStudentBadge();clearProfileEditor();});
   $('loadProfile').addEventListener('click',()=>run(async()=>{
-    if(!isAdmin())throw Error('School admin required.');clearProfileEditor();const generation=profileGeneration,id=$('profileStudent').value;
+    if(!isAdmin()&&!isTabVisibleForRole('profiles',me.role))throw Error('Student profiles permission required.');clearProfileEditor();const generation=profileGeneration,id=$('profileStudent').value;
     const student=allStudents.find(s=>s.id===id);if(!student)throw Error('Choose a student.');
     const rows=await api('school_student_profiles',query({select:'*',student_id:eq(id),institution_id:eq(me.institution_id)}));
     if(generation!==profileGeneration||$('profileStudent').value!==id)return;
     const core=await api('school_students',query({select:'id,name,dob',id:eq(id),institution_id:eq(me.institution_id)}));
     if(generation!==profileGeneration||$('profileStudent').value!==id||!core[0])return;
-    editingStudent=id;readProfile=window.BNStudentProfile.editor($('profileEditor'),{student:{...core[0],profile:rows[0]||{}}});display('studentProfileForm',true);updateSelectedStudentBadge();
+    editingStudent=id;readProfile=window.BNStudentProfile.editor($('profileEditor'),{student:{...core[0],profile:rows[0]||{}}});display('studentProfileForm',true);
+    const viewer=!isAdmin();
+    $('studentProfileForm').querySelectorAll('input,select,textarea').forEach(field=>{field.disabled=viewer;});
+    display('saveProfile',!viewer);updateSelectedStudentBadge();
   }));
   $('studentProfileForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin()||!readProfile||editingStudent!==$('profileStudent').value)throw Error('Load the student profile first.');
@@ -155,6 +164,7 @@
     }finally{button.disabled=false;}
   });});
   async function loadNotices(){
+    if(!isTabVisibleForRole('notices',me?.role||'teacher')){$('noticesList').replaceChildren();return;}
     const rows=await api('school_notices',query({select:'id,title,body,created_at',institution_id:eq(me.institution_id),order:'created_at.desc',limit:'100'}));
     const root=$('noticesList');root.replaceChildren();
     if(!rows.length){root.append(dom('p','No notices published yet.'));return;}
@@ -178,7 +188,7 @@
       right.style.flexWrap='wrap';
       right.append(dom('span',flags||'School access','pill'));
 
-      if(canAcademic()){
+      if(canAcademic()&&isTabVisibleForRole('attendance',me.role)&&writableClasses('can_take_attendance').some(x=>x.id===c.id)){
         const attBtn=dom('button','📋 Attendance','ghost');
         attBtn.type='button';
         attBtn.style.padding='4px 8px';
@@ -189,6 +199,9 @@
           run(loadAttendance);
         });
 
+        right.append(attBtn);
+      }
+      if(canAcademic()&&isTabVisibleForRole('homework',me.role)&&writableClasses('can_assign_homework').some(x=>x.id===c.id)){
         const hwBtn=dom('button','📝 Homework','ghost');
         hwBtn.type='button';
         hwBtn.style.padding='4px 8px';
@@ -197,8 +210,7 @@
           if($('homeworkClass')){$('homeworkClass').value=c.id;fillSubject(c.id);}
           tab('homework');
         });
-
-        right.append(attBtn,hwBtn);
+        right.append(hwBtn);
       }
 
       if(isAdmin()){
@@ -220,6 +232,8 @@
     }
   }
   function writableClasses(action){
+    const moduleKey=action==='can_take_attendance'?'attendance':action==='can_assign_homework'?'homework':'classes';
+    if(!isTabVisibleForRole(moduleKey,me?.role||'teacher'))return [];
     if(me.role==='school_admin'||me.role==='principal')return allClasses;
     if(me.role!=='teacher')return [];
     return allClasses.filter(c=>allAssignments.some(a=>a.school_user_id===me.id&&a.class_id===c.id&&a.active&&a[action]));
@@ -252,13 +266,14 @@
     receptionist:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
     transport_staff:{classes:false,attendance:false,homework:false,notices:true,profiles:false}
   };
-  function getRolePermissions(){
-    if(!me?.institution_id)return DEFAULT_ROLE_PERMS;
-    try{
-      const saved=localStorage.getItem('bright-nexa-school-os:role-permissions:'+me.institution_id);
-      if(saved)return Object.assign({},DEFAULT_ROLE_PERMS,JSON.parse(saved));
-    }catch(_){}
-    return DEFAULT_ROLE_PERMS;
+  function getRolePermissions(){return rolePermissions||DEFAULT_ROLE_PERMS;}
+  async function loadRolePermissions(){
+    if(!me?.institution_id){rolePermissions=null;return DEFAULT_ROLE_PERMS;}
+    const rows=await api('school_role_module_permissions',query({select:'role,module_key,enabled',institution_id:eq(me.institution_id)}));
+    if(!Array.isArray(rows))throw Error('Supabase role permissions could not be loaded.');
+    const next=Object.fromEntries(Object.entries(DEFAULT_ROLE_PERMS).map(([role,modules])=>[role,{...modules}]));
+    for(const row of rows){if(next[row.role]&&Object.prototype.hasOwnProperty.call(next[row.role],row.module_key))next[row.role][row.module_key]=row.enabled===true;}
+    rolePermissions=next;return next;
   }
   function isTabVisibleForRole(tabName,role){
     if(role==='school_admin'||role==='principal')return true;
@@ -408,6 +423,9 @@
       if($('profileClassFilter'))options('profileClassFilter',[{id:'',name:'All accessible classes'}].concat(allClasses),c=>c.id?className(c):c.name);
       renderProfileStudents();
       clearProfileEditor();
+    }else if(isTabVisibleForRole('profiles',me?.role||'teacher')){
+      if($('profileClassFilter'))options('profileClassFilter',[{id:'',name:'All accessible classes'}].concat(allClasses),c=>c.id?className(c):c.name);
+      renderProfileStudents();clearProfileEditor();
     }
   }
   function fillSubject(classId){
@@ -515,18 +533,17 @@
         const saveRoleBtn=dom('button','Save','ghost');
         saveRoleBtn.type='button';
         saveRoleBtn.style.padding='4px 8px';
-        saveRoleBtn.addEventListener('click',()=>{
-          currentRolePerms[r]={
-            classes:checks.classes.checked,
-            attendance:checks.attendance.checked,
-            homework:checks.homework.checked,
-            notices:checks.notices.checked,
-            profiles:checks.profiles.checked
-          };
-          localStorage.setItem('bright-nexa-school-os:role-permissions:'+me.institution_id,JSON.stringify(currentRolePerms));
-          applyNavigationVisibility();
-          notify('Permissions saved for '+r.replaceAll('_',' ')+'.');
-        });
+        saveRoleBtn.addEventListener('click',()=>run(async()=>{
+          if(!isAdmin())throw Error('School admin required.');
+          saveRoleBtn.disabled=true;
+          try{
+            const payload=modules.map(module_key=>({institution_id:me.institution_id,role:r,module_key,enabled:checks[module_key].checked}));
+            const result=await api('school_role_module_permissions','on_conflict=institution_id,role,module_key','POST',payload,'resolution=merge-duplicates,return=representation');
+            if(!Array.isArray(result)||result.length!==modules.length)throw Error('Supabase did not confirm every permission. Refresh and check again.');
+            await loadRolePermissions();renderAdmin();applyNavigationVisibility();
+            notify('Cloud permissions saved for '+r.replaceAll('_',' ')+'.');
+          }finally{saveRoleBtn.disabled=false;}
+        }));
         actTd.append(saveRoleBtn);
         rTr.append(actTd);
         matrixRoot.append(rTr);
