@@ -297,16 +297,39 @@ CREATE POLICY bn_student_photo_upload ON storage.objects FOR INSERT TO authentic
      AND s.id::text=split_part(name,'/',2)
      AND school_private.has_role(s.institution_id,ARRAY['school_admin']))
 );
+-- Profile RLS intentionally hides medical/contact fields from teachers.
+-- A constrained, unexposed helper checks only the published photo pointer
+-- without broadening permission to read the full student profile.
+CREATE OR REPLACE FUNCTION school_private.bn_can_read_student_photo(
+ p_institution_text text,p_student_text text,p_storage_path text
+) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
+ SELECT (SELECT auth.uid()) IS NOT NULL AND EXISTS(
+  SELECT 1 FROM public.school_students s
+  LEFT JOIN public.school_student_profiles pr
+    ON pr.student_id=s.id AND pr.institution_id=s.institution_id
+  WHERE s.institution_id::text=p_institution_text
+    AND s.id::text=p_student_text
+    AND s.status='active'
+    AND (
+      school_private.has_role(s.institution_id,ARRAY['school_admin'])
+      OR (
+        pr.details->>'photo_path'=p_storage_path
+        AND (
+          school_private.parent_of(s.id,s.institution_id)
+          OR (s.class_id IS NOT NULL AND
+             school_private.teacher_can(s.institution_id,s.class_id,'roster.read',''))
+        )
+      )
+    )
+ );
+$function$;
+REVOKE ALL ON FUNCTION school_private.bn_can_read_student_photo(text,text,text) FROM public,anon;
+GRANT EXECUTE ON FUNCTION school_private.bn_can_read_student_photo(text,text,text) TO authenticated;
+
 CREATE POLICY bn_student_photo_read ON storage.objects FOR SELECT TO authenticated USING(
  bucket_id='school-student-photos'
- AND EXISTS(SELECT 1 FROM public.school_students s
-   LEFT JOIN public.school_student_profiles pr ON pr.student_id=s.id AND pr.institution_id=s.institution_id
-   WHERE s.institution_id::text=split_part(name,'/',1) AND s.id::text=split_part(name,'/',2)
-     AND (school_private.has_role(s.institution_id,ARRAY['school_admin'])
-       OR (pr.details->>'photo_path'=name AND school_private.parent_of(s.id,s.institution_id))
-       OR (pr.details->>'photo_path'=name AND s.class_id IS NOT NULL
-          AND school_private.teacher_can(s.institution_id,s.class_id,'roster.read','')))
- )
+ AND school_private.bn_can_read_student_photo(
+   split_part(name,'/',1),split_part(name,'/',2),name)
 );
 
 -- Update just the photo pointer without overwriting unrelated profile fields.
