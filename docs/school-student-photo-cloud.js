@@ -29,7 +29,8 @@
   async function upload(schoolId,studentId,file){
    if(!uuid(schoolId)||!uuid(studentId))throw Error('Select a valid school student.');
    validate(file);
-   const suffix=(root.crypto?.randomUUID?.()||String(Date.now())+Math.random().toString(36).slice(2)).replaceAll('-','').slice(0,32);
+   if(typeof root.crypto?.randomUUID!=='function')throw Error('Secure random ID generation is not available in this browser.');
+   const suffix=root.crypto.randomUUID().replaceAll('-','');
    const path=schoolId+'/'+studentId+'/photo-'+suffix+'.'+ALLOWED[file.type];
    const jwt=await token();
    if(!jwt)throw Error('Please sign in again.');
@@ -57,7 +58,8 @@
    });
    const signed=result.signedURL||result.signedUrl;
    if(!signed)throw Error('No signed student photo URL returned');
-   const resolved=new URL(signed,base);
+   const endpoint=signed.startsWith('/object/sign/')?'/storage/v1'+signed:signed;
+   const resolved=new URL(endpoint,base);
    if(resolved.origin!==new URL(base).origin)throw Error('Photo URL origin rejected');
    return resolved.href;
   }
