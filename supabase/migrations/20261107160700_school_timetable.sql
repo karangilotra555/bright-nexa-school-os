@@ -121,14 +121,14 @@ FOR EACH ROW EXECUTE FUNCTION public.bn_timetable_unpublish_period();
 -- allocations. Revoking/changing an assignment invalidates published lessons
 -- for that class; no stale teacher listing is exposed to students.
 CREATE OR REPLACE FUNCTION public.bn_timetable_unpublish_assignment() RETURNS trigger
-LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $
+LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 BEGIN
  UPDATE public.school_timetable_publications
  SET published=false,published_at=null,updated_at=now()
  WHERE institution_id=COALESCE(NEW.institution_id,OLD.institution_id)
    AND class_id=COALESCE(NEW.class_id,OLD.class_id);
  RETURN NULL;
-END;$;
+END;$$;
 DROP TRIGGER IF EXISTS bn_timetable_assignment_unpublish ON public.school_teacher_assignments;
 CREATE TRIGGER bn_timetable_assignment_unpublish AFTER INSERT OR UPDATE OR DELETE
 ON public.school_teacher_assignments FOR EACH ROW
