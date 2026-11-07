@@ -60,6 +60,14 @@ end loop;end$$;
  const existing=(await db.query('select name from school_students where institution_id=$1 and admission_number=$2',[existingSchool,'PREEXISTING-1'])).rows[0];
  assert.equal(existing.name,'Original Student','a rejected upload must not change existing students');
  assert.equal(Number((await db.query('select count(*) n from school_workspace_links where institution_id=$1',[existingSchool])).rows[0].n),0);
+ // Clean up only the isolated test school's fixture so unrelated assertions
+ // continue to count the main test school alone.
+ await db.exec(`reset role;
+   delete from school_students where institution_id='${existingSchool}';
+   delete from school_classes where institution_id='${existingSchool}';
+   delete from school_users where institution_id='${existingSchool}';
+   delete from institutions where id='${existingSchool}';
+   set role authenticated;`);
 
  assert.equal((await pull()).snapshot,null);
  projection.students[0].profile.details.name='stale profile name'; projection.students[0].profile.details.id='stale profile id';
