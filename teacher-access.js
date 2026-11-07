@@ -12,8 +12,12 @@
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
   let rolePermissions=null;
   let recoveryMode=false;
-  const photos=window.BNStudentPhotos.create({base:BASE,key:APIKEY,
-    token:async()=>{await ensureToken();return session?.access_token;}});
+  const photos=window.BNStudentPhotos?.create({base:BASE,key:APIKEY,
+    token:async()=>{await ensureToken();return session?.access_token;}})||{
+      validate(){throw Error('School photo service is unavailable. Refresh the page.');},
+      async upload(){throw Error('School photo service is unavailable. Refresh the page.');},
+      async signedUrl(){return null;}
+    };
   let schoolLoadEpoch=0;
   const homeworkFiles=window.BNHomeworkFiles.create({base:BASE,key:APIKEY,token:async()=>{await ensureToken();return session?.access_token;}});
   const values=v=>v==null?'':String(v);
