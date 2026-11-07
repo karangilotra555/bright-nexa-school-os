@@ -43177,7 +43177,7 @@ function Ds() {
         const params=new URLSearchParams(window.location.search);
         if((params.get('openSchool')==='true'||params.get('tab'))&&!controller.state().binding){
           const schools=await client.connect();
-          const selectedSchool=schools?.find(s=>s.id===g?.institutionId)||(schools?.length===1?schools[0]:null);
+          const selectedSchool=g?.institutionId?schools?.find(s=>s.id===g.institutionId):(schools?.length===1?schools[0]:null);
           if(!selectedSchool)throw Error('Choose your verified school from Staff Login before opening ERP.');
           await controller.openSchool(selectedSchool.id);
         }
