@@ -196,15 +196,22 @@ RETURNS TABLE(weekday smallint,slot_index smallint,kind text,label text,starts_a
  subject text,teacher_name text)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
  SELECT s.weekday,s.slot_index,s.kind,s.label,s.starts_at,s.ends_at,
-        p.subject,COALESCE(NULLIF(btrim(u.display_name),''),'Assigned teacher')
+        p.subject,CASE WHEN p.teacher_user_id IS NOT NULL
+                       THEN COALESCE(NULLIF(btrim(u.display_name),''),'Assigned teacher')
+                       ELSE NULL END AS teacher_name
  FROM public.school_students child
- JOIN public.school_timetable_published p
-   ON p.institution_id=child.institution_id AND p.class_id=child.class_id
- JOIN public.school_timetable_slots s ON s.id=p.slot_id AND s.institution_id=p.institution_id
+ JOIN public.school_classes class ON class.id=child.class_id AND class.institution_id=child.institution_id
+ JOIN public.school_timetable_slots s ON s.institution_id=child.institution_id
+   AND s.academic_year=class.academic_year
+ LEFT JOIN public.school_timetable_published p ON p.slot_id=s.id
+   AND p.institution_id=child.institution_id AND p.class_id=child.class_id
  LEFT JOIN public.school_users u ON u.id=p.teacher_user_id AND u.institution_id=p.institution_id
  WHERE (SELECT auth.uid()) IS NOT NULL
    AND school_private.parent_of(p_student_id,p_institution_id)
    AND child.id=p_student_id AND child.institution_id=p_institution_id AND child.status='active'
+   AND EXISTS(SELECT 1 FROM public.school_timetable_published visible
+     WHERE visible.institution_id=child.institution_id
+       AND visible.class_id=child.class_id AND visible.academic_year=class.academic_year)
  ORDER BY s.weekday,s.slot_index;
 $function$;
 REVOKE ALL ON FUNCTION public.bn_portal_student_timetable(uuid,uuid) FROM public,anon;
