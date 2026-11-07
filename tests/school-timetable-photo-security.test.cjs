@@ -39,7 +39,7 @@ test('timetable and photo migration: publish atomicity, double booking, parent i
   await db.exec([
    "alter table public.school_students add column dob date, add column updated_at timestamptz default now();",
    "alter table public.school_student_profiles add column guardian_name text, add column guardian_relationship text, add column guardian_phone text, add column guardian_email text, add column alternate_contact_name text, add column alternate_contact_phone text, add column address_line text, add column city text, add column postal_code text, add column admission_on date;"
-  ].join('\\n'));
+  ].join('\n'));
 
   const school='11111111-1111-1111-1111-111111111111',other='22222222-2222-2222-2222-222222222222';
   const classA='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',classB='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
