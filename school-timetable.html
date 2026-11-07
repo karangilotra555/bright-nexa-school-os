@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>School Timetable | Bright Nexa School OS</title>
+<style>
+:root{font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#102640;background:#f3f7fb}
+*{box-sizing:border-box}body{margin:0}a{color:#0b70b5}header{background:#061a36;color:#fff;padding:15px 22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+header a{color:#fff;text-decoration:none;font-size:13px}
+main{max-width:1400px;margin:22px auto;padding:0 18px 35px}h1{margin:0;font-size:25px}h2{font-size:18px;margin:0 0 8px}
+p{margin:8px 0;color:#526980}small{color:#60758c}.panel{background:#fff;border:1px solid #dce6ef;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 3px 15px #0b315e08}
+.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}.field{display:flex;flex-direction:column;gap:5px;flex:1 1 150px}
+label{font-size:12px;font-weight:700;color:#334c65}input,select{font:inherit;width:100%;padding:10px;border:1px solid #cad8e6;border-radius:9px;background:#fff;color:#102640}
+input[type=checkbox]{width:auto}button{font:inherit;padding:10px 14px;border:1px solid #bfd4e6;border-radius:9px;background:#fff;color:#0b315e;cursor:pointer;font-weight:650}
+button.primary{background:#138ed8;color:#fff;border-color:#138ed8}button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8ab5e8}
+.notice{border-left:3px solid #138ed8;background:#eff7ff;padding:12px;color:#174e76;border-radius:9px}
+.error{border-left-color:#c53549;background:#fff0f2;color:#a52b3d}.hidden{display:none!important}
+.gridwrap{overflow:auto}.weekly{width:100%;border-collapse:separate;border-spacing:5px;min-width:770px}
+.weekly th{background:#f0f5fb;padding:12px;border-radius:8px;white-space:nowrap;font-size:13px;text-align:center}
+.weekly td{height:86px;vertical-align:top;width:15%;padding:4px}.weekly td:first-child{width:10%;min-width:115px}
+.slot{width:100%;height:100%;text-align:left;display:flex;gap:3px;flex-direction:column;padding:10px;background:#f6faff;border:1px solid #c9dcef;border-radius:10px;white-space:normal;font-size:12px}
+.slot.saved{background:#e7f5ff;border-color:#64b5e8}.slot.break{background:#f2efe9;border-color:#dbcfb9}
+.slot strong{font-size:13px;color:#143452}.slot small{font-size:11px}.slot.saved strong{color:#005c95}
+#status{margin-bottom:12px}.muted{color:#698095}
+@media print{header,.no-print,#periodEditor,#status{display:none!important}body{background:#fff}main{padding:0}.panel{box-shadow:none;border:0}.weekly{min-width:0}}
+</style></head>
+<body><header><strong>Bright Nexa · School Timetable</strong><nav><a href="./teacher-access.html">← Staff Portal</a> &nbsp; <a href="./index.html">School OS ERP</a></nav></header>
+<main>
+<h1>Weekly School Timetable</h1>
+<p>Admin → Timetable. Set periods and breaks, choose class/section, allocate subjects and eligible teachers, check clashes, then publish. Parents see only published class schedules.</p>
+<div id="status" class="notice">Verifying school access…</div>
+<div class="panel hidden" id="adminApp">
+ <div class="row no-print">
+  <div class="field"><label for="school">Authorized school</label><select id="school"></select></div>
+  <div class="field"><label for="class">Class / Section</label><select id="class"></select></div>
+  <div class="field"><label for="viewMode">View</label><select id="viewMode"><option value="class">Class timetable</option><option value="teacher">Teacher timetable</option></select></div>
+  <div class="field hidden" id="teacherFilter"><label for="teacher">Teacher</label><select id="teacher"></select></div>
+  <button id="refresh" type="button">↻ Refresh</button>
+  <button id="print" type="button">Print / Save PDF</button>
+ </div>
+ <div id="publishState" class="notice" style="margin:14px 0">Loading publication status…</div>
+ <div class="row no-print">
+  <button id="publish" type="button" class="primary">Publish this class timetable</button>
+  <button id="unpublish" type="button">Unpublish</button>
+  <a href="./teacher-access.html?view=admin" style="font-size:13px">Manage teacher assignments in Staff Roles & Permissions</a>
+ </div>
+ <div class="gridwrap"><table class="weekly"><thead><tr><th>Period / Time</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th><th>Saturday</th></tr></thead><tbody id="grid"></tbody></table></div>
+ <p class="muted">Click a cell to add/edit a lesson. Breaks and other non-teaching periods cannot be assigned. Unassigned teachers, overlaps and double bookings are rejected when saved or published.</p>
+</div>
+<section class="panel hidden no-print" id="periodSetup">
+ <h2>Period & Break Setup</h2>
+ <p>School-wide time slots. Start with your actual school timings; the suggested settings are only an editable template. Timings should be approved before publishing.</p>
+ <div class="row">
+  <div class="field"><label for="workDays">Working days</label><select id="workDays"><option value="6">Monday–Saturday</option><option value="5">Monday–Friday</option></select></div>
+  <div class="field"><label for="startTime">School starts</label><input id="startTime" type="time" value="08:30"></div>
+  <div class="field"><label for="periodMinutes">Minutes per lesson</label><input id="periodMinutes" type="number" min="20" max="90" value="40"></div>
+  <div class="field"><label for="lessonCount">Lessons per day</label><input id="lessonCount" type="number" min="1" max="12" value="7"></div>
+  <div class="field"><label for="breakAfter">Break after lesson</label><input id="breakAfter" type="number" min="0" max="12" value="4"></div>
+  <div class="field"><label for="breakMinutes">Break (minutes)</label><input id="breakMinutes" type="number" min="0" max="60" value="20"></div>
+  <button id="setupPeriods" class="primary" type="button">Create period structure</button>
+ </div>
+ <p class="muted">Once periods exist, edit an individual period using its cell below. Existing slots and approved schedules are preserved until you explicitly change them.</p>
+ <div class="row" style="margin-top:12px">
+  <div class="field"><label for="editDay">Day</label><select id="editDay"></select></div>
+  <div class="field"><label for="editPeriod">Period</label><select id="editPeriod"></select></div>
+  <div class="field"><label for="periodStart">From</label><input id="periodStart" type="time"></div>
+  <div class="field"><label for="periodEnd">To</label><input id="periodEnd" type="time"></div>
+  <div class="field"><label for="periodKind">Type</label><select id="periodKind"><option value="lesson">Teaching period</option><option value="break">Break / lunch</option><option value="assembly">Assembly / non-teaching</option></select></div>
+  <div class="field"><label for="periodLabel">Label</label><input id="periodLabel" maxlength="60" placeholder="Lunch / Assembly"></div>
+  <button id="savePeriod" type="button">Save period</button>
+ </div>
+</section>
+<section class="panel hidden no-print" id="periodEditor">
+ <h2 id="editorTitle">Assign period</h2>
+ <div class="row">
+  <div class="field"><label for="subject">Subject / Activity</label><input id="subject" maxlength="90" required list="suggestedSubjects" placeholder="Mathematics"><datalist id="suggestedSubjects"></datalist></div>
+  <div class="field"><label for="assignedTeacher">Assigned teacher</label><select id="assignedTeacher"></select></div>
+  <div class="field"><label for="room">Room (optional)</label><input id="room" maxlength="60" placeholder="Room 12"></div>
+ </div>
+ <div class="row" style="margin-top:12px">
+  <button id="saveSlot" class="primary" type="button">Save lesson</button>
+  <button id="removeSlot" type="button">Clear lesson</button>
+  <button id="cancelSlot" type="button">Cancel</button>
+ </div>
+</section>
+</main><script src="./school-timetable.js?v=20261107-v1" defer></script></body></html>
