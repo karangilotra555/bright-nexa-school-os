@@ -20,6 +20,31 @@ function render(rootEl,data){
  for(const section of sections){const card=el('details',undefined,'bn-profile-card');card.open=!!section.open;const heading=el('summary',section.icon+' '+section.title),grid=el('div',undefined,'bn-profile-grid');card.append(heading,grid);if(section.title==='Academic Mapping'){fieldDisplay(grid,'School',data.school?.name);fieldDisplay(grid,'Admission number',student.admissionNumber);fieldDisplay(grid,'Class / Section',[student.className,student.section].filter(Boolean).join(' - '));fieldDisplay(grid,'Session',data.school?.session);}
   for(const field of section.fields){let input=value(data,field);if(field[2]==='date'&&input){const date=new Date(input+'T00:00:00Z');if(!Number.isNaN(date.getTime()))input=date.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});}fieldDisplay(grid,field[1],input,field[3]==='private');}rootEl.append(card);
  }
+ // One authorized student record drives the same academic view for parents
+ // and students. Never guess teacher names or invent a timetable.
+ const academics=el('details',undefined,'bn-profile-card');academics.open=true;
+ const academicsGrid=el('div',undefined,'bn-profile-grid');
+ academics.append(el('summary','📚 My Class, Teachers & Timetable'),academicsGrid);
+ const teachers=Array.isArray(data.teachers)?data.teachers:[];
+ const classTeacher=teachers.find(t=>t.assignment_type==='class_teacher');
+ fieldDisplay(academicsGrid,'Class teacher',classTeacher?.teacher_name||
+   (data.teachersStatus==='loaded'?'Not assigned by school':'Not available until school publishes assignments'),false);
+ const subjects=teachers.filter(t=>t.assignment_type==='subject_teacher');
+ if(subjects.length){
+   for(const t of subjects)fieldDisplay(academicsGrid,(t.subject||'Subject')+' teacher',t.teacher_name||'Assigned teacher',false);
+ }else{
+   fieldDisplay(academicsGrid,'Subject-wise teachers',data.teachersStatus==='loaded'?'Not assigned by school':'Not available until school publishes assignments',false);
+ }
+ const timetable=Array.isArray(data.timetable)?data.timetable:[];
+ if(timetable.length){
+  for(const slot of timetable){
+   const weekday=String(slot.day||'Day'),time=[slot.starts_at,slot.ends_at].filter(Boolean).join(' – ');
+   fieldDisplay(academicsGrid,[weekday,time].filter(Boolean).join(' · '),String(slot.subject||'—'),false);
+  }
+ }else{
+   fieldDisplay(academicsGrid,'Class timetable','Not published by school yet',false);
+ }
+ rootEl.append(academics);
 }
 function editor(rootEl,data){rootEl.replaceChildren();const inputs=[];for(const section of sections){const group=el('details',undefined,'bn-profile-card');group.open=section.open;group.append(el('summary',section.icon+' '+section.title));const grid=el('div',undefined,'bn-profile-grid');for(const field of section.fields){const label=el('label',field[1]);const input=el(field[2]==='textarea'?'textarea':'input');if(input.tagName==='INPUT')input.type=field[2]||'text';input.value=value(data,field);input.maxLength=field[2]==='textarea'?2000:200;input.dataset.profileKey=field[0];input.dataset.profileScope=field[4]||'details';if(field[0]==='latest_exam_result'){input.type='number';input.min='0';input.max='100';input.step='0.01';}label.append(input);grid.append(label);inputs.push(input);}group.append(grid);rootEl.append(group);}return ()=>{const p=data.student?.profile||{};const payload={guardian_name:p.guardian_name||'',guardian_relationship:p.guardian_relationship||'',guardian_phone:p.guardian_phone||'',guardian_email:p.guardian_email||'',alternate_contact_name:p.alternate_contact_name||'',alternate_contact_phone:p.alternate_contact_phone||'',address_line:p.address_line||'',city:p.city||'',postal_code:p.postal_code||'',admission_on:p.admission_on||'',details:{...(p.details||{})}};let dob=data.student?.dob||null;for(const input of inputs){if(!input.checkValidity())throw Error('Check '+input.parentElement.firstChild.textContent);if(input.dataset.profileKey==='date_of_birth'){dob=input.value||null;continue;}const target=input.dataset.profileScope==='profile'?payload:payload.details;target[input.dataset.profileKey]=input.value.trim();}return {p_profile:payload,p_dob:dob};};}
 const api={sections,value,mask,render,editor};if(typeof module!=='undefined')module.exports=api;else root.BNStudentProfile=api;

@@ -4,6 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student & Parent Portal — Bright Nexa School OS</title>
+  <!-- Shared Student & Parent Portal Redirect:
+       Keep the existing public QR verification and school-profile pages
+       without allowing a separate legacy DOB login to be a second portal. -->
+  <script>
+  (() => {
+    const query=new URLSearchParams(location.search);
+    const admission=query.get('adm')||query.get('admission')||query.get('id');
+    const verification=query.get('action')==='verify'&&!!admission;
+    const legacyPreview=location.hash==='#/demo'||location.hash==='#/school-profile';
+    if(verification||legacyPreview)return;
+    const next=new URL('./parents.html',location.href);
+    const school=query.get('school');
+    if(school&&/^[a-f0-9-]{36}$/i.test(school))next.searchParams.set('school',school);
+    location.replace(next.href);
+  })();
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
 
@@ -609,7 +625,7 @@
   </header>
 
   <main class="portal-container">
-    <nav class="portal-links" aria-label="Portal navigation"><a href="#/school-profile">School profile</a><a href="#/login">Student login</a></nav>
+    <nav class="portal-links" aria-label="Portal navigation"><a href="#/school-profile">School profile</a><a href="./parents.html">Student & Parent Login</a></nav>
     <section id="schoolProfileView" class="content-box" style="display:none" aria-labelledby="schoolName">
       <h1 id="schoolName">School profile</h1><p id="schoolTagline"></p>
       <p id="schoolStatus" role="status">Loading school details…</p>
@@ -670,10 +686,10 @@
 
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <button type="button" class="btn-verify-login" id="vBtnLogin" onclick="showLoginFromVerification()">
-            🔐 Login with Date of Birth to View Full Portal
+            🔐 Open Student & Parent Portal
           </button>
           <button type="button" onclick="showLoginScreen()" style="background: transparent; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; color: #64748b; font-size: 13px; font-weight: 700; cursor: pointer;">
-            ← Go to Standard Login
+            ← Go to Student & Parent Login
           </button>
         </div>
       </div>
