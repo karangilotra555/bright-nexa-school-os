@@ -186,7 +186,7 @@
     invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();await loadNotices();
   }
   let readProfile=null,editingStudent=null,profileGeneration=0;
-  function clearProfileEditor(){profileGeneration++;readProfile=null;editingStudent=null;display('studentProfileForm',false);$('profileEditor').replaceChildren();}
+  function clearProfileEditor(){profileGeneration++;readProfile=null;editingStudent=null;display('studentProfileForm',false);$('profileEditor').replaceChildren();if($('studentPhotoUpload'))$('studentPhotoUpload').value='';}
   $('profileClassFilter')?.addEventListener('change',()=>{renderProfileStudents();clearProfileEditor();});
   $('profileSearchInput')?.addEventListener('input',()=>{renderProfileStudents();clearProfileEditor();});
   $('profileStudent')?.addEventListener('change',()=>{updateSelectedStudentBadge();clearProfileEditor();});
