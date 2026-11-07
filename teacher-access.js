@@ -265,6 +265,71 @@
       notify('Student details saved. Linked app and web accounts can refresh Profile.');
     }finally{button.disabled=false;}
   });});
+
+  const fmtINR=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2}).format(Number(value)||0);
+  async function loadFees(){
+    if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee ledger access denied for this role.');
+    await ensureToken();
+    const [summary,entries]=await Promise.all([
+      responseJson(await fetch(BASE+'/rest/v1/rpc/school_fee_summary',{
+        method:'POST',cache:'no-store',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({p_institution:me.institution_id})
+      })),
+      api('school_fee_entries',query({select:'student_id,kind,amount_rupees,reference,occurred_on',
+        institution_id:eq(me.institution_id),order:'occurred_on.desc',limit:'100'}))
+    ]);
+    const row=Array.isArray(summary)?summary[0]||{}:summary||{};
+    put('feeOutstanding',fmtINR(row.outstanding_rupees));
+    put('feeEntryCount',String(row.entry_count||0));
+    const picker=$('feeStudent'),previous=picker.value;
+    picker.replaceChildren();
+    for(const student of allStudents){
+      const option=dom('option',student.name+' · '+student.admission_number);
+      option.value=student.id;picker.append(option);
+    }
+    if(allStudents.some(x=>x.id===previous))picker.value=previous;
+    const tbody=$('feeEntries');tbody.replaceChildren();
+    const label=new Map(allStudents.map(s=>[s.id,s.admission_number]));
+    if(!entries.length){
+      const tr=dom('tr'),cell=dom('td','No fee entries recorded yet.');
+      cell.colSpan=5;tr.append(cell);tbody.append(tr);
+    }else{
+      for(const entry of entries){
+        const tr=dom('tr');
+        for(const v of [entry.occurred_on,label.get(entry.student_id)||'Student record',entry.kind,fmtINR(entry.amount_rupees),entry.reference||'—'])tr.append(dom('td',v));
+        tbody.append(tr);
+      }
+    }
+    const date=$('feeDate');
+    if(!date.value){
+      const now=new Date();
+      date.value=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    }
+  }
+  $('feeEntryForm').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
+    if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee posting not allowed for this role.');
+    const studentId=$('feeStudent').value;
+    if(!allStudents.some(s=>s.id===studentId))throw Error('Select a student belonging to this school.');
+    const kind=$('feeKind').value,amount=Number($('feeAmount').value);
+    const reference=$('feeReference').value.trim(),notes=$('feeDescription').value.trim();
+    const occurred_on=$('feeDate').value;
+    if(!['charge','payment'].includes(kind))throw Error('Invalid fee entry type.');
+    if(!Number.isFinite(amount)||amount<=0||amount>100000000||Math.round(amount*100)!==amount*100)
+      throw Error('Enter a valid amount with at most two decimals.');
+    if(!reference||reference.length>100)throw Error('Enter a unique receipt/reference.');
+    if(notes.length>250||!/^\\d{4}-\\d{2}-\\d{2}$/.test(occurred_on))throw Error('Invalid notes or date.');
+    const button=$('saveFeeEntry');if(button.disabled)return;button.disabled=true;
+    try{
+      await api('school_fee_entries','','POST',{
+        institution_id:me.institution_id,student_id:studentId,created_by:me.id,
+        kind,amount_rupees:amount,reference,description:notes,occurred_on
+      });
+      $('feeEntryForm').reset();
+      await loadFees();
+      notify('Fee ledger entry saved to your school cloud records.');
+    }finally{button.disabled=false;}
+  })});
+
   async function loadNotices(){
     if(!isTabVisibleForRole('notices',me?.role||'teacher')){$('noticesList').replaceChildren();return;}
     const rows=await api('school_notices',query({select:'id,title,body,created_at',institution_id:eq(me.institution_id),order:'created_at.desc',limit:'100'}));
@@ -389,6 +454,8 @@
     display('schoolOsAdminNav',isAdm);
     display('adminErpBanner',isAdm);
     display('staffDesktopShortcut',isAdm);
+    display('staffBackToErp',isAdm);
+    display('staffBrandBack',isAdm);
     display('staffSmartToolsLink',canAcademic());
     display('staffSmartToolsQuickLink',canAcademic());
     display('feesTab',isAdm||role==='accountant');
