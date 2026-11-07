@@ -18791,13 +18791,28 @@ function wn() {
     return yn;
   }
 }
+function bnReportBrowserSaveError(area, cause) {
+  const detail=String(cause?.message||cause||'Storage unavailable');
+  const error=new Error(area+' could not be saved on this device: '+detail+'. Supabase save is NOT confirmed.');
+  if(typeof window==='undefined')return;
+  if(window.BNWorkspaceOnlineGuard?.active?.()) {
+    window.BNWorkspaceOnlineGuard.update('pending',error);
+  } else if(typeof window.alert==='function') {
+    // Without a verified cloud session, still show local save failures to the user.
+    if(!window.__bnStorageErrorAt||Date.now()-window.__bnStorageErrorAt>5000){
+      window.__bnStorageErrorAt=Date.now();
+      window.alert(error.message);
+    }
+  }
+}
 function Tn(e2) {
   let t2 = pn(e2);
   try {
     window.localStorage.setItem(_n, JSON.stringify(t2));
-  } catch {
+  } catch (e) {
+    bnReportBrowserSaveError('School profile',e);
   }
-  Ot(`snapshot`, t2).catch(() => void 0);
+  Ot(`snapshot`, t2).catch(e=>bnReportBrowserSaveError('School profile local cache',e));
 }
 var En = [
   {
@@ -18916,9 +18931,10 @@ function On(e2) {
   let t2 = pn(e2);
   try {
     window.localStorage.setItem(vn, JSON.stringify(t2 ?? []));
-  } catch {
+  } catch (e) {
+    bnReportBrowserSaveError('Student records',e);
   }
-  Ot(`students`, t2 ?? []).catch(() => void 0);
+  Ot(`students`, t2 ?? []).catch(e=>bnReportBrowserSaveError('Student records local cache',e));
 }
 async function kn() {
   let [e2, t2] = await Promise.all([kt(`snapshot`), kt(`students`)]);
@@ -25666,9 +25682,10 @@ function ji(e2) {
   let t2 = pn(e2);
   try {
     window.localStorage.setItem(Di, JSON.stringify(t2));
-  } catch {
+  } catch (e) {
+    bnReportBrowserSaveError('ERP operations',e);
   }
-  Ot(`operations`, t2).catch(() => void 0);
+  Ot(`operations`, t2).catch(e=>bnReportBrowserSaveError('ERP operations local cache',e));
 }
 async function Mi() {
   let e2 = await kt(`operations`);
@@ -28928,7 +28945,8 @@ function Ea({ data, students } = {}) {
     let on2 = true;
     if (window.BNTeacherDrafts && sessionStorage.getItem("bn_school_staff_session_v1")) window.BNTeacherDrafts.list().then((rows) => {
       if (on2) _2(rows);
-    }).catch(() => {
+    }).catch(error => {
+      if(on2)h2('Supabase saved drafts could not be loaded: '+(error?.message||String(error)));
     });
     return () => {
       on2 = false;
