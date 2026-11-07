@@ -61,6 +61,12 @@ function initPortal() {
 function showLoginScreen() { showView('loginView'); }
 function showLoginFromVerification(adm) {
   verificationGeneration++;
+  // QR public verification stays independent, but authenticated student access
+  // always uses the shared Student & Parent Supabase portal.
+  if (typeof window.location.assign === 'function') {
+    window.location.assign('./parents.html');
+    return;
+  }
   window.location.hash = '#/login';
   showLoginScreen();
   $('admInput').value = adm || '';
