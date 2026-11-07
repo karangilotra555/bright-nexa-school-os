@@ -54,7 +54,7 @@ test('existing student credentials require published admission and school-regist
  assert.match(source,/eq\('admission_number',admission\)/);
  assert.match(source,/select\('guardian_phone'\)/);
  assert.match(source,/phone!==mobile\(password\)/);
- assert.doesNotMatch(source,/9058514478|bms0005/i);
+ assert.doesNotMatch(source,/password\s*===\s*['\"]\d{7,}/);
 });
 
 test('empty optional guardian fields produce SQL NULL rather than invalid blank names and mobiles',()=>{
@@ -65,7 +65,7 @@ test('empty optional guardian fields produce SQL NULL rather than invalid blank 
    students:[
     {id:'s1',admissionNumber:'TEST-001',name:'First Student',classId:'class1',status:'Active',parentMobile:''},
     {id:'s2',admissionNumber:'TEST-002',name:'Second Student',classId:'class1',status:'Active',
-      guardianName:'Guardian Name',parentMobile:'9058514478'}
+      guardianName:'Guardian Name',parentMobile:'9000000000'}
    ]
  };
  const p=cloud.buildProjection(snapshot);
@@ -74,7 +74,7 @@ test('empty optional guardian fields produce SQL NULL rather than invalid blank 
  assert.equal(p.students[0].profile.guardian_phone,null);
  assert.equal(p.students[0].profile.address_line,null);
  assert.equal(p.students[1].profile.guardian_name,'Guardian Name');
- assert.equal(p.students[1].profile.guardian_phone,'9058514478');
+ assert.equal(p.students[1].profile.guardian_phone,'9000000000');
  assert.equal(read('school-workspace-cloud.js'),read('docs/school-workspace-cloud.js'));
  assert.equal(read('school-workspace-cloud.js'),read('app-extracted/dist/school-workspace-cloud.js'));
 });
