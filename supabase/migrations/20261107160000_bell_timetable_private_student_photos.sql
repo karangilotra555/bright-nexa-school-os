@@ -334,4 +334,32 @@ $function$;
 REVOKE ALL ON FUNCTION public.bn_save_student_photo(uuid,text) FROM public,anon;
 GRANT EXECUTE ON FUNCTION public.bn_save_student_photo(uuid,text) TO authenticated;
 
+-- Profile photo path is always server-controlled. Normal profile edits may
+-- change academic/contact/health fields but cannot unlink a previously
+-- published photo by submitting an old form.
+CREATE OR REPLACE FUNCTION public.school_save_student_profile(p_student_id uuid, p_dob date, p_profile jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+declare school uuid; d jsonb;
+begin
+ select institution_id into school from public.school_students where id=p_student_id;
+ if school is null or (select auth.uid()) is null or not school_private.has_role(school,array['school_admin']) then raise exception 'School administrator access required' using errcode='42501'; end if;
+ if p_profile is null or jsonb_typeof(p_profile)<>'object' or octet_length(p_profile::text)>65536 then raise exception 'Invalid profile'; end if;
+ d:=coalesce(p_profile->'details','{}'::jsonb);
+ if jsonb_typeof(d)<>'object' then raise exception 'Invalid profile details'; end if;
+ -- The only accepted photo path is published by bn_save_student_photo.
+ -- A stale or modified browser profile payload cannot reset or replace it.
+ d:=d - 'photo_path';
+ if p_dob>current_date then raise exception 'Date of birth cannot be in the future'; end if;
+ update public.school_students set dob=p_dob,updated_at=now() where id=p_student_id and institution_id=school;
+ insert into public.school_student_profiles(student_id,institution_id,guardian_name,guardian_relationship,guardian_phone,guardian_email,alternate_contact_name,alternate_contact_phone,address_line,city,postal_code,admission_on,details)
+ values(p_student_id,school,nullif(p_profile->>'guardian_name',''),nullif(p_profile->>'guardian_relationship',''),nullif(p_profile->>'guardian_phone',''),nullif(p_profile->>'guardian_email',''),nullif(p_profile->>'alternate_contact_name',''),nullif(p_profile->>'alternate_contact_phone',''),nullif(p_profile->>'address_line',''),nullif(p_profile->>'city',''),nullif(p_profile->>'postal_code',''),nullif(p_profile->>'admission_on','')::date,d)
+ on conflict(student_id) do update set guardian_name=excluded.guardian_name,guardian_relationship=excluded.guardian_relationship,guardian_phone=excluded.guardian_phone,guardian_email=excluded.guardian_email,alternate_contact_name=excluded.alternate_contact_name,alternate_contact_phone=excluded.alternate_contact_phone,address_line=excluded.address_line,city=excluded.city,postal_code=excluded.postal_code,admission_on=excluded.admission_on,details=(excluded.details || CASE
+   WHEN jsonb_typeof(public.school_student_profiles.details->'photo_path')='string'
+   THEN jsonb_build_object('photo_path',public.school_student_profiles.details->>'photo_path')
+   ELSE '{}'::jsonb END),updated_at=now();
+end $function$;
+
 COMMIT;
