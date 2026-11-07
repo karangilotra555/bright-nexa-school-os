@@ -114,6 +114,7 @@
       showStatus('Verifying School Admin and opening your existing school…');
       try{
         await verify({store});
+        window.BNWorkspaceOnlineGuard?.update('loading');
         const url=new URL(window.location.href);
         if(!url.searchParams.has('tab'))url.searchParams.set('openSchool','true');
         window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);
