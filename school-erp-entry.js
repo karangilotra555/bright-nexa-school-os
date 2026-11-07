@@ -12,7 +12,7 @@
   const STAFF_KEY='bn_school_staff_session_v1';
   const CHOSEN_KEY='bn_school_staff_selected_school_v1';
   const ERP_KEY='bright-nexa-school-os:session:v2';
-  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261107-existing-school-entry-v1';
+  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261107-parent-publish-v2';
   const ROOT='./teacher-access.html';
   const errorText='Unable to open this school. Your records have not been changed.';
 
@@ -114,6 +114,7 @@
       showStatus('Verifying School Admin and opening your existing school…');
       try{
         await verify({store});
+        window.BNWorkspaceOnlineGuard?.update('loading');
         const url=new URL(window.location.href);
         if(!url.searchParams.has('tab'))url.searchParams.set('openSchool','true');
         window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);

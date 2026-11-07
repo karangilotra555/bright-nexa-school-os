@@ -16,7 +16,7 @@ if (window.location.pathname.includes('marksheet') || window.location.pathname.i
 // Opening a full ERP school requires the application's normal authentication
 // flow or the explicit openSchool URL from verified School Admin routing.
 // Merely having any saved staff token must NOT auto-open the admin interface.
-const CACHE_VERSION = '20261107-existing-school-cloud-entry-v1';
+const CACHE_VERSION = '20261107-parent-publish-v2';
 if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACHE_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -38,12 +38,13 @@ if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACH
     <script defer src="./school-whatsapp-client.js?v=20261105-official-whatsapp-v2"></script>
     <script defer src="./school-workspace-cloud.js?v=20261106"></script>
     <script defer src="./school-workspace-persistence.js?v=20261106"></script>
-    <script defer src="./school-workspace-controller.js?v=20261106"></script>
+    <script defer src="./school-online-guard.js?v=20261107-parent-publish-v2"></script>
+    <script defer src="./school-workspace-controller.js?v=20261107-parent-publish-v2"></script>
     <script defer src="./teacher-generator-engine.js?v=20261106-bloom-blueprints-v2"></script>
     <script defer src="./teacher-drafts-cloud.js?v=20261106-paginated"></script>
     <script defer src="./teacher-ai-cloud.js?v=20261106-client-recovery-v2"></script>
     <script defer src="./teacher-ai-form-bridge.js?v=20261106-topic-optional-v1"></script>
-    <script defer src="./school-erp-entry.js?v=20261107-existing-school-entry-v1"></script>
+    <script defer src="./school-erp-entry.js?v=20261107-parent-publish-v2"></script>
     <script defer src="./parents-download-menu.js?v=20261104-smart-sidebar"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-C1ADVAqn.css?v=20261021-idcard-security">
   <link rel="manifest" href="./manifest.webmanifest"></head>
