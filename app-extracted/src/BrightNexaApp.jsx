@@ -43177,12 +43177,12 @@ function Ds() {
         const params=new URLSearchParams(window.location.search);
         if((params.get('openSchool')==='true'||params.get('tab'))&&!controller.state().binding){
           const schools=await client.connect();
-          if(schools&&schools.length>0){
-            await controller.openSchool(schools[0].id);
-          }
+          const selectedSchool=schools?.find(s=>s.id===g?.institutionId)||(schools?.length===1?schools[0]:null);
+          if(!selectedSchool)throw Error('Choose your verified school from Staff Login before opening ERP.');
+          await controller.openSchool(selectedSchool.id);
         }
-      }catch(_){}
-    }).catch(error=>{if(active)setCloudError(error.message);});
+      }catch(error){if(active){setCloudError(error.message);window.BNWorkspaceOnlineGuard?.update('local',error);}}
+    }).catch(error=>{if(active){setCloudError(error.message);window.BNWorkspaceOnlineGuard?.update('local',error);}});
     setCloud({client,controller});
     const refresh=()=>controller.sync().catch(error=>{if(active)setCloudError(error.message);});
     const timer=window.setInterval(refresh,30000);
