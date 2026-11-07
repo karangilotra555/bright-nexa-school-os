@@ -242,7 +242,6 @@ $('saveSlot').addEventListener('click',()=>execute(saveSlot));
 $('removeSlot').addEventListener('click',()=>execute(removeSlot));
 $('cancelSlot').addEventListener('click',()=>show('periodEditor',false));
 $('subject').addEventListener('input',()=>updateTeacherSelect(null));
-select($('suggestedSubjects'),SUGGESTED.map(x=>({value:x,name:x})),x=>x.name);
 // Datalist requires options, not SELECT: replace default list safely.
 const datalist=$('suggestedSubjects');datalist.replaceChildren();
 for(const name of SUGGESTED){const o=document.createElement('option');o.value=name;datalist.append(o);}
