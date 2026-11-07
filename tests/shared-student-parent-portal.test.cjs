@@ -106,7 +106,7 @@ test('absence of optional teacher RPC does not break other linked student record
  assert.equal(data.student.name,'Example Student');
  assert.equal(data.teachersStatus,'unavailable');
  assert.equal(data.teachers.length,0);
- assert.equal(data.timetableStatus,'not_published');
+ assert.equal(data.timetableStatus,'unavailable','RPC missing must not be misreported as published empty data');
  const profile=read('school-student-profile.js');
  for(const text of ['Class teacher','Subject-wise teachers','Class timetable','Not published by school yet'])
   assert.ok(profile.includes(text),text);
