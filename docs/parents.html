@@ -58,6 +58,16 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
     <div id="loginError" class="error" role="alert"></div>
     <button class="primary wide" type="submit">Continue securely →</button>
   </form>
+  <button id="studentForgotToggle" class="secondary wide" type="button" style="margin-top:10px">Forgot password? Get an email link</button>
+  <form id="forgotStudentForm" class="hidden" style="margin-top:12px">
+    <label class="field" for="forgotStudentAdmission">Admission number</label>
+    <input id="forgotStudentAdmission" autocomplete="username" required placeholder="Student admission number">
+    <label class="field" for="forgotStudentEmail">Guardian email registered with school</label>
+    <input id="forgotStudentEmail" type="email" autocomplete="email" required placeholder="parent@example.com">
+    <p class="notice">Reset links go only to the guardian email already registered by the school.</p>
+    <button id="sendStudentRecovery" class="primary wide" type="submit">Email secure reset link</button>
+    <p id="forgotStudentResult" class="notice" role="status" aria-live="polite"></p>
+  </form>
   <p class="notice">First login: use the 10-digit registered guardian mobile number as password. Set your own password to continue.</p>
 </section>
 <section id="passwordGate" class="gate hidden" aria-label="Change password">
@@ -148,6 +158,19 @@ function render(p){
 async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0);$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(links[index]);if(generation!==loadGeneration)return;render(p);show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;data=null;show('gate');$('loginError').textContent=e.message}}
 function logout(){$('studentProfileSections').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
 async function openLinked(nextLinks){links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();if(data)$('childPicker').selectedOptions[0].textContent=data.student.name;}
+$('studentForgotToggle').addEventListener('click',()=>{
+ const form=$('forgotStudentForm'),visible=form.classList.contains('hidden');
+ form.classList.toggle('hidden',!visible);
+ if(visible){$('forgotStudentAdmission').value=$('adm').value.trim();$('forgotStudentEmail').focus();}
+});
+$('forgotStudentForm').addEventListener('submit',async e=>{
+ e.preventDefault();const button=$('sendStudentRecovery');if(button.disabled)return;
+ button.disabled=true;$('forgotStudentResult').textContent='';
+ try{await cloud.requestPasswordReset($('forgotStudentAdmission').value.trim(),$('forgotStudentEmail').value.trim());
+ $('forgotStudentResult').textContent='If the registered guardian email matches, a secure reset link will arrive. Check Inbox and Spam.';}
+ catch(_){$('forgotStudentResult').textContent='Unable to request email right now. Please try later or contact the school office.';}
+ finally{button.disabled=false;}
+});
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;$('loginError').textContent='';try{const result=await cloud.login($('adm').value.trim(),$('dob').value);$('dob').value='';if(result.mustChangePassword){show('passwordGate');$('passwordHeading').textContent='Set your password';$('newPassword').focus();return}await openLinked(result.links)}catch(err){token=null;$('loginError').textContent=err.message;show('gate')}finally{button.disabled=false}});
 $('passwordForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');$('passwordError').textContent='';if($('newPassword').value!==$('confirmPassword').value){$('passwordError').textContent='Passwords do not match.';return}button.disabled=true;try{const nextLinks=await cloud.changePassword($('newPassword').value);e.target.reset();await openLinked(nextLinks)}catch(err){$('passwordError').textContent=err.message}finally{button.disabled=false}});
 $('changePassword').addEventListener('click',()=>{show('passwordGate');$('passwordHeading').textContent='Change your password';$('passwordError').textContent='';});
