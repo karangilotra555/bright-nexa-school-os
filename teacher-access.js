@@ -11,6 +11,7 @@
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
   let rolePermissions=null;
+  let feeStudentRoster=[]; // Finance-only three-column RPC result; never reveal DOB/profile fields.
   let recoveryMode=false;
   const photos=window.BNStudentPhotos?.create({base:BASE,key:APIKEY,
     token:async()=>{await ensureToken();return session?.access_token;}})||{
@@ -75,7 +76,7 @@
   }
   function dropSession(){
     ++schoolLoadEpoch;
-    session=null;me=null;identity=null;rolePermissions=null;recoveryMode=false;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
+    session=null;me=null;identity=null;rolePermissions=null;feeStudentRoster=[];recoveryMode=false;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(SELECTED_SCHOOL_KEY);
     invalidateRoster();clearProfileEditor();
@@ -136,7 +137,7 @@
     // Invalidate the previous school's visible cached rows before loading the
     // selected school's roster and role permissions.
     allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];allHomeworkFiles=[];
-    rolePermissions=null;invalidateRoster();clearProfileEditor();
+    rolePermissions=null;feeStudentRoster=[];invalidateRoster();clearProfileEditor();
     sessionStorage.setItem(SELECTED_SCHOOL_KEY,school.id);
     const selector=$('schoolPicker');
     selector.replaceChildren();
@@ -270,26 +271,29 @@
   async function loadFees(){
     if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee ledger access denied for this role.');
     await ensureToken();
-    const [summary,entries]=await Promise.all([
+    const [summary,entries,financeStudents]=await Promise.all([
       responseJson(await fetch(BASE+'/rest/v1/rpc/school_fee_summary',{
         method:'POST',cache:'no-store',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
         body:JSON.stringify({p_institution:me.institution_id})
       })),
       api('school_fee_entries',query({select:'student_id,kind,amount_rupees,reference,occurred_on',
-        institution_id:eq(me.institution_id),order:'occurred_on.desc',limit:'100'}))
+        institution_id:eq(me.institution_id),order:'occurred_on.desc',limit:'100'})),
+      api('rpc/bn_finance_students','','POST',{p_institution_id:me.institution_id})
     ]);
+    if(!Array.isArray(financeStudents))throw Error('Finance student directory unavailable.');
+    feeStudentRoster=financeStudents;
     const row=Array.isArray(summary)?summary[0]||{}:summary||{};
     put('feeOutstanding',fmtINR(row.outstanding_rupees));
     put('feeEntryCount',String(row.entry_count||0));
     const picker=$('feeStudent'),previous=picker.value;
     picker.replaceChildren();
-    for(const student of allStudents){
+    for(const student of feeStudentRoster){
       const option=dom('option',student.name+' · '+student.admission_number);
       option.value=student.id;picker.append(option);
     }
-    if(allStudents.some(x=>x.id===previous))picker.value=previous;
+    if(feeStudentRoster.some(x=>x.id===previous))picker.value=previous;
     const tbody=$('feeEntries');tbody.replaceChildren();
-    const label=new Map(allStudents.map(s=>[s.id,s.admission_number]));
+    const label=new Map(feeStudentRoster.map(s=>[s.id,s.admission_number]));
     if(!entries.length){
       const tr=dom('tr'),cell=dom('td','No fee entries recorded yet.');
       cell.colSpan=5;tr.append(cell);tbody.append(tr);
@@ -309,7 +313,7 @@
   $('feeEntryForm').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
     if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee posting not allowed for this role.');
     const studentId=$('feeStudent').value;
-    if(!allStudents.some(s=>s.id===studentId))throw Error('Select a student belonging to this school.');
+    if(!feeStudentRoster.some(s=>s.id===studentId))throw Error('Select a student belonging to this school.');
     const kind=$('feeKind').value,amount=Number($('feeAmount').value);
     const reference=$('feeReference').value.trim(),notes=$('feeDescription').value.trim();
     const occurred_on=$('feeDate').value;
