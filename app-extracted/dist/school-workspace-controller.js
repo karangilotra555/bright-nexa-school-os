@@ -55,8 +55,8 @@
     }
     async function autosave(snapshot){
       ++generation;
-      if(!binding)return state();
-      if(!sameInstitution(snapshot)){binding=null;record=null;disk=null;notify('local');return state();}
+      if(!binding){notify('local',error('Not connected to a verified Supabase school. This change exists only on this device and has NOT been published.'));return state();}
+      if(!sameInstitution(snapshot)){binding=null;record=null;disk=null;notify('local',error('School identity changed. Your edit was not uploaded to Supabase. Choose the verified school again.'));return state();}
       if(!consistent()){conflict();return state();}
       if(status==='conflict')return state();
       record.pending=clone(snapshot);
@@ -135,7 +135,8 @@
       return state();
     }
     function disconnect(){++generation;if(binding)storage.removeItem(bindingKey(binding.localId));binding=null;record=null;disk=null;notify('local');return state();}
-    function dispose(){disposed=true;++generation;binding=null;record=null;disk=null;}
+    function dispose(){disposed=true;++generation;binding=null;record=null;disk=null;if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(null);}
+    if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(function(){return sync();});
     return {dispose:dispose,initialize:initialize,openSchool:openSchool,uploadLocal:uploadLocal,autosave:autosave,sync:sync,disconnect:disconnect,state:state,connect:function(){return o.client.connect();}};
   }
   return {create:create};

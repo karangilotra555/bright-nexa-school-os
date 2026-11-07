@@ -43143,6 +43143,7 @@ function Ds() {
   const [cloud, setCloud] = w.useState(null);
   const latestWorkspace = w.useRef(null);
   const lastWorkspace = w.useRef('');
+  const priorSyncState = w.useRef('local');
   latestWorkspace.current = {institution:e, students:n, operations:i};
   w.useEffect(() => {
     if (!workspaceReady || !window.BNWorkspaceCloud || !window.BNWorkspaceController || !window.BNWorkspacePersistence) return;
@@ -43167,7 +43168,19 @@ function Ds() {
         if(active){t(next.institution);r(next.students);a(next.operations);}
         bnBroadcastStoreSync(next.institution,next.students,next.operations);
       },
-      onStatus:state=>{if(active)setSyncStatus(state==='loading'?'syncing':state);},
+      onStatus:state=>{
+        if(!active)return;
+        const previous=priorSyncState.current;
+        priorSyncState.current=state;
+        setSyncStatus(state==='loading'?'syncing':state);
+        if(state==='synced'){
+          setCloudError('');
+          if(previous==='pending'){
+            p('ERP changes saved to Supabase.');
+            window.setTimeout(()=>p(''),3500);
+          }
+        }
+      },
       onError:error=>{if(active)setCloudError(error?.message||String(error));}
     });
     lastWorkspace.current=JSON.stringify(latestWorkspace.current);
@@ -43435,7 +43448,7 @@ function Ds() {
     ji(u);
     d(false);
     l(`Students`);
-    p(`${o.name || o.admissionNumber || `Student record`} added successfully`);
+    p(g?.cloudVerified ? `${o.name || o.admissionNumber || `Student record`} saved on device; awaiting Supabase confirmation` : `${o.name || o.admissionNumber || `Student record`} saved on device only (not in Supabase)`);
     window.setTimeout(() => p(``), 3500);
     bnBroadcastStoreSync(c, s, u);
   };
@@ -43853,7 +43866,7 @@ function Ds() {
               onClick={() => triggerManualSync()}
             >
               <span style={{ fontSize: `13px` }}>{syncStatus === 'syncing' ? '🔄' : '☁️'}</span>
-              <span>{syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'synced' ? 'School cloud synced' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'pending' ? 'Upload pending' : 'Local Mode'}</span>
+              <span>{syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'synced' ? 'ERP saved to Supabase' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'pending' ? 'Upload pending' : 'Local Mode'}</span>
               <span
                 style={{
                   display: `inline-block`,

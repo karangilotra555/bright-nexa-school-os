@@ -38406,6 +38406,7 @@ function Ds() {
   const [cloud, setCloud] = w.useState(null);
   const latestWorkspace = w.useRef(null);
   const lastWorkspace = w.useRef("");
+  const priorSyncState = w.useRef("local");
   latestWorkspace.current = { institution: e2, students: n2, operations: i2 };
   w.useEffect(() => {
     if (!workspaceReady || !window.BNWorkspaceCloud || !window.BNWorkspaceController || !window.BNWorkspacePersistence) return;
@@ -38440,7 +38441,17 @@ function Ds() {
         bnBroadcastStoreSync(next.institution, next.students, next.operations);
       },
       onStatus: (state) => {
-        if (active) setSyncStatus(state === "loading" ? "syncing" : state);
+        if (!active) return;
+        const previous = priorSyncState.current;
+        priorSyncState.current = state;
+        setSyncStatus(state === "loading" ? "syncing" : state);
+        if (state === "synced") {
+          setCloudError("");
+          if (previous === "pending") {
+            p2("ERP changes saved to Supabase.");
+            window.setTimeout(() => p2(""), 3500);
+          }
+        }
       },
       onError: (error) => {
         if (active) setCloudError(error?.message || String(error));
@@ -38708,7 +38719,7 @@ function Ds() {
     ji(u3);
     d2(false);
     l2(`Students`);
-    p2(`${o3.name || o3.admissionNumber || `Student record`} added successfully`);
+    p2(g2?.cloudVerified ? `${o3.name || o3.admissionNumber || `Student record`} saved on device; awaiting Supabase confirmation` : `${o3.name || o3.admissionNumber || `Student record`} saved on device only (not in Supabase)`);
     window.setTimeout(() => p2(``), 3500);
     bnBroadcastStoreSync(c3, s3, u3);
   };
@@ -39046,7 +39057,7 @@ function Ds() {
       onClick: () => triggerManualSync()
     },
     /* @__PURE__ */ w.createElement("span", { style: { fontSize: `13px` } }, syncStatus === "syncing" ? "\u{1F504}" : "\u2601\uFE0F"),
-    /* @__PURE__ */ w.createElement("span", null, syncStatus === "syncing" ? "Syncing..." : syncStatus === "synced" ? "School cloud synced" : syncStatus === "conflict" ? "Sync conflict" : syncStatus === "pending" ? "Upload pending" : "Local Mode"),
+    /* @__PURE__ */ w.createElement("span", null, syncStatus === "syncing" ? "Syncing..." : syncStatus === "synced" ? "ERP saved to Supabase" : syncStatus === "conflict" ? "Sync conflict" : syncStatus === "pending" ? "Upload pending" : "Local Mode"),
     /* @__PURE__ */ w.createElement(
       "span",
       {
