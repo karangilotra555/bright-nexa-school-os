@@ -14,7 +14,9 @@
     const verification=query.get('action')==='verify'&&!!admission;
     const legacyPreview=location.hash==='#/demo'||location.hash==='#/school-profile';
     if(verification||legacyPreview)return;
-    const next=new URL('./parents.html',location.href);
+    // Packaged standalone build has no local parent portal bundle; open the
+    // same hosted student/parent portal rather than a missing relative page.
+    const next=new URL('https://bright-nexa-school-os.onrender.com/parents.html');
     const school=query.get('school');
     if(school&&/^[a-f0-9-]{36}$/i.test(school))next.searchParams.set('school',school);
     location.replace(next.href);
