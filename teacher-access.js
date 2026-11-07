@@ -419,7 +419,7 @@
   }
   const DEFAULT_ROLE_PERMS={
     teacher:{classes:true,attendance:true,homework:true,notices:true,profiles:false},
-    accountant:{classes:true,attendance:false,homework:false,notices:true,profiles:false},
+    accountant:{classes:false,attendance:false,homework:false,notices:false,profiles:false},
     receptionist:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
     transport_staff:{classes:false,attendance:false,homework:false,notices:true,profiles:false},
     librarian:{classes:false,attendance:false,homework:false,notices:false,profiles:false}
@@ -431,7 +431,7 @@
     if(!Array.isArray(rows))throw Error('Supabase role permissions could not be loaded.');
     const next=Object.fromEntries(Object.entries(DEFAULT_ROLE_PERMS).map(([role,modules])=>[role,{...modules}]));
     for(const row of rows){if(next[row.role]&&Object.prototype.hasOwnProperty.call(next[row.role],row.module_key))next[row.role][row.module_key]=row.enabled===true;}
-    if(next.accountant)next.accountant.profiles=false; // Finance-only role cannot open student PII.
+    if(next.accountant)for(const module of Object.keys(next.accountant))next.accountant[module]=false; // Accountant is finance-only.
     rolePermissions=next;return next;
   }
   function isTabVisibleForRole(tabName,role){
@@ -471,6 +471,7 @@
   function getStaffPermissionsSummary(staff){
     if(staff.role==='school_admin')return dom('span','👑 School Admin (verified school controls)','pill');
     if(staff.role==='principal')return dom('span','📘 Academic oversight (no owner-only actions)','pill');
+    if(staff.role==='accountant')return dom('span','₹ Fees & payments only','pill');
     if(staff.role==='librarian')return dom('span','📚 Library inventory and lending only','pill');
     if(staff.role!=='teacher')return dom('span','Staff role: '+staff.role.replaceAll('_',' '),'pill');
     const container=dom('div');
@@ -681,8 +682,8 @@
           const mTd=dom('td');
           const cb=document.createElement('input');
           cb.type='checkbox';
-          cb.checked=Boolean(currentRolePerms[r]?.[m])&&!(r==='accountant'&&m==='profiles');
-          if(r==='accountant'&&m==='profiles'){cb.disabled=true;cb.title='Finance-only: student profiles restricted in Supabase';}
+          cb.checked=Boolean(currentRolePerms[r]?.[m])&&r!=='accountant';
+          if(r==='accountant'){cb.disabled=true;cb.title='Finance-only role. Use Fees & Payments, not school academic modules.';}
           checks[m]=cb;
           mTd.append(cb);
           rTr.append(mTd);
@@ -691,6 +692,7 @@
         const saveRoleBtn=dom('button','Save','ghost');
         saveRoleBtn.type='button';
         saveRoleBtn.style.padding='4px 8px';
+        if(r==='accountant'){saveRoleBtn.disabled=true;saveRoleBtn.title='Finance-only role is fixed; no academic module permissions';}
         saveRoleBtn.addEventListener('click',()=>run(async()=>{
           if(!isAdmin())throw Error('School admin required.');
           saveRoleBtn.disabled=true;
