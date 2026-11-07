@@ -44,6 +44,7 @@ test('private photo policies permit linked parent but prevent other child/school
   await assert.rejects(db.query('insert into storage.objects(bucket_id,name) values($1,$2)',['school-student-photos',photo]),/row-level security|permission denied/i);
   await db.exec("select set_config('request.jwt.claim.sub','"+ADMIN+"',false)");
   await db.query('insert into storage.objects(bucket_id,name) values($1,$2)',['school-student-photos',photo]);
+  assert.equal((await db.query('select public.bn_photo_can_write($1) allowed',['99999999-9999-9999-9999-999999999999/'+OTHER+'/44444444-4444-4444-4444-444444444444.jpg'])).rows[0].allowed,false,'Foreign tenant path must fail guard');
   await assert.rejects(db.query('insert into storage.objects(bucket_id,name) values($1,$2)',['school-student-photos','99999999-9999-9999-9999-999999999999/'+OTHER+'/44444444-4444-4444-4444-444444444444.jpg']),/row-level security|permission denied|duplicate key/i);
   await db.query('select public.bn_student_photo_save($1,$2)',[S,photo]);
   const saved=(await db.query('select details from public.school_student_profiles where student_id=$1',[S])).rows[0].details;
