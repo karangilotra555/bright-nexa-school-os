@@ -33,6 +33,7 @@ end loop;end$$;
 (async () => {
  const db = new PGlite(); await db.exec(fixture);
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261105200548_school_workspace_sync.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261107131000_guard_first_workspace_import.sql'),'utf8'));
  const school='11111111-1111-1111-1111-111111111111', other='22222222-2222-2222-2222-222222222222';
  const admin='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', user='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
  await db.exec(`insert into institutions values('${school}','Test School','active'),('${other}','Other School','active'); insert into school_users values('${user}','${school}','${admin}','school_admin','active'); set role authenticated; select set_config('request.jwt.claim.sub','${admin}',false)`);
@@ -40,6 +41,34 @@ end loop;end$$;
  const snapshot={institution:{institution:{id:'local-school',name:'Test School'},settings:{preserve:true}},students:[{id:'s1',custom:'preserved'}],operations:{classes:[{id:'c1',academicStream:'Science'}],attendance:[{id:'a1',remark:'preserved'}],homework:[],marks:[{id:'mark1'}]}};
  const projection={classes:[{localId:'c1',name:'6',section:'A',academicYear:'2026'}],students:[{localId:'s1',admissionNumber:'A1',name:'Student One',classLocalId:'c1',status:'active',profile:{details:{custom:'preserved'}}}],attendance:[{localId:'a1',studentLocalId:'s1',classLocalId:'c1',day:'2026-11-01',status:'present'}],homework:[{localId:'h1',classLocalId:'c1',subject:'Math',title:'Homework',instructions:'Practice',dueOn:'2026-11-09'}],notices:[{localId:'n1',title:'Notice',body:'Hello families'}],fees:[{localId:'f1',studentLocalId:'s1',kind:'charge',amountRupees:100.25,description:'Tuition'}]};
  const push=async(revision,p=projection)=>(await db.query('select school_workspace_push($1,$2,$3,$4) result',[school,revision,snapshot,p])).rows[0].result;
+
+ // A NULL workspace is not an empty school. An existing relational roster
+ // must never be overwritten by unrelated local samples during first import.
+ // Use a second, disposable school; no real Supabase records are involved.
+ const existingSchool='33333333-3333-3333-3333-333333333333';
+ await db.exec(`reset role;
+   insert into institutions values('${existingSchool}','Existing Cloud School','active');
+   insert into school_users values('44444444-4444-4444-4444-444444444444','${existingSchool}','${admin}','school_admin','active');
+   insert into school_classes(institution_id,name,section,academic_year) values('${existingSchool}','9','A','2026');
+   insert into school_students(institution_id,admission_number,name) values('${existingSchool}','PREEXISTING-1','Original Student');
+   set role authenticated;`);
+ await assert.rejects(
+   db.query('select school_workspace_push($1,$2,$3,$4) result',[existingSchool,0,snapshot,projection]),
+   /existing cloud records|Reconcile before importing/i,
+   'first import must fail closed when the school already has relational records'
+ );
+ const existing=(await db.query('select name from school_students where institution_id=$1 and admission_number=$2',[existingSchool,'PREEXISTING-1'])).rows[0];
+ assert.equal(existing.name,'Original Student','a rejected upload must not change existing students');
+ assert.equal(Number((await db.query('select count(*) n from school_workspace_links where institution_id=$1',[existingSchool])).rows[0].n),0);
+ // Clean up only the isolated test school's fixture so unrelated assertions
+ // continue to count the main test school alone.
+ await db.exec(`reset role;
+   delete from school_students where institution_id='${existingSchool}';
+   delete from school_classes where institution_id='${existingSchool}';
+   delete from school_users where institution_id='${existingSchool}';
+   delete from institutions where id='${existingSchool}';
+   set role authenticated;`);
+
  assert.equal((await pull()).snapshot,null);
  projection.students[0].profile.details.name='stale profile name'; projection.students[0].profile.details.id='stale profile id';
  let result=await push(0); assert.ok(result.revision>0); assert.equal(result.snapshot.students[0].id,'s1'); assert.equal(result.snapshot.students[0].name,'Student One'); assert.equal(result.snapshot.students[0].custom,'preserved'); assert.equal(result.snapshot.operations.marks[0].id,'mark1');
