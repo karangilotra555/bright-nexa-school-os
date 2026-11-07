@@ -56,3 +56,34 @@ test('existing student credentials require published admission and school-regist
  assert.match(source,/phone!==mobile\(password\)/);
  assert.doesNotMatch(source,/9058514478|bms0005/i);
 });
+
+test('empty optional guardian fields produce SQL NULL rather than invalid blank names and mobiles',()=>{
+ const cloud=require('../school-workspace-cloud.js');
+ const snapshot={
+   institution:{institution:{id:'test-school',name:'School',session:'2026-2027'}},
+   operations:{classes:[{id:'class1',name:'Class 1',section:'A',academicYear:'2026-2027'}]},
+   students:[
+    {id:'s1',admissionNumber:'TEST-001',name:'First Student',classId:'class1',status:'Active',parentMobile:''},
+    {id:'s2',admissionNumber:'TEST-002',name:'Second Student',classId:'class1',status:'Active',
+      guardianName:'Guardian Name',parentMobile:'9058514478'}
+   ]
+ };
+ const p=cloud.buildProjection(snapshot);
+ assert.equal(p.students.length,2);
+ assert.equal(p.students[0].profile.guardian_name,null);
+ assert.equal(p.students[0].profile.guardian_phone,null);
+ assert.equal(p.students[0].profile.address_line,null);
+ assert.equal(p.students[1].profile.guardian_name,'Guardian Name');
+ assert.equal(p.students[1].profile.guardian_phone,'9058514478');
+ assert.equal(read('school-workspace-cloud.js'),read('docs/school-workspace-cloud.js'));
+ assert.equal(read('school-workspace-cloud.js'),read('app-extracted/dist/school-workspace-cloud.js'));
+});
+test('PWA precaches new school cloud adapter and no longer serves 20261106 revision',()=>{
+ for(const prefix of ['','docs/','app-extracted/dist/']){
+  const html=read(prefix+'index.html');
+  const sw=read(prefix+'sw.js');
+  assert.match(html,/school-workspace-cloud\.js\?v=20261107-parent-publish-v2/);
+  assert.match(sw,/school-workspace-cloud\.js\?v=20261107-parent-publish-v2/);
+  assert.match(sw,/school-online-guard\.js\?v=20261107-parent-publish-v2/);
+ }
+});
