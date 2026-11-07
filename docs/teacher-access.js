@@ -12,6 +12,12 @@
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
   let rolePermissions=null;
   let recoveryMode=false;
+  const photos=window.BNStudentPhotos?.create({base:BASE,key:APIKEY,
+    token:async()=>{await ensureToken();return session?.access_token;}})||{
+      validate(){throw Error('School photo service is unavailable. Refresh the page.');},
+      async upload(){throw Error('School photo service is unavailable. Refresh the page.');},
+      async signedUrl(){return null;}
+    };
   let schoolLoadEpoch=0;
   const homeworkFiles=window.BNHomeworkFiles.create({base:BASE,key:APIKEY,token:async()=>{await ensureToken();return session?.access_token;}});
   const values=v=>v==null?'':String(v);
@@ -96,6 +102,10 @@
     if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
+    if(name==='timetable'&&window.BNTimetable)window.BNTimetable.activate({
+      me,classes:allClasses,assignments:allAssignments,staff:allStaff,
+      api,query,eq,notify,openAssignments:()=>tab('admin')
+    });
   }
   async function load(requestedSchoolId){
     const thisLoad=++schoolLoadEpoch;
@@ -149,7 +159,7 @@
     applyNavigationVisibility();
     await reload();
     const requested=new URLSearchParams(location.search).get('view');
-    const allowedViews=['classes','attendance','homework','notices','profiles','account'];
+    const allowedViews=['classes','timetable','attendance','homework','notices','profiles','account'];
     const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
     const deepLink=allowedViews.includes(requested)&&isTabVisibleForRole(requested,me.role)?requested:null;
     const defaultTeacher=me.role==='teacher'&&canAcademic()&&isTabVisibleForRole('attendance',me.role)?'attendance':null;
@@ -186,7 +196,13 @@
     invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();await loadNotices();
   }
   let readProfile=null,editingStudent=null,profileGeneration=0;
-  function clearProfileEditor(){profileGeneration++;readProfile=null;editingStudent=null;display('studentProfileForm',false);$('profileEditor').replaceChildren();}
+  function clearProfileEditor(){
+    profileGeneration++;readProfile=null;editingStudent=null;
+    display('studentProfileForm',false);$('profileEditor').replaceChildren();
+    display('studentPhotoWrap',false);display('studentPhotoPreview',false);
+    $('studentPhotoPreview').removeAttribute('src');
+    $('studentPhotoInput').value='';put('studentPhotoStatus','');
+  }
   $('profileClassFilter')?.addEventListener('change',()=>{renderProfileStudents();clearProfileEditor();});
   $('profileSearchInput')?.addEventListener('input',()=>{renderProfileStudents();clearProfileEditor();});
   $('profileStudent')?.addEventListener('change',()=>{updateSelectedStudentBadge();clearProfileEditor();});
@@ -198,9 +214,36 @@
     const core=await api('school_students',query({select:'id,name,dob',id:eq(id),institution_id:eq(me.institution_id)}));
     if(generation!==profileGeneration||$('profileStudent').value!==id||!core[0])return;
     editingStudent=id;readProfile=window.BNStudentProfile.editor($('profileEditor'),{student:{...core[0],profile:rows[0]||{}}});display('studentProfileForm',true);
+    display('studentPhotoWrap',isAdmin());
+    const linkedPhoto=rows[0]?.details?.photo_path;
+    if(linkedPhoto&&isAdmin()){
+      try{
+        const signed=await photos.signedUrl(me.institution_id,id,linkedPhoto);
+        if(generation===profileGeneration&&editingStudent===id&&signed){
+          $('studentPhotoPreview').src=signed;display('studentPhotoPreview',true);
+        }
+      }catch(_){put('studentPhotoStatus','Photo unavailable. Contact school admin.');}
+    }
     const viewer=!isAdmin();
     $('studentProfileForm').querySelectorAll('input,select,textarea').forEach(field=>{field.disabled=viewer;});
     display('saveProfile',!viewer);updateSelectedStudentBadge();
+  }));
+  $('uploadStudentPhoto').addEventListener('click',()=>run(async()=>{
+    if(!isAdmin()||!editingStudent||editingStudent!==$('profileStudent').value)
+      throw Error('Load and select a student as school admin first.');
+    const button=$('uploadStudentPhoto'),file=$('studentPhotoInput').files?.[0];
+    if(!file)throw Error('Choose a photo first.');
+    photos.validate(file);
+    button.disabled=true;
+    try{
+      put('studentPhotoStatus','Uploading private student photo…');
+      const result=await photos.upload(me.institution_id,editingStudent,file);
+      const previous=readProfile;
+      if(previous)readProfile=()=>{const p=previous();p.p_profile.details.photo_path=result.path;return p;};
+      if(result.url){$('studentPhotoPreview').src=result.url;display('studentPhotoPreview',true);}
+      $('studentPhotoInput').value='';
+      put('studentPhotoStatus','Student photo published securely. Linked student/parent will see it on refresh.');
+    }finally{button.disabled=false;}
   }));
   $('studentProfileForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin()||!readProfile||editingStudent!==$('profileStudent').value)throw Error('Load the student profile first.');
@@ -322,6 +365,7 @@
   function isTabVisibleForRole(tabName,role){
     if(role==='school_admin'||role==='principal')return true;
     if(tabName==='admin')return false;
+    if(tabName==='timetable')return role==='teacher';
     if(tabName==='account')return true;
     const perms=getRolePermissions()[role]||DEFAULT_ROLE_PERMS[role];
     if(!perms)return false;
@@ -333,6 +377,7 @@
     display('adminTab',isAdm);
     display('librarianApp',isAdm||role==='librarian'||role==='principal');
     display('profilesTab',isAdm||isTabVisibleForRole('profiles',role));
+    display('timetableTab',isAdm||role==='teacher'||role==='principal');
     display('schoolOsAdminNav',isAdm);
     display('adminErpBanner',isAdm);
     document.querySelectorAll('[data-tab]').forEach(btn=>{

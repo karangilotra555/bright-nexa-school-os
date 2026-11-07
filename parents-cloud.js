@@ -6,6 +6,7 @@ const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 function create(fetcher){
  let session=null,selected=null;
  const filesClient=typeof root.BNHomeworkFiles!=='undefined'?root.BNHomeworkFiles.create({base:BASE,key:KEY,token:async()=>session?.access_token,fetcher}):null;
+ const photoClient=typeof root.BNStudentPhotos!=='undefined'?root.BNStudentPhotos.create({base:BASE,key:KEY,token:async()=>session?.access_token,fetcher}):null;
  async function request(path,options={}){
   const res=await fetcher(BASE+path,{...options,cache:'no-store',headers:{apikey:KEY,...(session?{Authorization:'Bearer '+session.access_token}:{}),'Content-Type':'application/json',...options.headers}});
   const raw=await res.text();
@@ -20,6 +21,12 @@ function create(fetcher){
   if(!next.session?.access_token||!next.session?.user?.id)throw Error('Unable to verify student account');
   session=next.session;
   return {mustChangePassword:next.mustChangePassword===true,links:next.links||[]};
+ }
+ async function requestPasswordReset(admissionNumber,guardianEmail){
+  const schoolId=new URLSearchParams(typeof location==='undefined'?'':location.search).get('school')||undefined;
+  // Return a generic response irrespective of account existence.
+  return request('/functions/v1/school-student-login',{method:'POST',
+   body:JSON.stringify({action:'request-reset',admissionNumber,guardianEmail,schoolId})});
  }
  async function changePassword(newPassword){
   if(!session)throw Error('Please log in again');
@@ -43,6 +50,23 @@ function create(fetcher){
    return Array.isArray(rows)?{rows:rows.filter(r=>r&&typeof r.teacher_name==='string'),status:'loaded'}:{rows:[],status:'unavailable'};
   }catch(_){return {rows:[],status:'unavailable'};}
  }
+ async function studentTimetable(link){
+  try{
+   const res=await fetcher(BASE+'/rest/v1/rpc/bn_portal_student_timetable',{
+    method:'POST',cache:'no-store',
+    headers:{apikey:KEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+    body:JSON.stringify({p_institution_id:link.institution_id,p_student_id:link.student_id})
+   });
+   if(!res.ok)return {rows:[],status:'unavailable'};
+   const data=await res.json();
+   return Array.isArray(data)?{rows:data,status:data.length?'published':'not_published'}:{rows:[],status:'unavailable'};
+  }catch(_){return {rows:[],status:'unavailable'};}
+ }
+ async function studentPhoto(link,profile){
+  const path=profile?.details?.photo_path;
+  if(!path||!photoClient)return null;
+  try{return await photoClient.signedUrl(link.institution_id,link.student_id,path);}catch(_){return null;}
+ }
  async function dashboard(link){
   if(!session)throw Error('Please log in again');
   selected=null;
@@ -59,12 +83,12 @@ function create(fetcher){
    rows('school_parent_leaves',{...filter,parent_auth_user_id:'eq.'+session.user.id,order:'created_at.desc'}),
    rows('school_student_profiles',{order:'student_id.asc',student_id:filter.student_id,institution_id:filter.institution_id})
   ]);
-  const teachers=await classTeachers(link);
+  const [teachers,timetable,photoUrl]=await Promise.all([classTeachers(link),studentTimetable(link),studentPhoto(link,profiles[0])]);
   const attached=filesClient?await filesClient.list(homework.map(h=>h.id)):[];
   selected=link;
   const recorded=attendance.filter(a=>['present','absent','late','half_day'].includes(a.status.toLowerCase()));
   const present=recorded.reduce((n,a)=>n+(a.status.toLowerCase()==='half_day'?.5:['present','late'].includes(a.status.toLowerCase())?1:0),0);
-  return {student:{name:student.name,dob:student.dob,profile:profiles[0]||{},admissionNumber:student.admission_number,className:classes[0]?.name,section:classes[0]?.section},school:{name:schools[0]?.name,session:classes[0]?.academic_year},attendance:{percent:recorded.length?Math.round(present/recorded.length*1000)/10:null,recordedDays:recorded.length,recent:attendance},fees:{dueRupees:fees.length?Math.max(0,fees.reduce((n,f)=>n+(f.kind==='charge'?1:-1)*Number(f.amount_rupees),0)):null},homework:homework.map(h=>({...h,files:attached.filter(f=>f.homework_id===h.id),title:[h.title,h.instructions].filter(Boolean).join(' — '),due_date:h.due_on})),notices:notices.map(n=>({...n,published_at:n.created_at})),leaves:leaves.map(l=>({...l,from_day:l.from_on,to_day:l.to_on})),teachers:teachers.rows,teachersStatus:teachers.status,timetable:[],timetableStatus:'not_published'};
+  return {student:{name:student.name,dob:student.dob,profile:profiles[0]||{},photoUrl,admissionNumber:student.admission_number,className:classes[0]?.name,section:classes[0]?.section},school:{name:schools[0]?.name,session:classes[0]?.academic_year},attendance:{percent:recorded.length?Math.round(present/recorded.length*1000)/10:null,recordedDays:recorded.length,recent:attendance},fees:{dueRupees:fees.length?Math.max(0,fees.reduce((n,f)=>n+(f.kind==='charge'?1:-1)*Number(f.amount_rupees),0)):null},homework:homework.map(h=>({...h,files:attached.filter(f=>f.homework_id===h.id),title:[h.title,h.instructions].filter(Boolean).join(' — '),due_date:h.due_on})),notices:notices.map(n=>({...n,published_at:n.created_at})),leaves:leaves.map(l=>({...l,from_day:l.from_on,to_day:l.to_on})),teachers:teachers.rows,teachersStatus:teachers.status,timetable:timetable.rows,timetableStatus:timetable.status};
  }
  async function leave(from,to,reason){
   if(!session||!selected)throw Error('Please log in and select your child');
@@ -72,7 +96,7 @@ function create(fetcher){
   await request('/rest/v1/school_parent_leaves',{method:'POST',body:JSON.stringify({institution_id:selected.institution_id,student_id:selected.student_id,parent_auth_user_id:session.user.id,from_on:from,to_on:to,reason:reason.trim(),status:'pending'})});
  }
  async function logout(){try{if(session)await request('/auth/v1/logout',{method:'POST'});}finally{session=null;selected=null;}}
- return {login,changePassword,dashboard,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
+ return {login,requestPasswordReset,changePassword,dashboard,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
 }
 if(typeof module!=='undefined')module.exports={create};else root.BNParentsCloud=create(root.fetch.bind(root));
 })(typeof window!=='undefined'?window:globalThis);

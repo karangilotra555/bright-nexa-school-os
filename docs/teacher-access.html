@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061a36">
 <link rel="manifest" href="./teacher.webmanifest">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://mrfvbwmyxndrakskqyas.supabase.co https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://mrfvbwmyxndrakskqyas.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
 <title>Bright Nexa | Teachers & Staff</title><link rel="stylesheet" href="./school-mobile-details.css?v=20261105-profile">
 <style>
 :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#102640;background:#f3f7fb;font-synthesis:none}
@@ -77,7 +77,7 @@ tr td select{padding:7px;min-width:115px}
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
 @media(max-width:470px){.bar{flex-wrap:wrap}.bar>.flex{width:100%}.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./teacher-access.js?v=20261107-school-switch-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./school-timetable-cloud.js?v=20261107-timetable-v1" defer></script><script src="./school-student-photo-cloud.js?v=20261107-photo-v1" defer></script><script src="./teacher-access.js?v=20261107-timetable-photo-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
 <header><div class="bar"><div class="brand"><a href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
@@ -126,6 +126,7 @@ tr td select{padding:7px;min-width:115px}
       </div>
       <div class="portal-nav-title">Menu & Functions</div>
       <button class="active nav-btn" data-tab="classes" type="button"><span class="nav-icon">🏫</span> Classes</button>
+      <button id="timetableTab" class="nav-btn hidden" data-tab="timetable" type="button"><span class="nav-icon">🗓️</span> School Timetable</button>
       <button class="nav-btn" data-tab="attendance" type="button"><span class="nav-icon">📋</span> Attendance</button>
       <button class="nav-btn" data-tab="homework" type="button"><span class="nav-icon">📝</span> Homework</button>
       <button class="nav-btn" data-tab="notices" type="button"><span class="nav-icon">📢</span> School notices</button>
@@ -197,7 +198,18 @@ tr td select{padding:7px;min-width:115px}
     </form>
   </div>
   <div data-view="notices" class="panel hidden"><h2>School notices</h2><button class="ghost" id="refreshNotices" type="button">↻ Refresh notices</button><div id="noticesList"></div></div>
-  <div data-view="profiles" class="panel hidden"><h2>Student profile details</h2><p class="muted">School admin updates these records. The linked student / parent sees the same details in the mobile app and web.</p><div class="formgrid two"><div class="inputgroup"><label for="profileClassFilter">Filter by class</label><select id="profileClassFilter"><option value="">All accessible classes</option></select></div><div class="inputgroup"><label for="profileSearchInput">Search student (Name, Roll No, Admission No)</label><input type="search" id="profileSearchInput" placeholder="e.g. Aarav, 06, or BMS-2026-001" autocomplete="off"></div></div><div class="inputgroup" style="margin-bottom:12px"><label for="profileStudent">Student (<span id="profileStudentCount">0</span> available)</label><select id="profileStudent"></select></div><div id="profileSelectedBadge" class="notice hidden" style="margin-bottom:14px;border-left-color:#138ed8;background:#f0f8ff;color:#0b315e;font-weight:600"></div><button class="ghost" type="button" id="loadProfile">Load profile</button><form id="studentProfileForm" class="hidden"><div id="profileEditor"></div><button class="primary" id="saveProfile" type="submit">Save student details</button></form></div><div data-view="account" class="panel hidden">
+  <div data-view="timetable" class="panel hidden"><div id="schoolTimetableRoot"></div></div>
+  <div data-view="profiles" class="panel hidden"><h2>Student profile details</h2><p class="muted">School admin updates these records. The linked student / parent sees the same details in the mobile app and web.</p><div class="formgrid two"><div class="inputgroup"><label for="profileClassFilter">Filter by class</label><select id="profileClassFilter"><option value="">All accessible classes</option></select></div><div class="inputgroup"><label for="profileSearchInput">Search student (Name, Roll No, Admission No)</label><input type="search" id="profileSearchInput" placeholder="e.g. Aarav, 06, or BMS-2026-001" autocomplete="off"></div></div><div class="inputgroup" style="margin-bottom:12px"><label for="profileStudent">Student (<span id="profileStudentCount">0</span> available)</label><select id="profileStudent"></select></div><div id="profileSelectedBadge" class="notice hidden" style="margin-bottom:14px;border-left-color:#138ed8;background:#f0f8ff;color:#0b315e;font-weight:600"></div><button class="ghost" type="button" id="loadProfile">Load profile</button><form id="studentProfileForm" class="hidden"><div id="profileEditor"></div><button class="primary" id="saveProfile" type="submit">Save student details</button></form>
+    <div id="studentPhotoWrap" class="hidden" style="margin-top:14px;border-top:1px solid #e4ebf5;padding-top:14px">
+      <h3>Student photo · Private cloud storage</h3>
+      <p class="muted">School admin only. JPG, PNG or WebP, up to 5 MB. Linked student/parent and assigned teacher will see the approved photo.</p>
+      <img id="studentPhotoPreview" alt="Student photo" class="hidden" style="width:100px;height:116px;object-fit:cover;border-radius:9px;border:1px solid #dce6ef">
+      <div class="formgrid two">
+        <div><label for="studentPhotoInput">Choose student photo</label><input id="studentPhotoInput" type="file" accept="image/jpeg,image/png,image/webp"></div>
+        <div><button id="uploadStudentPhoto" type="button" class="primary">Upload & publish photo</button></div>
+      </div>
+      <div id="studentPhotoStatus" class="muted" role="status" aria-live="polite"></div>
+    </div></div><div data-view="account" class="panel hidden">
     <div style="border-bottom:1px solid #e6edf5;padding-bottom:19px;margin-bottom:21px">
       <h2>Staff Account Profile</h2>
       <p class="sub">Your verified school staff identity. Update your name to appear across rosters, assignments, and school documents.</p>

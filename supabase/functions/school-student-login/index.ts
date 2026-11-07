@@ -38,6 +38,81 @@ export function handler(create=createClient){return async(req:Request)=>{
    const {error}=await admin.from('school_guardian_students').upsert({institution_id:s.institution_id,guardian_id:guardian.id,student_id:s.id,relationship:'guardian'},{onConflict:'guardian_id,student_id'});
    if(error)throw Error('Cannot link student account');
   }
+
+  // Student authentication uses synthetic .invalid Auth addresses; built-in
+  // recovery mail cannot be sent to them. The SCHOOL-REGISTERED guardian email
+  // receives a Supabase magic link proving control of that mailbox instead.
+  // The verified guardian can then reset only that linked student's password.
+  if(body.action==='request-reset'){
+   const generic=()=>reply({message:'If this admission number has a registered guardian email, a secure link will be sent. Check Inbox and Spam.'});
+   const admission=String(body.admissionNumber||'').trim();
+   const school=String(body.schoolId||DEFAULT_SCHOOL);
+   const email=String(body.guardianEmail||'').trim().toLowerCase();
+   if(!/^[A-Za-z0-9][A-Za-z0-9/_-]{0,63}$/.test(admission)||!/^[-a-f0-9]{36}$/.test(school)||email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return generic();
+   // Dedicated throttle prevents repeated emails and account discovery.
+   const {data:allowed,error:limitError}=await admin.rpc('bn_parent_login_attempt',{
+     p_bucket:await digest('recovery:'+school+':'+admission.toLowerCase()),p_limit:3
+   });
+   if(limitError||!allowed)return generic();
+   const {data:record}=await admin.from('school_students').select('id').eq('institution_id',school).eq('admission_number',admission).eq('status','active').maybeSingle();
+   if(!record)return generic();
+   const {data:profile}=await admin.from('school_student_profiles').select('guardian_email').eq('student_id',record.id).eq('institution_id',school).maybeSingle();
+   if(!profile?.guardian_email||profile.guardian_email.trim().toLowerCase()!==email)return generic();
+   // Do not send a reset link when the student has not activated their
+   // password yet. The initial registered guardian mobile remains the route.
+   const shadowEmail=(await digest('student:'+school+':'+record.id))+'@student.brightnexa.invalid';
+   const {data:shadow}=await admin.from('school_guardians').select('auth_user_id').eq('institution_id',school).eq('email',shadowEmail).eq('status','active').maybeSingle();
+   if(!shadow?.auth_user_id)return generic();
+   const {data:linked}=await admin.auth.admin.getUserById(shadow.auth_user_id);
+   if(!linked?.user||linked.user.app_metadata?.bn_password_pending===true||linked.user.app_metadata?.bn_student_id!==record.id)return generic();
+   const {error:sendError}=await auth.auth.signInWithOtp({email,options:{
+     shouldCreateUser:true,
+     emailRedirectTo:'https://bright-nexa-school-os.onrender.com/parent-password-recovery.html'
+   }});
+   if(sendError)console.warn('[StudentRecovery] Mail service rejected a reset-link request.');
+   return generic();
+  }
+  if(body.action==='complete-reset'){
+   const denied=()=>reply({error:'Recovery link is invalid or expired, or this email is not registered for the student. Contact the school office.'},403);
+   const jwt=(req.headers.get('authorization')||'').replace(/^Bearer /,'').trim();
+   if(!jwt)return denied();
+   const {data:verified,error:verifyError}=await auth.auth.getUser(jwt);
+   const guardian=verified?.user;
+   if(verifyError||!guardian||!guardian.email||!guardian.email_confirmed_at||guardian.is_anonymous)return denied();
+   const school=String(body.schoolId||DEFAULT_SCHOOL),admission=String(body.admissionNumber||'').trim();
+   const newPassword=String(body.newPassword||'');
+   if(!/^[-a-f0-9]{36}$/.test(school)||!/^[A-Za-z0-9][A-Za-z0-9/_-]{0,63}$/.test(admission))return denied();
+   if(newPassword.length<12||newPassword.length>128||!/[a-z]/i.test(newPassword)||!/[0-9]/.test(newPassword))
+     return reply({error:'Use a strong new password: 12–128 characters including letters and digits.'},400);
+   const {data:record}=await admin.from('school_students').select('id,institution_id').eq('institution_id',school).eq('admission_number',admission).eq('status','active').maybeSingle();
+   if(!record)return denied();
+   const {data:profile}=await admin.from('school_student_profiles').select('guardian_email,guardian_phone').eq('student_id',record.id).eq('institution_id',school).maybeSingle();
+   if(!profile?.guardian_email||profile.guardian_email.trim().toLowerCase()!==String(guardian.email).trim().toLowerCase())return denied();
+   if(mobile(newPassword)&&mobile(newPassword)===mobile(profile.guardian_phone))return reply({error:'Choose a password different from the registered mobile number.'},400);
+   // The student login identity is synthetic; look up its VERIFIED persisted
+   // school link. Never search/alter accounts solely by a submitted email.
+   const shadowEmail=(await digest('student:'+school+':'+record.id))+'@student.brightnexa.invalid';
+   const {data:shadow}=await admin.from('school_guardians').select('auth_user_id').eq('institution_id',school).eq('email',shadowEmail).eq('status','active').maybeSingle();
+   if(!shadow?.auth_user_id)return denied();
+   const {data:existing,error:existingError}=await admin.auth.admin.getUserById(shadow.auth_user_id);
+   const studentUser=existing?.user,meta=studentUser?.app_metadata;
+   if(existingError||!studentUser||studentUser.email!==shadowEmail||meta?.bn_student_id!==record.id||meta?.bn_institution_id!==school||meta?.bn_password_pending===true)return denied();
+   let issuedAt=0;
+   try{
+     const payload=JSON.parse(atob(jwt.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+     if(payload.sub!==guardian.id)return denied();
+     issuedAt=Number(payload.iat)*1000;
+   }catch(_){return denied()}
+   // Prevent replay with the same already-consumed email session. A new
+   // Supabase magic link is necessary for another recovery.
+   if(!Number.isFinite(issuedAt)||issuedAt<=0||issuedAt<=Number(meta.bn_last_email_reset_ms||0))return denied();
+   const {error:updateError}=await admin.auth.admin.updateUserById(studentUser.id,{
+     password:newPassword,
+     app_metadata:{...meta,bn_last_email_reset_ms:Date.now()}
+   });
+   if(updateError)return reply({error:'Password could not be updated. Please try again or contact the school office.'},503);
+   return reply({ok:true,message:'Password updated. Sign in with your admission number and new password.'});
+  }
   if(body.action==='change-password'){
    const jwt=(req.headers.get('authorization')||'').replace(/^Bearer /,'');
    const {data:{user},error}=await auth.auth.getUser(jwt);
