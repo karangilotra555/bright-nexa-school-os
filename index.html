@@ -13,18 +13,9 @@ if (window.location.pathname.includes('marksheet') || window.location.pathname.i
   }
 }
 
-try {
-  // Prefer the saved Supabase workspace after authentication. Never auto-import
-  // data from this device into an empty school workspace.
-  const staff = JSON.parse(window.sessionStorage.getItem('bn_school_staff_session_v1') || 'null');
-  if (staff && staff.access_token) {
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has('tab') && !url.searchParams.has('openSchool')) {
-      url.searchParams.set('openSchool', 'true');
-      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
-    }
-  }
-} catch (_) {}
+// Opening a full ERP school requires the application's normal authentication
+// flow or the explicit openSchool URL from verified School Admin routing.
+// Merely having any saved staff token must NOT auto-open the admin interface.
 const CACHE_VERSION = '20261106-optional-topic-v3';
 if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACHE_VERSION) {
   if ('serviceWorker' in navigator) {

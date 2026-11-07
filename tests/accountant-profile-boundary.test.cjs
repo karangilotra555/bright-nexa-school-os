@@ -3,8 +3,8 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 const portal=fs.readFileSync('teacher-access.js','utf8');
 const rls=fs.readFileSync('supabase/migrations/20261106144841_accountant_finance_only_student_profile_boundary.sql','utf8');
 test('Accountant student-profile visibility cannot be reenabled by checkbox',()=>{
- assert.match(portal,/accountant:\{classes:true,attendance:false,homework:false,notices:true,profiles:false\}/);
- assert.match(portal,/if\(next.accountant\)next.accountant.profiles=false/);
+ assert.match(portal,/accountant:\{classes:false,attendance:false,homework:false,notices:false,profiles:false\}/);
+ assert.match(portal,/if\(next.accountant\)for\(const module of Object.keys\(next.accountant\)\)next.accountant\[module\]=false/);
  assert.match(portal,/cb.disabled=true;cb.title='Finance-only/);
  assert.equal(portal,fs.readFileSync('docs/teacher-access.js','utf8'));
 });

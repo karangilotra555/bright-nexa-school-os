@@ -102,6 +102,7 @@
     if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
+    if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
     if(name==='timetable'&&window.BNTimetable)window.BNTimetable.activate({
       me,classes:allClasses,assignments:allAssignments,staff:allStaff,
       api,query,eq,notify,openAssignments:()=>tab('admin')
@@ -155,15 +156,21 @@
     put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     await loadRolePermissions();
+    // Route only after Supabase Auth + tenant membership were verified above.
+    const next=window.BNSchoolRoleEntry?.roleDestination({
+      role:me.role,verified:me.status==='active'&&me.auth_user_id===identity.id,
+      membershipCount:permitted.length,search:location.search
+    });
+    if(next){location.replace(new URL(next,location.href).href);return;}
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
     await reload();
     const requested=new URLSearchParams(location.search).get('view');
-    const allowedViews=['classes','timetable','attendance','homework','notices','profiles','account'];
+    const allowedViews=['classes','timetable','attendance','homework','notices','profiles','fees','admin','account'];
     const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
     const deepLink=allowedViews.includes(requested)&&isTabVisibleForRole(requested,me.role)?requested:null;
-    const defaultTeacher=me.role==='teacher'&&canAcademic()&&isTabVisibleForRole('attendance',me.role)?'attendance':null;
-    const openingView=deepLink||defaultTeacher||landing||'account';
+    const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
+    const openingView=deepLink||(preferredLandingView&&isTabVisibleForRole(preferredLandingView,me.role)?preferredLandingView:null)||landing||'account';
     tab(openingView);clearNotice();
     if(openingView==='attendance'){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
@@ -258,6 +265,71 @@
       notify('Student details saved. Linked app and web accounts can refresh Profile.');
     }finally{button.disabled=false;}
   });});
+
+  const fmtINR=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2}).format(Number(value)||0);
+  async function loadFees(){
+    if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee ledger access denied for this role.');
+    await ensureToken();
+    const [summary,entries]=await Promise.all([
+      responseJson(await fetch(BASE+'/rest/v1/rpc/school_fee_summary',{
+        method:'POST',cache:'no-store',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({p_institution:me.institution_id})
+      })),
+      api('school_fee_entries',query({select:'student_id,kind,amount_rupees,reference,occurred_on',
+        institution_id:eq(me.institution_id),order:'occurred_on.desc',limit:'100'}))
+    ]);
+    const row=Array.isArray(summary)?summary[0]||{}:summary||{};
+    put('feeOutstanding',fmtINR(row.outstanding_rupees));
+    put('feeEntryCount',String(row.entry_count||0));
+    const picker=$('feeStudent'),previous=picker.value;
+    picker.replaceChildren();
+    for(const student of allStudents){
+      const option=dom('option',student.name+' · '+student.admission_number);
+      option.value=student.id;picker.append(option);
+    }
+    if(allStudents.some(x=>x.id===previous))picker.value=previous;
+    const tbody=$('feeEntries');tbody.replaceChildren();
+    const label=new Map(allStudents.map(s=>[s.id,s.admission_number]));
+    if(!entries.length){
+      const tr=dom('tr'),cell=dom('td','No fee entries recorded yet.');
+      cell.colSpan=5;tr.append(cell);tbody.append(tr);
+    }else{
+      for(const entry of entries){
+        const tr=dom('tr');
+        for(const v of [entry.occurred_on,label.get(entry.student_id)||'Student record',entry.kind,fmtINR(entry.amount_rupees),entry.reference||'—'])tr.append(dom('td',v));
+        tbody.append(tr);
+      }
+    }
+    const date=$('feeDate');
+    if(!date.value){
+      const now=new Date();
+      date.value=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    }
+  }
+  $('feeEntryForm').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
+    if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee posting not allowed for this role.');
+    const studentId=$('feeStudent').value;
+    if(!allStudents.some(s=>s.id===studentId))throw Error('Select a student belonging to this school.');
+    const kind=$('feeKind').value,amount=Number($('feeAmount').value);
+    const reference=$('feeReference').value.trim(),notes=$('feeDescription').value.trim();
+    const occurred_on=$('feeDate').value;
+    if(!['charge','payment'].includes(kind))throw Error('Invalid fee entry type.');
+    if(!Number.isFinite(amount)||amount<=0||amount>100000000||Math.abs(amount-Math.round(amount*100)/100)>1e-8)
+      throw Error('Enter a valid amount with at most two decimals.');
+    if(!reference||reference.length>100)throw Error('Enter a unique receipt/reference.');
+    if(notes.length>250||!/^\d{4}-\d{2}-\d{2}$/.test(occurred_on))throw Error('Invalid notes or date.');
+    const button=$('saveFeeEntry');if(button.disabled)return;button.disabled=true;
+    try{
+      await api('school_fee_entries','','POST',{
+        institution_id:me.institution_id,student_id:studentId,created_by:me.id,
+        kind,amount_rupees:amount,reference,description:notes,occurred_on
+      });
+      $('feeEntryForm').reset();
+      await loadFees();
+      notify('Fee ledger entry saved to your school cloud records.');
+    }finally{button.disabled=false;}
+  })});
+
   async function loadNotices(){
     if(!isTabVisibleForRole('notices',me?.role||'teacher')){$('noticesList').replaceChildren();return;}
     const rows=await api('school_notices',query({select:'id,title,body,created_at',institution_id:eq(me.institution_id),order:'created_at.desc',limit:'100'}));
@@ -347,7 +419,7 @@
   }
   const DEFAULT_ROLE_PERMS={
     teacher:{classes:true,attendance:true,homework:true,notices:true,profiles:false},
-    accountant:{classes:true,attendance:false,homework:false,notices:true,profiles:false},
+    accountant:{classes:false,attendance:false,homework:false,notices:false,profiles:false},
     receptionist:{classes:true,attendance:false,homework:false,notices:true,profiles:true},
     transport_staff:{classes:false,attendance:false,homework:false,notices:true,profiles:false},
     librarian:{classes:false,attendance:false,homework:false,notices:false,profiles:false}
@@ -359,12 +431,13 @@
     if(!Array.isArray(rows))throw Error('Supabase role permissions could not be loaded.');
     const next=Object.fromEntries(Object.entries(DEFAULT_ROLE_PERMS).map(([role,modules])=>[role,{...modules}]));
     for(const row of rows){if(next[row.role]&&Object.prototype.hasOwnProperty.call(next[row.role],row.module_key))next[row.role][row.module_key]=row.enabled===true;}
-    if(next.accountant)next.accountant.profiles=false; // Finance-only role cannot open student PII.
+    if(next.accountant)for(const module of Object.keys(next.accountant))next.accountant[module]=false; // Accountant is finance-only.
     rolePermissions=next;return next;
   }
   function isTabVisibleForRole(tabName,role){
+    if(tabName==='admin')return role==='school_admin';
+    if(tabName==='fees')return role==='school_admin'||role==='accountant';
     if(role==='school_admin'||role==='principal')return true;
-    if(tabName==='admin')return false;
     if(tabName==='timetable')return role==='teacher';
     if(tabName==='account')return true;
     const perms=getRolePermissions()[role]||DEFAULT_ROLE_PERMS[role];
@@ -380,6 +453,12 @@
     display('timetableTab',isAdm||role==='teacher'||role==='principal');
     display('schoolOsAdminNav',isAdm);
     display('adminErpBanner',isAdm);
+    display('staffDesktopShortcut',isAdm);
+    display('staffBackToErp',isAdm);
+    display('staffBrandBack',isAdm);
+    display('staffSmartToolsLink',canAcademic());
+    display('staffSmartToolsQuickLink',canAcademic());
+    display('feesTab',isAdm||role==='accountant');
     document.querySelectorAll('[data-tab]').forEach(btn=>{
       const t=btn.dataset.tab;
       if(t==='admin')btn.classList.toggle('hidden',!isAdm);
@@ -390,9 +469,9 @@
     });
   }
   function getStaffPermissionsSummary(staff){
-    if(staff.role==='school_admin'||staff.role==='principal'){
-      return dom('span','👑 Full School Access (All classes & modules)','pill');
-    }
+    if(staff.role==='school_admin')return dom('span','👑 School Admin (verified school controls)','pill');
+    if(staff.role==='principal')return dom('span','📘 Academic oversight (no owner-only actions)','pill');
+    if(staff.role==='accountant')return dom('span','₹ Fees & payments only','pill');
     if(staff.role==='librarian')return dom('span','📚 Library inventory and lending only','pill');
     if(staff.role!=='teacher')return dom('span','Staff role: '+staff.role.replaceAll('_',' '),'pill');
     const container=dom('div');
@@ -603,8 +682,8 @@
           const mTd=dom('td');
           const cb=document.createElement('input');
           cb.type='checkbox';
-          cb.checked=Boolean(currentRolePerms[r]?.[m])&&!(r==='accountant'&&m==='profiles');
-          if(r==='accountant'&&m==='profiles'){cb.disabled=true;cb.title='Finance-only: student profiles restricted in Supabase';}
+          cb.checked=Boolean(currentRolePerms[r]?.[m])&&r!=='accountant';
+          if(r==='accountant'){cb.disabled=true;cb.title='Finance-only role. Use Fees & Payments, not school academic modules.';}
           checks[m]=cb;
           mTd.append(cb);
           rTr.append(mTd);
@@ -613,6 +692,7 @@
         const saveRoleBtn=dom('button','Save','ghost');
         saveRoleBtn.type='button';
         saveRoleBtn.style.padding='4px 8px';
+        if(r==='accountant'){saveRoleBtn.disabled=true;saveRoleBtn.title='Finance-only role is fixed; no academic module permissions';}
         saveRoleBtn.addEventListener('click',()=>run(async()=>{
           if(!isAdmin())throw Error('School admin required.');
           saveRoleBtn.disabled=true;

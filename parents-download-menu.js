@@ -7,7 +7,7 @@
 
   const destinations = Object.freeze({
     parents: {path:'parent-app-download.html', icon:'📱', title:'Parents App · Download', tooltip:'Download or share the parents app'},
-    teachers: {path:'teacher-access.html', icon:'👩‍🏫', title:'Teachers · Online Access', tooltip:'Teacher and staff secure login'},
+    teachers: {path:'teacher-access.html?staffPortal=1', icon:'👩‍🏫', title:'Teachers · Online Access', tooltip:'Teacher and staff secure login'},
     timetable: {path:'teacher-access.html?view=timetable', icon:'🗓️', title:'School Timetable', tooltip:'Create, verify and publish class timetables after school admin sign-in'}
   });
 

@@ -59,7 +59,7 @@ test('all active direct sidebar and header links mount and keep compatible IDs',
  const links=[...app.nav.children,...app.top.children];
  assert.equal(app.nav.children.length,3);
  assert.equal(app.top.children.length,3);
- for(const [kind,page] of Object.entries({parents:'parent-app-download.html',teachers:'teacher-access.html',timetable:'teacher-access.html?view=timetable'})){
+ for(const [kind,page] of Object.entries({parents:'parent-app-download.html',teachers:'teacher-access.html?staffPortal=1',timetable:'teacher-access.html?view=timetable'})){
   const matching=links.filter(x=>x.dataset.bnDirectLink===kind);
   assert.equal(matching.length,2,kind);
   for(const link of matching){
@@ -77,7 +77,7 @@ test('all active direct sidebar and header links mount and keep compatible IDs',
 test('clicking nested text and icons navigates to the correct page despite React SPA capture handlers',()=>{
  const app=simulate();
  const origin='https://bright-nexa-school-os.onrender.com/';
- for(const [kind,filename] of [['parents','parent-app-download.html'],['teachers','teacher-access.html'],['timetable','teacher-access.html?view=timetable']]){
+ for(const [kind,filename] of [['parents','parent-app-download.html'],['teachers','teacher-access.html?staffPortal=1'],['timetable','teacher-access.html?view=timetable']]){
   for(const place of [app.nav,app.top]){
    const anchor=place.children.find(x=>x.dataset.bnDirectLink===kind);
    const target=anchor.children[0]||anchor;
