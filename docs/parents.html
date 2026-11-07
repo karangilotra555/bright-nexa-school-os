@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#061a36"><meta name="description" content="Bright Nexa Parents — school updates, attendance, fees and homework in one place.">
-<link rel="manifest" href="/parents.webmanifest"><title>Bright Nexa Parents</title><link rel="stylesheet" href="school-mobile-details.css?v=20261105-profile">
+<meta name="theme-color" content="#061a36"><meta name="description" content="Bright Nexa Student & Parent — school updates, attendance, fees and homework in one place.">
+<link rel="manifest" href="./parents.webmanifest"><title>Bright Nexa Student & Parent</title><link rel="stylesheet" href="school-mobile-details.css?v=20261105-profile">
 <style>
 :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#102640;background:#f3f7fb;font-synthesis:none}*{box-sizing:border-box}
 body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #138ed8;outline-offset:2px}
@@ -50,8 +50,8 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
 <section id="gate" class="gate hidden" aria-label="Parent login">
   <div class="logo" aria-hidden="true">🎓</div>
   <h1>School updates,<br>closer to you.</h1>
-  <p>Welcome to <strong>Bright Nexa Parents</strong>. Log in to see your child's published school information.</p>
-  <p class="notice"><strong>Student / Parent Login</strong></p><a class="secondary wide" href="./teacher-access.html?view=attendance" style="display:flex;text-decoration:none;justify-content:center;margin-bottom:18px">👩‍🏫 Teacher / Staff Login</a>
+  <p>Welcome to <strong>Bright Nexa Student & Parent</strong>. Log in to see your child's published school information.</p>
+  <p class="notice"><strong>Student & Parent Login</strong></p><a class="secondary wide" href="./teacher-access.html?view=attendance" style="display:flex;text-decoration:none;justify-content:center;margin-bottom:18px">👩‍🏫 Teacher / Staff Login</a>
   <form id="loginForm">
     <label class="field" for="adm">Student admission number</label><input id="adm" name="adm" autocomplete="username" required placeholder="Enter admission number">
     <label class="field" for="dob">Password</label><input id="dob" name="dob" type="password" autocomplete="current-password" required>
@@ -71,10 +71,10 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
 <div id="app" class="hidden">
  <header class="top">
   <div class="brand"><div style="display:flex;gap:11px;align-items:center"><div class="logo" aria-hidden="true">🎓</div><div><div class="brandName">Bright Nexa <span style="font-weight:500">Parents</span></div><div class="eyebrow" id="schoolShort">School portal</div></div></div><div aria-label="School portal" style="font-size:23px">✦</div></div>
-  <div class="welcome"><div><p>Your child's school, in your pocket</p><h1>Hi, welcome! 👋</h1><p id="childSummary">Student overview</p></div><div id="avatar" class="avatar">BN</div></div>
+  <div class="welcome"><div><p>Your school information, in your pocket</p><h1>Hi, welcome! 👋</h1><p id="childSummary">Student overview</p></div><div id="avatar" class="avatar">BN</div></div>
  </header>
  <main>
-<label class="field" for="childPicker">Your child</label><select id="childPicker" class="wide" aria-label="Select your child"></select><p id="syncStatus" role="status" aria-live="polite"></p>
+<label class="field" for="childPicker">Student account</label><select id="childPicker" class="wide" aria-label="Select your child"></select><p id="syncStatus" role="status" aria-live="polite"></p>
   <div data-view="home">
    <section class="section"><h2>Overview</h2>
     <div class="grid">
