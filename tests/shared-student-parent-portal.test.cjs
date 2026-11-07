@@ -60,7 +60,7 @@ function stubbedClient(teachersEnabled=true){
   school_notices:[],
   school_parent_leaves:[]
  };
- const response=(body,code=200)=>({ok:code<300,status:code,text:async()=>JSON.stringify(body)});
+ const response=(body,code=200)=>({ok:code<300,status:code,text:async()=>JSON.stringify(body),json:async()=>body});
  const fetcher=async(url,options={})=>{
   const u=new URL(url);calls.push({path:u.pathname,method:options.method||'GET',body:options.body});
   if(u.pathname.endsWith('/school-student-login'))return response({
