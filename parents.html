@@ -14,7 +14,7 @@ body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}button:fo
 .brandName{font-weight:800;font-size:17px;letter-spacing:-.4px}.eyebrow{font-size:12px;opacity:.85}
 .welcome{margin-top:25px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .welcome h1{font-size:24px;line-height:1.2;margin:6px 0}.welcome p{font-size:13px;margin:0;opacity:.9}
-.avatar{width:62px;height:62px;border-radius:23px;background:#fff2;display:grid;place-items:center;border:2px solid #ffffff65;font-size:27px;font-weight:800}
+.avatar{width:62px;height:62px;border-radius:23px;background:#fff2;display:grid;place-items:center;border:2px solid #ffffff65;font-size:27px;font-weight:800;overflow:hidden}
 main{padding:22px 17px}
 h2{font-size:18px;letter-spacing:-.3px;margin:7px 0 13px}
 .section{margin-bottom:27px}.sub{font-size:12px;color:#64758a}
@@ -125,7 +125,13 @@ function setTab(tab){document.querySelectorAll('[data-view]').forEach(el=>el.cla
 function render(p){
  data=p;const s=p.student||{},a=p.attendance||{},f=p.fees||{};
  setText('schoolShort',p.school?.name||'School portal');setText('childSummary',[s.name,s.className,s.section].filter(Boolean).join(' · '));
- setText('avatar',(s.name||'BN').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase());
+ const avatar=$('avatar');avatar.replaceChildren();
+ if(s.photoUrl){
+  const photo=document.createElement('img');photo.src=s.photoUrl;photo.alt='Student photo';
+  photo.referrerPolicy='no-referrer';photo.loading='lazy';
+  photo.style.cssText='height:100%;width:100%;object-fit:cover;border-radius:inherit';
+  avatar.append(photo);
+ }else avatar.textContent=(s.name||'BN').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
  setText('attendancePercent',a.percent===null||a.percent===undefined?'—':a.percent+'%');
  setText('attendanceCount',(a.recordedDays||0)+' days recorded');
  setText('feeDue',money(f.dueRupees));
