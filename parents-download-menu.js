@@ -7,13 +7,15 @@
 
   const destinations = Object.freeze({
     parents: {path:'parent-app-download.html', icon:'📱', title:'Parents App · Download', tooltip:'Download or share the parents app'},
-    teachers: {path:'teacher-access.html', icon:'👩‍🏫', title:'Teachers · Online Access', tooltip:'Teacher and staff secure login'}
+    teachers: {path:'teacher-access.html', icon:'👩‍🏫', title:'Teachers · Online Access', tooltip:'Teacher and staff secure login'},
+    timetable: {path:'teacher-access.html?view=timetable', icon:'🗓️', title:'School Timetable', tooltip:'Create, verify and publish class timetables after school admin sign-in'}
   });
 
   // Stable IDs are part of the existing app's navigation contract.
   const linkIds=Object.freeze({
     parents:{nav:'bn-parents-app-nav',top:'bn-parents-app-top'},
-    teachers:{nav:'bn-teacher-access-nav',top:'bn-teacher-access-top'}
+    teachers:{nav:'bn-teacher-access-nav',top:'bn-teacher-access-top'},
+    timetable:{nav:'bn-timetable-nav',top:'bn-timetable-top'}
   });
   const elementId = (type, place) => linkIds[type]?.[place] || '';
   // App-internal React navigation can intercept ordinary <a> clicks at the
@@ -72,7 +74,7 @@
       link.append(emoji,label);
       parent.append(link);
     }else{
-      link.textContent=spec.icon+' '+(kind==='teachers'?'Teachers':'Parents App');
+      link.textContent=spec.icon+' '+({teachers:'Teachers',parents:'Parents App',timetable:'Timetable'}[kind]||spec.title);
       link.style.whiteSpace='nowrap';
       link.style.justifyContent='center';
       parent.insertBefore(link,parent.firstChild);
