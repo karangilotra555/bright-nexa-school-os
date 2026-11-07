@@ -33,6 +33,14 @@ test('timetable and photo migration: publish atomicity, double booking, parent i
    "grant execute on function auth.uid() to authenticated;"
   ].join('\n'));
   await db.exec(read('supabase/migrations/20261107160000_bell_timetable_private_student_photos.sql'));
+  // The historical profile-save RPC updates more fields than this reduced
+  // fixture needs for timetable tests. Model its real live columns so photo
+  // pointer preservation can be executed and verified, not just parsed.
+  await db.exec([
+   "alter table public.school_students add column dob date, add column updated_at timestamptz default now();",
+   "alter table public.school_student_profiles add column guardian_name text, add column guardian_relationship text, add column guardian_phone text, add column guardian_email text, add column alternate_contact_name text, add column alternate_contact_phone text, add column address_line text, add column city text, add column postal_code text, add column admission_on date;"
+  ].join('\\n'));
+
   const school='11111111-1111-1111-1111-111111111111',other='22222222-2222-2222-2222-222222222222';
   const classA='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',classB='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
   const admin='cccccccc-cccc-cccc-cccc-cccccccccccc',teacherAuth='dddddddd-dddd-dddd-dddd-dddddddddddd';
@@ -67,6 +75,22 @@ test('timetable and photo migration: publish atomicity, double booking, parent i
   await db.query("insert into storage.objects(bucket_id,name) values('school-student-photos',$1)",[photoPath]);
   assert.equal((await db.query("select public.bn_save_student_photo($1,$2) p",[child,photoPath])).rows[0].p,photoPath);
   assert.equal((await db.query("select details->>'photo_path' p from public.school_student_profiles where student_id=$1",[child])).rows[0].p,photoPath);
+
+  // An older open student profile form may send stale details, including a
+  // bogus photo path. The profile edit must preserve the server-published path.
+  const stale={guardian_name:'Test Guardian',details:{blood_group:'O+',photo_path:'other-school/unapproved.png'}};
+  await db.query('select public.school_save_student_profile($1::uuid,$2::date,$3::jsonb)',
+    [child,'2014-05-10',JSON.stringify(stale)]);
+  const afterEdit=(await db.query("select details from public.school_student_profiles where student_id=$1",[child])).rows[0].details;
+  assert.equal(afterEdit.photo_path,photoPath,'Normal student edit must not replace approved photo');
+  assert.equal(afterEdit.blood_group,'O+','Other student detail edits must still save');
+  // A client cannot inject an arbitrary photo path into a new profile either.
+  await db.query('select public.school_save_student_profile($1::uuid,$2::date,$3::jsonb)',
+    [stranger,'2014-05-11',JSON.stringify({details:{blood_group:'A+',photo_path:'malicious/fake.jpg'}})]);
+  const newProfile=(await db.query("select details from public.school_student_profiles where student_id=$1",[stranger])).rows[0].details;
+  assert.equal(newProfile.photo_path,undefined);
+  assert.equal(newProfile.blood_group,'A+');
+
   await assert.rejects(db.query("select public.bn_save_student_photo($1,$2)",[stranger,photoPath]),/valid, uploaded photo/);
   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[parent]);
   await assert.rejects(db.query("select public.bn_save_student_photo($1,$2)",[child,photoPath]),/School admin/);
