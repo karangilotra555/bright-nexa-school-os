@@ -29,9 +29,35 @@
  }
  function create(options){
   options=options||{};const fetcher=options.fetcher||(typeof fetch==='function'?fetch.bind(globalThis):null),sessions=options.sessionStorage||(typeof sessionStorage!=='undefined'?sessionStorage:null);
+  // Do not leave a school indefinitely syncing when Supabase stops responding.
+  const requestTimeoutMs=Number.isInteger(options.requestTimeoutMs)&&options.requestTimeoutMs>=10&&options.requestTimeoutMs<=120000?options.requestTimeoutMs:20000;
+  async function timedFetch(url,init){
+    if(typeof fetcher!=='function')throw Error('Supabase network is unavailable. Changes were not saved.');
+    const controller=typeof AbortController==='function'?new AbortController():null;
+    let timer,expired=false;
+    try{
+      return await Promise.race([
+        Promise.resolve().then(()=>fetcher(url,{...init,...(controller?{signal:controller.signal}:{})})),
+        new Promise((_,reject)=>{
+          timer=setTimeout(()=>{
+            expired=true;
+            if(controller)controller.abort();
+            const e=Error('Supabase request timed out. Change is not saved to cloud; retry sync.');
+            e.code='CLOUD_TIMEOUT';reject(e);
+          },requestTimeoutMs);
+        })
+      ]);
+    }catch(e){
+      if(expired||e?.name==='AbortError'){
+        const timeout=Error('Supabase request timed out. Change is not saved to cloud; retry sync.');
+        timeout.code='CLOUD_TIMEOUT';throw timeout;
+      }
+      throw e;
+    }finally{clearTimeout(timer);}
+  }
   async function decode(response){let data;try{data=await response.json();}catch(_){throw Error('The cloud returned an invalid response. Local records are unchanged.');}if(!response.ok){const message=str(data.message||data.error_description||data.msg||data.error);const conflict=response.status===409||/revision.*conflict|workspace.*changed/i.test(message);const error=Error(conflict?'Cloud records changed (revision conflict). Local records are preserved. Pull the current workspace before retrying.':message||'Cloud access denied. Local records are unchanged.');error.code=conflict?'WORKSPACE_CONFLICT':response.status===401?'SESSION_EXPIRED':'CLOUD_ERROR';error.status=response.status;throw error;}return data;}
-  async function token(){let session;try{session=JSON.parse(sessions&&sessions.getItem(TOKEN));}catch(_){}if(!session||!str(session.access_token))throw Error('Please sign in to school staff access first.');if(!Number.isFinite(Number(session.expires_at))||Number(session.expires_at)<=Date.now()/1000+90){if(!str(session.refresh_token))throw Error('Session expired. Please sign in again.');const refreshed=await decode(await fetcher(BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token}),cache:'no-store'}));if(!str(refreshed.access_token)||!Number.isFinite(Number(refreshed.expires_in))||Number(refreshed.expires_in)<=90)throw Error('Session refresh failed. Please sign in again.');session={access_token:refreshed.access_token,refresh_token:refreshed.refresh_token||session.refresh_token,expires_at:Math.floor(Date.now()/1000)+Number(refreshed.expires_in)};sessions.setItem(TOKEN,JSON.stringify(session));}return session.access_token;}
-  async function request(path,access,body){return decode(await fetcher(BASE+path,{method:body===undefined?'GET':'POST',headers:{apikey:KEY,Authorization:'Bearer '+access,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'}));}
+  async function token(){let session;try{session=JSON.parse(sessions&&sessions.getItem(TOKEN));}catch(_){}if(!session||!str(session.access_token))throw Error('Please sign in to school staff access first.');if(!Number.isFinite(Number(session.expires_at))||Number(session.expires_at)<=Date.now()/1000+90){if(!str(session.refresh_token))throw Error('Session expired. Please sign in again.');const refreshed=await decode(await timedFetch(BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token}),cache:'no-store'}));if(!str(refreshed.access_token)||!Number.isFinite(Number(refreshed.expires_in))||Number(refreshed.expires_in)<=90)throw Error('Session refresh failed. Please sign in again.');session={access_token:refreshed.access_token,refresh_token:refreshed.refresh_token||session.refresh_token,expires_at:Math.floor(Date.now()/1000)+Number(refreshed.expires_in)};sessions.setItem(TOKEN,JSON.stringify(session));}return session.access_token;}
+  async function request(path,access,body){return decode(await timedFetch(BASE+path,{method:body===undefined?'GET':'POST',headers:{apikey:KEY,Authorization:'Bearer '+access,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'}));}
   async function authorize(){const access=await token(),user=await request('/auth/v1/user',access);if(!obj(user)||!str(user.id))throw Error('Authenticated user could not be verified.');const memberships=await request('/rest/v1/school_users?'+new URLSearchParams({select:'institution_id,auth_user_id,role,status',auth_user_id:'eq.'+user.id}),access);if(!Array.isArray(memberships))throw Error('School admin membership could not be verified.');const ids=[...new Set(memberships.filter(m=>m.auth_user_id===user.id&&m.role==='school_admin'&&m.status==='active').map(m=>str(m.institution_id)).filter(Boolean))];if(!ids.length)throw Error('Active school admin access is required.');const schools=[];for(const id of ids){const result=await request('/rest/v1/institutions?'+new URLSearchParams({select:'id,name,status',id:'eq.'+id}),access);if(!Array.isArray(result))throw Error('School could not be verified.');const s=result.find(s=>s.id===id&&['active','trial'].includes(s.status));if(s)schools.push({id:s.id,name:required(s.name,'School name')});}return {access,schools};}
   function result(data,id){if(!obj(data)||!obj(data.school)||data.school.id!==id||!str(data.school.name)||!Number.isSafeInteger(data.revision)||data.revision<0||!Object.hasOwn(data,'snapshot'))throw Error('Invalid or cross-school cloud response. Local records are unchanged.');if(data.snapshot!==null)shape(data.snapshot);return data;}
   async function run(id,body){required(id,'School ID');const auth=await authorize();if(!auth.schools.some(s=>s.id===id))throw Error('School admin access is not available for this school.');return result(await request('/rest/v1/rpc/school_workspace_'+(body?'push':'pull'),auth.access,body||{p_institution_id:id}),id);}

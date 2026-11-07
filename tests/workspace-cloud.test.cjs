@@ -25,3 +25,19 @@ test('projection retains IDs, preserves snapshot, uses fee engine credits includ
 test('invalid identity, dates, references, streams fail before RPC',async()=>{for(const mutate of [s=>s.students[0].admissionNumber='',s=>s.students.push({...s.students[0]}),s=>s.students[0].classId='missing',s=>s.students[0].dateOfBirth='2015-02-30',s=>s.operations.attendance[0].status='unknown',s=>s.operations.classes.push({id:'other',name:'6',section:'A',academicStream:'Arts'})]){const s=snapshot();mutate(s);assert.throws(()=>cloud.buildProjection(s,()=>[]));}});
 test('push independently rejects invalid local references before network',async()=>{const h=harness(),s=snapshot(),p=cloud.buildProjection(s,()=>[]);s.students[0].classId='missing';await assert.rejects(h.client.push('school',1,s,p),/class/i);assert.equal(h.calls.length,0);});
 test('real fee engine keeps reversal unpaid and concessions credited without calculating a second balance',()=>{const fs=require('node:fs'),vm=require('node:vm'),src=fs.readFileSync(require('node:path').join(__dirname,'../app-extracted/src/BrightNexaApp.jsx'),'utf8'),start=src.indexOf('var Rn = ['),end=src.indexOf('var Zn = ',start),context={};vm.createContext(context);vm.runInContext(src.slice(start,end)+';this.fees=Xn;',context);const s=snapshot();s.operations.feeStructures=[{id:'tuition',category:'Tuition',className:'6',academicSession:'2026-27',amount:1000,frequency:'Monthly',dueDay:10}];s.operations.feePayments=[{studentId:'student',category:'Tuition',amount:1000,billingMonth:4,billingYear:2026,status:'Reversed'},{studentId:'student',category:'Tuition',amount:0,concessionAmount:1000,billingMonth:5,billingYear:2026}];const fees=cloud.buildProjection(s,context.fees).fees;assert.equal(fees.find(f=>f.kind==='payment'&&f.occurredOn==='2026-04-01').amountRupees,0);assert.equal(fees.find(f=>f.kind==='payment'&&f.occurredOn==='2026-05-01').amountRupees,1000);});
+
+test('hung Supabase requests fail visibly with a retryable timeout',async()=>{
+ let aborted=false;
+ const sessionStorage={getItem:()=>JSON.stringify({access_token:'token',refresh_token:'refresh',expires_at:Date.now()/1000+3600})};
+ const client=cloud.create({requestTimeoutMs:20,sessionStorage,fetcher:(_url,options)=>{
+  options.signal?.addEventListener('abort',()=>{aborted=true});
+  return new Promise(()=>{});
+ }});
+ await assert.rejects(client.connect(),error=>error.code==='CLOUD_TIMEOUT'&&/not saved to cloud/i.test(error.message));
+ assert.equal(aborted,true);
+});
+test('hung session refresh does not falsely connect',async()=>{
+ const sessionStorage={getItem:()=>JSON.stringify({access_token:'old',refresh_token:'refresh',expires_at:1})};
+ const client=cloud.create({requestTimeoutMs:20,sessionStorage,fetcher:()=>new Promise(()=>{})});
+ await assert.rejects(client.connect(),error=>error.code==='CLOUD_TIMEOUT'&&/retry sync/i.test(error.message));
+});
