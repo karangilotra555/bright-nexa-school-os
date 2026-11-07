@@ -1,0 +1,58 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const path=require('node:path');
+const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+
+test('all three served entrypoints load the synced cloud guard before controller and React app',()=>{
+ for(const prefix of ['','docs/','app-extracted/dist/']){
+   const html=read(prefix+'index.html');
+   const guard=html.indexOf('school-online-guard.js?v=20261107-parent-publish-v2');
+   const controller=html.indexOf('school-workspace-controller.js?v=20261107-parent-publish-v2');
+   const entry=html.indexOf('school-erp-entry.js?v=20261107-parent-publish-v2');
+   assert.ok(guard>0&&controller>guard&&entry>controller, prefix+' order');
+   assert.match(html,/CACHE_VERSION = '20261107-parent-publish-v2'/);
+   const sw=read(prefix+'sw.js');
+   assert.match(sw,/school-online-guard.js\?v=20261107-parent-publish-v2/);
+   assert.match(sw,/school-erp-entry.js\?v=20261107-parent-publish-v2/);
+   assert.match(sw,/school-workspace-controller.js\?v=20261107-parent-publish-v2/);
+ });
+});
+test('source, web, docs, packaged app all contain verified-school auto connection and explicit error notification',()=>{
+ const src=read('app-extracted/src/BrightNexaApp.jsx');
+ const bundles=['assets/index-brightnexa-v2.js','docs/assets/index-brightnexa-v2.js','app-extracted/dist/assets/index-brightnexa-v2.js'];
+ for(const js of [src,...bundles.map(read)]){
+   assert.match(js,/selectedSchool/);
+   assert.match(js,/institutionId/);
+   assert.match(js,/controller\.openSchool\(selectedSchool\.id\)/);
+   assert.match(js,/BNWorkspaceOnlineGuard\?\.update/);
+   assert.doesNotMatch(js,/catch\s*\(_\d*\)\s*\{\s*\}\s*\)\.catch\(\(error\)/);
+ }
+ assert.equal(read(bundles[0]),read(bundles[1]));
+ assert.equal(read(bundles[0]),read(bundles[2]));
+});
+test('cloud statuses include an actual binding flag and cannot hide sync errors',()=>{
+ for(const prefix of ['','docs/','app-extracted/dist/']){
+   const src=read(prefix+'school-workspace-controller.js');
+   assert.match(src,/binding:!!binding/);
+   assert.match(src,/BNWorkspaceOnlineGuard\.update\(s,error\)/);
+ }
+});
+test('guard is only active for Supabase-verified ERP login, not ordinary student sessions',()=>{
+ const sandbox={window:{sessionStorage:{getItem:()=>JSON.stringify({cloudVerified:true})}},module:{exports:{}}};
+ vm.runInNewContext(read('school-online-guard.js'),sandbox);
+ assert.equal(sandbox.module.exports.active(),true);
+ sandbox.window.sessionStorage.getItem=()=>JSON.stringify({cloudVerified:false});
+ assert.equal(sandbox.module.exports.active(),false);
+ sandbox.window.sessionStorage.getItem=()=>null;
+ assert.equal(sandbox.module.exports.active(),false);
+});
+test('existing student credentials require published admission and school-registered mobile, never manually install demo password',()=>{
+ const source=read('supabase/functions/school-student-login/index.ts');
+ assert.match(source,/eq\('admission_number',admission\)/);
+ assert.match(source,/select\('guardian_phone'\)/);
+ assert.match(source,/phone!==mobile\(password\)/);
+ assert.doesNotMatch(source,/9058514478|bms0005/i);
+});
