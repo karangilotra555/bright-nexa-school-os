@@ -73,7 +73,7 @@ test('admin timetable UI saves one assigned period and publishes it',async()=>{
   await f.tick();
   assert.equal(f.state.published.length,1);
   assert.equal(f.state.calls.filter(c=>c.table==='rpc/bn_publish_class_timetable').length,1);
-  assert.ok(d.getElementById('schoolTimetableRoot').textContent.includes('published lessons'));
+  assert.ok(d.getElementById('schoolTimetableRoot').textContent.includes('Published 1 lesson slots'));
  }finally{f.restore();}
 });
 
