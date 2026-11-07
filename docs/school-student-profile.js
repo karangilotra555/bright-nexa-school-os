@@ -15,7 +15,13 @@ function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefine
 function fieldDisplay(parent,label,input,privateField){const item=el('div',undefined,'bn-profile-field'),name=el('span',label),out=el('strong',input===undefined||input===null||input===''?'—':input);item.append(name,out);if(privateField&&input){let shown=false;out.textContent=mask(input);const button=el('button','Show','bn-profile-reveal');button.type='button';button.setAttribute('aria-label','Show '+label);button.addEventListener('click',()=>{shown=!shown;out.textContent=shown?input:mask(input);button.textContent=shown?'Hide':'Show';button.setAttribute('aria-label',(shown?'Hide ':'Show ')+label)});item.append(button);}parent.append(item);}
 function render(rootEl,data){
  rootEl.replaceChildren();const student=data.student||{},profile=student.profile||{},details=profile.details||{};
- const hero=el('div',undefined,'panel bn-profile-hero');hero.append(el('div',(student.name||'BN').trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase(),'bn-profile-avatar'),el('h2',student.name||'Student'),el('p',[student.className,student.section].filter(Boolean).join(' · ')),el('strong',student.admissionNumber||'Admission number not provided'));rootEl.append(hero);
+ const hero=el('div',undefined,'panel bn-profile-hero');
+ const avatar=el('div',(student.name||'BN').trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase(),'bn-profile-avatar');
+ if(student.photoUrl&&/^https:\/\/[-a-z0-9]+\.supabase\.co\/storage\/v1\/object\/sign\//i.test(student.photoUrl)){
+  const img=el('img');img.src=student.photoUrl;img.alt='Student photo';img.loading='lazy';img.referrerPolicy='no-referrer';img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:inherit';
+  avatar.replaceChildren(img);
+ }
+ hero.append(avatar,el('h2',student.name||'Student'),el('p',[student.className,student.section].filter(Boolean).join(' · ')),el('strong',student.admissionNumber||'Admission number not provided'));rootEl.append(hero);
  const stats=el('div',undefined,'bn-profile-stats');for(const [label,count] of [['Attendance',data.attendance?.percent==null?'—':data.attendance.percent+'%'],['Leave requests',(data.leaves||[]).length],['Last exam result',details.latest_exam_result!==undefined&&details.latest_exam_result!==null&&details.latest_exam_result!==''?details.latest_exam_result+'%':'—']]){const card=el('div');card.append(el('strong',count),el('span',label));stats.append(card)}rootEl.append(stats,el('p','Details are maintained by your school. — means the information has not been entered.','bn-att-note'));
  for(const section of sections){const card=el('details',undefined,'bn-profile-card');card.open=!!section.open;const heading=el('summary',section.icon+' '+section.title),grid=el('div',undefined,'bn-profile-grid');card.append(heading,grid);if(section.title==='Academic Mapping'){fieldDisplay(grid,'School',data.school?.name);fieldDisplay(grid,'Admission number',student.admissionNumber);fieldDisplay(grid,'Class / Section',[student.className,student.section].filter(Boolean).join(' - '));fieldDisplay(grid,'Session',data.school?.session);}
   for(const field of section.fields){let input=value(data,field);if(field[2]==='date'&&input){const date=new Date(input+'T00:00:00Z');if(!Number.isNaN(date.getTime()))input=date.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});}fieldDisplay(grid,field[1],input,field[3]==='private');}rootEl.append(card);
@@ -37,12 +43,32 @@ function render(rootEl,data){
  }
  const timetable=Array.isArray(data.timetable)?data.timetable:[];
  if(timetable.length){
-  for(const slot of timetable){
-   const weekday=String(slot.day||'Day'),time=[slot.starts_at,slot.ends_at].filter(Boolean).join(' – ');
-   fieldDisplay(academicsGrid,[weekday,time].filter(Boolean).join(' · '),String(slot.subject||'—'),false);
+  const days=['','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const wrapper=el('div');wrapper.style.cssText='overflow-x:auto;grid-column:1/-1;margin:8px 0';
+  const table=el('table');table.className='data-table';table.style.cssText='min-width:650px;width:100%;border-collapse:collapse';
+  const thead=el('thead'),header=el('tr');header.append(el('th','Slot'));
+  for(let d=1;d<=6;d++)header.append(el('th',days[d]));
+  thead.append(header);table.append(thead);
+  const tbody=el('tbody'),slots=[...new Set(timetable.map(s=>Number(s.slot_index)).filter(Number.isFinite))].sort((a,b)=>a-b);
+  for(const index of slots){
+   const tr=el('tr');tr.append(el('th',index));
+   for(let day=1;day<=6;day++){
+    const td=el('td');td.style.cssText='padding:8px;border-bottom:1px solid #e6edf5;vertical-align:top;font-size:12px';
+    const entry=timetable.find(s=>Number(s.weekday)===day&&Number(s.slot_index)===index);
+    if(entry){
+      const t=[entry.starts_at,entry.ends_at].filter(Boolean).map(x=>String(x).slice(0,5)).join('–');
+      td.append(el('small',t));
+      td.append(el('div',entry.kind==='period'?(entry.subject||'Free period'):(entry.label||'Break')));
+      if(entry.kind==='period'&&entry.teacher_name)td.append(el('small',entry.teacher_name));
+      if(entry.kind!=='period')td.style.background='#f1f5f9';
+    }else td.textContent='—';
+    tr.append(td);
+   }tbody.append(tr);
   }
+  table.append(tbody);wrapper.append(table);academics.append(wrapper);
  }else{
-   fieldDisplay(academicsGrid,'Class timetable','Not published by school yet',false);
+   fieldDisplay(academicsGrid,'Class timetable',data.timetableStatus==='unavailable'
+    ?'Timetable service unavailable; ask school administrator':'Not published by school yet',false);
  }
  rootEl.append(academics);
 }
