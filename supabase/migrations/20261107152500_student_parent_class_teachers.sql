@@ -26,8 +26,12 @@ AS $function$
       ON a.class_id=c.id AND a.institution_id=s.institution_id
     JOIN public.school_users u
       ON u.id=a.school_user_id AND u.institution_id=s.institution_id
-    LEFT JOIN public.school_staff_profiles sp
-      ON sp.school_user_id=u.id AND sp.institution_id=s.institution_id
+    LEFT JOIN LATERAL (
+      SELECT p.display_name FROM public.school_staff_profiles p
+       WHERE p.school_user_id=u.id AND p.institution_id=s.institution_id
+       ORDER BY p.updated_at DESC, p.id
+       LIMIT 1
+    ) sp ON TRUE
    WHERE auth.uid() IS NOT NULL
      AND school_private.parent_of(p_student_id,p_institution_id)
      AND s.id=p_student_id AND s.institution_id=p_institution_id AND s.status='active'
