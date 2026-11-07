@@ -3,12 +3,14 @@
  'use strict';
  function roleDestination(input){
   const {role,verified=false,membershipCount=0,search=''}=input||{};
-  if(!verified || role!=='school_admin' || membershipCount!==1)return null;
+  if(!verified || membershipCount!==1)return null;
   const params=new URLSearchParams(search);
   // Staff deep links must remain accessible for timetable, profile, permissions,
   // and for explicit visits from the existing ERP navigation.
   if(params.has('view')||params.has('staffPortal'))return null;
-  return './index.html?openSchool=true';
+  if(role==='school_admin')return './index.html?openSchool=true';
+  if(role==='librarian')return './library.html';
+  return null;
  }
  function preferredView(role){
   return ({school_admin:'classes',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'})[role]||'account';
