@@ -511,12 +511,23 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const { admissionNumber, dob } = await parseJsonBody(req);
-      const cleanAdm = (admissionNumber || '').trim();
-      const cleanDob = (dob || '').trim();
+      const cleanAdm = typeof admissionNumber === 'string' ? admissionNumber.trim() : '';
+      const cleanDob = typeof dob === 'string' ? dob.trim() : '';
 
-      if (!cleanAdm || !cleanDob) {
-        return sendJson(res, 400, { error: "Both Admission Number and Date of Birth are strictly required." });
+      if (!cleanAdm || !cleanDob || cleanAdm.length > 80 || cleanDob.length > 40) {
+        return sendJson(res, 400, { error: 'A valid admission number and date of birth are required.' });
       }
+
+      // All identity and DOB mismatches return one public response. Do not
+      // disclose whether a student exists, is inactive or has a DOB on file.
+      const rejectLogin = (reason, details = {}) => {
+        recordRateLimitFailure(`ip:${clientIp}`);
+        recordRateLimitFailure(`adm:${cleanAdm.toUpperCase()}`);
+        logAudit(reason, clientIp, { adm: cleanAdm, ...details });
+        return sendJson(res, 401, {
+          error: 'Invalid admission number or date of birth, or account unavailable. Contact the school office if needed.'
+        });
+      };
 
       // Check IP rate limit
       const ipLim = checkRateLimit(`ip:${clientIp}`, 10, 900);
@@ -536,41 +547,26 @@ const server = http.createServer(async (req, res) => {
         }, { 'Retry-After': String(admLim.retryAfter || 900) });
       }
 
-      const student = db.prepare('SELECT * FROM students WHERE admissionNumber = ? OR id = ?').get(cleanAdm, cleanAdm);
+      // Only the actual admission number is a login identifier. Never allow
+      // internal numeric row IDs to bypass the admission-number requirement.
+      const student = db.prepare('SELECT * FROM students WHERE admissionNumber = ?').get(cleanAdm);
+      if (!student) return rejectLogin('LOGIN_FAILED_NOT_FOUND');
 
-      if (!student) {
-        recordRateLimitFailure(`ip:${clientIp}`);
-        recordRateLimitFailure(`adm:${cleanAdm.toUpperCase()}`);
-        logAudit('LOGIN_FAILED_NOT_FOUND', clientIp, { adm: cleanAdm });
-        return sendJson(res, 401, {
-          error: "Authentication Failed: No student record found matching this Admission Number."
-        });
+      // A withdrawn/inactive student must never obtain a valid portal session.
+      if (String(student.enrollmentStatus || '').toUpperCase() !== 'ACTIVE') {
+        return rejectLogin('LOGIN_BLOCKED_INACTIVE');
       }
-
-      // Check if student has registered DOB
       const studentDobNorm = ca.normalizeDate(student.dob || '');
-      if (!studentDobNorm) {
-        logAudit('LOGIN_BLOCKED_NO_DOB', clientIp, { adm: student.admissionNumber });
-        return sendJson(res, 403, {
-          error: "Access Restricted: Date of Birth is not registered for this student record in the institutional database. For student data privacy and security, please contact the school administration office to register the student's date of birth before portal access can be granted."
-        });
-      }
-
+      if (!studentDobNorm) return rejectLogin('LOGIN_BLOCKED_NO_DOB');
       const enteredDobNorm = ca.normalizeDate(cleanDob);
-      const isMatch = enteredDobNorm && timingSafeCompare(enteredDobNorm, studentDobNorm);
-
-      if (!isMatch) {
-        const resFail = recordRateLimitFailure(`adm:${cleanAdm.toUpperCase()}`);
-        recordRateLimitFailure(`ip:${clientIp}`);
-        logAudit('LOGIN_FAILED_WRONG_DOB', clientIp, { adm: student.admissionNumber, attempts: resFail.attempts });
-        return sendJson(res, 401, {
-          error: `Authentication Failed: The Date of Birth entered does not match our institutional records for this student. (${5 - resFail.attempts} attempts remaining before account lockout)`
-        });
+      if (!enteredDobNorm || !timingSafeCompare(enteredDobNorm, studentDobNorm)) {
+        return rejectLogin('LOGIN_FAILED_WRONG_DOB');
       }
 
-      // Success: Reset rate limit counters
+      // A correct login clears only that admission number's failures. Retain
+      // network-wide IP throttling to prevent one valid account from resetting
+      // brute-force attempts against other students.
       resetRateLimit(`adm:${cleanAdm.toUpperCase()}`);
-      resetRateLimit(`ip:${clientIp}`);
 
       const token = createSessionToken(student);
       logAudit('LOGIN_SUCCESS', clientIp, { adm: student.admissionNumber });
@@ -613,9 +609,10 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 401, { error: "Session token is invalid or expired. Please log in again." });
     }
 
-    const student = db.prepare('SELECT * FROM students WHERE admissionNumber = ? OR id = ?').get(session.sub, session.sub);
-    if (!student) {
-      return sendJson(res, 404, { error: "Enrolled student record no longer exists." });
+    if (session.role !== 'STUDENT') return sendJson(res, 403, { error: 'Student session required.' });
+    const student = db.prepare('SELECT * FROM students WHERE admissionNumber = ?').get(session.sub);
+    if (!student || String(student.enrollmentStatus || '').toUpperCase() !== 'ACTIVE') {
+      return sendJson(res, 403, { error: 'Student portal access is no longer available. Contact the school office.' });
     }
 
     return sendJson(res, 200, {
@@ -807,6 +804,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === '/api/sync/token' && req.method === 'POST') {
+    // Only an existing verified administrator or the server admin key may mint
+    // another privileged session. Client-supplied role/name do not grant access.
+    if (!verifyAdminAuth(req)) {
+      logAudit('UNAUTHORIZED_SYNC_TOKEN_ATTEMPT', clientIp, { path: pathname });
+      return sendJson(res, 401, { error: 'Administrative authentication required.' });
+    }
     try {
       const body = await parseJsonBody(req);
       const role = (body && body.role) || 'OWNER';
