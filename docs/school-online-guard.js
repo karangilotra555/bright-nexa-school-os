@@ -16,7 +16,7 @@
   el=root.document.createElement('section');el.id=ID;el.setAttribute('role','status');
   el.setAttribute('aria-live','polite');el.style.cssText='position:fixed;z-index:2147483000;inset:0;background:#f3f7fd;display:flex;align-items:center;justify-content:center;padding:24px;color:#0a3155;font-family:system-ui,sans-serif';
   const card=root.document.createElement('div');card.style.cssText='background:white;border:1px solid #d9e4ef;border-radius:16px;padding:28px;max-width:440px;width:100%;box-shadow:0 10px 30px #082b4a15';
-  const heading=root.document.createElement('h2');heading.textContent='Connecting Haridwar Public School';heading.dataset.role='heading';
+  const heading=root.document.createElement('h2');heading.textContent='Connecting School OS';heading.dataset.role='heading';
   const message=root.document.createElement('p');message.dataset.role='message';message.textContent='Verifying cloud workspace before enabling school changes.';
   message.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere';
   const controls=root.document.createElement('div');controls.style.cssText='display:flex;gap:12px;flex-wrap:wrap;margin-top:24px';
