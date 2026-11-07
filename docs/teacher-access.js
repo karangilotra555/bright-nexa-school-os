@@ -314,10 +314,10 @@
     const reference=$('feeReference').value.trim(),notes=$('feeDescription').value.trim();
     const occurred_on=$('feeDate').value;
     if(!['charge','payment'].includes(kind))throw Error('Invalid fee entry type.');
-    if(!Number.isFinite(amount)||amount<=0||amount>100000000||Math.round(amount*100)!==amount*100)
+    if(!Number.isFinite(amount)||amount<=0||amount>100000000||Math.abs(amount-Math.round(amount*100)/100)>1e-8)
       throw Error('Enter a valid amount with at most two decimals.');
     if(!reference||reference.length>100)throw Error('Enter a unique receipt/reference.');
-    if(notes.length>250||!/^\\d{4}-\\d{2}-\\d{2}$/.test(occurred_on))throw Error('Invalid notes or date.');
+    if(notes.length>250||!/^\d{4}-\d{2}-\d{2}$/.test(occurred_on))throw Error('Invalid notes or date.');
     const button=$('saveFeeEntry');if(button.disabled)return;button.disabled=true;
     try{
       await api('school_fee_entries','','POST',{
