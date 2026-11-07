@@ -36,6 +36,18 @@ CREATE TABLE IF NOT EXISTS public.school_timetable_drafts (
  UNIQUE (institution_id,slot_id,teacher_user_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.school_timetable_subject_loads (
+ institution_id uuid NOT NULL REFERENCES public.institutions(id),
+ class_id uuid NOT NULL,
+ academic_year text NOT NULL,
+ teacher_user_id uuid NOT NULL,
+ subject text NOT NULL CHECK(char_length(btrim(subject)) BETWEEN 1 AND 100),
+ periods_per_week smallint NOT NULL CHECK(periods_per_week BETWEEN 1 AND 72),
+ FOREIGN KEY(class_id,institution_id) REFERENCES public.school_classes(id,institution_id),
+ FOREIGN KEY(teacher_user_id,institution_id) REFERENCES public.school_users(id,institution_id),
+ PRIMARY KEY(institution_id,class_id,academic_year,teacher_user_id,subject)
+);
+
 CREATE TABLE IF NOT EXISTS public.school_timetable_published (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  institution_id uuid NOT NULL REFERENCES public.institutions(id),
@@ -63,10 +75,12 @@ CREATE INDEX IF NOT EXISTS bn_timetable_published_teacher ON public.school_timet
 
 ALTER TABLE public.school_timetable_slots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_timetable_drafts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.school_timetable_subject_loads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_timetable_published ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT,INSERT,UPDATE,DELETE ON public.school_timetable_slots TO authenticated;
 GRANT SELECT,INSERT,UPDATE,DELETE ON public.school_timetable_drafts TO authenticated;
+GRANT SELECT,INSERT,UPDATE,DELETE ON public.school_timetable_subject_loads TO authenticated;
 GRANT SELECT ON public.school_timetable_published TO authenticated;
 REVOKE INSERT,UPDATE,DELETE ON public.school_timetable_published FROM authenticated,anon,public;
 
@@ -84,6 +98,10 @@ CREATE POLICY bn_tt_slots_admin_update ON public.school_timetable_slots FOR UPDA
  WITH CHECK(school_private.has_role(institution_id,ARRAY['school_admin']));
 CREATE POLICY bn_tt_slots_admin_delete ON public.school_timetable_slots FOR DELETE TO authenticated
  USING(school_private.has_role(institution_id,ARRAY['school_admin']));
+
+CREATE POLICY bn_tt_load_owner ON public.school_timetable_subject_loads FOR ALL TO authenticated
+ USING(school_private.has_role(institution_id,ARRAY['school_admin']))
+ WITH CHECK(school_private.has_role(institution_id,ARRAY['school_admin']));
 
 CREATE POLICY bn_tt_draft_owner_read ON public.school_timetable_drafts FOR SELECT TO authenticated USING(
  school_private.has_role(institution_id,ARRAY['school_admin'])
@@ -111,6 +129,15 @@ CREATE OR REPLACE FUNCTION public.bn_timetable_check_slot()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 BEGIN
  PERFORM pg_advisory_xact_lock(hashtext('timetable:'||NEW.institution_id::text||':'||NEW.academic_year||':'||NEW.weekday::text));
+ IF TG_OP='UPDATE' AND (
+     OLD.starts_at IS DISTINCT FROM NEW.starts_at OR OLD.ends_at IS DISTINCT FROM NEW.ends_at
+     OR OLD.weekday IS DISTINCT FROM NEW.weekday OR OLD.academic_year IS DISTINCT FROM NEW.academic_year
+     OR OLD.kind IS DISTINCT FROM NEW.kind
+   ) AND (
+     EXISTS(SELECT 1 FROM public.school_timetable_drafts d WHERE d.slot_id=OLD.id)
+     OR EXISTS(SELECT 1 FROM public.school_timetable_published p WHERE p.slot_id=OLD.id)
+   )
+ THEN RAISE EXCEPTION 'Bell slot is used in a timetable. Clear its draft/approved lessons before changing timings.' USING errcode='23514'; END IF;
  IF EXISTS(SELECT 1 FROM public.school_timetable_slots s
            WHERE s.institution_id=NEW.institution_id AND s.academic_year=NEW.academic_year
              AND s.weekday=NEW.weekday AND s.id<>NEW.id
@@ -152,6 +179,23 @@ DROP TRIGGER IF EXISTS bn_tt_published_guard ON public.school_timetable_publishe
 CREATE TRIGGER bn_tt_published_guard BEFORE INSERT OR UPDATE ON public.school_timetable_published
  FOR EACH ROW EXECUTE FUNCTION public.bn_timetable_check_entry();
 
+CREATE OR REPLACE FUNCTION public.bn_timetable_check_load()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.school_classes c
+  JOIN public.school_teacher_assignments a ON a.institution_id=c.institution_id AND a.class_id=c.id
+  JOIN public.school_users u ON u.id=a.school_user_id AND u.institution_id=a.institution_id
+  WHERE c.id=NEW.class_id AND c.institution_id=NEW.institution_id AND c.academic_year=NEW.academic_year
+   AND a.school_user_id=NEW.teacher_user_id AND a.assignment_type='subject_teacher'
+   AND a.active=true AND u.status='active' AND u.role='teacher'
+   AND lower(btrim(a.subject))=lower(btrim(NEW.subject)))
+ THEN RAISE EXCEPTION 'Weekly load requires an assigned subject teacher' USING errcode='23514'; END IF;
+ RETURN NEW;
+END;
+$function$;
+CREATE TRIGGER bn_tt_load_guard BEFORE INSERT OR UPDATE ON public.school_timetable_subject_loads
+ FOR EACH ROW EXECUTE FUNCTION public.bn_timetable_check_load();
+
 -- Explicit, atomic publication: parents never see partial draft changes.
 CREATE OR REPLACE FUNCTION public.bn_publish_class_timetable(
  p_institution_id uuid,p_class_id uuid,p_academic_year text
@@ -167,6 +211,16 @@ BEGIN
  SELECT count(*) INTO slots_count FROM public.school_timetable_drafts d
   WHERE d.institution_id=p_institution_id AND d.class_id=p_class_id AND d.academic_year=p_academic_year;
  IF slots_count=0 THEN RAISE EXCEPTION 'Add timetable periods before publishing' USING errcode='22023'; END IF;
+ IF EXISTS(
+   SELECT 1 FROM public.school_timetable_slots bell
+   WHERE bell.institution_id=p_institution_id AND bell.academic_year=p_academic_year
+     AND bell.kind='period'
+     AND NOT EXISTS(SELECT 1 FROM public.school_timetable_drafts d
+       WHERE d.institution_id=p_institution_id AND d.class_id=p_class_id
+         AND d.academic_year=p_academic_year AND d.slot_id=bell.id)
+ ) THEN
+  RAISE EXCEPTION 'Complete every teaching period before publishing the class timetable' USING errcode='22023';
+ END IF;
  SELECT count(*) INTO conflict_count FROM public.school_timetable_drafts d
  JOIN public.school_timetable_published p ON p.institution_id=d.institution_id AND p.slot_id=d.slot_id
   AND p.teacher_user_id=d.teacher_user_id
