@@ -102,6 +102,7 @@
     if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
+    if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
     if(name==='timetable'&&window.BNTimetable)window.BNTimetable.activate({
       me,classes:allClasses,assignments:allAssignments,staff:allStaff,
       api,query,eq,notify,openAssignments:()=>tab('admin')
@@ -155,15 +156,21 @@
     put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     await loadRolePermissions();
+    // Route only after Supabase Auth + tenant membership were verified above.
+    const next=window.BNSchoolRoleEntry?.roleDestination({
+      role:me.role,verified:me.status==='active'&&me.auth_user_id===identity.id,
+      membershipCount:permitted.length,search:location.search
+    });
+    if(next){location.replace(new URL(next,location.href).href);return;}
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
     await reload();
     const requested=new URLSearchParams(location.search).get('view');
-    const allowedViews=['classes','timetable','attendance','homework','notices','profiles','account'];
+    const allowedViews=['classes','timetable','attendance','homework','notices','profiles','fees','admin','account'];
     const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
     const deepLink=allowedViews.includes(requested)&&isTabVisibleForRole(requested,me.role)?requested:null;
-    const defaultTeacher=me.role==='teacher'&&canAcademic()&&isTabVisibleForRole('attendance',me.role)?'attendance':null;
-    const openingView=deepLink||defaultTeacher||landing||'account';
+    const preferred=window.BNSchoolRoleEntry?.preferredView(me.role);
+    const openingView=deepLink||(preferred&&isTabVisibleForRole(preferred,me.role)?preferred:null)||landing||'account';
     tab(openingView);clearNotice();
     if(openingView==='attendance'){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
@@ -363,8 +370,9 @@
     rolePermissions=next;return next;
   }
   function isTabVisibleForRole(tabName,role){
+    if(tabName==='admin')return role==='school_admin';
+    if(tabName==='fees')return role==='school_admin'||role==='accountant';
     if(role==='school_admin'||role==='principal')return true;
-    if(tabName==='admin')return false;
     if(tabName==='timetable')return role==='teacher';
     if(tabName==='account')return true;
     const perms=getRolePermissions()[role]||DEFAULT_ROLE_PERMS[role];
@@ -380,6 +388,10 @@
     display('timetableTab',isAdm||role==='teacher'||role==='principal');
     display('schoolOsAdminNav',isAdm);
     display('adminErpBanner',isAdm);
+    display('staffDesktopShortcut',isAdm);
+    display('staffSmartToolsLink',canAcademic());
+    display('staffSmartToolsQuickLink',canAcademic());
+    display('feesTab',isAdm||role==='accountant');
     document.querySelectorAll('[data-tab]').forEach(btn=>{
       const t=btn.dataset.tab;
       if(t==='admin')btn.classList.toggle('hidden',!isAdm);
@@ -390,9 +402,8 @@
     });
   }
   function getStaffPermissionsSummary(staff){
-    if(staff.role==='school_admin'||staff.role==='principal'){
-      return dom('span','👑 Full School Access (All classes & modules)','pill');
-    }
+    if(staff.role==='school_admin')return dom('span','👑 School Admin (verified school controls)','pill');
+    if(staff.role==='principal')return dom('span','📘 Academic oversight (no owner-only actions)','pill');
     if(staff.role==='librarian')return dom('span','📚 Library inventory and lending only','pill');
     if(staff.role!=='teacher')return dom('span','Staff role: '+staff.role.replaceAll('_',' '),'pill');
     const container=dom('div');
