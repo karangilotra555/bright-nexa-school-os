@@ -104,7 +104,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages"><span>✉</span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="school-student-profile.js?v=20261105-profile"></script><script src="school-homework-files.js?v=20261105-profile"></script><script src="school-attendance-calendar.js?v=20261105-profile"></script><script src="parents-cloud.js?v=20261105-profile"></script>
+<script src="school-student-photo-cloud.js?v=20261107-photo-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261105-profile"></script><script src="school-attendance-calendar.js?v=20261105-profile"></script><script src="parents-cloud.js?v=20261107-timetable-photo-v1"></script>
 <script>
 (() => {
 'use strict';
@@ -125,7 +125,13 @@ function setTab(tab){document.querySelectorAll('[data-view]').forEach(el=>el.cla
 function render(p){
  data=p;const s=p.student||{},a=p.attendance||{},f=p.fees||{};
  setText('schoolShort',p.school?.name||'School portal');setText('childSummary',[s.name,s.className,s.section].filter(Boolean).join(' · '));
- setText('avatar',(s.name||'BN').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase());
+ const avatar=$('avatar');
+ avatar.replaceChildren();
+ if(s.photoUrl&&/^https:\/\/[-a-z0-9]+\.supabase\.co\/storage\/v1\/object\/sign\//i.test(s.photoUrl)){
+   const img=document.createElement('img');img.src=s.photoUrl;img.alt='Student photo';img.referrerPolicy='no-referrer';
+   img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:inherit';
+   avatar.append(img);
+ }else setText('avatar',(s.name||'BN').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase());
  setText('attendancePercent',a.percent===null||a.percent===undefined?'—':a.percent+'%');
  setText('attendanceCount',(a.recordedDays||0)+' days recorded');
  setText('feeDue',money(f.dueRupees));
