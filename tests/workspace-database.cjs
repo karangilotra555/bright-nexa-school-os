@@ -140,6 +140,47 @@ end loop;end$$;
  result=await push(result.revision);
  assert.equal(Number((await db.query('select count(*) n from school_attendance')).rows[0].n),2,'changed attendance day preserves ID without duplication');
  assert.equal((await db.query('select day::text from school_attendance where id=$1',[portalAttendance])).rows[0].day,'2026-11-03');
+ // A real ERP push commits draft marks, then explicit publish copies only this pupil's exam.
+ const pupil=(await db.query("select cloud_id from school_workspace_links where entity='students' and local_id='s1'")).rows[0].cloud_id;
+ const parent='12121212-1212-1212-1212-121212121212';
+ await db.exec(`reset role;
+ create function school_private.parent_of(s uuid,i uuid) returns boolean language sql stable as
+ $$select auth.uid()='${parent}'::uuid and s='${pupil}'::uuid and i='${school}'::uuid$$;
+ create function school_private.staff_module_enabled(i uuid,m text) returns boolean language sql stable as
+ $$select i='${school}'::uuid and m='profiles'$$;
+ create function school_private.teacher_can(i uuid,c uuid,a text,s text) returns boolean language sql stable as
+ $$select auth.uid()='${teacher}'::uuid and i='${school}'::uuid and c is not null and a='marks.write' and s='Math'$$;`);
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261108021000_publish_student_marksheets.sql'),'utf8'));
+ await db.exec('set role authenticated');
+ snapshot.operations.exams=[{id:'exam1',name:'Term 1',startDate:'2026-11-04'}];
+ snapshot.operations.marks=[
+  {examId:'exam1',studentId:'s1',subject:'Math',obtainedMarks:74,maximumMarks:100},
+  {examId:'exam1',studentId:'s1',subject:'English',obtainedMarks:80,maximumMarks:100},
+  {examId:'exam1',studentId:'s2',subject:'Math',obtainedMarks:42,maximumMarks:100}
+ ];
+ result=await push(result.revision);
+ const as=async uid=>db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
+ const published=async(student=pupil,tenant=school)=>
+  (await db.query('select bn_school_published_marksheets($1,$2) result',[tenant,student])).rows[0].result;
+ const publish=async()=>db.query('select bn_publish_school_marksheet($1,$2,$3)',[school,pupil,'exam1']);
+ await as(parent);
+ assert.deepEqual(await published(),[],'draft marks are private');
+ await assert.rejects(publish(),/administrator required/);
+ await as(admin);
+ await publish();
+ await as(parent);
+ assert.deepEqual((await published())[0].subjects.map(s=>s.obtained),[80,74]);
+ assert.deepEqual(await published(portalStudent),[]);
+ assert.deepEqual(await published(pupil,other),[]);
+ await as(teacher);
+ assert.deepEqual((await published())[0].subjects.map(s=>s.subject),['Math']);
+ await assert.rejects(db.query('select * from school_published_marksheets'),/permission denied/);
+ await as(admin);
+ snapshot.operations.marks[0].obtainedMarks=95;
+ result=await push(result.revision);
+ assert.equal((await published())[0].subjects[1].obtained,74,'editing draft does not silently republish');
+ await publish();
+ assert.equal((await published())[0].subjects[1].obtained,95);
  await db.exec(`insert into school_fee_entries(institution_id,student_id,kind,amount_rupees,description,created_by) select '${school}',id,'charge',5,'External ledger','${user}' from school_students where admission_number='A2'`);
  await assert.rejects(pull(),/Fee reconciliation required/);
  result.revision=Number((await db.query('select revision from school_workspaces')).rows[0].revision); projection.fees.push({localId:'f2',studentLocalId:'s2',kind:'charge',amountRupees:50});

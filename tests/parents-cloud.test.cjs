@@ -5,3 +5,23 @@ test('initial password login returns a password-change gate',async()=>{const api
 test('invalid leave cannot be published',async()=>{const {api}=fixture();const {links:[link]}=await api.login('ADM001','pass');await api.dashboard(link);await assert.rejects(api.leave('2026-11-07','2026-11-06','Family visit'),/Check leave/);});
 
 test('admission number is sent to the login service and password change uses the session',async()=>{const {api,calls}=fixture();await api.login('ADM001','9000000001');assert.deepEqual(JSON.parse(calls[0].options.body),{action:'login',admissionNumber:'ADM001',password:'9000000001'});await api.changePassword('NewTest123!');assert.equal(JSON.parse(calls.at(-1).options.body).action,'change-password');assert.equal(calls.at(-1).options.headers.Authorization,'Bearer jwt');});
+
+test('dashboard loads the published marksheet for the linked student without reading ERP drafts',async()=>{
+ const calls=[];
+ const api=create(async(url,options)=>{
+  const path=new URL(url).pathname;calls.push({path,options});
+  const body=path.endsWith('school-student-login')
+   ? {session:{access_token:'parent-jwt',user:{id:'parent'}},links:[{student_id:'child',institution_id:'school'}]}
+   : path.endsWith('school_students') ? [{id:'child',name:'Child'}]
+   : path.endsWith('bn_school_published_marksheets') ? [{examId:'exam',examName:'Term 1',subjects:[{subject:'Math',obtained:74,maximum:100}]}]
+   : [];
+  return {ok:true,status:200,text:async()=>JSON.stringify(body),json:async()=>body};
+ });
+ const {links:[child]}=await api.login('TEST001','password');
+ const dashboard=await api.dashboard(child);
+ assert.equal(dashboard.marksheets[0].subjects[0].obtained,74);
+ const request=calls.find(c=>c.path.endsWith('bn_school_published_marksheets'));
+ assert.deepEqual(JSON.parse(request.options.body),{p_school:'school',p_student:'child'});
+ assert.equal(request.options.headers.Authorization,'Bearer parent-jwt');
+ assert.ok(calls.every(c=>!c.path.includes('school_workspaces')));
+});

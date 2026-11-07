@@ -62,6 +62,15 @@ function create(fetcher){
    return Array.isArray(data)?{rows:data,status:data.length?'published':'not_published'}:{rows:[],status:'unavailable'};
   }catch(_){return {rows:[],status:'unavailable'};}
  }
+ async function publishedMarksheets(link){
+  try{
+   const data=await request('/rest/v1/rpc/bn_school_published_marksheets',{
+    method:'POST',body:JSON.stringify({p_school:link.institution_id,p_student:link.student_id})
+   });
+   if(!Array.isArray(data))throw Error('Invalid marksheet response');
+   return {rows:data,error:null};
+  }catch(err){return {rows:[],error:err.message};}
+ }
  async function studentPhoto(link,profile){
   const path=profile?.details?.photo_path;
   if(!path||!photoClient)return null;
@@ -83,12 +92,12 @@ function create(fetcher){
    rows('school_parent_leaves',{...filter,parent_auth_user_id:'eq.'+session.user.id,order:'created_at.desc'}),
    rows('school_student_profiles',{order:'student_id.asc',student_id:filter.student_id,institution_id:filter.institution_id})
   ]);
-  const [teachers,timetable,photoUrl]=await Promise.all([classTeachers(link),studentTimetable(link),studentPhoto(link,profiles[0])]);
+  const [teachers,timetable,photoUrl,marksheets]=await Promise.all([classTeachers(link),studentTimetable(link),studentPhoto(link,profiles[0]),publishedMarksheets(link)]);
   const attached=filesClient?await filesClient.list(homework.map(h=>h.id)):[];
   selected=link;
   const recorded=attendance.filter(a=>['present','absent','late','half_day'].includes(a.status.toLowerCase()));
   const present=recorded.reduce((n,a)=>n+(a.status.toLowerCase()==='half_day'?.5:['present','late'].includes(a.status.toLowerCase())?1:0),0);
-  return {student:{name:student.name,dob:student.dob,profile:profiles[0]||{},photoUrl,admissionNumber:student.admission_number,className:classes[0]?.name,section:classes[0]?.section},school:{name:schools[0]?.name,session:classes[0]?.academic_year},attendance:{percent:recorded.length?Math.round(present/recorded.length*1000)/10:null,recordedDays:recorded.length,recent:attendance},fees:{dueRupees:fees.length?Math.max(0,fees.reduce((n,f)=>n+(f.kind==='charge'?1:-1)*Number(f.amount_rupees),0)):null},homework:homework.map(h=>({...h,files:attached.filter(f=>f.homework_id===h.id),title:[h.title,h.instructions].filter(Boolean).join(' — '),due_date:h.due_on})),notices:notices.map(n=>({...n,published_at:n.created_at})),leaves:leaves.map(l=>({...l,from_day:l.from_on,to_day:l.to_on})),teachers:teachers.rows,teachersStatus:teachers.status,timetable:timetable.rows,timetableStatus:timetable.status};
+  return {student:{name:student.name,dob:student.dob,profile:profiles[0]||{},photoUrl,admissionNumber:student.admission_number,className:classes[0]?.name,section:classes[0]?.section},school:{name:schools[0]?.name,session:classes[0]?.academic_year},attendance:{percent:recorded.length?Math.round(present/recorded.length*1000)/10:null,recordedDays:recorded.length,recent:attendance},fees:{dueRupees:fees.length?Math.max(0,fees.reduce((n,f)=>n+(f.kind==='charge'?1:-1)*Number(f.amount_rupees),0)):null},homework:homework.map(h=>({...h,files:attached.filter(f=>f.homework_id===h.id),title:[h.title,h.instructions].filter(Boolean).join(' — '),due_date:h.due_on})),notices:notices.map(n=>({...n,published_at:n.created_at})),leaves:leaves.map(l=>({...l,from_day:l.from_on,to_day:l.to_on})),teachers:teachers.rows,teachersStatus:teachers.status,timetable:timetable.rows,timetableStatus:timetable.status,marksheets:marksheets.rows,marksheetError:marksheets.error};
  }
  async function leave(from,to,reason){
   if(!session||!selected)throw Error('Please log in and select your child');
