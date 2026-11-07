@@ -58,6 +58,7 @@ function autoFill({slots,drafts,published,assignments,targets,classId,schoolId,y
  if(todo.some(t=>t.remaining>0))throw Error('Teachers already booked at too many periods; adjust weekly targets or assignments.');
  return additions;
 }
+const $=id=>document.getElementById(id);
 const text=(el,value)=>{el.textContent=String(value??'');return el;};
 function node(tag,value){const el=document.createElement(tag);if(value!==undefined)text(el,value);return el;}
 function opt(select,value,label){const e=node('option',label);e.value=value;select.append(e);}
