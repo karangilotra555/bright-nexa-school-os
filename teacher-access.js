@@ -6,10 +6,13 @@
   const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
   const TOKEN_KEY='bn_school_staff_session_v1';
+  const SELECTED_SCHOOL_KEY='bn_school_staff_selected_school_v1';
   const ROLES=['school_admin','principal','teacher','accountant','librarian','receptionist','transport_staff'];
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
   let rolePermissions=null;
+  let recoveryMode=false;
+  let schoolLoadEpoch=0;
   const homeworkFiles=window.BNHomeworkFiles.create({base:BASE,key:APIKEY,token:async()=>{await ensureToken();return session?.access_token;}});
   const values=v=>v==null?'':String(v);
   function notify(msg,isError=false){
@@ -65,10 +68,28 @@
     for(const row of records){const o=dom('option',label(row));o.value=row.id;s.append(o)}
   }
   function dropSession(){
-    session=null;me=null;identity=null;rolePermissions=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
-    sessionStorage.removeItem(TOKEN_KEY);invalidateRoster();clearProfileEditor();
-    display('portalSection',false);display('loginSection',true);display('logout',false);
+    ++schoolLoadEpoch;
+    session=null;me=null;identity=null;rolePermissions=null;recoveryMode=false;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(SELECTED_SCHOOL_KEY);
+    invalidateRoster();clearProfileEditor();
+    display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
+    display('savedSessionPanel',false);display('schoolPickerWrap',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
+  }
+  async function switchToDifferentAccount(){
+    const jwt=session?.access_token;
+    dropSession();
+    $('loginEmail').value='';
+    $('loginPassword').value='';
+    clearNotice();
+    $('loginEmail').focus();
+    if(jwt){
+      // Remove the previous session in the browser immediately. Server sign-out
+      // is best effort; it must not stop the user entering another account.
+      await fetch(BASE+'/auth/v1/logout',{method:'POST',
+        headers:{apikey:APIKEY,Authorization:'Bearer '+jwt},cache:'no-store'}).catch(()=>{});
+    }
   }
   function tab(name){
     if(name==='admin'&&!isAdmin())return;
@@ -76,18 +97,45 @@
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
   }
-  async function load(){
+  async function load(requestedSchoolId){
+    const thisLoad=++schoolLoadEpoch;
     await ensureToken();
     identity=await responseJson(await fetch(BASE+'/auth/v1/user',{headers:{
       apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'}));
     const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status,display_name',auth_user_id:eq(identity.id)}));
-    me=memberships.find(x=>x.auth_user_id===identity.id&&x.status==='active')||null;
-    if(!me){dropSession();notify('Your school has not activated this staff account. Ask the school administrator to invite you.',true);return}
-    const schoolRows=await api('institutions',query({select:'id,name,status',id:eq(me.institution_id)}));
-    const school=schoolRows[0];
-    if(!school||!['active','trial'].includes(school.status)){
-      dropSession();notify('Institution is inactive. Contact school administration.',true);return;
+    if(thisLoad!==schoolLoadEpoch)return;
+    const active=memberships.filter(x=>x.auth_user_id===identity.id&&x.status==='active');
+    if(!active.length){dropSession();notify('Your school has not activated this staff account. Ask the school administrator to invite you.',true);return;}
+    // School names become visible ONLY after a verified Supabase Auth session,
+    // and only for institutions having an active membership for this account.
+    const permitted=[];
+    for(const member of active){
+      const schoolRows=await api('institutions',query({select:'id,name,status',id:eq(member.institution_id)}));
+      if(thisLoad!==schoolLoadEpoch)return;
+      const school=schoolRows.find(s=>s.id===member.institution_id&&['active','trial'].includes(s.status));
+      if(school)permitted.push({member,school});
     }
+    if(!permitted.length){dropSession();notify('No active school is available for this account. Contact the school administrator.',true);return;}
+    const preferred=requestedSchoolId||sessionStorage.getItem(SELECTED_SCHOOL_KEY);
+    if(requestedSchoolId&&!permitted.some(x=>x.school.id===requestedSchoolId))
+      throw Error('This account is not authorized for that school.');
+    const chosen=permitted.find(x=>x.school.id===preferred)||permitted[0];
+    me=chosen.member;
+    const school=chosen.school;
+    // Invalidate the previous school's visible cached rows before loading the
+    // selected school's roster and role permissions.
+    allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];allHomeworkFiles=[];
+    rolePermissions=null;invalidateRoster();clearProfileEditor();
+    sessionStorage.setItem(SELECTED_SCHOOL_KEY,school.id);
+    const selector=$('schoolPicker');
+    selector.replaceChildren();
+    for(const entry of permitted){
+      const option=dom('option',entry.school.name);
+      option.value=entry.school.id;
+      selector.append(option);
+    }
+    selector.value=school.id;
+    display('schoolPickerWrap',permitted.length>1);
     put('schoolLabel',school.name);
     const myName=staffName(me);
     put('membership',school.name+' · '+(myName||me.email)+' · '+me.role.replaceAll('_',' '));
@@ -557,17 +605,69 @@
   async function run(task){
     try{clearNotice();await task()}catch(e){notify(e.message||'Operation could not be completed.',true)}
   }
+  $('continuePreviousSession').addEventListener('click',()=>run(async()=>{
+    display('savedSessionPanel',false);
+    await load();
+  }));
+  $('differentSchoolLogin').addEventListener('click',()=>run(switchToDifferentAccount));
+  $('switchSchoolAccount').addEventListener('click',()=>run(switchToDifferentAccount));
+  $('schoolPicker').addEventListener('change',e=>run(async()=>{
+    const nextSchool=e.target.value;
+    if(!session||!me||nextSchool===me.institution_id)return;
+    const picker=$('schoolPicker');picker.disabled=true;
+    try{
+      display('portalSection',false);
+      await load(nextSchool);
+      notify('Authorized school selected. Records were refreshed from Supabase.');
+    }finally{picker.disabled=false;}
+  }));
   $('loginForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=e.submitter;btn.disabled=true;
     try{const tokens=await authRequest('token?grant_type=password',{email:$('loginEmail').value.trim(),password:$('loginPassword').value});saveSession(tokens);await load()}
     finally{btn.disabled=false}
   })});
+  $('forgotPasswordLink').addEventListener('click',()=>{
+    const form=$('forgotPasswordForm');
+    const show=form.classList.contains('hidden');
+    display('forgotPasswordForm',show);
+    if(show){$('forgotEmail').value=$('loginEmail').value.trim();$('forgotEmail').focus();}
+  });
+  $('forgotPasswordForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
+    const button=$('sendResetEmail');
+    if(button.disabled)return;
+    const email=$('forgotEmail').value.trim();
+    if(!email||!$('forgotEmail').checkValidity())throw Error('Enter a valid school email address.');
+    button.disabled=true;
+    try{
+      // Supabase Auth mails a short-lived RESET LINK, never the old password.
+      // Keep this URL restricted to this same school's verified HTTPS origin.
+      const redirect=new URL('./teacher-access.html',location.href);
+      const res=await fetch(BASE+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirect.href),{
+        method:'POST',headers:{apikey:APIKEY,'Content-Type':'application/json'},
+        body:JSON.stringify({email}),cache:'no-store'
+      });
+      if(res.status===429)throw Error('Too many requests. Please try again later.');
+      if(!res.ok)throw Error('Password reset email is unavailable. Please contact your school administrator.');
+      // Deliberately identical whether the email exists or not.
+      notify('If this email is registered, a password reset link will arrive in your inbox. Check Spam too.');
+      $('forgotPasswordForm').reset();
+      display('forgotPasswordForm',false);
+    }finally{button.disabled=false;}
+  })});
   $('activateForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
-    if(!session)throw Error('Invite session missing. Open your invitation email again.');
+    if(!session)throw Error('Email link expired. Please request a fresh link.');
     const pw=$('newPassword').value;
-    if(pw.length<12)throw Error('Password must contain at least 12 characters.');
+    if(pw.length<12||pw.length>256)throw Error('Password must contain 12–256 characters.');
     const data=await apiAuthUserUpdate(pw);
-    if(!data.id)throw Error('Could not activate account.');
+    if(!data.id)throw Error('Could not update password.');
+    $('activateForm').reset();
+    if(recoveryMode){
+      const token=session.access_token;
+      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+token}}).catch(()=>{});
+      dropSession();
+      notify('Password reset successfully. Sign in with your new password.');
+      return;
+    }
     display('activation',false);notify('Password set. You can now sign in.');
     await load();
   })});
@@ -767,11 +867,25 @@
     const hash=new URLSearchParams(location.hash.replace(/^#/,''));
     if(hash.has('access_token')&&hash.has('refresh_token')){
       saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_in:parseInt(hash.get('expires_in')||'3600',10)});
-      if(['invite','recovery'].includes(hash.get('type')))display('activation',true);
+      recoveryMode=hash.get('type')==='recovery';
+      if(['invite','recovery'].includes(hash.get('type'))){
+        display('activation',true);
+        if(recoveryMode){
+          put('activationTitle','Reset staff password');
+          put('activationDescription','Set a new password for your school account. The old password will not be emailed.');
+        }
+      }
       history.replaceState(null,'',location.pathname+location.search);
-    }else{const saved=sessionStorage.getItem(TOKEN_KEY);if(saved)session=JSON.parse(saved)}
+    }else{
+      const saved=sessionStorage.getItem(TOKEN_KEY);
+      if(saved)session=JSON.parse(saved);
+    }
   }catch{dropSession()}
   if(session&&!$('activation').classList.contains('hidden')){
-    notify('Invitation verified. Set your new password to continue.');
-  }else if(session)run(load);
+    notify(recoveryMode?'Secure recovery link verified. Set your new password.':'Invitation verified. Set your new password to continue.');
+  }else if(session){
+    // Never steal focus or skip the login screen when opening a new school.
+    // A valid remembered session may be resumed only by an explicit click.
+    display('savedSessionPanel',true);
+  }
 })();
