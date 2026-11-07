@@ -10,6 +10,11 @@ function buildBellSchedule({start='08:00',periods=8,duration=40,breakAfter=3,bre
  const count=Number(periods),dur=Number(duration);
  if(!Number.isInteger(count)||count<1||count>12||!Number.isInteger(dur)||dur<20||dur>90)throw Error('Choose 1–12 periods of 20–90 minutes each');
  const unique=[...new Set(days.map(Number))];if(!unique.length||unique.some(x=>!Number.isInteger(x)||x<1||x>6))throw Error('Select valid working days');
+ for(const length of [Number(breakMinutes),Number(lunchMinutes)]){
+  if(!Number.isInteger(length)||length<0||length>90)throw Error('Break durations must be 0–90 minutes');
+ }
+ if(Number(breakAfter)===Number(lunchAfter)&&Number(breakAfter)>0&&Number(breakMinutes)>0&&Number(lunchMinutes)>0)
+  throw Error('Short break and lunch cannot start after the same period');
  const slots=[];
  for(const day of unique){
   let clock=minutes(start),index=0;
@@ -225,6 +230,8 @@ function activate(ctx){
    if(!slot)throw Error('Select a teaching period.');
    const subject=subjectInput.value.trim(),teacher=teacherPick.value||null;
    if(!subject)throw Error('Enter a subject.');
+   if(teacher&&st.published.some(p=>p.class_id!==st.classId&&p.slot_id===slot.id&&p.teacher_user_id===teacher))
+     throw Error('Teacher already has a published class in this period. Choose another teacher or slot.');
    if(teacher&&!teacherAssignments.some(a=>a.school_user_id===teacher&&
       (a.assignment_type==='class_teacher'||a.subject.toLowerCase()===subject.toLowerCase())))
      throw Error('This teacher is not assigned to that subject and class.');
