@@ -10,6 +10,7 @@
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
   let rolePermissions=null;
+  let recoveryMode=false;
   const homeworkFiles=window.BNHomeworkFiles.create({base:BASE,key:APIKEY,token:async()=>{await ensureToken();return session?.access_token;}});
   const values=v=>v==null?'':String(v);
   function notify(msg,isError=false){
@@ -65,9 +66,9 @@
     for(const row of records){const o=dom('option',label(row));o.value=row.id;s.append(o)}
   }
   function dropSession(){
-    session=null;me=null;identity=null;rolePermissions=null;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
+    session=null;me=null;identity=null;rolePermissions=null;recoveryMode=false;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);invalidateRoster();clearProfileEditor();
-    display('portalSection',false);display('loginSection',true);display('logout',false);
+    display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   function tab(name){
@@ -562,12 +563,48 @@
     try{const tokens=await authRequest('token?grant_type=password',{email:$('loginEmail').value.trim(),password:$('loginPassword').value});saveSession(tokens);await load()}
     finally{btn.disabled=false}
   })});
+  $('forgotPasswordLink').addEventListener('click',()=>{
+    const form=$('forgotPasswordForm');
+    const show=form.classList.contains('hidden');
+    display('forgotPasswordForm',show);
+    if(show){$('forgotEmail').value=$('loginEmail').value.trim();$('forgotEmail').focus();}
+  });
+  $('forgotPasswordForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
+    const button=$('sendResetEmail');
+    if(button.disabled)return;
+    const email=$('forgotEmail').value.trim();
+    if(!email||!$('forgotEmail').checkValidity())throw Error('Enter a valid school email address.');
+    button.disabled=true;
+    try{
+      // Supabase Auth mails a short-lived RESET LINK, never the old password.
+      // Keep this URL restricted to this same school's verified HTTPS origin.
+      const redirect=new URL('./teacher-access.html',location.href);
+      const res=await fetch(BASE+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirect.href),{
+        method:'POST',headers:{apikey:APIKEY,'Content-Type':'application/json'},
+        body:JSON.stringify({email}),cache:'no-store'
+      });
+      if(res.status===429)throw Error('Too many requests. Please try again later.');
+      if(!res.ok)throw Error('Password reset email is unavailable. Please contact your school administrator.');
+      // Deliberately identical whether the email exists or not.
+      notify('If this email is registered, a password reset link will arrive in your inbox. Check Spam too.');
+      $('forgotPasswordForm').reset();
+      display('forgotPasswordForm',false);
+    }finally{button.disabled=false;}
+  })});
   $('activateForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
-    if(!session)throw Error('Invite session missing. Open your invitation email again.');
+    if(!session)throw Error('Email link expired. Please request a fresh link.');
     const pw=$('newPassword').value;
-    if(pw.length<12)throw Error('Password must contain at least 12 characters.');
+    if(pw.length<12||pw.length>256)throw Error('Password must contain 12–256 characters.');
     const data=await apiAuthUserUpdate(pw);
-    if(!data.id)throw Error('Could not activate account.');
+    if(!data.id)throw Error('Could not update password.');
+    $('activateForm').reset();
+    if(recoveryMode){
+      const token=session.access_token;
+      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+token}}).catch(()=>{});
+      dropSession();
+      notify('Password reset successfully. Sign in with your new password.');
+      return;
+    }
     display('activation',false);notify('Password set. You can now sign in.');
     await load();
   })});
@@ -767,11 +804,18 @@
     const hash=new URLSearchParams(location.hash.replace(/^#/,''));
     if(hash.has('access_token')&&hash.has('refresh_token')){
       saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_in:parseInt(hash.get('expires_in')||'3600',10)});
-      if(['invite','recovery'].includes(hash.get('type')))display('activation',true);
+      recoveryMode=hash.get('type')==='recovery';
+      if(['invite','recovery'].includes(hash.get('type'))){
+        display('activation',true);
+        if(recoveryMode){
+          put('activationTitle','Reset staff password');
+          put('activationDescription','Set a new password for your school account. The old password will not be emailed.');
+        }
+      }
       history.replaceState(null,'',location.pathname+location.search);
     }else{const saved=sessionStorage.getItem(TOKEN_KEY);if(saved)session=JSON.parse(saved)}
   }catch{dropSession()}
   if(session&&!$('activation').classList.contains('hidden')){
-    notify('Invitation verified. Set your new password to continue.');
+    notify(recoveryMode?'Secure recovery link verified. Set your new password.':'Invitation verified. Set your new password to continue.');
   }else if(session)run(load);
 })();
