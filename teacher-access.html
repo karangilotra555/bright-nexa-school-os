@@ -77,7 +77,7 @@ tr td select{padding:7px;min-width:115px}
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
 @media(max-width:470px){.bar{flex-wrap:wrap}.bar>.flex{width:100%}.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./teacher-access.js?v=20261106-names-rbac-v2" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./teacher-access.js?v=20261107-forgot-password" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
 <header><div class="bar"><div class="brand"><a href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
@@ -90,7 +90,13 @@ tr td select{padding:7px;min-width:115px}
     <div class="inputgroup" style="margin:12px 0"><label for="loginPassword">Password</label><input type="password" id="loginPassword" autocomplete="current-password" required minlength="8"></div>
     <button type="submit" class="primary">Sign in securely</button>
   </form>
-  <div id="activation" class="hidden"><h3>Activate invited account</h3><p>Set your new password to activate school access.</p><form id="activateForm"><label for="newPassword">New password (minimum 12 characters)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" required><button class="primary" type="submit" style="margin-top:11px">Activate account</button></form></div>
+  <button id="forgotPasswordLink" class="ghost" type="button" style="margin-top:12px">Forgot password?</button>
+  <form id="forgotPasswordForm" class="hidden" autocomplete="off" style="margin-top:13px">
+    <div class="inputgroup"><label for="forgotEmail">Registered staff email</label><input id="forgotEmail" type="email" autocomplete="email" required placeholder="teacher@school.in"></div>
+    <p class="sub">If this email belongs to an active school account, you will receive a secure password reset link. Check Spam too.</p>
+    <button id="sendResetEmail" type="submit" class="primary">Email password reset link</button>
+  </form>
+  <div id="activation" class="hidden"><h3 id="activationTitle">Activate invited account</h3><p id="activationDescription">Set your new password to activate school access.</p><form id="activateForm"><label for="newPassword">New password (minimum 12 characters)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required><button class="primary" type="submit" style="margin-top:11px">Activate account</button></form></div>
   <p class="muted">No public sign-up: school admin must invite and assign permissions first.</p>
 </section>
 <div id="status" class="hidden" role="status" aria-live="polite"></div>
