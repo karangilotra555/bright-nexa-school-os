@@ -25,7 +25,8 @@ test('timetable blocks overlapping periods and teacher double booking; protects 
    "create function school_private.has_role(i uuid,roles text[]) returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.school_users u where u.institution_id=i and u.auth_user_id=auth.uid() and u.status='active' and u.role=any(roles))$$;",
    "create function school_private.parent_of(s uuid,i uuid) returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.school_guardians g join public.school_guardian_students l on l.guardian_id=g.id and l.institution_id=g.institution_id join public.school_students st on st.id=l.student_id and st.institution_id=l.institution_id where g.auth_user_id=auth.uid() and g.institution_id=i and g.status='active' and l.student_id=s and st.status='active')$$;",
    'grant usage on schema auth,school_private to authenticated;',
-   'grant select on public.school_users,public.school_classes,public.school_students,public.school_teacher_assignments to authenticated;'
+   'grant select on public.school_users,public.school_classes,public.school_students,public.school_teacher_assignments to authenticated;',
+   'grant update on public.school_teacher_assignments to authenticated;'
   ].join('\n');
   await db.exec(fixture);
   await db.exec(read('supabase/migrations/20261107160700_school_timetable.sql'));
