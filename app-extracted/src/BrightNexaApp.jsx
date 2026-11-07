@@ -19551,12 +19551,26 @@ function wn() {
     return yn;
   }
 }
+function bnReportBrowserSaveError(area, cause) {
+  const detail=String(cause?.message||cause||'Storage unavailable');
+  const error=new Error(area+' could not be saved on this device: '+detail+'. Supabase save is NOT confirmed.');
+  if(typeof window==='undefined')return;
+  if(window.BNWorkspaceOnlineGuard?.active?.()) {
+    window.BNWorkspaceOnlineGuard.update('pending',error);
+  } else if(typeof window.alert==='function') {
+    // Without a verified cloud session, still show local save failures to the user.
+    if(!window.__bnStorageErrorAt||Date.now()-window.__bnStorageErrorAt>5000){
+      window.__bnStorageErrorAt=Date.now();
+      window.alert(error.message);
+    }
+  }
+}
 function Tn(e) {
   let t = pn(e);
   try {
     window.localStorage.setItem(_n, JSON.stringify(t));
-  } catch {}
-  Ot(`snapshot`, t).catch(() => undefined);
+  } catch(e) { bnReportBrowserSaveError('School profile',e); }
+  Ot(`snapshot`, t).catch(e => bnReportBrowserSaveError('School profile local cache',e));
 }
 var En = [
   {
@@ -19675,8 +19689,8 @@ function On(e) {
   let t = pn(e);
   try {
     window.localStorage.setItem(vn, JSON.stringify(t ?? []));
-  } catch {}
-  Ot(`students`, t ?? []).catch(() => undefined);
+  } catch(e) { bnReportBrowserSaveError('Student records',e); }
+  Ot(`students`, t ?? []).catch(e => bnReportBrowserSaveError('Student records local cache',e));
 }
 async function kn() {
   let [e, t] = await Promise.all([kt(`snapshot`), kt(`students`)]);
@@ -27920,8 +27934,8 @@ function ji(e) {
   let t = pn(e);
   try {
     window.localStorage.setItem(Di, JSON.stringify(t));
-  } catch {}
-  Ot(`operations`, t).catch(() => undefined);
+  } catch(e) { bnReportBrowserSaveError('ERP operations',e); }
+  Ot(`operations`, t).catch(e => bnReportBrowserSaveError('ERP operations local cache',e));
 }
 async function Mi() {
   let e = await kt(`operations`);
@@ -32392,7 +32406,7 @@ function Ea({ data, students } = {}) {
   let [f, p] = (0, w.useState)(``);
   let [m, h] = (0, w.useState)(``);
   let [g, _] = (0, w.useState)(Da);
-  (0,w.useEffect)(()=>{let on=true;if(window.BNTeacherDrafts&&sessionStorage.getItem('bn_school_staff_session_v1'))window.BNTeacherDrafts.list().then(rows=>{if(on)_(rows)}).catch(()=>{});return()=>{on=false};},[]);
+  (0,w.useEffect)(()=>{let on=true;if(window.BNTeacherDrafts&&sessionStorage.getItem('bn_school_staff_session_v1'))window.BNTeacherDrafts.list().then(rows=>{if(on)_(rows)}).catch(error=>{if(on)h('Supabase saved drafts could not be loaded: '+(error?.message||String(error)))});return()=>{on=false};},[]);
   const Component1345 = `button`;
   const Component1346 = `aside`;
   const Component1347 = `h2`;

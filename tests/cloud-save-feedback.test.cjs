@@ -58,3 +58,15 @@ test('source and served copies show pending cloud acknowledgment instead of prem
   assert.equal(read(base+'school-workspace-controller.js'),read('school-workspace-controller.js'));
  }
 });
+
+test('browser cache write failures are not silently ignored for every ERP store',()=>{
+ const source=read('app-extracted/src/BrightNexaApp.jsx');
+ const bundle=read('assets/index-brightnexa-v2.js');
+ for(const content of [source,bundle]){
+  assert.match(content,/function bnReportBrowserSaveError\(/);
+  for(const area of ['School profile','Student records','ERP operations']){
+   assert.ok(content.includes("bnReportBrowserSaveError('"+area+"'"),area);
+  }
+  assert.match(content,/Supabase saved drafts could not be loaded/);
+ }
+});
