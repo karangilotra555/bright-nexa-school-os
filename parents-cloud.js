@@ -21,6 +21,13 @@ function create(fetcher){
   session=next.session;
   return {mustChangePassword:next.mustChangePassword===true,links:next.links||[]};
  }
+ async function requestPasswordReset(admissionNumber,guardianEmail){
+  const schoolId=new URLSearchParams(typeof location==='undefined'?'':location.search).get('school')||undefined;
+  // Server always returns a generic response, regardless of whether a student
+  // has an email. Never disclose an admission number's account existence.
+  return request('/functions/v1/school-student-login',{method:'POST',
+   body:JSON.stringify({action:'request-reset',admissionNumber,guardianEmail,schoolId})});
+ }
  async function changePassword(newPassword){
   if(!session)throw Error('Please log in again');
   const next=await request('/functions/v1/school-student-login',{method:'POST',body:JSON.stringify({action:'change-password',newPassword})});
@@ -56,7 +63,7 @@ function create(fetcher){
   await request('/rest/v1/school_parent_leaves',{method:'POST',body:JSON.stringify({institution_id:selected.institution_id,student_id:selected.student_id,parent_auth_user_id:session.user.id,from_on:from,to_on:to,reason:reason.trim(),status:'pending'})});
  }
  async function logout(){try{if(session)await request('/auth/v1/logout',{method:'POST'});}finally{session=null;selected=null;}}
- return {login,changePassword,dashboard,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
+ return {login,requestPasswordReset,changePassword,dashboard,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
 }
 if(typeof module!=='undefined')module.exports={create};else root.BNParentsCloud=create(root.fetch.bind(root));
 })(typeof window!=='undefined'?window:globalThis);
