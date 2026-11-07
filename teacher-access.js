@@ -204,15 +204,36 @@
   }));
   $('studentProfileForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin()||!readProfile||editingStudent!==$('profileStudent').value)throw Error('Load the student profile first.');
-    const button=$('saveProfile');if(button.disabled)return;const payload=readProfile();button.disabled=true;
+    const button=$('saveProfile');if(button.disabled)return;const payload=readProfile();
+    const photo=$('studentPhotoUpload')?.files?.[0]||null;
+    const extensions={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+    if(photo&&(!extensions[photo.type]||photo.size<1||photo.size>5*1024*1024))
+      throw Error('Student photo must be JPEG, PNG or WebP, up to 5 MB.');
+    button.disabled=true;
     try{
       await api('rpc/school_save_student_profile','','POST',{p_student_id:editingStudent,...payload},'return=minimal');
-      const targetStudent=allStudents.find(s=>s.id===editingStudent);
-      if(targetStudent&&payload.p_profile?.details?.roll_number){
+      const targetStudent=allStudents.find(x=>x.id===editingStudent);
+      if(targetStudent&&payload.p_profile?.details?.roll_number)
         targetStudent.roll_number=payload.p_profile.details.roll_number;
-      }
       renderProfileStudents();
-      notify('Student details saved. Linked app and web accounts can refresh Profile.');
+      if(photo){
+        // Private, non-overwriting Storage write; the guarded RPC checks the
+        // exact student and tenant before publishing this new photo path.
+        const filePath=me.institution_id+'/'+editingStudent+'/'+crypto.randomUUID()+'.'+extensions[photo.type];
+        await ensureToken();
+        const res=await fetch(BASE+'/storage/v1/object/school-student-photos/'+filePath,{
+          method:'POST',cache:'no-store',headers:{apikey:APIKEY,
+            Authorization:'Bearer '+session.access_token,'Content-Type':photo.type,
+            'x-upsert':'false'},body:photo
+        });
+        if(!res.ok){
+          const error=await res.json().catch(()=>({}));
+          throw Error('Student details saved, but photo upload failed: '+(error.message||error.error||'Storage unavailable'));
+        }
+        await api('rpc/bn_student_photo_save','','POST',{p_student_id:editingStudent,p_path:filePath});
+        clearProfileEditor();$('studentPhotoUpload').value='';
+        notify('Student details and photo saved privately. Linked student/parent can refresh Profile.');
+      }else notify('Student details saved. Linked app and web accounts can refresh Profile.');
     }finally{button.disabled=false;}
   });});
   async function loadNotices(){
