@@ -4,13 +4,16 @@ const cloud=require('../school-workspace-cloud.js');
 const snapshot=()=>({institution:{institution:{id:'school',name:'School',session:'2026-27'},services:[]},students:[{id:'student',name:'Student',admissionNumber:'A1',className:'6',section:'A',status:'Active',dateOfBirth:'2015-02-03'}],operations:{classes:[{id:'class',name:'6',section:'A'}],attendance:[{id:'attendance',studentId:'student',classId:'class',date:'2026-11-06',status:'Present'}],homework:[],notices:[],feeStructures:[],feePayments:[]}});
 function harness(options={}){
  const calls=[],local=new Map([['records','unchanged']]);
+ let rejected=false;
  let session=options.noSession?null:JSON.stringify({access_token:'token',refresh_token:'refresh',expires_at:options.expired?1:Date.now()/1000+3600});
  const sessionStorage={getItem:()=>session,setItem:(_,v)=>session=v,removeItem:()=>session=null};
  const fetcher=async(url,init)=>{calls.push({url,init});let data;
+ if(options.denyRefresh&&url.includes('/token?'))return {ok:false,status:401,json:async()=>({message:'Refresh revoked'})};
  if(url.includes('/token?'))data={access_token:'new-token',refresh_token:'new-refresh',expires_in:3600};
  else if(url.endsWith('/user'))data={id:'user'};
  else if(url.includes('/school_users?'))data=[{institution_id:'school',auth_user_id:'user',role:options.role||'school_admin',status:'active'}];
  else if(url.includes('/institutions?'))data=[{id:'school',name:'School',status:'active'}];
+ else if(options.once401&&url.includes('school_workspace_push')&&!rejected){rejected=true;return {ok:false,status:401,json:async()=>({message:'JWT expired'})};}
  else if(options.conflict)return {ok:false,status:409,json:async()=>({message:'revision conflict'})};
  else data={revision:2,school:{id:options.crossSchool?'other':'school',name:'School'},snapshot:snapshot()};
  return {ok:true,status:200,json:async()=>data};};
@@ -40,4 +43,24 @@ test('hung session refresh does not falsely connect',async()=>{
  const sessionStorage={getItem:()=>JSON.stringify({access_token:'old',refresh_token:'refresh',expires_at:1})};
  const client=cloud.create({requestTimeoutMs:20,sessionStorage,fetcher:()=>new Promise(()=>{})});
  await assert.rejects(client.connect(),error=>error.code==='CLOUD_TIMEOUT'&&/retry sync/i.test(error.message));
+});
+
+test('401 on verified workspace push refreshes only the same school session and retries exactly once',async()=>{
+ const h=harness({once401:true}),s=snapshot(),p=cloud.buildProjection(s,()=>[]);
+ const result=await h.client.push('school',1,s,p);
+ assert.equal(result.revision,2);
+ const writes=h.calls.filter(c=>c.url.endsWith('/rpc/school_workspace_push'));
+ assert.equal(writes.length,2);
+ assert.equal(writes[0].init.headers.Authorization,'Bearer token');
+ assert.equal(writes[1].init.headers.Authorization,'Bearer new-token');
+ assert.deepEqual(JSON.parse(writes[0].init.body),JSON.parse(writes[1].init.body));
+ assert.equal(h.calls.filter(c=>c.url.includes('grant_type=refresh_token')).length,1);
+ assert.equal(h.local.get('records'),'unchanged');
+});
+test('revoked refresh keeps local records and does not retry unauthorized workspace write',async()=>{
+ const h=harness({once401:true,denyRefresh:true}),s=snapshot();
+ await assert.rejects(h.client.push('school',1,s,cloud.buildProjection(s,()=>[])),/login expired|sign in again/i);
+ assert.equal(h.calls.filter(c=>c.url.includes('grant_type=refresh_token')).length,1);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/rpc/school_workspace_push')).length,1);
+ assert.equal(h.local.get('records'),'unchanged');
 });
