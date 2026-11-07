@@ -250,16 +250,23 @@ RETURNS TABLE(weekday smallint,slot_index smallint,kind text,label text,starts_a
  subject text,teacher_name text)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
  SELECT s.weekday,s.slot_index,s.kind,s.label,s.starts_at,s.ends_at,
-        p.subject,CASE WHEN p.teacher_user_id IS NOT NULL
-                       THEN COALESCE(NULLIF(btrim(u.display_name),''),'Assigned teacher')
-                       ELSE NULL END AS teacher_name
+        p.subject,CASE WHEN p.teacher_user_id IS NOT NULL AND u.id IS NOT NULL
+          AND EXISTS(SELECT 1 FROM public.school_teacher_assignments assigned
+             WHERE assigned.institution_id=p.institution_id
+               AND assigned.class_id=p.class_id AND assigned.school_user_id=p.teacher_user_id
+               AND assigned.active=true
+               AND (assigned.assignment_type='class_teacher'
+                 OR (assigned.assignment_type='subject_teacher'
+                   AND lower(btrim(assigned.subject))=lower(btrim(p.subject)))))
+          THEN COALESCE(NULLIF(btrim(u.display_name),''),'Assigned teacher')
+          ELSE NULL END AS teacher_name
  FROM public.school_students child
  JOIN public.school_classes class ON class.id=child.class_id AND class.institution_id=child.institution_id
  JOIN public.school_timetable_slots s ON s.institution_id=child.institution_id
    AND s.academic_year=class.academic_year
  LEFT JOIN public.school_timetable_published p ON p.slot_id=s.id
    AND p.institution_id=child.institution_id AND p.class_id=child.class_id
- LEFT JOIN public.school_users u ON u.id=p.teacher_user_id AND u.institution_id=p.institution_id
+ LEFT JOIN public.school_users u ON u.id=p.teacher_user_id AND u.institution_id=p.institution_id AND u.status='active' AND u.role='teacher'
  WHERE (SELECT auth.uid()) IS NOT NULL
    AND school_private.parent_of(p_student_id,p_institution_id)
    AND child.id=p_student_id AND child.institution_id=p_institution_id AND child.status='active'
