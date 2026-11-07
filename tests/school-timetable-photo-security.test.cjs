@@ -42,6 +42,13 @@ test('timetable and photo migration: publish atomicity, double booking, parent i
    "alter table public.school_student_profiles add column guardian_name text, add column guardian_relationship text, add column guardian_phone text, add column guardian_email text, add column alternate_contact_name text, add column alternate_contact_phone text, add column address_line text, add column city text, add column postal_code text, add column admission_on date;"
   ].join('\n'));
 
+  // Match production RLS: assigned teachers cannot read full student profiles.
+  await db.exec([
+    "alter table public.school_student_profiles enable row level security;",
+    "create policy fixture_admin_profile on public.school_student_profiles for all to authenticated using (school_private.has_role(institution_id,array['school_admin'])) with check (school_private.has_role(institution_id,array['school_admin']));",
+    "create policy fixture_guardian_profile on public.school_student_profiles for select to authenticated using (school_private.parent_of(student_id,institution_id));"
+  ].join('\n'));
+
   const school='11111111-1111-1111-1111-111111111111',other='22222222-2222-2222-2222-222222222222';
   const classA='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',classB='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
   const admin='cccccccc-cccc-cccc-cccc-cccccccccccc',teacherAuth='dddddddd-dddd-dddd-dddd-dddddddddddd';
@@ -91,9 +98,18 @@ test('timetable and photo migration: publish atomicity, double booking, parent i
   const newProfile=(await db.query("select details from public.school_student_profiles where student_id=$1",[stranger])).rows[0].details;
   assert.equal(newProfile.photo_path,undefined);
   assert.equal(newProfile.blood_group,'A+');
+  // A teacher may view only current photos for students in their assigned
+  // classroom, while private medical/contact details remain inaccessible.
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[teacherAuth]);
+  const teacherPhotoNames=(await db.query("select name from storage.objects where bucket_id='school-student-photos'")).rows;
+  assert.equal(teacherPhotoNames.length,1);
+  assert.equal(teacherPhotoNames[0].name,photoPath);
+  assert.equal((await db.query('select count(*) n from public.school_student_profiles')).rows[0].n,0);
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[admin]);
 
   await assert.rejects(db.query("select public.bn_save_student_photo($1,$2)",[stranger,photoPath]),/valid, uploaded photo/);
   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[parent]);
+  assert.deepEqual((await db.query("select name from storage.objects where bucket_id='school-student-photos'")).rows.map(x=>x.name),[photoPath]);
   await assert.rejects(db.query("select public.bn_save_student_photo($1,$2)",[child,photoPath]),/School admin/);
   assert.equal((await db.query("select count(*) n from storage.objects")).rows[0].n,1);
   await db.exec('reset role;set role anon;');
