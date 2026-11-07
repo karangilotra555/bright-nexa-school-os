@@ -150,6 +150,26 @@ DROP TRIGGER IF EXISTS bn_tt_slot_overlap ON public.school_timetable_slots;
 CREATE TRIGGER bn_tt_slot_overlap BEFORE INSERT OR UPDATE ON public.school_timetable_slots
  FOR EACH ROW EXECUTE FUNCTION public.bn_timetable_check_slot();
 
+-- A bell slot already used by a draft or published lesson is immutable even
+-- to direct database/API writes. Schools must unassign its lessons before
+-- modifying timing, or create a fresh academic-session schedule.
+CREATE OR REPLACE FUNCTION public.bn_timetable_block_used_slot()
+RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $function$
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.school_timetable_drafts d WHERE d.slot_id=OLD.id)
+   OR EXISTS(SELECT 1 FROM public.school_timetable_published p WHERE p.slot_id=OLD.id)
+ THEN
+   RAISE EXCEPTION 'Bell slot is used by timetables. Remove draft/published lessons before changing it.'
+     USING errcode='23514';
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END;
+$function$;
+DROP TRIGGER IF EXISTS bn_tt_block_used_slot ON public.school_timetable_slots;
+CREATE TRIGGER bn_tt_block_used_slot BEFORE UPDATE OR DELETE ON public.school_timetable_slots
+ FOR EACH ROW EXECUTE FUNCTION public.bn_timetable_block_used_slot();
+
 -- Draft periods require a real teaching slot, the matching academic session,
 -- active staff and a verified class/subject teacher assignment.
 CREATE OR REPLACE FUNCTION public.bn_timetable_check_entry()
