@@ -45,6 +45,10 @@ test('timetable blocks overlapping periods and teacher double booking; protects 
   await assert.rejects(db.query('insert into public.school_timetable_slots(institution_id,class_id,period_id,subject,teacher_user_id) values($1,$2,$3,$4,$5)',[S,C,period,'Hindi',T]),/not assigned/i);
   await db.query('insert into public.school_timetable_slots(institution_id,class_id,period_id,subject,teacher_user_id) values($1,$2,$3,$4,$5)',[S,C,period,'Math',T]);
   await assert.rejects(db.query('insert into public.school_timetable_slots(institution_id,class_id,period_id,subject,teacher_user_id) values($1,$2,$3,$4,$5)',[S,'ffffffff-ffff-ffff-ffff-ffffffffffff',period,'Science',T]),/duplicate key/i);
+  await assert.rejects(
+   db.query('update public.school_timetable_periods set kind=$1 where id=$2',['break',period]),
+   /Remove the existing lessons/i,'Cannot turn an occupied teaching period into break'
+  );
   await db.query('insert into public.school_timetable_publications(institution_id,class_id,published) values($1,$2,true)',[S,C]);
   await db.exec("select set_config('request.jwt.claim.sub','"+P+"',false)");
   const published=(await db.query('select * from public.bn_portal_class_timetable($1,$2)',[S,ST])).rows;
@@ -52,6 +56,9 @@ test('timetable blocks overlapping periods and teacher double booking; protects 
   await db.exec("select set_config('request.jwt.claim.sub','"+A+"',false)");
   await db.query('update public.school_timetable_slots set room=$1 where class_id=$2',['Room 4',C]);
   assert.equal((await db.query('select published from public.school_timetable_publications where class_id=$1',[C])).rows[0].published,false);
+  await db.query('update public.school_timetable_publications set published=true where class_id=$1',[C]);
+  await db.query("update public.school_teacher_assignments set active=false where school_user_id=$1",[T]);
+  assert.equal((await db.query('select published from public.school_timetable_publications where class_id=$1',[C])).rows[0].published,false,'Revoking a teacher assignment invalidates the published timetable');
   await db.exec("select set_config('request.jwt.claim.sub','"+P+"',false)");
   assert.equal((await db.query('select * from public.bn_portal_class_timetable($1,$2)',[S,ST])).rows.length,0);
  }finally{await db.close();}
