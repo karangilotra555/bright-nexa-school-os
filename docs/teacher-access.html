@@ -77,10 +77,10 @@ tr td select{padding:7px;min-width:115px}
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
 @media(max-width:470px){.bar{flex-wrap:wrap}.bar>.flex{width:100%}.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./school-timetable-cloud.js?v=20261107-timetable-v1" defer></script><script src="./school-student-photo-cloud.js?v=20261107-photo-v1" defer></script><script src="./teacher-access.js?v=20261107-timetable-photo-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./school-timetable-cloud.js?v=20261107-timetable-v1" defer></script><script src="./school-student-photo-cloud.js?v=20261107-photo-v1" defer></script><script src="./school-role-entry.js?v=20261107-role-routing" defer></script><script src="./teacher-access.js?v=20261107-role-routing" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
-<header><div class="bar"><div class="brand"><a href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
+<header><div class="bar"><div class="brand"><a id="staffBrandBack" href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a id="staffBackToErp" href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a id="staffSmartToolsLink" href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
 <main>
 <section id="loginSection" class="panel login">
   <h1>Teacher & Staff Login</h1>
@@ -126,6 +126,7 @@ tr td select{padding:7px;min-width:115px}
       </div>
       <div class="portal-nav-title">Menu & Functions</div>
       <button class="active nav-btn" data-tab="classes" type="button"><span class="nav-icon">🏫</span> Classes</button>
+      <button id="feesTab" class="nav-btn hidden" data-tab="fees" type="button"><span class="nav-icon">₹</span> Fees & Payments</button>
       <button id="timetableTab" class="nav-btn hidden" data-tab="timetable" type="button"><span class="nav-icon">🗓️</span> School Timetable</button>
       <button class="nav-btn" data-tab="attendance" type="button"><span class="nav-icon">📋</span> Attendance</button>
       <button class="nav-btn" data-tab="homework" type="button"><span class="nav-icon">📝</span> Homework</button>
@@ -152,8 +153,8 @@ tr td select{padding:7px;min-width:115px}
 
       <div class="portal-nav-divider"></div>
       <div class="portal-nav-title">Quick Actions</div>
-      <a href="./index.html" class="nav-link"><span class="nav-icon">⬅️</span> School OS Desktop</a>
-      <a href="./smart-tools.html" class="nav-link"><span class="nav-icon">🧠</span> Smart Tools</a>
+      <a id="staffDesktopShortcut" href="./index.html" class="nav-link"><span class="nav-icon">⬅️</span> School OS Desktop</a>
+      <a id="staffSmartToolsQuickLink" href="./smart-tools.html" class="nav-link"><span class="nav-icon">🧠</span> Smart Tools</a>
       <a href="./parents.html" class="nav-link"><span class="nav-icon">👨‍👩‍👧</span> Parent Portal</a>
       <div class="portal-nav-foot">
         <strong>🛡️ Lifetime Free Core</strong>
@@ -175,6 +176,26 @@ tr td select{padding:7px;min-width:115px}
         <div class="card"><b id="countHomework">0</b><small>Homework posts</small></div>
       </div>
   <div data-view="classes" class="panel"><div class="row"><h2>My accessible classes</h2><button class="ghost" id="reload" type="button">↻ Refresh</button></div><div id="classesList"></div></div>
+  <div data-view="fees" class="panel hidden">
+    <h2>School Fees & Payments</h2>
+    <p class="sub">Role-restricted cloud ledger. Each charge or payment is saved against a student; previously saved entries are never silently overwritten.</p>
+    <div class="cards">
+      <div class="card"><b id="feeOutstanding">₹0.00</b><small>Net outstanding</small></div>
+      <div class="card"><b id="feeEntryCount">0</b><small>Ledger entries</small></div>
+    </div>
+    <h3>Record charge / payment</h3>
+    <form id="feeEntryForm" class="formgrid two">
+      <div><label for="feeStudent">Student</label><select id="feeStudent" required></select></div>
+      <div><label for="feeKind">Entry type</label><select id="feeKind" required><option value="payment">Payment received</option><option value="charge">Fee charge</option></select></div>
+      <div><label for="feeAmount">Amount (₹)</label><input id="feeAmount" type="number" min="0.01" max="100000000" step="0.01" required></div>
+      <div><label for="feeReference">Unique receipt / reference</label><input id="feeReference" maxlength="100" required placeholder="e.g. RCP-2026-001"></div>
+      <div><label for="feeDate">Date</label><input id="feeDate" type="date" required></div>
+      <div><label for="feeDescription">Notes (optional)</label><input id="feeDescription" maxlength="250"></div>
+      <div><button id="saveFeeEntry" class="primary" type="submit">Save ledger entry</button></div>
+    </form>
+    <h3>Recent ledger entries</h3>
+    <div class="tablewrap"><table><thead><tr><th>Date</th><th>Student</th><th>Type</th><th>Amount</th><th>Reference</th></tr></thead><tbody id="feeEntries"></tbody></table></div>
+  </div>
   <div data-view="attendance" class="panel hidden">
     <h2>Class attendance</h2><div class="formgrid two">
       <div><label for="attendanceClass">Class</label><select id="attendanceClass"></select></div>
