@@ -57,9 +57,9 @@ function simulate(host='https://bright-nexa-school-os.onrender.com/'){
 test('all active direct sidebar and header links mount and keep compatible IDs',()=>{
  const app=simulate();
  const links=[...app.nav.children,...app.top.children];
- assert.equal(app.nav.children.length,2);
- assert.equal(app.top.children.length,2);
- for(const [kind,page] of Object.entries({parents:'parent-app-download.html',teachers:'teacher-access.html'})){
+ assert.equal(app.nav.children.length,3);
+ assert.equal(app.top.children.length,3);
+ for(const [kind,page] of Object.entries({parents:'parent-app-download.html',teachers:'teacher-access.html',timetable:'teacher-access.html?view=timetable'})){
   const matching=links.filter(x=>x.dataset.bnDirectLink===kind);
   assert.equal(matching.length,2,kind);
   for(const link of matching){
@@ -69,7 +69,7 @@ test('all active direct sidebar and header links mount and keep compatible IDs',
   }
  }
  const ids=links.map(x=>x.id);
- for(const expected of ['bn-parents-app-nav','bn-parents-app-top','bn-teacher-access-nav','bn-teacher-access-top']){
+ for(const expected of ['bn-parents-app-nav','bn-parents-app-top','bn-teacher-access-nav','bn-teacher-access-top','bn-timetable-nav','bn-timetable-top']){
   assert.ok(ids.includes(expected),expected);
  }
 });
@@ -77,7 +77,7 @@ test('all active direct sidebar and header links mount and keep compatible IDs',
 test('clicking nested text and icons navigates to the correct page despite React SPA capture handlers',()=>{
  const app=simulate();
  const origin='https://bright-nexa-school-os.onrender.com/';
- for(const [kind,filename] of [['parents','parent-app-download.html'],['teachers','teacher-access.html']]){
+ for(const [kind,filename] of [['parents','parent-app-download.html'],['teachers','teacher-access.html'],['timetable','teacher-access.html?view=timetable']]){
   for(const place of [app.nav,app.top]){
    const anchor=place.children.find(x=>x.dataset.bnDirectLink===kind);
    const target=anchor.children[0]||anchor;
@@ -87,7 +87,7 @@ test('clicking nested text and icons navigates to the correct page despite React
    assert.equal(app.destinations.at(-1),origin+filename);
   }
  }
- assert.equal(app.destinations.length,4);
+ assert.equal(app.destinations.length,6);
 });
 
 test('shortcuts work after Render domain change without hard-coded old domain',()=>{
@@ -97,7 +97,7 @@ test('shortcuts work after Render domain change without hard-coded old domain',(
   app.fire(link);
   assert.equal(app.destinations.at(-1),origin+link.href.slice(2));
  }
- assert.equal(app.destinations.length,2);
+ assert.equal(app.destinations.length,3);
 });
 
 test('modifier and auxiliary clicks preserve normal browser open-new-tab behavior',()=>{
