@@ -169,8 +169,8 @@
     const allowedViews=['classes','timetable','attendance','homework','notices','profiles','fees','admin','account'];
     const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
     const deepLink=allowedViews.includes(requested)&&isTabVisibleForRole(requested,me.role)?requested:null;
-    const preferred=window.BNSchoolRoleEntry?.preferredView(me.role);
-    const openingView=deepLink||(preferred&&isTabVisibleForRole(preferred,me.role)?preferred:null)||landing||'account';
+    const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
+    const openingView=deepLink||(preferredLandingView&&isTabVisibleForRole(preferredLandingView,me.role)?preferredLandingView:null)||landing||'account';
     tab(openingView);clearNotice();
     if(openingView==='attendance'){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
