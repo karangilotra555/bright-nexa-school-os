@@ -58,6 +58,13 @@ export function handler(create=createClient){return async(req:Request)=>{
    if(!record)return generic();
    const {data:profile}=await admin.from('school_student_profiles').select('guardian_email').eq('student_id',record.id).eq('institution_id',school).maybeSingle();
    if(!profile?.guardian_email||profile.guardian_email.trim().toLowerCase()!==email)return generic();
+   // Do not send a reset link when the student has not activated their
+   // password yet. The initial registered guardian mobile remains the route.
+   const shadowEmail=(await digest('student:'+school+':'+record.id))+'@student.brightnexa.invalid';
+   const {data:shadow}=await admin.from('school_guardians').select('auth_user_id').eq('institution_id',school).eq('email',shadowEmail).eq('status','active').maybeSingle();
+   if(!shadow?.auth_user_id)return generic();
+   const {data:linked}=await admin.auth.admin.getUserById(shadow.auth_user_id);
+   if(!linked?.user||linked.user.app_metadata?.bn_password_pending===true||linked.user.app_metadata?.bn_student_id!==record.id)return generic();
    const {error:sendError}=await auth.auth.signInWithOtp({email,options:{
      shouldCreateUser:true,
      emailRedirectTo:'https://bright-nexa-school-os.onrender.com/parent-password-recovery.html'
