@@ -31,3 +31,31 @@ test('restored clean workspace detects different local records with same institu
 test('acknowledged fingerprint uses normalized applied local snapshot',async()=>{const f=fixture();f.opts.applySnapshot=async s=>{s.operations.defaults=[];f.current=s};await f.make().openSchool('school');const c=f.make();await c.initialize();assert.equal(c.state().status,'pending');});
 test('successful upload remembers the acknowledged snapshot across reload',async()=>{const f=fixture();f.remote={revision:0,snapshot:null};await f.make().uploadLocal('school');const c=f.make();await c.initialize();assert.equal(c.state().status,'pending');await c.sync();assert.equal(c.state().status,'synced');});
 test('explicit open apply guard detects another tab edit during persistence',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');const other=f.make();await other.initialize();let release;f.opts.applySnapshot=async(s,guard)=>{await new Promise(r=>release=r);if(guard())f.current=s};f.remote={revision:2,snapshot:snap('local',9)};const opening=c.openSchool('school');while(!release)await Promise.resolve();f.fail=true;await other.autosave(snap('local',8));release();await assert.rejects(opening);assert.equal(c.state().status,'conflict');assert.equal(f.current.students[0].id,1);});
+
+test('teacher portal changes refresh into the ERP even when workspace revision stays the same',async()=>{
+ const f=fixture(),c=f.make();
+ await c.openSchool('school');
+ assert.equal(c.state().revision,1);
+ f.remote={revision:1,snapshot:snap('local',29)};
+ await c.sync();
+ assert.equal(f.current.students[0].id,29);
+ assert.equal(c.state().revision,1);
+ assert.equal(c.state().status,'synced');
+});
+test('unsaved local edits block a portal change at the same revision instead of being overwritten',async()=>{
+ const f=fixture(),c=f.make();
+ await c.openSchool('school');
+ f.current=snap('local',77);
+ f.remote={revision:1,snapshot:snap('local',29)};
+ await c.sync();
+ assert.equal(f.current.students[0].id,77);
+ assert.equal(c.state().status,'conflict');
+});
+test('unchanged cloud projection does not create repeated backups',async()=>{
+ const f=fixture(),c=f.make();
+ await c.openSchool('school');
+ const before=[...f.data.keys()].filter(k=>k.includes('.backup.')).length;
+ await c.sync();
+ await c.sync();
+ assert.equal([...f.data.keys()].filter(k=>k.includes('.backup.')).length,before);
+});

@@ -118,13 +118,24 @@
         var remote=await o.client.pull(b.schoolId);
         if(start!==generation||binding!==b||record!==r||record.pending)return state();
         if(!consistent()){conflict();return state();}
-        if(remote.revision!==record.revision){
-          if(!remote.snapshot)throw error('The cloud workspace is empty. Local records were retained.');
+        // Staff/student portals write relational records without changing the
+        // workspace revision. Pull is a live overlay, so compare canonical content
+        // as well as revision or those teacher-side changes never reach the ERP.
+        if(!remote.snapshot)throw error('The cloud workspace is empty. Local records were retained.');
+        var remoteFingerprint=fingerprint(remote.snapshot);
+        if(remote.revision!==record.revision||remoteFingerprint!==record.fingerprint){
           if(String(institutionId(remote.snapshot))!==binding.localId){conflict(error('Cloud institution identity changed. Open the school explicitly.'));return state();}
+          var localFingerprint=fingerprint(o.getSnapshot());
+          if(localFingerprint!==record.fingerprint){
+            conflict(error('Unsaved local edits were detected while updating the cloud view. Your changes were preserved. Resolve the school sync conflict before reloading.'));
+            return state();
+          }
           await backup(o.getSnapshot());
           if(start!==generation||binding!==b||record.pending)return state();
-          if(!consistent()){conflict();return state();}
-          await o.applySnapshot(clone(remote.snapshot),function(){return start===generation&&binding===b&&!record.pending&&consistent();});
+          if(!consistent()||fingerprint(o.getSnapshot())!==localFingerprint){conflict();return state();}
+          await o.applySnapshot(clone(remote.snapshot),function(){
+            return start===generation&&binding===b&&!record.pending&&consistent()&&fingerprint(o.getSnapshot())===localFingerprint;
+          });
           if(start!==generation||binding!==b||record.pending)return state();
           if(!consistent()){conflict();return state();}
           record.fingerprint=fingerprint(o.getSnapshot());
