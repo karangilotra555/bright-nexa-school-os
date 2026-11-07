@@ -107,6 +107,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
   </div>
   <div data-view="profile" class="hidden">
     <h2>Student profile</h2><div id="studentProfileSections"></div>
+    <div class="panel"><h2>Published marksheets</h2><div id="publishedMarksheets" aria-live="polite"></div></div>
     <div class="panel"><p class="notice">Only school-published records are displayed. If details are incorrect, contact your school's administration.</p><button class="secondary wide" id="changePassword" type="button">Change password</button><button class="secondary wide" id="refresh" type="button">↻ Refresh from school</button></div>
     <button class="secondary wide" id="logout" type="button">Log out</button>
   </div>
@@ -114,7 +115,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages"><span>✉</span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="school-student-photo-cloud.js?v=20261107-photo-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261105-profile"></script><script src="school-attendance-calendar.js?v=20261105-profile"></script><script src="parents-cloud.js?v=20261107-timetable-photo-v1"></script>
+<script src="school-student-photo-cloud.js?v=20261107-photo-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261105-profile"></script><script src="school-attendance-calendar.js?v=20261105-profile"></script><script src="parents-cloud.js?v=20261108-published-marksheets"></script>
 <script>
 (() => {
 'use strict';
@@ -154,9 +155,13 @@ function render(p){
  window.BNAttendance.render($('attendanceList'),a.recent||[],p.school?.session);
  items('leaveList',p.leaves||[],'No leave requests yet.',(root,r)=>item(root,day(r.from_day)+' – '+day(r.to_day),r.reason,r.status));
  window.BNStudentProfile.render($('studentProfileSections'),p);
+ items('publishedMarksheets',p.marksheets||[],p.marksheetError
+  ? 'Could not load marksheets. Use Refresh from school to retry.' : 'No marksheet published yet.',
+  (root,m)=>item(root,m.examName,m.subjects.map(s=>s.subject+' '+s.obtained+' / '+s.maximum).join(' · '),
+   m.publishedAt?'Published '+day(m.publishedAt):''));
 }
 async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0);$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(links[index]);if(generation!==loadGeneration)return;render(p);show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;data=null;show('gate');$('loginError').textContent=e.message}}
-function logout(){$('studentProfileSections').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
+function logout(){$('studentProfileSections').replaceChildren();$('publishedMarksheets').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
 async function openLinked(nextLinks){links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();if(data)$('childPicker').selectedOptions[0].textContent=data.student.name;}
 $('studentForgotToggle').addEventListener('click',()=>{
  const form=$('forgotStudentForm'),visible=form.classList.contains('hidden');
@@ -179,6 +184,9 @@ $('childPicker').addEventListener('change',()=>{data=null;show('gate');refresh()
 $('leaveForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{await cloud.leave($('leaveFrom').value,$('leaveTo').value,$('leaveReason').value);$('leaveResult').textContent='Request submitted to school.';e.target.reset();await refresh();setTab('activity')}catch(err){$('leaveResult').textContent=err.message}finally{button.disabled=false}});
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
 $('logout').addEventListener('click',logout);$('refresh').addEventListener('click',refresh);
+function refreshVisiblePortal(){if(token&&!document.hidden&&!$('app').classList.contains('hidden'))refresh();}
+document.addEventListener('visibilitychange',refreshVisiblePortal);
+window.addEventListener('online',refreshVisiblePortal);
 refresh();
 })();
 </script>

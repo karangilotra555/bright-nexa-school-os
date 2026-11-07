@@ -210,7 +210,55 @@
     display('studentPhotoWrap',false);display('studentPhotoPreview',false);
     $('studentPhotoPreview').removeAttribute('src');
     $('studentPhotoInput').value='';put('studentPhotoStatus','');
+    if($('studentMarksheetWrap')){display('studentMarksheetWrap',false);display('markPublishControls',false);}
+    $('studentMarksheetList')?.replaceChildren();$('markPublishExam')?.replaceChildren();
+    if($('studentMarksheetStatus'))put('studentMarksheetStatus','');
   }
+  async function loadStudentMarksheets(id,generation){
+    if(!$('studentMarksheetWrap')||!canAcademic())return;
+    const scope={p_school:me.institution_id,p_student:id};
+    display('studentMarksheetWrap',true);
+    put('studentMarksheetStatus','Loading marksheets…');
+    try{
+      const [published,drafts]=await Promise.all([
+        api('rpc/bn_school_published_marksheets','','POST',scope),
+        isAdmin()?api('rpc/bn_school_marksheet_drafts','','POST',scope):[]
+      ]);
+      if(generation!==profileGeneration||editingStudent!==id)return;
+      const list=$('studentMarksheetList');
+      list.replaceChildren();
+      if(!published.length)list.append(dom('p','No published marksheets available for this account.'));
+      for(const sheet of published){
+        list.append(dom('strong',sheet.examName),
+          dom('p',sheet.subjects.map(row=>row.subject+' '+row.obtained+' / '+row.maximum).join(' · ')));
+      }
+      if(isAdmin()){
+        options('markPublishExam',drafts.map(exam=>({id:exam.exam_id,label:exam.exam_name})),exam=>exam.label);
+        display('markPublishControls',drafts.length>0);
+      }
+      put('studentMarksheetStatus',isAdmin()&&!drafts.length
+        ? 'No valid cloud marks to publish. Save the marks in ERP and reload the student profile.' : '');
+    }catch(err){
+      if(generation===profileGeneration&&editingStudent===id)put('studentMarksheetStatus','Could not load marksheets. Reload the student profile to retry. '+err.message);
+    }
+  }
+  $('publishMarksheet')?.addEventListener('click',async()=>{
+    const button=$('publishMarksheet'),id=editingStudent,exam=$('markPublishExam').value,generation=profileGeneration;
+    if(button.disabled||!isAdmin()||!id||id!==$('profileStudent').value||!exam)return;
+    if(!window.confirm('Publish the latest saved marks for the selected student and exam? They will be visible to linked guardians and authorized staff.'))return;
+    button.disabled=true;
+    put('studentMarksheetStatus','Publishing to Supabase…');
+    try{
+      await api('rpc/bn_publish_school_marksheet','','POST',{p_school:me.institution_id,p_student:id,p_exam:exam});
+      if(generation!==profileGeneration||editingStudent!==id)return;
+      await loadStudentMarksheets(id,generation);
+      if(generation===profileGeneration&&editingStudent===id&&!$('studentMarksheetStatus').textContent)
+        put('studentMarksheetStatus','Published to Supabase.');
+    }catch(err){
+      if(generation===profileGeneration&&editingStudent===id)
+        put('studentMarksheetStatus','Could not confirm publication. Use Publish selected marksheet to retry. '+err.message);
+    }finally{button.disabled=false;}
+  });
   $('profileClassFilter')?.addEventListener('change',()=>{renderProfileStudents();clearProfileEditor();});
   $('profileSearchInput')?.addEventListener('input',()=>{renderProfileStudents();clearProfileEditor();});
   $('profileStudent')?.addEventListener('change',()=>{updateSelectedStudentBadge();clearProfileEditor();});
@@ -235,6 +283,7 @@
     const viewer=!isAdmin();
     $('studentProfileForm').querySelectorAll('input,select,textarea').forEach(field=>{field.disabled=viewer;});
     display('saveProfile',!viewer);updateSelectedStudentBadge();
+    await loadStudentMarksheets(id,generation);
   }));
   $('uploadStudentPhoto').addEventListener('click',()=>run(async()=>{
     if(!isAdmin()||!editingStudent||editingStudent!==$('profileStudent').value)
