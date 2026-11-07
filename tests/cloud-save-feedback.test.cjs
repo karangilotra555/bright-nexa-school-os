@@ -3,6 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+const crypto=require('node:crypto');
 const {JSDOM}=require('jsdom');
 const {create}=require('../school-workspace-controller.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
@@ -49,9 +50,10 @@ test('source and served copies show pending cloud acknowledgment instead of prem
  for(const base of ['','docs/','app-extracted/dist/']){
   const index=read(base+'index.html'),sw=read(base+'sw.js');
   assert.match(index,/CACHE_VERSION = '20261107-sync-feedback-v3'/);
-  assert.match(sw,/sync-feedback-v3-guard/);
-  assert.match(sw,/sync-feedback-v3-controller/);
-  assert.match(sw,/sync-feedback-v3-bundle/);
+  const sha=file=>crypto.createHash('sha256').update(Buffer.from(read(file),'utf8')).digest('hex');
+  assert.ok(sw.includes('"url":"school-online-guard.js?v=20261107-parent-publish-v2","revision":"'+sha(base+'school-online-guard.js')+'"'));
+  assert.ok(sw.includes('"url":"school-workspace-controller.js?v=20261107-parent-publish-v2","revision":"'+sha(base+'school-workspace-controller.js')+'"'));
+  assert.ok(sw.includes('url:"assets/index-brightnexa-v2.js",revision:"'+sha(base+'assets/index-brightnexa-v2.js')+'"'));
   assert.equal(read(base+'school-online-guard.js'),read('school-online-guard.js'));
   assert.equal(read(base+'school-workspace-controller.js'),read('school-workspace-controller.js'));
  }
