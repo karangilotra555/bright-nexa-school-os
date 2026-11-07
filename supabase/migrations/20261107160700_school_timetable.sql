@@ -50,6 +50,10 @@ CREATE OR REPLACE FUNCTION public.bn_timetable_guard_period() RETURNS trigger
 LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 BEGIN
  PERFORM pg_advisory_xact_lock(hashtext('bn_timetable_period'),hashtext(NEW.institution_id::text||':'||NEW.weekday::text));
+ IF NEW.kind<>'lesson' AND EXISTS(
+  SELECT 1 FROM public.school_timetable_slots slot
+  WHERE slot.period_id=NEW.id AND slot.institution_id=NEW.institution_id
+ ) THEN RAISE EXCEPTION 'Remove the existing lessons before changing period type.' USING ERRCODE='23514'; END IF;
  IF EXISTS(
   SELECT 1 FROM public.school_timetable_periods p
   WHERE p.institution_id=NEW.institution_id AND p.weekday=NEW.weekday AND p.id<>NEW.id
@@ -113,6 +117,23 @@ DROP TRIGGER IF EXISTS bn_timetable_period_unpublish ON public.school_timetable_
 CREATE TRIGGER bn_timetable_period_unpublish AFTER INSERT OR UPDATE OR DELETE ON public.school_timetable_periods
 FOR EACH ROW EXECUTE FUNCTION public.bn_timetable_unpublish_period();
 
+-- Existing Staff Roles & Permissions is the sole authority for teacher
+-- allocations. Revoking/changing an assignment invalidates published lessons
+-- for that class; no stale teacher listing is exposed to students.
+CREATE OR REPLACE FUNCTION public.bn_timetable_unpublish_assignment() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $
+BEGIN
+ UPDATE public.school_timetable_publications
+ SET published=false,published_at=null,updated_at=now()
+ WHERE institution_id=COALESCE(NEW.institution_id,OLD.institution_id)
+   AND class_id=COALESCE(NEW.class_id,OLD.class_id);
+ RETURN NULL;
+END;$;
+DROP TRIGGER IF EXISTS bn_timetable_assignment_unpublish ON public.school_teacher_assignments;
+CREATE TRIGGER bn_timetable_assignment_unpublish AFTER INSERT OR UPDATE OR DELETE
+ON public.school_teacher_assignments FOR EACH ROW
+EXECUTE FUNCTION public.bn_timetable_unpublish_assignment();
+
 CREATE OR REPLACE FUNCTION public.bn_timetable_stamp_publication() RETURNS trigger
 LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 BEGIN
@@ -121,6 +142,10 @@ BEGIN
  IF NEW.published AND NOT EXISTS(
    SELECT 1 FROM public.school_timetable_slots s WHERE s.institution_id=NEW.institution_id AND s.class_id=NEW.class_id
  ) THEN RAISE EXCEPTION 'Cannot publish an empty class timetable.' USING ERRCODE='23514'; END IF;
+ IF NEW.published AND EXISTS(
+   SELECT 1 FROM public.school_timetable_slots s
+   WHERE s.institution_id=NEW.institution_id AND s.class_id=NEW.class_id AND s.teacher_user_id IS NULL
+ ) THEN RAISE EXCEPTION 'Assign a teacher to every lesson before publishing.' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END;$$;
 DROP TRIGGER IF EXISTS bn_timetable_publication_stamp ON public.school_timetable_publications;
@@ -177,6 +202,14 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  LEFT JOIN public.school_timetable_slots s ON s.period_id=p.id AND s.class_id=st.class_id
    AND s.institution_id=st.institution_id
  LEFT JOIN public.school_users u ON u.id=s.teacher_user_id AND u.institution_id=s.institution_id
+   AND u.status='active' AND u.role='teacher'
+   AND EXISTS(
+      SELECT 1 FROM public.school_teacher_assignments a
+      WHERE a.school_user_id=u.id AND a.institution_id=s.institution_id
+        AND a.class_id=st.class_id AND a.active=true
+        AND (a.assignment_type='class_teacher'
+          OR (a.assignment_type='subject_teacher' AND lower(btrim(a.subject))=lower(btrim(s.subject))))
+   )
  WHERE (SELECT auth.uid()) IS NOT NULL AND school_private.parent_of(p_student_id,p_institution_id)
    AND st.id=p_student_id AND st.institution_id=p_institution_id AND st.status='active'
    AND (p.kind<>'lesson' OR s.id IS NOT NULL)
