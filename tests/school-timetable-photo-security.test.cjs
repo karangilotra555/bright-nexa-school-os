@@ -70,6 +70,14 @@ test('timetable and photo migration: publish atomicity, double booking, parent i
   await db.query("insert into public.school_timetable_drafts(institution_id,class_id,slot_id,academic_year,subject,teacher_user_id) values ($1,$2,$3,'2026','English',$4)",[school,classA,slotId,teacher]);
   const published=(await db.query("select public.bn_publish_class_timetable($1,$2,'2026') n",[school,classA])).rows[0].n;
   assert.equal(published,1);
+  await assert.rejects(
+    db.query("update public.school_timetable_slots set starts_at='07:30' where id=$1",[slotId]),
+    /slot is used by timetables/i,
+    'a direct update must not silently shift a published bell period');
+  await assert.rejects(
+    db.query("delete from public.school_timetable_slots where id=$1",[slotId]),
+    /slot is used by timetables/i,
+    'a direct delete must not remove an approved period');
   await assert.rejects(db.query("insert into public.school_timetable_drafts(institution_id,class_id,slot_id,academic_year,subject,teacher_user_id) values ($1,$2,$3,'2026','English',$4)",[school,classB,slotId,teacher]),/teacher|assigned/i);
   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[parent]);
   const my=(await db.query("select * from public.bn_portal_student_timetable($1,$2)",[school,child])).rows;
