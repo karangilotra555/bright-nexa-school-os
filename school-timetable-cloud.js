@@ -67,7 +67,7 @@ function activate(ctx){
  const oldState=host.__bnState||{};
  const st=host.__bnState={schoolId:id,year:years.includes(oldState.year)?oldState.year:years[0],day:oldState.day||1,
    classId:ctx.classes.some(c=>c.id===oldState.classId)?oldState.classId:ctx.classes[0]?.id,
-   slots:[],drafts:[],published:[],version:(oldState.version||0)+1};
+   slots:[],drafts:[],published:[],loads:[],version:(oldState.version||0)+1};
  const currentVersion=st.version;
  host.replaceChildren();
  const heading=node('h2','School Timetable');host.append(heading);
@@ -90,13 +90,14 @@ function activate(ctx){
  const api=(table,q='',method='GET',body=null,prefer)=>ctx.api(table,q,method,body,prefer);
  async function fetchAll(){
   const filter={institution_id:ctx.eq(id),academic_year:ctx.eq(st.year),limit:'1000'};
-  const [slots,published,drafts]=await Promise.all([
+  const [slots,published,drafts,loads]=await Promise.all([
    api('school_timetable_slots',qry({...filter,order:'weekday.asc,slot_index.asc'})),
    api('school_timetable_published',qry({...filter,order:'slot_id.asc'})),
-   admin?api('school_timetable_drafts',qry({...filter,order:'slot_id.asc'})):Promise.resolve([])
+   admin?api('school_timetable_drafts',qry({...filter,order:'slot_id.asc'})):Promise.resolve([]),
+   admin?api('school_timetable_subject_loads',qry({...filter,limit:'500'})):Promise.resolve([])
   ]);
   if(!current())return;
-  st.slots=slots;st.published=published;st.drafts=drafts;
+  st.slots=slots;st.published=published;st.drafts=drafts;st.loads=loads;
   render();
  }
  function render(){
@@ -161,7 +162,45 @@ function activate(ctx){
    await api('school_timetable_slots','','POST',rows);
    await fetchAll();
   }));
-  schedule.append(form);editor.append(schedule);
+  schedule.append(form);
+  if(st.slots.length){
+   const editSlot=node('form');editSlot.className='formgrid two';editSlot.style.marginTop='14px';
+   editSlot.append(node('h3','Edit an existing bell slot'));
+   const chooseWrap=node('div'),choose=node('select');chooseWrap.append(node('label','Day and slot'));choose.id='bnBellEditSlot';
+   st.slots.forEach(sl=>opt(choose,sl.id,DAYS[sl.weekday]+' · '+title(sl)));
+   chooseWrap.append(choose);editSlot.append(chooseWrap);
+   const fields={};
+   for(const [id,label,type] of [['kind','Slot type','select'],['label','Display label','text'],['starts_at','Start','time'],['ends_at','End','time']]){
+    const wrap=node('div');wrap.append(node('label',label));
+    const input=node(type==='select'?'select':'input');
+    if(type==='select')for(const k of ['period','break','assembly','lunch','activity'])opt(input,k,k);
+    else {input.type=type;input.required=true;}
+    input.id='bnBellEdit_'+id;fields[id]=input;wrap.append(input);editSlot.append(wrap);
+   }
+   const loadSlot=()=>{
+    const sl=st.slots.find(s=>s.id===choose.value);
+    if(!sl)return;
+    fields.kind.value=sl.kind;fields.label.value=sl.label;
+    fields.starts_at.value=String(sl.starts_at).slice(0,5);
+    fields.ends_at.value=String(sl.ends_at).slice(0,5);
+   };
+   choose.addEventListener('change',loadSlot);loadSlot();
+   const saveSlot=node('button','Update selected bell slot');saveSlot.type='submit';saveSlot.className='ghost';editSlot.append(saveSlot);
+   editSlot.addEventListener('submit',e=>run(async()=>{
+    e.preventDefault();
+    const selected=st.slots.find(x=>x.id===choose.value);
+    if(!selected)throw Error('Select a slot.');
+    if(st.published.some(x=>x.slot_id===selected.id)||st.drafts.some(x=>x.slot_id===selected.id))
+      throw Error('This slot already has lessons. Bell timings are locked until its draft/approved lessons are cleared.');
+    const start=minutes(fields.starts_at.value),end=minutes(fields.ends_at.value);
+    if(end<=start)throw Error('End time must be after start time.');
+    await api('school_timetable_slots',qry({id:ctx.eq(selected.id),institution_id:ctx.eq(id)}),'PATCH',{
+      kind:fields.kind.value,label:fields.label.value.trim(),starts_at:fmt(start)+':00',ends_at:fmt(end)+':00'
+    });
+    await fetchAll();
+   }));schedule.append(editSlot);
+  }
+  editor.append(schedule);
   const lesson=node('form');lesson.className='formgrid two';lesson.style.marginTop='18px';
   lesson.append(node('h3','Edit a weekly period'));
   const slotWrap=node('div');slotWrap.append(node('label','Day / Period'));
@@ -208,7 +247,9 @@ function activate(ctx){
    const teacher=ctx.staff.find(x=>x.id===a.school_user_id);
    if(!teacher||teacher.status!=='active')continue;
    const label=node('label',a.subject+' · '+(teacher.display_name||teacher.email)+' weekly periods: ');
-   const input=node('input');input.type='number';input.min='0';input.max='72';input.value='0';input.style.width='72px';label.append(input);autoForm.append(label);
+   const input=node('input');input.type='number';input.min='0';input.max='72';
+   input.value=String(st.loads.find(l=>l.class_id===st.classId&&l.teacher_user_id===a.school_user_id&&l.subject.toLowerCase()===a.subject.toLowerCase())?.periods_per_week||0);
+   input.style.width='72px';label.append(input);autoForm.append(label);
    targetInputs.push({input,subject:a.subject,teacher_user_id:a.school_user_id});
   }
   if(!targetInputs.length)auto.append(node('p','Assign subject teachers first in Roles & Permissions.'));
@@ -219,6 +260,13 @@ function activate(ctx){
     const targets=targetInputs.map(t=>({...t,count:Number(t.input.value)}));
     const records=autoFill({slots:st.slots,drafts:st.drafts,published:st.published,assignments:teacherAssignments,targets,classId:st.classId,schoolId:id,year:st.year});
     if(!records.length)throw Error('No unfilled periods matched the weekly subject targets.');
+    const targetRecords=targets.filter(t=>t.count>0).map(t=>({
+      institution_id:id,class_id:st.classId,academic_year:st.year,subject:t.subject,
+      teacher_user_id:t.teacher_user_id,periods_per_week:t.count
+    }));
+    if(targetRecords.length)await api('school_timetable_subject_loads',
+      qry({on_conflict:'institution_id,class_id,academic_year,teacher_user_id,subject'}),
+      'POST',targetRecords,'resolution=merge-duplicates,return=representation');
     await api('school_timetable_drafts',qry({on_conflict:'institution_id,class_id,slot_id'}),'POST',records,'resolution=merge-duplicates,return=representation');
     await fetchAll();
    }));
