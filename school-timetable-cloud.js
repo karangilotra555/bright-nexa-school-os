@@ -33,7 +33,6 @@ function autoFill({slots,drafts,published,assignments,targets,classId,schoolId,y
  for(const t of todo){
   if(!Number.isInteger(t.count)||t.count<1||t.count>72||!mapped.has(t.teacher_user_id+'|'+t.subject.toLowerCase()))
    throw Error('Choose only assigned subject teachers and valid weekly period counts.');
-  t.remaining=t.count-bySlot.size&&0; // overwritten below with exact existing counts
   t.remaining=t.count-[...bySlot.values()].filter(d=>d.teacher_user_id===t.teacher_user_id&&d.subject.toLowerCase()===t.subject.toLowerCase()).length;
  }
  const empty=teaching.filter(s=>!bySlot.has(s.id));
