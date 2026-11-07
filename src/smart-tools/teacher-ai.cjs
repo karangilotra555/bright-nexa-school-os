@@ -16,7 +16,6 @@ const ASSESSMENTS=new Set(['Question Paper Generator','Worksheet Generator','Cla
 const CONTEXT_NEEDED=new Set(['Student Remark Generator','Weak Student Remedial Plan']);
 const BANNED=/\b(?:option a|option b|using your class notes|using your textbook|define all|compare all|apply all|characteristic 1|lorem ipsum|placeholder|to be filled|as an ai)\b|\[(?:confirm|insert|name|date|topic|teacher|school must verify)\]/i;
 const DEVANAGARI=/[\u0900-\u097f]/;
-const seconds=45;
 class SmartToolsError extends Error{
  constructor(status,message){super(message);this.name='SmartToolsError';this.status=status;}
 }
@@ -90,7 +89,8 @@ function validateInput(raw){
  contractFor(tool);
  const className=clean(request.className,60,'Class');
  const subject=clean(request.subject,90,'Subject');
- let topic=clean(request.topic,240,'Topic / Chapter',{required:false})||'all';
+ // New forms send suggestions only; retain old-client chapter compatibility.
+ let topic=request.instructions?request.instructions.slice(0,200):clean(request.topic,240,'Topic / Chapter',{required:false})||'all';
  if(tool==='School Notice Generator'&&/^(all|सभी|full syllabus)$/i.test(topic)&&request.instructions?.trim().length>=20)topic=request.instructions.trim().slice(0,200);
  const topicScope=/^(all|full syllabus|entire syllabus|all chapters|सभी|पूरा पाठ्यक्रम)$/i.test(topic)?'general':'specific';
  ensure(!(topicScope==='general'&&tool==='School Notice Generator'),422,'Enter a specific notice topic and school details.');
@@ -206,7 +206,12 @@ function validateOutput(input,response,blueprint){
     ensure(textOK(item.answerGuide,10,1100),502,'AI returned an invalid marking guide.');
     if(req.subject.toLowerCase().includes('hindi')||req.language==='Hindi'||req.language==='Bilingual')
      ensure(DEVANAGARI.test(item.text),502,'Hindi questions must contain genuine Devanagari content.');
-    if(q.type==='MCQ')ensure(/(?:\(A\)|\(B\)|\(C\)|\(D\)|\(अ\)|\(ब\)|\(स\)|\(द\))/i.test(item.text),502,'MCQ is missing actual answer choices.');
+    if(q.type==='MCQ'){
+     const choices=Array.from(item.text.matchAll(/\(([A-Dअबसद])\)([\s\S]*?)(?=\([A-Dअबसद]\)|$)/gi));
+     const labels=choices.map(choice=>choice[1].toUpperCase()).join('');
+     const uniqueChoices=new Set(choices.map(choice=>choice[2].trim().replace(/\s+/g,' ').toLowerCase()));
+     ensure(choices.length===4&&['ABCD','अबसद'].includes(labels)&&choices.every(choice=>choice[2].trim().length>0)&&uniqueChoices.size===4,502,'MCQ requires four distinct, nonempty answer choices.');
+    }
     texts.push(item.text);
     lines.push(q.id+'. '+item.text+' ['+q.marks+' marks | '+q.minutes+' min | '+q.bloom+']');
    }
@@ -231,6 +236,7 @@ function validateOutput(input,response,blueprint){
    lines.push((i+1)+'. '+a.title+'\nGoal: '+a.goal+'\nTime: '+a.minutes+' min'+(kind==='activities'?'\nMaterials: '+a.materials.join(', '):'')+'\nSteps:\n'+a.steps.map((s,j)=>(j+1)+') '+s).join('\n'));
   });
   ensure(isDistinct(labels),502,'AI returned repetitive '+key+'.');
+  ensure(items.reduce((total,item)=>total+item.minutes,0)<=req.durationMinutes,502,'AI task timings exceed the selected duration.');
   return lines.join('\n\n');
  }
  ensure(textOK(response.content,90,12500),502,'AI returned generic, blank or incomplete content.');
@@ -269,6 +275,7 @@ function promptFor(req,blueprint){
   const key=req.tool==='Activity Ideas Generator'?'activities':'tasks';
   common.push(req.tool==='Activity Ideas Generator'?'Design playable, engaging, subject-specific classroom activities, not repeated generic exercises. Respect requested activity focus: '+req.activityFocus:'Create unique, independent and assessable student practice tasks with practical steps.');
   common.push('Exactly '+req.count+' entries with different ideas and concrete timings.');
+  common.push('The sum of all entry minutes must not exceed the selected '+req.durationMinutes+' minutes.');
   format={[key]:Array.from({length:req.count},()=>({title:'Unique activity title',goal:'Specific learning goal',materials:['simple real materials'],steps:['Detailed step 1','Detailed step 2'],minutes:7}))};
  }else{
   const instructions={
@@ -294,6 +301,12 @@ async function readJson(response,statusMessage){
 }
 function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.now()}={}){
  ensure(typeof fetcher==='function',503,'School AI network service unavailable.');
+ const network=fetcher;
+ fetcher=async(url,options)=>{
+  const signal=AbortSignal.timeout(url.includes('/auth/v1/')||url.includes('/rest/v1/')?5000:30000);
+  try{return await network(url,{...options,signal});}
+  catch(error){throw new SmartToolsError(signal.aborted?504:502,signal.aborted?'School AI service timed out. Please retry.':'School AI service could not be reached. Please retry.');}
+ };
  const schoolUrl=(env.SCHOOL_SUPABASE_URL||'https://mrfvbwmyxndrakskqyas.supabase.co').replace(/\/$/,'');
  const pubKey=env.SCHOOL_SUPABASE_PUBLISHABLE_KEY||'sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
  const usage=new Map();
@@ -353,8 +366,8 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
   current.push(now());usage.set(key,current);
   let result;
   if(geminiKey){
-   try{result=await gemini(geminiKey,prompt)}catch(err){
-    if(!groqKey||![429,502].includes(err.status))throw err;
+   try{result=await gemini(geminiKey,prompt);validateOutput(req,result,blueprint)}catch(err){
+    if(!groqKey||![429,502,504].includes(err.status))throw err;
     result=await groq(groqKey,prompt);
    }
   }else result=await groq(groqKey,prompt);

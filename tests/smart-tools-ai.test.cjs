@@ -122,7 +122,7 @@ test('TDD: no separate topic field and teacher suggestions are used for generate
  assert.doesNotMatch(bundle,/label: `Topic \/ Chapter`/);
  assert.match(source,/Suggestions \/ Chapter \(optional\)/);
  assert.match(source,/topic:\s*teacherInstructions\.trim\(\)/);
- assert.match(bundle,/topic:teacherInstructions\.trim\(\)/);
+ assert.match(bundle,/topic:\s*teacherInstructions\.trim\(\)/);
  assert.match(source,/d\('20'\)/,'50-mark paper should default to a feasible 20 questions');
 });
 test('TDD: unstructured instructions are preserved, validated and provider prompt is not generic',()=>{
