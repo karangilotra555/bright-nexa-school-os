@@ -20,7 +20,7 @@ test('hosted ERP never opens a local-only school, and retains its records',async
  await Promise.resolve();
  const body=dom.window.document.getElementById('root');
  assert.match(body.textContent,/Hps/);
- assert.match(body.textContent,/not.*Supabase/i);
+ assert.match(body.textContent,/No school record has been confirmed in Supabase/i);
  assert.ok(body.querySelector('a[href*="teacher-access.html?fromLocal=1"]'));
  assert.equal(dom.window.localStorage.getItem('bright-nexa-school-os:snapshot:v1'),json);
  assert.equal(dom.window.document.querySelector('script[type="module"]'),null);
