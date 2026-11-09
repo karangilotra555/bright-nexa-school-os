@@ -12,7 +12,7 @@
   const STAFF_KEY='bn_school_staff_session_v1';
   const CHOSEN_KEY='bn_school_staff_selected_school_v1';
   const ERP_KEY='bright-nexa-school-os:session:v2';
-  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261107-parent-publish-v2';
+  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261109-real-only-v1';
   const ROOT='./teacher-access.html';
   const errorText='Unable to open this school. Your records have not been changed.';
 
@@ -106,7 +106,29 @@
     store.setItem(CHOSEN_KEY,school.id);
     return {schoolId:school.id,name:school.name,revision:workspace.revision};
   }
+  // The user expressly reset all previous schools/accounts, including the demo.
+  // Purge stale local ERP records once per device, before the verified school is
+  // loaded; preserve Supabase Auth tokens so new real-owner login still works.
+  async function clearDeletedSchoolCache(){
+    if(window.localStorage.getItem('bn_real_school_reset_20261109')==='done')return;
+    for(const key of Object.keys(window.localStorage)){
+      if(key.startsWith('bright-nexa-school-os:')||key.startsWith('bn_workspace_'))window.localStorage.removeItem(key);
+    }
+    for(const key of Object.keys(window.sessionStorage)){
+      if(key.startsWith('bright-nexa-school-os:'))window.sessionStorage.removeItem(key);
+    }
+    if(window.indexedDB){
+      await new Promise((resolve,reject)=>{
+        const request=window.indexedDB.deleteDatabase('bright-nexa-school-os');
+        request.onsuccess=resolve;
+        request.onerror=()=>reject(Error('Unable to clear old deleted-school device records. Close other School OS tabs and refresh.'));
+        request.onblocked=()=>reject(Error('Old School OS tab still has the deleted school open. Close other tabs and refresh.'));
+      });
+    }
+    window.localStorage.setItem('bn_real_school_reset_20261109','done');
+  }
   async function start(){
+    try{await clearDeletedSchoolCache();}catch(error){showError(error);return false;}
     const store=window.sessionStorage,staff=parse(store.getItem(STAFF_KEY));
     const erp=parse(store.getItem(ERP_KEY));
     const search=window.location.search;

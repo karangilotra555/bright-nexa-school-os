@@ -81,7 +81,7 @@
     sessionStorage.removeItem(SELECTED_SCHOOL_KEY);
     invalidateRoster();clearProfileEditor();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
-    display('savedSessionPanel',false);display('schoolPickerWrap',false);
+    display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);display('loginForm',true);display('forgotPasswordLink',true);
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   async function switchToDifferentAccount(){
@@ -117,7 +117,15 @@
     const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status,display_name',auth_user_id:eq(identity.id)}));
     if(thisLoad!==schoolLoadEpoch)return;
     const active=memberships.filter(x=>x.auth_user_id===identity.id&&x.status==='active');
-    if(!active.length){dropSession();notify('Your school has not activated this staff account. Ask the school administrator to invite you.',true);return;}
+    if(!active.length){
+      // No school membership: keep the verified Auth session so the first-school
+      // RPC can securely create the new owner/school, never a sample tenant.
+      display('portalSection',false);display('loginSection',true);display('loginForm',false);
+      display('forgotPasswordLink',false);display('forgotPasswordForm',false);
+      display('savedSessionPanel',false);display('createFirstSchoolPanel',true);
+      display('logout',true);notify('No school is assigned to this account. Create your empty school below.');return;
+    }
+    display('createFirstSchoolPanel',false);display('loginForm',true);display('forgotPasswordLink',true);
     // School names become visible ONLY after a verified Supabase Auth session,
     // and only for institutions having an active membership for this account.
     const permitted=[];
@@ -167,7 +175,7 @@
     applyNavigationVisibility();
     await reload();
     const requested=new URLSearchParams(location.search).get('view');
-    const allowedViews=['classes','timetable','attendance','homework','notices','profiles','fees','admin','account'];
+    const allowedViews=['dashboard','classes','timetable','attendance','homework','notices','profiles','fees','admin','account'];
     const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
     const deepLink=allowedViews.includes(requested)&&isTabVisibleForRole(requested,me.role)?requested:null;
     const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
@@ -488,6 +496,7 @@
     rolePermissions=next;return next;
   }
   function isTabVisibleForRole(tabName,role){
+    if(tabName==='dashboard')return role==='school_admin';
     if(tabName==='admin')return role==='school_admin';
     if(tabName==='fees')return role==='school_admin'||role==='accountant';
     if(role==='school_admin'||role==='principal')return true;
@@ -500,6 +509,7 @@
   function applyNavigationVisibility(){
     const role=me?.role||'teacher';
     const isAdm=isAdmin();
+    display('dashboardTab',isAdm);
     display('adminTab',isAdm);
     display('librarianApp',isAdm||role==='librarian'||role==='principal');
     display('profilesTab',isAdm||isTabVisibleForRole('profiles',role));
@@ -799,6 +809,44 @@
       notify('Authorized school selected. Records were refreshed from Supabase.');
     }finally{picker.disabled=false;}
   }));
+  $('showOwnerSignup').addEventListener('click',()=>{
+    const form=$('ownerSignupForm');const open=form.classList.contains('hidden');
+    display('ownerSignupForm',open);if(open)$('ownerSignupEmail').focus();
+  });
+  $('ownerSignupForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
+    const button=$('ownerSignupSubmit');if(button.disabled)return;
+    const email=$('ownerSignupEmail').value.trim().toLowerCase(),password=$('ownerSignupPassword').value;
+    if(!email||password.length<12)throw Error('Enter a valid email and password with at least 12 characters.');
+    button.disabled=true;
+    try{
+      const res=await authRequest('signup',{email,password});
+      $('ownerSignupPassword').value='';
+      if(res.access_token&&res.refresh_token){
+        saveSession(res);display('ownerSignupForm',false);await load();
+      }else{
+        display('ownerSignupForm',false);
+        notify('Registration requested. Verify your email, then sign in to create a new empty school.');
+      }
+    }finally{button.disabled=false;}
+  })});
+  $('createFirstSchoolForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
+    const button=$('createFirstSchoolButton');if(button.disabled)return;
+    await ensureToken();
+    const name=$('firstSchoolName').value.trim();
+    if(name.length<3||name.length>120)throw Error('Enter a school name between 3 and 120 characters.');
+    button.disabled=true;
+    try{
+      // The authenticated, SECURITY DEFINER RPC enforces one school per account.
+      // It creates a fresh institution and a verified school_admin membership.
+      const schoolId=await api('rpc/register_first_school','','POST',{p_school_name:name});
+      if(!/^[0-9a-f-]{36}$/i.test(String(schoolId)))throw Error('School creation returned no valid school ID.');
+      sessionStorage.setItem(SELECTED_SCHOOL_KEY,String(schoolId));
+      await api('rpc/bn_initialize_school_workspace','','POST',{p_institution_id:String(schoolId)});
+      await load(String(schoolId));
+      notify('New empty school created. Open the dashboard to add your first class.');
+    }finally{button.disabled=false;}
+  })});
+  $('createSchoolChangeAccount').addEventListener('click',()=>run(switchToDifferentAccount));
   $('loginForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=e.submitter;btn.disabled=true;
     try{const tokens=await authRequest('token?grant_type=password',{email:$('loginEmail').value.trim(),password:$('loginPassword').value});saveSession(tokens);await load()}

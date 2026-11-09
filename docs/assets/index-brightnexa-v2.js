@@ -18429,17 +18429,6 @@ function Xt(e2) {
     })
   );
 }
-function Zt() {
-  sessionStorage.setItem(
-    It,
-    JSON.stringify({
-      accountId: `demo-owner`,
-      name: `Rajesh Sharma`,
-      role: `OWNER`,
-      demo: true
-    })
-  );
-}
 function Qt() {
   try {
     let e2 = sessionStorage.getItem(It);
@@ -18617,32 +18606,12 @@ function gn(e2) {
 var _n = `bright-nexa-school-os:snapshot:v1`;
 var vn = `bright-nexa-school-os:students:v1`;
 var yn = {
-  language: `en`,
-  role: `OWNER`,
-  connectivity: `online`,
-  institution: {
-    id: `demo-school`,
-    name: `Bright Nexa Model School`,
-    city: `Sikar`,
-    session: `2026\u201327`,
-    students: 486,
-    teachers: 28,
-    attendancePercent: 91.4,
-    feeCollected: 428500,
-    feePending: 73400,
-    qualityScore: 72,
-    institutionType: `School`,
-    address: `Station Road`,
-    state: `Rajasthan`,
-    pinCode: `332001`,
-    contactNumber: `9876500000`,
-    email: `office@brightnexa.example`,
-    boardType: `Central Board of Secondary Education (CBSE)`,
-    schoolLevel: `Secondary`,
-    medium: `Bilingual`,
-    directorName: `Rajesh Sharma`,
-    principalName: `Dr. Kavita Joshi`
-  },
+  language: `en`, role: `OWNER`, connectivity: `online`,
+  institution: { id: ``, name: ``, city: ``, session: ``, students: 0, teachers: 0,
+    attendancePercent: 0, feeCollected: 0, feePending: 0, qualityScore: 0,
+    institutionType: `School`, address: ``, state: ``, pinCode: ``, contactNumber: ``,
+    email: ``, boardType: ``, schoolLevel: `Secondary`, medium: `English`,
+    directorName: ``, principalName: `` },
   services: [
     {
       id: `ai`,
@@ -18814,107 +18783,7 @@ function Tn(e2) {
   }
   Ot(`snapshot`, t2).catch(e=>bnReportBrowserSaveError('School profile local cache',e));
 }
-var En = [
-  {
-    id: `student-001`,
-    admissionNumber: `BMS-2026-001`,
-    rollNumber: `06`,
-    name: `Aarav Sharma`,
-    className: `6`,
-    section: `A`,
-    dateOfBirth: `2014-03-12`,
-    gender: `Male`,
-    fatherName: `Vikas Sharma`,
-    motherName: `Neha Sharma`,
-    guardianName: ``,
-    parentMobile: `9876543210`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    admissionDate: `2026-04-01`,
-    status: `Active`,
-    createdAt: `2026-04-01T08:00:00.000Z`
-  },
-  {
-    id: `student-002`,
-    admissionNumber: `BMS-2026-002`,
-    rollNumber: `11`,
-    name: `Meera Kumari`,
-    className: `8`,
-    section: `A`,
-    dateOfBirth: `2012-08-21`,
-    gender: `Female`,
-    fatherName: `Ramesh Kumar`,
-    motherName: `Sunita Devi`,
-    guardianName: ``,
-    parentMobile: `9829012345`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    admissionDate: `2025-04-03`,
-    status: `Active`,
-    createdAt: `2025-04-03T08:00:00.000Z`
-  },
-  {
-    id: `student-003`,
-    admissionNumber: `BMS-2026-003`,
-    rollNumber: `19`,
-    name: `Kabir Singh`,
-    className: `7`,
-    section: `B`,
-    dateOfBirth: `2013-11-02`,
-    gender: `Male`,
-    fatherName: `Manoj Singh`,
-    motherName: `Poonam Singh`,
-    guardianName: ``,
-    parentMobile: `9414011122`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    admissionDate: `2024-04-05`,
-    status: `Active`,
-    createdAt: `2024-04-05T08:00:00.000Z`
-  },
-  {
-    id: `student-004`,
-    studentUniqueId: `BAI-STU-2026-N9A014`,
-    admissionNumber: `BMS-2026-0091`,
-    rollNumber: `14`,
-    name: `Ananya Mehta`,
-    className: `9`,
-    section: `A`,
-    dateOfBirth: `2011-06-18`,
-    gender: `Female`,
-    fatherName: `Sandeep Mehta`,
-    motherName: `Ritu Mehta`,
-    guardianName: ``,
-    parentMobile: `9876500191`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    transport: `Route A \u2013 City Centre`,
-    admissionDate: `2026-04-02`,
-    status: `Active`,
-    createdAt: `2026-04-02T08:00:00.000Z`
-  },
-  {
-    id: `student-005`,
-    studentUniqueId: `BAI-STU-2026-N9B021`,
-    admissionNumber: `BMS-2026-0092`,
-    rollNumber: `21`,
-    name: `Arjun Rathore`,
-    className: `9`,
-    section: `B`,
-    dateOfBirth: `2011-09-04`,
-    gender: `Male`,
-    fatherName: `Mahesh Rathore`,
-    motherName: `Kavita Rathore`,
-    guardianName: ``,
-    parentMobile: `9876500192`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    transport: `Route B \u2013 Outer Zone`,
-    admissionDate: `2026-04-03`,
-    status: `Active`,
-    createdAt: `2026-04-03T08:00:00.000Z`
-  }
-];
+var En = [];
 function Dn() {
   try {
     let e2 = window.localStorage.getItem(vn);
@@ -21851,35 +21720,9 @@ function Pr({ data: e2, institution: t2, onUpdate: n2 }) {
       eyebrow: `Academic master data`,
       title: c2,
       subtitle: s2 ? `Configure batches, groups, subjects, rooms, and faculty assignments` : `Define each class, section, senior-secondary stream, session, capacity, room, and class teacher`,
-      action: /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(
-        Component322,
-        {
-          className: `secondary-button`,
-          onClick: () => {
-            let r3 = zr(t2.session);
-            let i3 = new Set(e2.classes.map(Lr));
-            let a3 = r3.filter((e3) => !i3.has(Lr(e3)));
-            if (!a3.length) {
-              window.alert(
-                `The sample academic setup is already available.`
-              );
-              return;
-            }
-            n2(
-              {
-                ...e2,
-                classes: [...e2.classes, ...a3]
-              },
-              `CREATE`,
-              `Academic setup`,
-              `${a3.length} sample class and stream records`
-            );
-          }
-        },
-        `Load Sample Academic Setup`
-      ), /* @__PURE__ */ w.createElement(Component323, { className: `primary-button`, onClick: () => i2(true) }, /* @__PURE__ */ w.createElement(_Component2, { size: 18 }), s2 ? `Add Batch` : `Add Class & Section`))
+      action: /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component323, { className: `primary-button`, onClick: () => i2(true) }, /* @__PURE__ */ w.createElement(_Component2, { size: 18 }), s2 ? `Add Batch` : `Add Class & Section`))
     }
-  ), /* @__PURE__ */ w.createElement(Component325, { className: `inline-message academic-setup-help` }, /* @__PURE__ */ w.createElement(Component324, null, `How this setup works:`), ` Attendance, student placement, fee applicability, exams, and reports use these master records. The sample setup is editable and can be deleted after you understand the format.`), e2.classes.length ? /* @__PURE__ */ w.createElement(Component347, { className: `class-card-grid` }, e2.classes.map((t3) => {
+  ), /* @__PURE__ */ w.createElement(Component325, { className: `inline-message academic-setup-help` }, /* @__PURE__ */ w.createElement(Component324, null, `How this setup works:`), ` Attendance, student placement, fee applicability, exams, and reports use these master records. Create each class yourself; data is saved only for the authenticated school.`), e2.classes.length ? /* @__PURE__ */ w.createElement(Component347, { className: `class-card-grid` }, e2.classes.map((t3) => {
     let n3 = e2.teachers.find((e3) => e3.id === t3.classTeacherId);
     const Component326 = `span`;
     const Component327 = `span`;
@@ -21928,7 +21771,7 @@ function Pr({ data: e2, institution: t2, onUpdate: n2 }) {
       /* @__PURE__ */ w.createElement(_Component1, { size: 15 }),
       `Delete`
     )));
-  })) : /* @__PURE__ */ w.createElement(Component350, { className: `empty-state` }, /* @__PURE__ */ w.createElement(_Component14, { size: 30 }), /* @__PURE__ */ w.createElement(Component348, null, `No academic groups configured`), /* @__PURE__ */ w.createElement(Component349, null, `Add a record or load the editable sample setup.`)), r2 && /* @__PURE__ */ w.createElement(
+  })) : /* @__PURE__ */ w.createElement(Component350, { className: `empty-state` }, /* @__PURE__ */ w.createElement(_Component14, { size: 30 }), /* @__PURE__ */ w.createElement(Component348, null, `No academic groups configured`), /* @__PURE__ */ w.createElement(Component349, null, `Add your first class or section.`)), r2 && /* @__PURE__ */ w.createElement(
     Fr,
     {
       coaching: s2,
@@ -23130,7 +22973,7 @@ function Ur({
   )))) : /* @__PURE__ */ w.createElement(
     $r,
     {
-      text: n2 ? `No students are assigned to ${ni(n2)}.` : `Create a class or load the sample academic setup first.`
+      text: n2 ? `No students are assigned to ${ni(n2)}.` : `Create a class and section first.`
     }
   ), whatsAppAbsentOpen && /* @__PURE__ */ w.createElement(
     WhatsAppQueueModal,
@@ -24170,7 +24013,7 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
       icon: /* @__PURE__ */ w.createElement(_Component20, { size: 22 }),
       title: `Class Fee Setup`,
       text: `Select a class and enter every charge the school collects. Changes automatically appear in every matching student's unpaid fee profile.`,
-      action: /* @__PURE__ */ w.createElement(Component554, { className: `record-actions` }, !i2 && /* @__PURE__ */ w.createElement(Component552, { className: `secondary-button`, onClick: xe }, /* @__PURE__ */ w.createElement(_Component21, { size: 16 }), `Load Sample Class 9 Plan`), /* @__PURE__ */ w.createElement(
+      action: /* @__PURE__ */ w.createElement(Component554, { className: `record-actions` }, /* @__PURE__ */ w.createElement(
         Component553,
         {
           className: `primary-button`,
@@ -24217,7 +24060,7 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
     _Component23,
     {
       title: `No fee plan for ${i2 ? `this programme` : `Class ${u2}`}`,
-      text: `Add the first fee head, or load the editable sample plan to understand the recommended format.`
+      text: `Add the first fee head for your real school.`
     }
   )), s2 === `COLLECT` && /* @__PURE__ */ w.createElement(Component632, { className: `clerk-stage panel` }, /* @__PURE__ */ w.createElement(
     _Component22,
@@ -25196,476 +25039,7 @@ function Oi() {
     infrastructureAssets: []
   };
 }
-var ki = {
-  teachers: [
-    {
-      id: `teacher-1`,
-      employeeCode: `T-001`,
-      name: `Anita Sharma`,
-      mobile: `9876500101`,
-      email: `anita@example.test`,
-      qualification: `M.Sc., B.Ed.`,
-      subjects: [`Science`],
-      assignedClasses: [`6-A`, `7-A`],
-      joiningDate: `2021-07-01`,
-      status: `Active`
-    },
-    {
-      id: `teacher-2`,
-      employeeCode: `T-002`,
-      name: `Ravi Kumar`,
-      mobile: `9876500102`,
-      email: `ravi@example.test`,
-      qualification: `M.A., B.Ed.`,
-      subjects: [`English`],
-      assignedClasses: [`6-B`, `8-A`],
-      joiningDate: `2022-04-04`,
-      status: `Active`
-    },
-    {
-      id: `teacher-3`,
-      employeeCode: `T-003`,
-      name: `Pooja Verma`,
-      mobile: `9876500103`,
-      email: `pooja@example.test`,
-      qualification: `M.Sc., B.Ed.`,
-      subjects: [`Mathematics`],
-      assignedClasses: [`7-B`, `8-A`],
-      joiningDate: `2020-08-10`,
-      status: `Active`
-    }
-  ],
-  classes: [
-    {
-      id: `class-6a`,
-      name: `6`,
-      section: `A`,
-      room: `201`,
-      classTeacherId: `teacher-1`,
-      subjects: [
-        `Hindi`,
-        `English`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`
-      ],
-      status: `Active`
-    },
-    {
-      id: `class-6b`,
-      name: `6`,
-      section: `B`,
-      room: `202`,
-      classTeacherId: `teacher-2`,
-      subjects: [
-        `Hindi`,
-        `English`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`
-      ],
-      status: `Active`
-    },
-    {
-      id: `class-7b`,
-      name: `7`,
-      section: `B`,
-      room: `204`,
-      classTeacherId: `teacher-3`,
-      subjects: [
-        `Hindi`,
-        `English`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`
-      ],
-      status: `Active`
-    },
-    {
-      id: `class-8a`,
-      name: `8`,
-      section: `A`,
-      room: `205`,
-      classTeacherId: `teacher-2`,
-      subjects: [
-        `Hindi`,
-        `English`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`
-      ],
-      status: `Active`
-    },
-    {
-      id: `class-9a`,
-      name: `9`,
-      section: `A`,
-      room: `301`,
-      classTeacherId: `teacher-1`,
-      subjects: [
-        `English`,
-        `Hindi`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`,
-        `Information Technology`
-      ],
-      status: `Active`
-    },
-    {
-      id: `class-9b`,
-      name: `9`,
-      section: `B`,
-      room: `302`,
-      classTeacherId: `teacher-3`,
-      subjects: [
-        `English`,
-        `Hindi`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`,
-        `Information Technology`
-      ],
-      status: `Active`
-    }
-  ],
-  attendance: [],
-  staffAttendance: [],
-  holidays: [],
-  feeStructures: [
-    {
-      id: `fee-1`,
-      className: `6`,
-      category: `Tuition Fee`,
-      amount: 1200,
-      frequency: `Monthly`,
-      dueDay: 10
-    },
-    {
-      id: `fee-2`,
-      className: `7`,
-      category: `Tuition Fee`,
-      amount: 1350,
-      frequency: `Monthly`,
-      dueDay: 10
-    },
-    {
-      id: `fee-3`,
-      className: `8`,
-      category: `Tuition Fee`,
-      amount: 1500,
-      frequency: `Monthly`,
-      dueDay: 10
-    },
-    {
-      id: `sample-9-admission`,
-      className: `9`,
-      category: `Admission Fee`,
-      amount: 5e3,
-      frequency: `One time`,
-      dueDay: 10,
-      academicSession: `2026\u201327`,
-      active: true
-    },
-    {
-      id: `sample-9-security`,
-      className: `9`,
-      category: `Refundable Security Deposit`,
-      amount: 3e3,
-      frequency: `One time`,
-      dueDay: 10,
-      academicSession: `2026\u201327`,
-      refundable: true,
-      active: true
-    },
-    {
-      id: `sample-9-tuition`,
-      className: `9`,
-      category: `Monthly Tuition Fee`,
-      amount: 2500,
-      frequency: `Monthly`,
-      dueDay: 10,
-      academicSession: `2026\u201327`,
-      active: true
-    },
-    {
-      id: `sample-9-computer`,
-      className: `9`,
-      category: `Computer and Technology Fee`,
-      amount: 500,
-      frequency: `Monthly`,
-      dueDay: 10,
-      academicSession: `2026\u201327`,
-      active: true
-    },
-    {
-      id: `sample-9-annual`,
-      className: `9`,
-      category: `Annual Institutional Charges`,
-      amount: 2500,
-      frequency: `Annual`,
-      dueDay: 15,
-      academicSession: `2026\u201327`,
-      active: true
-    },
-    {
-      id: `sample-9-exam`,
-      className: `9`,
-      category: `Examination Fee`,
-      amount: 1200,
-      frequency: `Term-wise`,
-      dueDay: 15,
-      academicSession: `2026\u201327`,
-      active: true
-    },
-    {
-      id: `sample-9-route-a`,
-      className: `9`,
-      category: `Transportation Fee`,
-      amount: 1200,
-      frequency: `Monthly`,
-      dueDay: 10,
-      academicSession: `2026\u201327`,
-      routeName: `Route A \u2013 City Centre`,
-      active: true
-    },
-    {
-      id: `sample-9-route-b`,
-      className: `9`,
-      category: `Transportation Fee`,
-      amount: 1600,
-      frequency: `Monthly`,
-      dueDay: 10,
-      academicSession: `2026\u201327`,
-      routeName: `Route B \u2013 Outer Zone`,
-      active: true
-    }
-  ],
-  feePayments: [
-    {
-      id: `payment-1`,
-      receiptNumber: `BMS/2026/0001`,
-      studentId: `student-001`,
-      category: `Tuition Fee`,
-      amount: 1200,
-      paymentDate: `2026-08-05`,
-      method: `UPI`,
-      note: `August fee`
-    },
-    {
-      id: `payment-2`,
-      receiptNumber: `BMS/2026/0002`,
-      studentId: `student-002`,
-      category: `Tuition Fee`,
-      amount: 1500,
-      paymentDate: `2026-08-06`,
-      method: `Cash`,
-      note: `August fee`
-    },
-    {
-      id: `payment-3`,
-      receiptNumber: `BMS/2026/0003`,
-      studentId: `student-004`,
-      category: `Admission Fee`,
-      amount: 5e3,
-      baseAmountReceived: 5e3,
-      paymentDate: `2026-04-02`,
-      method: `UPI`,
-      receivingAccount: `School Main UPI Account`,
-      transactionReference: `UPI-DEMO-0402`,
-      collectedBy: `School Office`,
-      note: `Demo admission payment`,
-      billingPeriod: `One-time \u2022 2026\u201327`,
-      feeStructureId: `sample-9-admission`,
-      obligationKey: `sample-9-admission|student-004|One-time \u2022 2026\u201327`,
-      status: `Posted`
-    },
-    {
-      id: `payment-4`,
-      receiptNumber: `BMS/2026/0004`,
-      studentId: `student-004`,
-      category: `Monthly Tuition Fee`,
-      amount: 2500,
-      baseAmountReceived: 2500,
-      paymentDate: `2026-08-08`,
-      method: `Cash`,
-      collectedBy: `School Office`,
-      note: `Demo August tuition`,
-      billingPeriod: `August 2026`,
-      billingMonth: 8,
-      billingYear: 2026,
-      feeStructureId: `sample-9-tuition`,
-      obligationKey: `sample-9-tuition|student-004|August 2026`,
-      status: `Posted`
-    }
-  ],
-  feeAccounts: [],
-  classFeeCharges: [],
-  studentFeeDues: [],
-  expenses: [],
-  expenseVendors: [],
-  expenseBudgets: [],
-  recurringExpenses: [],
-  exams: [
-    {
-      id: `exam-1`,
-      name: `Unit Test 1`,
-      type: `Unit Test`,
-      className: `6`,
-      startDate: `2026-08-10`,
-      status: `Completed`,
-      subjects: [
-        {
-          name: `English`,
-          maximumMarks: 20,
-          passingMarks: 7
-        },
-        {
-          name: `Mathematics`,
-          maximumMarks: 20,
-          passingMarks: 7
-        },
-        {
-          name: `Science`,
-          maximumMarks: 20,
-          passingMarks: 7
-        }
-      ]
-    }
-  ],
-  marks: [
-    {
-      id: `mark-1`,
-      examId: `exam-1`,
-      studentId: `student-001`,
-      subject: `English`,
-      maximumMarks: 20,
-      obtainedMarks: 16,
-      remark: `Good`
-    },
-    {
-      id: `mark-2`,
-      examId: `exam-1`,
-      studentId: `student-001`,
-      subject: `Mathematics`,
-      maximumMarks: 20,
-      obtainedMarks: 14,
-      remark: `Needs regular practice`
-    },
-    {
-      id: `mark-3`,
-      examId: `exam-1`,
-      studentId: `student-001`,
-      subject: `Science`,
-      maximumMarks: 20,
-      obtainedMarks: 18,
-      remark: `Excellent`
-    }
-  ],
-  homework: [
-    {
-      id: `homework-1`,
-      title: `Fractions practice`,
-      className: `6`,
-      section: `A`,
-      subject: `Mathematics`,
-      assignedDate: `2026-08-27`,
-      dueDate: `2026-08-29`,
-      instructions: `Exercise 4.1, questions 1 to 10. Show all steps.`,
-      status: `Published`
-    },
-    {
-      id: `homework-2`,
-      title: `Food components worksheet`,
-      className: `6`,
-      section: `B`,
-      subject: `Science`,
-      assignedDate: `2026-08-27`,
-      dueDate: `2026-08-30`,
-      instructions: `Complete the worksheet and bring one food-label example.`,
-      status: `Published`
-    }
-  ],
-  notices: [
-    {
-      id: `notice-1`,
-      title: `Parent-Teacher Meeting`,
-      audience: `All parents`,
-      publishDate: `2026-08-27`,
-      content: `PTM will be held on Saturday from 9:00 AM to 12:00 PM.`,
-      priority: `Important`,
-      status: `Published`
-    }
-  ],
-  opportunities: [
-    {
-      id: `opp-1`,
-      title: `National Science Olympiad`,
-      category: `Olympiad`,
-      suitableClasses: `3\u201312`,
-      eligibility: `Students enrolled in a recognised school`,
-      lastDate: `2026-09-20`,
-      applicationMode: `Through school`,
-      fee: `As per official notification`,
-      officialLink: ``,
-      documents: `Student list and school registration`,
-      preparationTips: `Revise class science concepts and practise objective questions.`,
-      level: `National`,
-      status: `Open`,
-      verifiedOn: `2026-08-20`
-    },
-    {
-      id: `opp-2`,
-      title: `District Young Innovator Challenge`,
-      category: `Innovation`,
-      suitableClasses: `6\u201310`,
-      eligibility: `One project team per school`,
-      lastDate: `2026-09-05`,
-      applicationMode: `Offline district submission`,
-      fee: `Free`,
-      officialLink: ``,
-      documents: `Project summary and teacher recommendation`,
-      preparationTips: `Choose a local problem and build a simple working model.`,
-      level: `Local`,
-      status: `Closing Soon`,
-      verifiedOn: `2026-08-22`
-    },
-    {
-      id: `opp-3`,
-      title: `State Drawing Competition`,
-      category: `Drawing`,
-      suitableClasses: `1\u20138`,
-      eligibility: `Open to school students`,
-      lastDate: `2026-10-01`,
-      applicationMode: `Online`,
-      fee: `Free`,
-      officialLink: ``,
-      documents: `Age proof and artwork`,
-      preparationTips: `Follow the official theme and size instructions.`,
-      level: `State`,
-      status: `New`,
-      verifiedOn: `2026-08-25`
-    }
-  ],
-  achievements: [
-    {
-      id: `achievement-1`,
-      studentId: `student-002`,
-      title: `District Science Quiz Winner`,
-      category: `Science`,
-      date: `2026-08-18`,
-      level: `District`,
-      description: `First position in the junior science quiz.`
-    }
-  ],
-  audit: [],
-  nonTeachingStaff: [],
-  vehicles: [],
-  transportPeople: [],
-  transportRoutes: [],
-  vehicleMaintenance: [],
-  infrastructureAssets: []
-};
+var ki = Oi();
 function Ai() {
   try {
     let e2 = window.localStorage.getItem(Di);
@@ -28522,21 +27896,7 @@ function _Component98({
       title: `Settings & Data Safety`,
       subtitle: `Institution profile, backups, user access, data protection, and audit history`
     }
-  ), /* @__PURE__ */ w.createElement(Component1290, { className: `settings-grid` }, /* @__PURE__ */ w.createElement(Component1254, { className: `settings-card` }, /* @__PURE__ */ w.createElement(Component1250, null, /* @__PURE__ */ w.createElement(_Component30, { size: 22 })), /* @__PURE__ */ w.createElement(Component1253, null, /* @__PURE__ */ w.createElement(Component1251, null, `Interface appearance`), /* @__PURE__ */ w.createElement(Component1252, null, `Choose a professional Bright or Dark interface. The preference is saved on this device and applies to sign-in, dashboards, forms, tables, and modules.`), /* @__PURE__ */ w.createElement(_Component40, null))), /* @__PURE__ */ w.createElement(Component1272, { className: `settings-card` }, /* @__PURE__ */ w.createElement(Component1255, null, /* @__PURE__ */ w.createElement(_Component21, { size: 22 })), /* @__PURE__ */ w.createElement(Component1271, null, /* @__PURE__ */ w.createElement(Component1256, null, `Local data ownership`), /* @__PURE__ */ w.createElement(Component1257, null, `Primary institution records stay on this device. Connected services cannot lock local data.`), /* @__PURE__ */ w.createElement(Component1270, null, /* @__PURE__ */ w.createElement(Component1260, null, /* @__PURE__ */ w.createElement(Component1258, null, `Institution`), /* @__PURE__ */ w.createElement(Component1259, null, e2.institution.name)), /* @__PURE__ */ w.createElement(Component1263, null, /* @__PURE__ */ w.createElement(Component1261, null, `Session`), /* @__PURE__ */ w.createElement(Component1262, null, e2.institution.session)), /* @__PURE__ */ w.createElement(Component1266, null, /* @__PURE__ */ w.createElement(Component1264, null, `Student records`), /* @__PURE__ */ w.createElement(Component1265, null, t2.length)), /* @__PURE__ */ w.createElement(Component1269, null, /* @__PURE__ */ w.createElement(Component1267, null, `Database`), /* @__PURE__ */ w.createElement(Component1268, null, a2))))), /* @__PURE__ */ w.createElement(_Component41, { snapshot: e2, students: t2, data: n2 }), /* @__PURE__ */ w.createElement(_Component42, { snapshot: e2, students: t2, data: n2, onRestore: r2 }), /* @__PURE__ */ w.createElement(Component1278, { className: `settings-card wide` }, /* @__PURE__ */ w.createElement(Component1273, null, /* @__PURE__ */ w.createElement(_Component1, { size: 22 })), /* @__PURE__ */ w.createElement(Component1277, null, /* @__PURE__ */ w.createElement(Component1274, null, `Demonstration records`), /* @__PURE__ */ w.createElement(Component1275, null, `All records labelled Sample are editable and individually deletable. When training is complete, remove every sample record in one step without affecting real records.`), /* @__PURE__ */ w.createElement(
-    Component1276,
-    {
-      className: `secondary-button danger`,
-      onClick: () => {
-        if (window.confirm(
-          `Remove all demonstration records? Real records will be preserved, but this action cannot be undone.`
-        )) {
-          i2();
-        }
-      }
-    },
-    /* @__PURE__ */ w.createElement(_Component1, { size: 16 }),
-    `Remove All Sample Records`
-  ))), /* @__PURE__ */ w.createElement(_Component43, { students: t2, teachers: n2.teachers }), /* @__PURE__ */ w.createElement(Component1289, { className: `settings-card wide` }, /* @__PURE__ */ w.createElement(Component1279, null, /* @__PURE__ */ w.createElement(_Component21, { size: 22 })), /* @__PURE__ */ w.createElement(Component1288, null, /* @__PURE__ */ w.createElement(Component1280, null, `Recent audit log`), /* @__PURE__ */ w.createElement(Component1281, null, `Important local changes are recorded for accountability.`), /* @__PURE__ */ w.createElement(Component1287, { className: `audit-list` }, n2.audit.length ? n2.audit.slice(0, 12).map((e3) => /* @__PURE__ */ w.createElement(Component1285, { key: e3.id }, /* @__PURE__ */ w.createElement(Component1282, null, new Date(e3.timestamp).toLocaleString(`en-IN`)), /* @__PURE__ */ w.createElement(Component1283, null, e3.action, ` \u2022 `, e3.entity), /* @__PURE__ */ w.createElement(Component1284, null, e3.detail, ` by `, e3.user))) : /* @__PURE__ */ w.createElement(
+  ), /* @__PURE__ */ w.createElement(Component1290, { className: `settings-grid` }, /* @__PURE__ */ w.createElement(Component1254, { className: `settings-card` }, /* @__PURE__ */ w.createElement(Component1250, null, /* @__PURE__ */ w.createElement(_Component30, { size: 22 })), /* @__PURE__ */ w.createElement(Component1253, null, /* @__PURE__ */ w.createElement(Component1251, null, `Interface appearance`), /* @__PURE__ */ w.createElement(Component1252, null, `Choose a professional Bright or Dark interface. The preference is saved on this device and applies to sign-in, dashboards, forms, tables, and modules.`), /* @__PURE__ */ w.createElement(_Component40, null))), /* @__PURE__ */ w.createElement(Component1272, { className: `settings-card` }, /* @__PURE__ */ w.createElement(Component1255, null, /* @__PURE__ */ w.createElement(_Component21, { size: 22 })), /* @__PURE__ */ w.createElement(Component1271, null, /* @__PURE__ */ w.createElement(Component1256, null, `Local data ownership`), /* @__PURE__ */ w.createElement(Component1257, null, `Primary institution records stay on this device. Connected services cannot lock local data.`), /* @__PURE__ */ w.createElement(Component1270, null, /* @__PURE__ */ w.createElement(Component1260, null, /* @__PURE__ */ w.createElement(Component1258, null, `Institution`), /* @__PURE__ */ w.createElement(Component1259, null, e2.institution.name)), /* @__PURE__ */ w.createElement(Component1263, null, /* @__PURE__ */ w.createElement(Component1261, null, `Session`), /* @__PURE__ */ w.createElement(Component1262, null, e2.institution.session)), /* @__PURE__ */ w.createElement(Component1266, null, /* @__PURE__ */ w.createElement(Component1264, null, `Student records`), /* @__PURE__ */ w.createElement(Component1265, null, t2.length)), /* @__PURE__ */ w.createElement(Component1269, null, /* @__PURE__ */ w.createElement(Component1267, null, `Database`), /* @__PURE__ */ w.createElement(Component1268, null, a2))))), /* @__PURE__ */ w.createElement(_Component41, { snapshot: e2, students: t2, data: n2 }), /* @__PURE__ */ w.createElement(_Component42, { snapshot: e2, students: t2, data: n2, onRestore: r2 }), /* @__PURE__ */ w.createElement(_Component43, { students: t2, teachers: n2.teachers }), /* @__PURE__ */ w.createElement(Component1289, { className: `settings-card wide` }, /* @__PURE__ */ w.createElement(Component1279, null, /* @__PURE__ */ w.createElement(_Component21, { size: 22 })), /* @__PURE__ */ w.createElement(Component1288, null, /* @__PURE__ */ w.createElement(Component1280, null, `Recent audit log`), /* @__PURE__ */ w.createElement(Component1281, null, `Important local changes are recorded for accountability.`), /* @__PURE__ */ w.createElement(Component1287, { className: `audit-list` }, n2.audit.length ? n2.audit.slice(0, 12).map((e3) => /* @__PURE__ */ w.createElement(Component1285, { key: e3.id }, /* @__PURE__ */ w.createElement(Component1282, null, new Date(e3.timestamp).toLocaleString(`en-IN`)), /* @__PURE__ */ w.createElement(Component1283, null, e3.action, ` \u2022 `, e3.entity), /* @__PURE__ */ w.createElement(Component1284, null, e3.detail, ` by `, e3.user))) : /* @__PURE__ */ w.createElement(
     Component1286,
     {
       className: `muted-copy`
@@ -38658,34 +38018,6 @@ function Ds() {
       let l3 = s3.snapshot || e2;
       let u3 = s3.students || n2;
       let d3 = c3 || i2;
-      let f3 = !window.localStorage.getItem(ms);
-      let m3 = gs(u3, d3) || _s(u3, d3);
-      if (f3 && m3) {
-        let e3 = vs(u3, d3, l3.institution.session);
-        let n3 = {
-          ...l3,
-          institution: {
-            ...hs(l3.institution),
-            students: e3.students.length,
-            teachers: e3.operations.teachers.length
-          }
-        };
-        t2(n3);
-        r2(e3.students);
-        a2(e3.operations);
-        Tn(n3);
-        On(e3.students);
-        ji(e3.operations);
-        window.localStorage.setItem(ms, `loaded`);
-        p2(
-          `Ten linked student demonstrations and editable sample records were prepared across every operational module.`
-        );
-        window.setTimeout(() => p2(``), 6500);
-        return;
-      }
-      if (f3) {
-        window.localStorage.setItem(ms, `skipped-existing-live-data`);
-      }
       t2(l3);
       r2(u3);
       a2(d3);
@@ -39623,23 +38955,6 @@ function Fs({ children: e2 }) {
       u2(false);
     }
   };
-  let Ge2 = async () => {
-    u2(true);
-    try {
-      Tn(yn);
-      On(En);
-      ji(ki);
-      await Promise.all([
-        Ot(`snapshot`, yn),
-        Ot(`students`, En),
-        Ot(`operations`, ki)
-      ]);
-      Zt();
-      i2(true);
-    } finally {
-      u2(false);
-    }
-  };
   let Ke2 = async (e3) => {
     e3.preventDefault();
     f2(``);
@@ -39981,7 +39296,7 @@ function Fs({ children: e2 }) {
       className: `auth-eyebrow`
     },
     `Welcome to Bright Nexa`
-  ), /* @__PURE__ */ w.createElement(Component2189, null, `Start your institution workspace`), /* @__PURE__ */ w.createElement(Component2190, null, `Create a school or coaching-centre workspace with clearly labelled, fully editable sample records that explain every major module.`), /* @__PURE__ */ w.createElement(
+  ), /* @__PURE__ */ w.createElement(Component2189, null, `Start your institution workspace`), /* @__PURE__ */ w.createElement(Component2190, null, `Create your real school workspace with no preloaded classes, students, staff, or fees.`), /* @__PURE__ */ w.createElement(
     Component2191,
     {
       className: `primary-button auth-primary`,
@@ -39990,14 +39305,7 @@ function Fs({ children: e2 }) {
     `Set up my institution `,
     /* @__PURE__ */ w.createElement(_Component102, { size: 18 })
   ), /* @__PURE__ */ w.createElement(
-    Component2192,
-    {
-      className: `secondary-button auth-secondary`,
-      disabled: l2,
-      onClick: Ge2
-    },
-    `Open demo school`
-  ), /* @__PURE__ */ w.createElement(
+    "a",  ), /* @__PURE__ */ w.createElement(
     "a",
     {
       className: "secondary-button auth-secondary",
@@ -40005,7 +39313,7 @@ function Fs({ children: e2 }) {
       style: { display: "flex", justifyContent: "center", textDecoration: "none", marginTop: "10px" }
     },
     "Log in to existing school"
-  ), /* @__PURE__ */ w.createElement(Component2193, null, `Starter records contain no real personal data. Edit or delete every record labelled \u201CSample\u201D before live use.`)) : a2 === `setup` ? /* @__PURE__ */ w.createElement(Component2289, { className: `auth-card auth-setup-card` }, /* @__PURE__ */ w.createElement(
+  )) : a2 === `setup` ? /* @__PURE__ */ w.createElement(Component2289, { className: `auth-card auth-setup-card` }, /* @__PURE__ */ w.createElement(
     Component2195,
     {
       className: `auth-eyebrow`

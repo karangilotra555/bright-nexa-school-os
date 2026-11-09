@@ -7,8 +7,8 @@ const {roleDestination,preferredView}=require('../school-role-entry.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
 test('verified single-school admin enters existing full ERP by default',()=>{
- assert.equal(roleDestination({role:'school_admin',verified:true,membershipCount:1,search:''}),'./index.html?openSchool=true');
- assert.equal(roleDestination({role:'school_admin',verified:true,membershipCount:1,search:'?school=abc'}),'./index.html?openSchool=true');
+ assert.equal(roleDestination({role:'school_admin',verified:true,membershipCount:1,search:''}),'./index.html?openSchool=true&tab=Dashboard');
+ assert.equal(roleDestination({role:'school_admin',verified:true,membershipCount:1,search:'?school=abc'}),'./index.html?openSchool=true&tab=Dashboard');
 });
 test('unverified identity, absent membership and multiple-school choice never skip staff selector',()=>{
  for(const x of [
@@ -30,7 +30,7 @@ test('librarian with verified membership reaches library; explicit account link 
  assert.equal(roleDestination({role:'librarian',verified:true,membershipCount:1,search:'?view=account'}),null);
 });
 test('all seven real school roles have appropriate landing views',()=>{
- const expected={school_admin:'classes',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'};
+ const expected={school_admin:'dashboard',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'};
  for(const [role,view] of Object.entries(expected))assert.equal(preferredView(role),view);
  assert.equal(preferredView('fabricated-role'),'account');
 });
@@ -62,4 +62,18 @@ test('index does not auto open full ERP just because any role has a staff token'
  }
  assert.match(read('parents-download-menu.js'),/teacher-access\.html\?staffPortal=1/);
  assert.equal(read('parents-download-menu.js'),read('docs/parents-download-menu.js'));
+});
+
+test('empty-school re-registration is gated by a verified login and opens the dashboard',()=>{
+ const js=read('teacher-access.js'),html=read('teacher-access.html');
+ assert.match(html,/id="createFirstSchoolPanel" class="hidden"/);
+ assert.match(html,/id="createFirstSchoolForm"/);
+ assert.match(html,/data-tab="dashboard"/);
+ assert.match(html,/data-view="dashboard"/);
+ assert.match(js,/if\(!active\.length\)\{/);
+ assert.match(js,/display\('createFirstSchoolPanel',true\)/);
+ assert.match(js,/await api\('rpc\/register_first_school'/);
+ assert.match(js,/await load\(String\(schoolId\)\)/);
+ assert.match(js,/const allowedViews=\['dashboard'/);
+ assert.match(read('school-role-entry.js'),/school_admin:'dashboard'/);
 });

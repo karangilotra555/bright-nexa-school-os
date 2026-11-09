@@ -22,14 +22,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Button;
 import android.widget.Toast;
-import java.io.InputStream;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity {
     private static final String STORAGE = "bn_parents_settings";
     private static final String KEY_URL = "school_url";
-    private static final String PREVIEW_BASE = "https://appassets.androidplatform.net/";
     private static final int FILE_REQUEST = 407;
     private ValueCallback<Uri[]> fileCallback;
     private WebView web;
@@ -148,17 +145,6 @@ public final class MainActivity extends Activity {
 
     private URI parse(String input) {
         try { return new URI(input); } catch (Exception ex) { return null; }
-    }
-    private void openPreview() {
-        liveHost = "";
-        status.setVisibility(View.GONE);
-        status.setText("DEMO MODE • Fictional student data • Not synced");
-        try (InputStream in = getAssets().open("demo.html")) {
-            byte[] bytes = in.readAllBytes();
-            web.loadDataWithBaseURL(PREVIEW_BASE, new String(bytes, StandardCharsets.UTF_8), "text/html", "UTF-8", null);
-        } catch(Exception ex) {
-            Toast.makeText(this, "Unable to open preview", Toast.LENGTH_LONG).show();
-        }
     }
     private void openSchool(String hostUrl) {
         String url = hostUrl.trim();

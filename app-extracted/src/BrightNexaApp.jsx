@@ -19178,17 +19178,6 @@ function Xt(e) {
     }),
   );
 }
-function Zt() {
-  sessionStorage.setItem(
-    It,
-    JSON.stringify({
-      accountId: `demo-owner`,
-      name: `Rajesh Sharma`,
-      role: `OWNER`,
-      demo: true,
-    }),
-  );
-}
 function Qt() {
   try {
     let e = sessionStorage.getItem(It);
@@ -19375,32 +19364,12 @@ function gn(e) {
 var _n = `bright-nexa-school-os:snapshot:v1`;
 var vn = `bright-nexa-school-os:students:v1`;
 var yn = {
-  language: `en`,
-  role: `OWNER`,
-  connectivity: `online`,
-  institution: {
-    id: `demo-school`,
-    name: `Bright Nexa Model School`,
-    city: `Sikar`,
-    session: `2026–27`,
-    students: 486,
-    teachers: 28,
-    attendancePercent: 91.4,
-    feeCollected: 428500,
-    feePending: 73400,
-    qualityScore: 72,
-    institutionType: `School`,
-    address: `Station Road`,
-    state: `Rajasthan`,
-    pinCode: `332001`,
-    contactNumber: `9876500000`,
-    email: `office@brightnexa.example`,
-    boardType: `Central Board of Secondary Education (CBSE)`,
-    schoolLevel: `Secondary`,
-    medium: `Bilingual`,
-    directorName: `Rajesh Sharma`,
-    principalName: `Dr. Kavita Joshi`,
-  },
+  language: `en`, role: `OWNER`, connectivity: `online`,
+  institution: { id: ``, name: ``, city: ``, session: ``, students: 0, teachers: 0,
+    attendancePercent: 0, feeCollected: 0, feePending: 0, qualityScore: 0,
+    institutionType: `School`, address: ``, state: ``, pinCode: ``, contactNumber: ``,
+    email: ``, boardType: ``, schoolLevel: `Secondary`, medium: `English`,
+    directorName: ``, principalName: `` },
   services: [
     {
       id: `ai`,
@@ -19572,107 +19541,7 @@ function Tn(e) {
   } catch(e) { bnReportBrowserSaveError('School profile',e); }
   Ot(`snapshot`, t).catch(e => bnReportBrowserSaveError('School profile local cache',e));
 }
-var En = [
-  {
-    id: `student-001`,
-    admissionNumber: `BMS-2026-001`,
-    rollNumber: `06`,
-    name: `Aarav Sharma`,
-    className: `6`,
-    section: `A`,
-    dateOfBirth: `2014-03-12`,
-    gender: `Male`,
-    fatherName: `Vikas Sharma`,
-    motherName: `Neha Sharma`,
-    guardianName: ``,
-    parentMobile: `9876543210`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    admissionDate: `2026-04-01`,
-    status: `Active`,
-    createdAt: `2026-04-01T08:00:00.000Z`,
-  },
-  {
-    id: `student-002`,
-    admissionNumber: `BMS-2026-002`,
-    rollNumber: `11`,
-    name: `Meera Kumari`,
-    className: `8`,
-    section: `A`,
-    dateOfBirth: `2012-08-21`,
-    gender: `Female`,
-    fatherName: `Ramesh Kumar`,
-    motherName: `Sunita Devi`,
-    guardianName: ``,
-    parentMobile: `9829012345`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    admissionDate: `2025-04-03`,
-    status: `Active`,
-    createdAt: `2025-04-03T08:00:00.000Z`,
-  },
-  {
-    id: `student-003`,
-    admissionNumber: `BMS-2026-003`,
-    rollNumber: `19`,
-    name: `Kabir Singh`,
-    className: `7`,
-    section: `B`,
-    dateOfBirth: `2013-11-02`,
-    gender: `Male`,
-    fatherName: `Manoj Singh`,
-    motherName: `Poonam Singh`,
-    guardianName: ``,
-    parentMobile: `9414011122`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    admissionDate: `2024-04-05`,
-    status: `Active`,
-    createdAt: `2024-04-05T08:00:00.000Z`,
-  },
-  {
-    id: `student-004`,
-    studentUniqueId: `BAI-STU-2026-N9A014`,
-    admissionNumber: `BMS-2026-0091`,
-    rollNumber: `14`,
-    name: `Ananya Mehta`,
-    className: `9`,
-    section: `A`,
-    dateOfBirth: `2011-06-18`,
-    gender: `Female`,
-    fatherName: `Sandeep Mehta`,
-    motherName: `Ritu Mehta`,
-    guardianName: ``,
-    parentMobile: `9876500191`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    transport: `Route A – City Centre`,
-    admissionDate: `2026-04-02`,
-    status: `Active`,
-    createdAt: `2026-04-02T08:00:00.000Z`,
-  },
-  {
-    id: `student-005`,
-    studentUniqueId: `BAI-STU-2026-N9B021`,
-    admissionNumber: `BMS-2026-0092`,
-    rollNumber: `21`,
-    name: `Arjun Rathore`,
-    className: `9`,
-    section: `B`,
-    dateOfBirth: `2011-09-04`,
-    gender: `Male`,
-    fatherName: `Mahesh Rathore`,
-    motherName: `Kavita Rathore`,
-    guardianName: ``,
-    parentMobile: `9876500192`,
-    alternateMobile: ``,
-    address: `Sikar, Rajasthan`,
-    transport: `Route B – Outer Zone`,
-    admissionDate: `2026-04-03`,
-    status: `Active`,
-    createdAt: `2026-04-03T08:00:00.000Z`,
-  },
-];
+var En = [];
 function Dn() {
   try {
     let e = window.localStorage.getItem(vn);
@@ -23097,29 +22966,6 @@ function Pr({ data: e, institution: t, onUpdate: n }) {
         }
         action={
           <P.Fragment>
-            <Component322
-              className={`secondary-button`}
-              onClick={() => {
-                let r = zr(t.session);
-                let i = new Set(e.classes.map(Lr));
-                let a = r.filter((e) => !i.has(Lr(e)));
-                if (!a.length) {
-                  window.alert(
-                    `The sample academic setup is already available.`,
-                  );
-                  return;
-                }
-                n(
-                  {
-                    ...e,
-                    classes: [...e.classes, ...a],
-                  },
-                  `CREATE`,
-                  `Academic setup`,
-                  `${a.length} sample class and stream records`,
-                );
-              }}
-            >{`Load Sample Academic Setup`}</Component322>
             <Component323 className={`primary-button`} onClick={() => i(true)}>
               <_Component2 size={18} />
               {s ? `Add Batch` : `Add Class & Section`}
@@ -23129,7 +22975,7 @@ function Pr({ data: e, institution: t, onUpdate: n }) {
       />
       <Component325 className={`inline-message academic-setup-help`}>
         <Component324>{`How this setup works:`}</Component324>
-        {` Attendance, student placement, fee applicability, exams, and reports use these master records. The sample setup is editable and can be deleted after you understand the format.`}
+        {` Attendance, student placement, fee applicability, exams, and reports use these master records. Create each class yourself; data is saved only for the authenticated school.`}
       </Component325>
       {e.classes.length ? (
         <Component347 className={`class-card-grid`}>
@@ -23224,7 +23070,7 @@ function Pr({ data: e, institution: t, onUpdate: n }) {
         <Component350 className={`empty-state`}>
           <_Component14 size={30} />
           <Component348>{`No academic groups configured`}</Component348>
-          <Component349>{`Add a record or load the editable sample setup.`}</Component349>
+          <Component349>{`Add your first class or section.`}</Component349>
         </Component350>
       )}
       {r && (
@@ -24644,7 +24490,7 @@ function Ur({
           text={
             n
               ? `No students are assigned to ${ni(n)}.`
-              : `Create a class or load the sample academic setup first.`
+              : `Create a class and section first.`
           }
         />
       )}
@@ -25980,12 +25826,6 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
             text={`Select a class and enter every charge the school collects. Changes automatically appear in every matching student's unpaid fee profile.`}
             action={
               <Component554 className={`record-actions`}>
-                {!i && (
-                  <Component552 className={`secondary-button`} onClick={xe}>
-                    <_Component21 size={16} />
-                    {`Load Sample Class 9 Plan`}
-                  </Component552>
-                )}
                 <Component553
                   className={`primary-button`}
                   onClick={() => {
@@ -26090,7 +25930,7 @@ function _Component93({ data: e, students: t, institution: n, onUpdate: r }) {
           ) : (
             <_Component23
               title={`No fee plan for ${i ? `this programme` : `Class ${u}`}`}
-              text={`Add the first fee head, or load the editable sample plan to understand the recommended format.`}
+              text={`Add the first fee head for your real school.`}
             />
           )}
         </Component578>
@@ -27448,476 +27288,7 @@ function Oi() {
     infrastructureAssets: [],
   };
 }
-var ki = {
-  teachers: [
-    {
-      id: `teacher-1`,
-      employeeCode: `T-001`,
-      name: `Anita Sharma`,
-      mobile: `9876500101`,
-      email: `anita@example.test`,
-      qualification: `M.Sc., B.Ed.`,
-      subjects: [`Science`],
-      assignedClasses: [`6-A`, `7-A`],
-      joiningDate: `2021-07-01`,
-      status: `Active`,
-    },
-    {
-      id: `teacher-2`,
-      employeeCode: `T-002`,
-      name: `Ravi Kumar`,
-      mobile: `9876500102`,
-      email: `ravi@example.test`,
-      qualification: `M.A., B.Ed.`,
-      subjects: [`English`],
-      assignedClasses: [`6-B`, `8-A`],
-      joiningDate: `2022-04-04`,
-      status: `Active`,
-    },
-    {
-      id: `teacher-3`,
-      employeeCode: `T-003`,
-      name: `Pooja Verma`,
-      mobile: `9876500103`,
-      email: `pooja@example.test`,
-      qualification: `M.Sc., B.Ed.`,
-      subjects: [`Mathematics`],
-      assignedClasses: [`7-B`, `8-A`],
-      joiningDate: `2020-08-10`,
-      status: `Active`,
-    },
-  ],
-  classes: [
-    {
-      id: `class-6a`,
-      name: `6`,
-      section: `A`,
-      room: `201`,
-      classTeacherId: `teacher-1`,
-      subjects: [
-        `Hindi`,
-        `English`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`,
-      ],
-      status: `Active`,
-    },
-    {
-      id: `class-6b`,
-      name: `6`,
-      section: `B`,
-      room: `202`,
-      classTeacherId: `teacher-2`,
-      subjects: [
-        `Hindi`,
-        `English`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`,
-      ],
-      status: `Active`,
-    },
-    {
-      id: `class-7b`,
-      name: `7`,
-      section: `B`,
-      room: `204`,
-      classTeacherId: `teacher-3`,
-      subjects: [
-        `Hindi`,
-        `English`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`,
-      ],
-      status: `Active`,
-    },
-    {
-      id: `class-8a`,
-      name: `8`,
-      section: `A`,
-      room: `205`,
-      classTeacherId: `teacher-2`,
-      subjects: [
-        `Hindi`,
-        `English`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`,
-      ],
-      status: `Active`,
-    },
-    {
-      id: `class-9a`,
-      name: `9`,
-      section: `A`,
-      room: `301`,
-      classTeacherId: `teacher-1`,
-      subjects: [
-        `English`,
-        `Hindi`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`,
-        `Information Technology`,
-      ],
-      status: `Active`,
-    },
-    {
-      id: `class-9b`,
-      name: `9`,
-      section: `B`,
-      room: `302`,
-      classTeacherId: `teacher-3`,
-      subjects: [
-        `English`,
-        `Hindi`,
-        `Mathematics`,
-        `Science`,
-        `Social Science`,
-        `Information Technology`,
-      ],
-      status: `Active`,
-    },
-  ],
-  attendance: [],
-  staffAttendance: [],
-  holidays: [],
-  feeStructures: [
-    {
-      id: `fee-1`,
-      className: `6`,
-      category: `Tuition Fee`,
-      amount: 1200,
-      frequency: `Monthly`,
-      dueDay: 10,
-    },
-    {
-      id: `fee-2`,
-      className: `7`,
-      category: `Tuition Fee`,
-      amount: 1350,
-      frequency: `Monthly`,
-      dueDay: 10,
-    },
-    {
-      id: `fee-3`,
-      className: `8`,
-      category: `Tuition Fee`,
-      amount: 1500,
-      frequency: `Monthly`,
-      dueDay: 10,
-    },
-    {
-      id: `sample-9-admission`,
-      className: `9`,
-      category: `Admission Fee`,
-      amount: 5000,
-      frequency: `One time`,
-      dueDay: 10,
-      academicSession: `2026–27`,
-      active: true,
-    },
-    {
-      id: `sample-9-security`,
-      className: `9`,
-      category: `Refundable Security Deposit`,
-      amount: 3000,
-      frequency: `One time`,
-      dueDay: 10,
-      academicSession: `2026–27`,
-      refundable: true,
-      active: true,
-    },
-    {
-      id: `sample-9-tuition`,
-      className: `9`,
-      category: `Monthly Tuition Fee`,
-      amount: 2500,
-      frequency: `Monthly`,
-      dueDay: 10,
-      academicSession: `2026–27`,
-      active: true,
-    },
-    {
-      id: `sample-9-computer`,
-      className: `9`,
-      category: `Computer and Technology Fee`,
-      amount: 500,
-      frequency: `Monthly`,
-      dueDay: 10,
-      academicSession: `2026–27`,
-      active: true,
-    },
-    {
-      id: `sample-9-annual`,
-      className: `9`,
-      category: `Annual Institutional Charges`,
-      amount: 2500,
-      frequency: `Annual`,
-      dueDay: 15,
-      academicSession: `2026–27`,
-      active: true,
-    },
-    {
-      id: `sample-9-exam`,
-      className: `9`,
-      category: `Examination Fee`,
-      amount: 1200,
-      frequency: `Term-wise`,
-      dueDay: 15,
-      academicSession: `2026–27`,
-      active: true,
-    },
-    {
-      id: `sample-9-route-a`,
-      className: `9`,
-      category: `Transportation Fee`,
-      amount: 1200,
-      frequency: `Monthly`,
-      dueDay: 10,
-      academicSession: `2026–27`,
-      routeName: `Route A – City Centre`,
-      active: true,
-    },
-    {
-      id: `sample-9-route-b`,
-      className: `9`,
-      category: `Transportation Fee`,
-      amount: 1600,
-      frequency: `Monthly`,
-      dueDay: 10,
-      academicSession: `2026–27`,
-      routeName: `Route B – Outer Zone`,
-      active: true,
-    },
-  ],
-  feePayments: [
-    {
-      id: `payment-1`,
-      receiptNumber: `BMS/2026/0001`,
-      studentId: `student-001`,
-      category: `Tuition Fee`,
-      amount: 1200,
-      paymentDate: `2026-08-05`,
-      method: `UPI`,
-      note: `August fee`,
-    },
-    {
-      id: `payment-2`,
-      receiptNumber: `BMS/2026/0002`,
-      studentId: `student-002`,
-      category: `Tuition Fee`,
-      amount: 1500,
-      paymentDate: `2026-08-06`,
-      method: `Cash`,
-      note: `August fee`,
-    },
-    {
-      id: `payment-3`,
-      receiptNumber: `BMS/2026/0003`,
-      studentId: `student-004`,
-      category: `Admission Fee`,
-      amount: 5000,
-      baseAmountReceived: 5000,
-      paymentDate: `2026-04-02`,
-      method: `UPI`,
-      receivingAccount: `School Main UPI Account`,
-      transactionReference: `UPI-DEMO-0402`,
-      collectedBy: `School Office`,
-      note: `Demo admission payment`,
-      billingPeriod: `One-time • 2026–27`,
-      feeStructureId: `sample-9-admission`,
-      obligationKey: `sample-9-admission|student-004|One-time • 2026–27`,
-      status: `Posted`,
-    },
-    {
-      id: `payment-4`,
-      receiptNumber: `BMS/2026/0004`,
-      studentId: `student-004`,
-      category: `Monthly Tuition Fee`,
-      amount: 2500,
-      baseAmountReceived: 2500,
-      paymentDate: `2026-08-08`,
-      method: `Cash`,
-      collectedBy: `School Office`,
-      note: `Demo August tuition`,
-      billingPeriod: `August 2026`,
-      billingMonth: 8,
-      billingYear: 2026,
-      feeStructureId: `sample-9-tuition`,
-      obligationKey: `sample-9-tuition|student-004|August 2026`,
-      status: `Posted`,
-    },
-  ],
-  feeAccounts: [],
-  classFeeCharges: [],
-  studentFeeDues: [],
-  expenses: [],
-  expenseVendors: [],
-  expenseBudgets: [],
-  recurringExpenses: [],
-  exams: [
-    {
-      id: `exam-1`,
-      name: `Unit Test 1`,
-      type: `Unit Test`,
-      className: `6`,
-      startDate: `2026-08-10`,
-      status: `Completed`,
-      subjects: [
-        {
-          name: `English`,
-          maximumMarks: 20,
-          passingMarks: 7,
-        },
-        {
-          name: `Mathematics`,
-          maximumMarks: 20,
-          passingMarks: 7,
-        },
-        {
-          name: `Science`,
-          maximumMarks: 20,
-          passingMarks: 7,
-        },
-      ],
-    },
-  ],
-  marks: [
-    {
-      id: `mark-1`,
-      examId: `exam-1`,
-      studentId: `student-001`,
-      subject: `English`,
-      maximumMarks: 20,
-      obtainedMarks: 16,
-      remark: `Good`,
-    },
-    {
-      id: `mark-2`,
-      examId: `exam-1`,
-      studentId: `student-001`,
-      subject: `Mathematics`,
-      maximumMarks: 20,
-      obtainedMarks: 14,
-      remark: `Needs regular practice`,
-    },
-    {
-      id: `mark-3`,
-      examId: `exam-1`,
-      studentId: `student-001`,
-      subject: `Science`,
-      maximumMarks: 20,
-      obtainedMarks: 18,
-      remark: `Excellent`,
-    },
-  ],
-  homework: [
-    {
-      id: `homework-1`,
-      title: `Fractions practice`,
-      className: `6`,
-      section: `A`,
-      subject: `Mathematics`,
-      assignedDate: `2026-08-27`,
-      dueDate: `2026-08-29`,
-      instructions: `Exercise 4.1, questions 1 to 10. Show all steps.`,
-      status: `Published`,
-    },
-    {
-      id: `homework-2`,
-      title: `Food components worksheet`,
-      className: `6`,
-      section: `B`,
-      subject: `Science`,
-      assignedDate: `2026-08-27`,
-      dueDate: `2026-08-30`,
-      instructions: `Complete the worksheet and bring one food-label example.`,
-      status: `Published`,
-    },
-  ],
-  notices: [
-    {
-      id: `notice-1`,
-      title: `Parent-Teacher Meeting`,
-      audience: `All parents`,
-      publishDate: `2026-08-27`,
-      content: `PTM will be held on Saturday from 9:00 AM to 12:00 PM.`,
-      priority: `Important`,
-      status: `Published`,
-    },
-  ],
-  opportunities: [
-    {
-      id: `opp-1`,
-      title: `National Science Olympiad`,
-      category: `Olympiad`,
-      suitableClasses: `3–12`,
-      eligibility: `Students enrolled in a recognised school`,
-      lastDate: `2026-09-20`,
-      applicationMode: `Through school`,
-      fee: `As per official notification`,
-      officialLink: ``,
-      documents: `Student list and school registration`,
-      preparationTips: `Revise class science concepts and practise objective questions.`,
-      level: `National`,
-      status: `Open`,
-      verifiedOn: `2026-08-20`,
-    },
-    {
-      id: `opp-2`,
-      title: `District Young Innovator Challenge`,
-      category: `Innovation`,
-      suitableClasses: `6–10`,
-      eligibility: `One project team per school`,
-      lastDate: `2026-09-05`,
-      applicationMode: `Offline district submission`,
-      fee: `Free`,
-      officialLink: ``,
-      documents: `Project summary and teacher recommendation`,
-      preparationTips: `Choose a local problem and build a simple working model.`,
-      level: `Local`,
-      status: `Closing Soon`,
-      verifiedOn: `2026-08-22`,
-    },
-    {
-      id: `opp-3`,
-      title: `State Drawing Competition`,
-      category: `Drawing`,
-      suitableClasses: `1–8`,
-      eligibility: `Open to school students`,
-      lastDate: `2026-10-01`,
-      applicationMode: `Online`,
-      fee: `Free`,
-      officialLink: ``,
-      documents: `Age proof and artwork`,
-      preparationTips: `Follow the official theme and size instructions.`,
-      level: `State`,
-      status: `New`,
-      verifiedOn: `2026-08-25`,
-    },
-  ],
-  achievements: [
-    {
-      id: `achievement-1`,
-      studentId: `student-002`,
-      title: `District Science Quiz Winner`,
-      category: `Science`,
-      date: `2026-08-18`,
-      level: `District`,
-      description: `First position in the junior science quiz.`,
-    },
-  ],
-  audit: [],
-  nonTeachingStaff: [],
-  vehicles: [],
-  transportPeople: [],
-  transportRoutes: [],
-  vehicleMaintenance: [],
-  infrastructureAssets: [],
-};
+var ki = Oi();
 function Ai() {
   try {
     let e = window.localStorage.getItem(Di);
@@ -31838,30 +31209,6 @@ function _Component98({
         </Component1272>
         <_Component41 snapshot={e} students={t} data={n} />
         <_Component42 snapshot={e} students={t} data={n} onRestore={r} />
-        <Component1278 className={`settings-card wide`}>
-          <Component1273>
-            <_Component1 size={22} />
-          </Component1273>
-          <Component1277>
-            <Component1274>{`Demonstration records`}</Component1274>
-            <Component1275>{`All records labelled Sample are editable and individually deletable. When training is complete, remove every sample record in one step without affecting real records.`}</Component1275>
-            <Component1276
-              className={`secondary-button danger`}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Remove all demonstration records? Real records will be preserved, but this action cannot be undone.`,
-                  )
-                ) {
-                  i();
-                }
-              }}
-            >
-              <_Component1 size={16} />
-              {`Remove All Sample Records`}
-            </Component1276>
-          </Component1277>
-        </Component1278>
         <_Component43 students={t} teachers={n.teachers} />
         <Component1289 className={`settings-card wide`}>
           <Component1279>
@@ -43390,34 +42737,6 @@ function Ds() {
       let l = s.snapshot || e;
       let u = s.students || n;
       let d = c || i;
-      let f = !window.localStorage.getItem(ms);
-      let m = gs(u, d) || _s(u, d);
-      if (f && m) {
-        let e = vs(u, d, l.institution.session);
-        let n = {
-          ...l,
-          institution: {
-            ...hs(l.institution),
-            students: e.students.length,
-            teachers: e.operations.teachers.length,
-          },
-        };
-        t(n);
-        r(e.students);
-        a(e.operations);
-        Tn(n);
-        On(e.students);
-        ji(e.operations);
-        window.localStorage.setItem(ms, `loaded`);
-        p(
-          `Ten linked student demonstrations and editable sample records were prepared across every operational module.`,
-        );
-        window.setTimeout(() => p(``), 6500);
-        return;
-      }
-      if (f) {
-        window.localStorage.setItem(ms, `skipped-existing-live-data`);
-      }
       t(l);
       r(u);
       a(d);
@@ -44631,23 +43950,6 @@ function Fs({ children: e }) {
       u(false);
     }
   };
-  let Ge = async () => {
-    u(true);
-    try {
-      Tn(yn);
-      On(En);
-      ji(ki);
-      await Promise.all([
-        Ot(`snapshot`, yn),
-        Ot(`students`, En),
-        Ot(`operations`, ki),
-      ]);
-      Zt();
-      i(true);
-    } finally {
-      u(false);
-    }
-  };
   let Ke = async (e) => {
     e.preventDefault();
     f(``);
@@ -45031,7 +44333,7 @@ function Fs({ children: e }) {
               className={`auth-eyebrow`}
             >{`Welcome to Bright Nexa`}</Component2188>
             <Component2189>{`Start your institution workspace`}</Component2189>
-            <Component2190>{`Create a school or coaching-centre workspace with clearly labelled, fully editable sample records that explain every major module.`}</Component2190>
+            <Component2190>{`Create your real school workspace with no preloaded classes, students, staff, or fees.`}</Component2190>
             <Component2191
               className={`primary-button auth-primary`}
               onClick={() => o(`setup`)}
@@ -45039,17 +44341,11 @@ function Fs({ children: e }) {
               {`Set up my institution `}
               <_Component102 size={18} />
             </Component2191>
-            <Component2192
-              className={`secondary-button auth-secondary`}
-              disabled={l}
-              onClick={Ge}
-            >{`Open demo school`}</Component2192>
             <a
               className="secondary-button auth-secondary"
               href="./teacher-access.html"
               style={{display:'flex',justifyContent:'center',textDecoration:'none',marginTop:'10px'}}
             >Log in to existing school</a>
-            <Component2193>{`Starter records contain no real personal data. Edit or delete every record labelled “Sample” before live use.`}</Component2193>
           </Component2194>
         ) : a === `setup` ? (
           <Component2289 className={`auth-card auth-setup-card`}>
