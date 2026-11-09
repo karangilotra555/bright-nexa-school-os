@@ -133,6 +133,30 @@
     store.setItem(CHOSEN_KEY,school.id);
     return {schoolId:school.id,name:school.name,revision:workspace.revision};
   }
+  async function clearImportedDeviceDraft(verified){
+    const pending=parse(window.localStorage.getItem('bn_school_import_pending_clear_v1'));
+    if(!pending||pending.schoolId!==verified?.schoolId)return;
+    if(!Number.isSafeInteger(pending.revision)||verified.revision<pending.revision)
+      throw Error('Supabase has not confirmed the local-school import revision. Device data was retained.');
+    if(window.indexedDB){
+      await new Promise((resolve,reject)=>{
+        const request=window.indexedDB.deleteDatabase('bright-nexa-school-os');
+        request.onsuccess=resolve;
+        request.onerror=()=>reject(Error('Cloud import was saved, but device cleanup failed. Please reload.'));
+        request.onblocked=()=>reject(Error('Cloud import was saved. Close other School OS tabs so old local records can be cleared safely, then reload.'));
+      });
+    }
+    for(const key of [
+      'bright-nexa-school-os:snapshot:v1','bright-nexa-school-os:students:v1',
+      'bright-nexa-school-os:operations:v1','bright-nexa-school-os:accounts:v1',
+      'bright-nexa-school-os:auth-profile:v1','bright-nexa-school-os:recovery-attempts:v1']){
+      window.localStorage.removeItem(key);
+    }
+    for(const key of Object.keys(window.localStorage)){
+      if(key.startsWith('bright-nexa-school-os:cloud:v1:'))window.localStorage.removeItem(key);
+    }
+    window.localStorage.removeItem('bn_school_import_pending_clear_v1');
+  }
   async function start(){
     const store=window.sessionStorage,staff=parse(store.getItem(STAFF_KEY));
     const erp=parse(store.getItem(ERP_KEY));
@@ -145,7 +169,8 @@
     if(hosted||cloudEntryRequired({search,staffSession:staff,erpSession:erp})){
       showStatus('Verifying School Admin and opening your existing school…');
       try{
-        await verify({store});
+        const verified=await verify({store});
+        await clearImportedDeviceDraft(verified);
         window.BNWorkspaceOnlineGuard?.update('loading');
         const url=new URL(window.location.href);
         if(!url.searchParams.has('tab'))url.searchParams.set('openSchool','true');
