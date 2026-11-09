@@ -212,7 +212,7 @@ test('TDD RED: cache reset version changes with the AI client while keeping exis
  for(const dir of ['','docs/','app-extracted/dist/']){
   const html=fs.readFileSync(dir+'index.html','utf8');
   assert.match(html,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
-  assert.match(html,/school-erp-entry\.js\?v=20261109-signout-v6/);
+  assert.match(html,/school-erp-entry\.js\?v=20261109-school-login-v5/);
   assert.match(html,/CACHE_VERSION = '20261109-signout-v6'/);
   const sw=fs.readFileSync(dir+'sw.js','utf8');
   assert.match(sw,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
