@@ -809,6 +809,26 @@
       notify('Authorized school selected. Records were refreshed from Supabase.');
     }finally{picker.disabled=false;}
   }));
+  $('showOwnerSignup').addEventListener('click',()=>{
+    const form=$('ownerSignupForm');const open=form.classList.contains('hidden');
+    display('ownerSignupForm',open);if(open)$('ownerSignupEmail').focus();
+  });
+  $('ownerSignupForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
+    const button=$('ownerSignupSubmit');if(button.disabled)return;
+    const email=$('ownerSignupEmail').value.trim().toLowerCase(),password=$('ownerSignupPassword').value;
+    if(!email||password.length<12)throw Error('Enter a valid email and password with at least 12 characters.');
+    button.disabled=true;
+    try{
+      const res=await authRequest('signup',{email,password});
+      $('ownerSignupPassword').value='';
+      if(res.access_token&&res.refresh_token){
+        saveSession(res);display('ownerSignupForm',false);await load();
+      }else{
+        display('ownerSignupForm',false);
+        notify('Registration requested. Verify your email, then sign in to create a new empty school.');
+      }
+    }finally{button.disabled=false;}
+  })});
   $('createFirstSchoolForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const button=$('createFirstSchoolButton');if(button.disabled)return;
     await ensureToken();
@@ -821,6 +841,7 @@
       const schoolId=await api('rpc/register_first_school','','POST',{p_school_name:name});
       if(!/^[0-9a-f-]{36}$/i.test(String(schoolId)))throw Error('School creation returned no valid school ID.');
       sessionStorage.setItem(SELECTED_SCHOOL_KEY,String(schoolId));
+      await api('rpc/bn_initialize_school_workspace','','POST',{p_institution_id:String(schoolId)});
       await load(String(schoolId));
       notify('New empty school created. Open the dashboard to add your first class.');
     }finally{button.disabled=false;}
