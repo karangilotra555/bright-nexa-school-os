@@ -72,7 +72,9 @@
     const message=error?.message||errorText,holder=showStatus(message);
     if(!holder)return;
     const link=document.createElement('a');
-    link.href=ROOT;link.textContent='Log in to existing school';
+    const draft=typeof window!=='undefined'?localSchoolDraft(window.localStorage):null;
+    link.href=draft?ROOT+'?fromLocal=1':ROOT;
+    link.textContent=draft?'Connect '+draft.name+' to Supabase':'Sign in / register cloud school';
     link.style.cssText='color:#087dcc;font-weight:700;display:inline-block;margin-top:12px';
     holder.append(link);
   }
