@@ -13,7 +13,7 @@ test('all three served entrypoints load the synced cloud guard before controller
    const controller=html.indexOf('school-workspace-controller.js?v=20261109-conflict-recovery-v1');
    const entry=html.indexOf('school-erp-entry.js?v=20261107-parent-publish-v2');
    assert.ok(guard>0&&controller>guard&&entry>controller, prefix+' order');
-   assert.match(html,/CACHE_VERSION = '20261109-conflict-recovery-v1'/);
+   assert.match(html,/CACHE_VERSION = '20261109-historical-attendance-v1'/);
    const sw=read(prefix+'sw.js');
    assert.match(sw,/school-online-guard.js\?v=20261109-conflict-recovery-v1/);
    assert.match(sw,/school-erp-entry.js\?v=20261107-parent-publish-v2/);
@@ -82,8 +82,8 @@ test('PWA precaches new school cloud adapter and no longer serves 20261106 revis
  for(const prefix of ['','docs/','app-extracted/dist/']){
   const html=read(prefix+'index.html');
   const sw=read(prefix+'sw.js');
-  assert.match(html,/school-workspace-cloud\.js\?v=20261107-parent-publish-v2/);
-  assert.match(sw,/school-workspace-cloud\.js\?v=20261107-parent-publish-v2/);
+  assert.match(html,/school-workspace-cloud\.js\?v=20261109-historical-attendance-v1/);
+  assert.match(sw,/school-workspace-cloud\.js\?v=20261109-historical-attendance-v1/);
   assert.match(sw,/school-online-guard\.js\?v=20261109-conflict-recovery-v1/);
  }
 });
