@@ -8,9 +8,10 @@
   const TOKEN_KEY='bn_school_staff_session_v1';
   const SELECTED_SCHOOL_KEY='bn_school_staff_selected_school_v1';
   const FROM_LOCAL=(()=>{
-    const fromLink=new URLSearchParams(location.search).get('fromLocal')==='1';
-    if(fromLink)localStorage.setItem('bn_school_cloud_handoff_intent_v1','1');
-    return fromLink||localStorage.getItem('bn_school_cloud_handoff_intent_v1')==='1';
+    const fromLink=new URLSearchParams(typeof location==='undefined'?'':location.search).get('fromLocal')==='1';
+    const store=typeof localStorage==='undefined'?null:localStorage;
+    if(fromLink&&store)store.setItem('bn_school_cloud_handoff_intent_v1','1');
+    return fromLink||store?.getItem('bn_school_cloud_handoff_intent_v1')==='1';
   })();
   const LOCAL_DRAFT=FROM_LOCAL?window.BNSchoolLocalHandoff?.read(localStorage):null;
   const ROLES=['school_admin','principal','teacher','accountant','librarian','receptionist','transport_staff'];
