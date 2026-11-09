@@ -49,7 +49,7 @@ test('source and served copies show pending cloud acknowledgment instead of prem
  assert.equal(read(bundles[0]),read(bundles[2]));
  for(const base of ['','docs/','app-extracted/dist/']){
   const index=read(base+'index.html'),sw=read(base+'sw.js');
-  assert.match(index,/CACHE_VERSION = '20261109-real-only-v1'/);
+  assert.match(index,/CACHE_VERSION = '20261109-cloud-first-v2'/);
   const sha=file=>crypto.createHash('sha256').update(Buffer.from(read(file),'utf8')).digest('hex');
   assert.ok(sw.includes('"url":"school-online-guard.js?v=20261109-conflict-recovery-v1","revision":"'+sha(base+'school-online-guard.js')+'"'));
   assert.ok(sw.includes('"url":"school-workspace-controller.js?v=20261109-conflict-recovery-v1","revision":"'+sha(base+'school-workspace-controller.js')+'"'));
