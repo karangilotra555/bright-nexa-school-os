@@ -98,6 +98,13 @@ tr td select{padding:7px;min-width:115px}
     <button type="submit" class="primary">Sign in securely</button>
   </form>
   <section id="createFirstSchoolPanel" class="hidden" style="margin-top:16px;padding:16px;border:1px solid #c8e2f4;border-radius:12px;background:#f8fafc"><h2>Create your school</h2><p class="sub">Your verified account has no school assigned. Create a new empty school; no demo classes, students, staff or fees will be added.</p><form id="createFirstSchoolForm"><label for="firstSchoolName">School name</label><input id="firstSchoolName" name="school" minlength="3" maxlength="120" required autocomplete="organization" placeholder="Your school name"><button id="createFirstSchoolButton" type="submit" class="primary" style="margin-top:12px">Create empty school</button></form><button id="createSchoolChangeAccount" type="button" class="ghost" style="margin-top:9px">Use another account</button></section>
+  <button id="showOwnerSignup" type="button" class="ghost" style="margin-top:10px">Create new owner account</button>
+  <form id="ownerSignupForm" class="hidden" autocomplete="off" style="margin-top:14px;padding:14px;border:1px solid #c8e2f4;border-radius:11px">
+    <h2>Create real school owner login</h2><p class="sub">Enter your own email and a new password. Verify the email if requested, then sign in and create your empty school. No demo records will be created.</p>
+    <label for="ownerSignupEmail">Owner email</label><input id="ownerSignupEmail" type="email" required autocomplete="email">
+    <label for="ownerSignupPassword" style="margin-top:10px">Password (minimum 12 characters)</label><input id="ownerSignupPassword" type="password" minlength="12" maxlength="256" required autocomplete="new-password">
+    <button id="ownerSignupSubmit" type="submit" class="primary" style="margin-top:12px">Register owner account</button>
+  </form>
   <button id="forgotPasswordLink" class="ghost" type="button" style="margin-top:12px">Forgot password?</button>
   <form id="forgotPasswordForm" class="hidden" autocomplete="off" style="margin-top:13px">
     <div class="inputgroup"><label for="forgotEmail">Registered staff email</label><input id="forgotEmail" type="email" autocomplete="email" required placeholder="teacher@school.in"></div>
