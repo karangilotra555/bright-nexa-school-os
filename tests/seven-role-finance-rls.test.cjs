@@ -57,6 +57,6 @@ test('all seven role destinations remain valid with no cross-role ERP bypass',()
 test('Render and GitHub Pages copies are identical, and staff JS cache is bumped',()=>{
  assert.equal(staff,read('docs/teacher-access.js'));
  assert.equal(html,read('docs/teacher-access.html'));
- assert.match(html,/teacher-access\.js\?v=20261109-cloud-first-v2/);
+ assert.match(html,/teacher-access\.js\?v=20261109-auth-single-view-v3/);
  assert.doesNotMatch(staff,/SUPABASE_SERVICE_ROLE_KEY/);
 });
