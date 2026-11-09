@@ -12,7 +12,7 @@
   const STAFF_KEY='bn_school_staff_session_v1';
   const CHOSEN_KEY='bn_school_staff_selected_school_v1';
   const ERP_KEY='bright-nexa-school-os:session:v2';
-  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261109-real-only-v1';
+  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261109-cloud-first-v2';
   const ROOT='./teacher-access.html';
   const errorText='Unable to open this school. Your records have not been changed.';
 
@@ -39,6 +39,33 @@
     const p=document.createElement('p');p.textContent=message;
     holder.append(title,p);node.append(holder);
     return holder;
+  }
+  function localSchoolDraft(storage){
+    try{
+      const value=parse(storage?.getItem('bright-nexa-school-os:snapshot:v1'));
+      const institution=value?.institution;
+      if(!institution || typeof institution.name!=='string')return null;
+      const name=institution.name.trim().slice(0,120);
+      return name.length>=3?{name,email:typeof institution.email==='string'?institution.email:''}:null;
+    }catch(_){return null;}
+  }
+  // Hosted schools must have a verified Supabase session. A browser-only
+  // school is a local draft, NOT an activated institution or a cloud save.
+  function showCloudGate(){
+    const draft=localSchoolDraft(window.localStorage);
+    const holder=showStatus(draft
+      ? '“'+draft.name+'” is saved only on this device. No school record has been confirmed in Supabase. Your local details have NOT been deleted.'
+      : 'Sign in or register a verified school-owner account to create or open a real school in Supabase.');
+    if(!holder)return;
+    const link=document.createElement('a');
+    link.href=ROOT+'?fromLocal=1';
+    link.textContent=draft?'Connect '+draft.name+' to Supabase':'Create / sign in to cloud school';
+    link.style.cssText='display:inline-block;margin-top:14px;padding:12px 18px;background:#087dcc;color:#fff;border-radius:9px;font-weight:700;text-decoration:none';
+    holder.append(link);
+    const note=document.createElement('p');
+    note.textContent='Cloud registration requires email verification. Local records will be preserved until a successful cloud import is confirmed.';
+    note.style.cssText='font-size:13px;color:#475569;margin-top:15px';
+    holder.append(note);
   }
   function showError(error){
     if(typeof document==='undefined')return;
@@ -106,33 +133,16 @@
     store.setItem(CHOSEN_KEY,school.id);
     return {schoolId:school.id,name:school.name,revision:workspace.revision};
   }
-  // The user expressly reset all previous schools/accounts, including the demo.
-  // Purge stale local ERP records once per device, before the verified school is
-  // loaded; preserve Supabase Auth tokens so new real-owner login still works.
-  async function clearDeletedSchoolCache(){
-    if(window.localStorage.getItem('bn_real_school_reset_20261109')==='done')return;
-    for(const key of Object.keys(window.localStorage)){
-      if(key.startsWith('bright-nexa-school-os:')||key.startsWith('bn_workspace_'))window.localStorage.removeItem(key);
-    }
-    for(const key of Object.keys(window.sessionStorage)){
-      if(key.startsWith('bright-nexa-school-os:'))window.sessionStorage.removeItem(key);
-    }
-    if(window.indexedDB){
-      await new Promise((resolve,reject)=>{
-        const request=window.indexedDB.deleteDatabase('bright-nexa-school-os');
-        request.onsuccess=resolve;
-        request.onerror=()=>reject(Error('Unable to clear old deleted-school device records. Close other School OS tabs and refresh.'));
-        request.onblocked=()=>reject(Error('Old School OS tab still has the deleted school open. Close other tabs and refresh.'));
-      });
-    }
-    window.localStorage.setItem('bn_real_school_reset_20261109','done');
-  }
   async function start(){
-    try{await clearDeletedSchoolCache();}catch(error){showError(error);return false;}
     const store=window.sessionStorage,staff=parse(store.getItem(STAFF_KEY));
     const erp=parse(store.getItem(ERP_KEY));
     const search=window.location.search;
-    if(cloudEntryRequired({search,staffSession:staff,erpSession:erp})){
+    const hosted=window.location.protocol==='https:'||window.location.protocol==='http:';
+    if(hosted&&!staff?.access_token){
+      showCloudGate();
+      return false; // Never start the local login/onboarding bundle on hosted ERP.
+    }
+    if(hosted||cloudEntryRequired({search,staffSession:staff,erpSession:erp})){
       showStatus('Verifying School Admin and opening your existing school…');
       try{
         await verify({store});
@@ -153,5 +163,5 @@
     document.head.append(script);
     return true;
   }
-  return {start,verify,cloudEntryRequired,showError,showStatus,parse,validUUID};
+  return {start,verify,cloudEntryRequired,localSchoolDraft,showCloudGate,showError,showStatus,parse,validUUID};
 });
