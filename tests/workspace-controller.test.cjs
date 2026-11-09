@@ -59,3 +59,39 @@ test('unchanged cloud projection does not create repeated backups',async()=>{
  await c.sync();
  assert.equal([...f.data.keys()].filter(k=>k.includes('.backup.')).length,before);
 });
+
+test('explicit recovery preserves both a divergent restored copy and an older pending edit',async()=>{
+ const f=fixture();
+ await f.make().openSchool('school');
+ f.fail=true;
+ const previous=f.make();
+ await previous.initialize();
+ f.current=snap('local',8);
+ await previous.autosave(f.current);
+ f.current=snap('local',9);
+ const recovering=f.make();
+ await recovering.initialize();
+ assert.equal(recovering.state().status,'conflict');
+ await recovering.recoverCloudSchool();
+ assert.equal(recovering.state().status,'synced');
+ assert.equal(f.current.students[0].id,1,'verified cloud snapshot opened');
+ assert.equal(f.pushes.length,0,'no pending copy was silently pushed to cloud');
+ const backups=[...f.data.entries()].filter(([key])=>key.includes('.backup.')).map(([,value])=>JSON.parse(value));
+ assert.ok(backups.some(x=>x.students[0].id===9),'divergent device copy backed up');
+ assert.ok(backups.some(x=>x.students[0].id===8),'previous pending edit backed up');
+});
+
+test('recovery backup failure keeps conflict and all unsent data unchanged',async()=>{
+ const f=fixture();
+ await f.make().openSchool('school');
+ f.fail=true;
+ const prior=f.make();await prior.initialize();
+ f.current=snap('local',8);await prior.autosave(f.current);
+ f.current=snap('local',9);
+ f.opts.backup=async()=>{throw Error('backup storage full');};
+ const c=f.make();await c.initialize();
+ await assert.rejects(c.recoverCloudSchool(),/backup storage full/);
+ assert.equal(c.state().status,'conflict');
+ assert.equal(f.current.students[0].id,9);
+ assert.ok([...f.data.values()].some(v=>v.includes('"pending":{')&&v.includes('"students":[{"id":8}]')));
+});
