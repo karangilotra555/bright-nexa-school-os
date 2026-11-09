@@ -25,8 +25,8 @@ test('Android parents app has no fictional demo data or offline preview',()=>{
  assert.equal(fs.existsSync(path.join(__dirname,'../android-parents/app/src/main/assets/demo.html')),false);
  const java=read('android-parents/app/src/main/java/com/brightnexa/parents/MainActivity.java');
  assert.doesNotMatch(java,/openPreview|DEMO MODE|demo\\.html/);
- assert.match(java,/openSchool\\(configuredUrl\\)/);
- assert.match(java,/parents\\.html/);
+ assert.ok(java.includes('openSchool(configuredUrl)'));
+ assert.ok(java.includes('parents.html'));
  const wf=read('.github/workflows/build-parents-apk.yml');
  assert.match(wf,/gh release create/);
  assert.match(wf,/--prerelease/);
