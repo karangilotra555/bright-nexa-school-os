@@ -19,10 +19,10 @@ test('hosted ERP shows clean sign-in without auto-opening a local-only school, r
  dom.window.eval(read('school-erp-entry.js'));
  await Promise.resolve();
  const body=dom.window.document.getElementById('root');
- assert.match(body.textContent,/Sign in to access your Bright Nexa school/i);
+ assert.match(body.textContent,/Opening secure school sign-in/i);
  assert.doesNotMatch(body.textContent,/No school record has been confirmed in Supabase/i);
- assert.ok(body.querySelector('a[href="./teacher-access.html"]'));
- assert.ok(body.querySelector('a[href*="teacher-access.html?fromLocal=1"]'));
+ assert.ok(body.querySelector('a[href*="teacher-access.html"]'));
+ assert.doesNotMatch(body.textContent,/Connect Hps to Supabase/i);
  assert.equal(dom.window.localStorage.getItem('bright-nexa-school-os:snapshot:v1'),json);
  assert.equal(dom.window.document.querySelector('script[type="module"]'),null);
  dom.window.close();

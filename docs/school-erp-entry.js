@@ -52,23 +52,20 @@
   // Hosted schools must have a verified Supabase session. A browser-only
   // school is a local draft, NOT an activated institution or a cloud save.
   function showCloudGate(){
-    const draft=localSchoolDraft(window.localStorage);
-    const holder=showStatus('Sign in to access your Bright Nexa school. Your existing school records remain unchanged.');
-    if(!holder)return;
-    const link=document.createElement('a');
-    link.href=ROOT;
-    link.textContent='Sign in to your school';
-    link.style.cssText='display:inline-block;margin-top:14px;padding:12px 18px;background:#087dcc;color:#fff;border-radius:9px;font-weight:700;text-decoration:none';
-    holder.append(link);
-    if(draft){
-      const extra=document.createElement('p');
-      extra.style.cssText='font-size:12px;color:#64748b;margin-top:20px';
-      extra.append('Have an older school setup on this device? ');
-      const review=document.createElement('a');
-      review.href=ROOT+'?fromLocal=1';
-      review.textContent='Review it after signing in';
-      extra.append(review);holder.append(extra);
+    // One canonical school sign-in. A local school draft is not a login error.
+    // Keep Supabase callback fragments intact if email redirects to the root.
+    const target=new URL(ROOT,window.location.href);
+    const fragment=new URLSearchParams(window.location.hash.replace(/^#/,''));
+    if((fragment.has('access_token')&&fragment.has('refresh_token'))||fragment.has('error'))target.hash=window.location.hash;
+    const holder=showStatus('Opening secure school sign-in…');
+    if(holder){
+      const link=document.createElement('a');
+      link.href=target.href;
+      link.textContent='Continue to sign in';
+      link.style.cssText='display:inline-block;margin-top:14px;padding:12px 18px;background:#087dcc;color:#fff;border-radius:9px;font-weight:700;text-decoration:none';
+      holder.append(link);
     }
+    window.setTimeout(()=>window.location.replace(target.href),0);
   }
   function showError(error){
     if(typeof document==='undefined')return;

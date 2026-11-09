@@ -2,6 +2,24 @@
 <html lang="en">
   <head>
     <script>
+(function(){
+  // Hosted users have one login route. Never make them create/import a school
+  // before they can sign in; the backend still checks membership and role.
+  try{
+    if(location.protocol!=='https:' || ['localhost','127.0.0.1'].includes(location.hostname))return;
+    const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+    const callback=(hash.has('access_token')&&hash.has('refresh_token'))||hash.has('error');
+    const session=JSON.parse(sessionStorage.getItem('bn_school_staff_session_v1')||'null');
+    if(!callback&&session&&typeof session.access_token==='string'&&session.access_token)return;
+    const target=new URL('./teacher-access.html',location.href);
+    if(callback)target.hash=location.hash;
+    location.replace(target.href);
+  }catch(error){
+    location.replace(new URL('./teacher-access.html',location.href).href);
+  }
+})();
+    </script>
+    <script>
 if (window.location.pathname.includes('marksheet')) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function(regs) {
@@ -14,7 +32,7 @@ if (window.location.pathname.includes('marksheet')) {
 }
 
 // School Admin cloud access is validated by school-erp-entry.js before the ERP bundle loads.
-const CACHE_VERSION = '20261109-cloud-first-v2';
+const CACHE_VERSION = '20261109-auth-entry-v4';
 if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACHE_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -42,7 +60,7 @@ if (window.localStorage && window.localStorage.getItem('bn_sw_cleared') !== CACH
     <script defer src="./teacher-drafts-cloud.js?v=20261106-paginated"></script>
     <script defer src="./teacher-ai-cloud.js?v=20261106-client-recovery-v2"></script>
     <script defer src="./teacher-ai-form-bridge.js?v=20261106-topic-optional-v1"></script>
-    <script defer src="./school-erp-entry.js?v=20261109-cloud-first-v2"></script>
+    <script defer src="./school-erp-entry.js?v=20261109-auth-entry-v4"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-C1ADVAqn.css?v=20261021-idcard-security">
   <link rel="manifest" href="./manifest.webmanifest"></head>
   <body>
