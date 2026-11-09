@@ -16,8 +16,8 @@ test('all three served entrypoints load the synced cloud guard before controller
    assert.match(html,/CACHE_VERSION = '20261109-signout-v6'/);
    const sw=read(prefix+'sw.js');
    assert.match(sw,/school-online-guard.js\?v=20261109-logout-ready-v3/);
-   assert.match(sw,/school-erp-entry.js\?v=20261109-signout-v6/);
-   assert.match(sw,/school-workspace-controller.js\?v=20261109-logout-ready-v3/);
+   assert.match(sw,/school-erp-entry.js\?v=20261109-school-login-v5/);
+   assert.match(sw,/school-workspace-controller.js\?v=20261109-conflict-recovery-v2/);
  }
 });
 test('source, web, docs, packaged app all contain verified-school auto connection and explicit error notification',()=>{
