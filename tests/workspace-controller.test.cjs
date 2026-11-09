@@ -95,3 +95,39 @@ test('recovery backup failure keeps conflict and all unsent data unchanged',asyn
  assert.equal(f.current.students[0].id,9);
  assert.ok([...f.data.values()].some(v=>v.includes('"pending":{')&&v.includes('"students":[{"id":8}]')));
 });
+
+test('verified owner explicit login opens existing cloud after preserving divergent and pending device backups',async()=>{
+ const f=fixture();
+ const initial=f.make();await initial.openSchool('school');
+ f.fail=true;f.current=snap('local',8);await initial.autosave(f.current);
+ f.current=snap('local',9);
+ const original=global.window;
+ global.window={location:{search:'?openSchool=true&tab=Dashboard'},sessionStorage:{getItem:key=>key==='bright-nexa-school-os:session:v2'
+   ? JSON.stringify({cloudVerified:true,role:'OWNER',institutionId:'school'})
+   :key==='bn_school_staff_session_v1'?JSON.stringify({access_token:'test-session'}):null},
+   BNWorkspaceOnlineGuard:{update(){}}};
+ try{
+  const next=f.make();await next.initialize();
+  assert.equal(next.state().status,'synced');
+  assert.equal(next.state().pending,false);
+  assert.equal(f.current.students[0].id,1);
+  const backups=[...f.data.entries()].filter(([k])=>k.includes('.backup.')).map(([,v])=>JSON.parse(v));
+  assert.ok(backups.some(v=>v.students[0].id===8),'unpublished pending edit is backed up');
+  assert.ok(backups.some(v=>v.students[0].id===9),'restored device snapshot is backed up');
+  assert.equal(f.pushes.length,0,'no unreviewed device edit was uploaded');
+ }finally{if(original===undefined)delete global.window;else global.window=original;}
+});
+test('cross-school, unverified or wrong-role sessions cannot auto-replace divergent records',async()=>{
+ for(const identity of [
+  {cloudVerified:false,role:'OWNER',institutionId:'school'},
+  {cloudVerified:true,role:'OWNER',institutionId:'another-school'},
+  {cloudVerified:true,role:'TEACHER',institutionId:'school'}
+ ]){
+  const f=fixture();await f.make().openSchool('school');f.current=snap('local',99);
+  const original=global.window;
+  global.window={location:{search:'?openSchool=true&tab=Dashboard'},sessionStorage:{getItem:key=>key==='bright-nexa-school-os:session:v2'
+   ?JSON.stringify(identity):JSON.stringify({access_token:'test-session'})},BNWorkspaceOnlineGuard:{update(){}}};
+  try{const next=f.make();await next.initialize();assert.equal(next.state().status,'conflict');assert.equal(f.current.students[0].id,99);}
+  finally{if(original===undefined)delete global.window;else global.window=original;}
+ }
+});

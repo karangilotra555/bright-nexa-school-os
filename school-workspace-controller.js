@@ -25,10 +25,35 @@
       var value=JSON.stringify(snapshot);storage.setItem(key,value);
       if(storage.getItem(key)!==value)throw error('Local backup could not be verified. School was not opened.');
     }
+    // Only a verified owner explicitly opening the existing school can
+    // resolve a restored-device conflict automatically. The existing
+    // openSchool() takes verified backups of the live and pending copies
+    // before applying any cloud data. Never upload either local copy here.
+    function verifiedExplicitOpen(){
+      if(!binding||typeof window==='undefined'||!window.sessionStorage)return false;
+      try{
+        var params=new URLSearchParams(window.location.search||'');
+        if(params.get('openSchool')!=='true')return false;
+        var account=JSON.parse(window.sessionStorage.getItem('bright-nexa-school-os:session:v2')||'null');
+        var staff=JSON.parse(window.sessionStorage.getItem('bn_school_staff_session_v1')||'null');
+        return account?.cloudVerified===true && account?.role==='OWNER'
+          && String(account?.institutionId||'')===String(binding.schoolId)
+          && typeof staff?.access_token==='string' && !!staff.access_token;
+      }catch(_){return false;}
+    }
     async function initialize(){
       var id=institutionId(o.getSnapshot());binding=null;record=null;disk=null;
       if(id!=null){var saved=storage.getItem(bindingKey(String(id)));if(saved){binding=JSON.parse(saved);disk=storage.getItem(recordKey(binding));record=disk?JSON.parse(disk):null;if(!record)binding=null;}}
-      if(binding&&((record.pending&&fingerprint(record.pending)!==fingerprint(o.getSnapshot()))||(!record.pending&&record.fingerprint!==fingerprint(o.getSnapshot())))){conflict(error('Restored local records differ from the saved workspace. Both copies were retained; resolve by opening the school explicitly.'));return state();}
+      if(binding&&((record.pending&&fingerprint(record.pending)!==fingerprint(o.getSnapshot()))||(!record.pending&&record.fingerprint!==fingerprint(o.getSnapshot())))){
+        conflict(error('Saved browser records differ from the school workspace. No local changes were uploaded.'));
+        if(verifiedExplicitOpen()){
+          // Verified explicit login: back up current and queued records, then
+          // reopen the authorized cloud copy without publishing local edits.
+          try{await openSchool(binding.schoolId);}
+          catch(_){ /* openSchool retains an actionable conflict/error state */ }
+        }
+        return state();
+      }
       notify(binding?'pending':'local');return state();
     }
     async function flush(){
