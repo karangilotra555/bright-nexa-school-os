@@ -49,10 +49,10 @@ test('source and served copies show pending cloud acknowledgment instead of prem
  assert.equal(read(bundles[0]),read(bundles[2]));
  for(const base of ['','docs/','app-extracted/dist/']){
   const index=read(base+'index.html'),sw=read(base+'sw.js');
-  assert.match(index,/CACHE_VERSION = '20261107-sync-feedback-v3'/);
+  assert.match(index,/CACHE_VERSION = '20261109-conflict-recovery-v1'/);
   const sha=file=>crypto.createHash('sha256').update(Buffer.from(read(file),'utf8')).digest('hex');
-  assert.ok(sw.includes('"url":"school-online-guard.js?v=20261107-parent-publish-v2","revision":"'+sha(base+'school-online-guard.js')+'"'));
-  assert.ok(sw.includes('"url":"school-workspace-controller.js?v=20261107-parent-publish-v2","revision":"'+sha(base+'school-workspace-controller.js')+'"'));
+  assert.ok(sw.includes('"url":"school-online-guard.js?v=20261109-conflict-recovery-v1","revision":"'+sha(base+'school-online-guard.js')+'"'));
+  assert.ok(sw.includes('"url":"school-workspace-controller.js?v=20261109-conflict-recovery-v1","revision":"'+sha(base+'school-workspace-controller.js')+'"'));
   assert.ok(sw.includes('url:"assets/index-brightnexa-v2.js",revision:"'+sha(base+'assets/index-brightnexa-v2.js')+'"'));
   assert.equal(read(base+'school-online-guard.js'),read('school-online-guard.js'));
   assert.equal(read(base+'school-workspace-controller.js'),read('school-workspace-controller.js'));
@@ -69,4 +69,27 @@ test('browser cache write failures are not silently ignored for every ERP store'
   }
   assert.match(content,/Supabase saved drafts could not be loaded/);
  }
+});
+
+test('conflict makes retry unavailable and offers explicit backup-first cloud reopen',async()=>{
+ const dom=new JSDOM('<!doctype html><html><body></body></html>',{url:'https://bright-nexa-school-os.onrender.com',runScripts:'outside-only'});
+ dom.window.sessionStorage.setItem('bright-nexa-school-os:session:v2',JSON.stringify({cloudVerified:true}));
+ dom.window.eval(read('school-online-guard.js'));
+ const guard=dom.window.BNWorkspaceOnlineGuard;
+ let recovered=0,requested=0;
+ dom.window.confirm=()=>{requested++;return false;};
+ guard.setRecover(async()=>{recovered++;return {status:'synced',error:null};});
+ guard.update('conflict',new Error('Restored local records differ'));
+ const modal=dom.window.document.getElementById('bn-cloud-publish-status');
+ const retry=modal.querySelector('[data-role=retry]'),recover=modal.querySelector('[data-role=recover]');
+ assert.equal(retry.disabled,true,'inert retry is not presented as recovery');
+ assert.equal(recover.style.display,'inline-block','explicit recovery is available');
+ recover.click();await new Promise(r=>setTimeout(r,0));
+ assert.equal(recovered,0,'nothing happens without the device-backup confirmation');
+ dom.window.confirm=()=>{requested++;return true;};
+ recover.click();await new Promise(r=>setTimeout(r,0));
+ assert.equal(recovered,1);
+ assert.equal(requested,2);
+ assert.equal(modal.style.display,'none');
+ dom.window.close();
 });
