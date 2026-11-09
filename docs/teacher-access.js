@@ -91,6 +91,23 @@
     const e=document.createElement(tag); if(text!==undefined)e.textContent=values(text);if(cls)e.className=cls;return e;
   }
   function display(id,show){$(id).classList.toggle('hidden',!show);}
+  // One focused form at a time: sign in, owner registration, recovery, or activation.
+  function showAuthView(view){
+    const login=view==='login',signup=view==='signup',forgot=view==='forgot',activation=view==='activation';
+    display('loginForm',login);
+    display('ownerSignupForm',signup);
+    display('forgotPasswordForm',forgot);
+    display('activation',activation);
+    display('forgotPasswordLink',login);
+    display('authFootnote',login);
+    if(!login)display('savedSessionPanel',false);
+    put('authHeading',signup?'Create your account':forgot?'Reset your password':activation?'Secure account activation':view==='school'?'Set up your school':'Welcome back');
+    put('authDescription',signup?'Create your school owner account. You can set up your school after verifying your email.'
+      :forgot?'Enter your registered email and we will send you a secure reset link.'
+      :activation?'Choose a secure password to finish your account setup.'
+      :view==='school'?'Your email is verified. Complete your school setup below.'
+      :'Sign in to access your school\'s workspace.');
+  }
   function saveSession(next){
     session={access_token:next.access_token,refresh_token:next.refresh_token,expires_at:Math.floor(Date.now()/1000)+(Number(next.expires_in)||3600)};
     sessionStorage.setItem(TOKEN_KEY,JSON.stringify(session));
@@ -141,7 +158,7 @@
     sessionStorage.removeItem(SELECTED_SCHOOL_KEY);
     invalidateRoster();clearProfileEditor();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
-    display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);display('loginForm',true);display('forgotPasswordLink',true);
+    display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);showAuthView('login');
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   async function switchToDifferentAccount(){
@@ -180,12 +197,12 @@
     if(!active.length){
       // No school membership: keep the verified Auth session so the first-school
       // RPC can securely create the new owner/school, never a sample tenant.
-      display('portalSection',false);display('loginSection',true);display('loginForm',false);
-      display('forgotPasswordLink',false);display('forgotPasswordForm',false);
+      display('portalSection',false);display('loginSection',true);showAuthView('school');
       display('savedSessionPanel',false);display('createFirstSchoolPanel',true);
+      display('localSchoolNotice',FROM_LOCAL);
       display('logout',true);notify('No school is assigned to this account. Create your empty school below.');return;
     }
-    display('createFirstSchoolPanel',false);display('loginForm',true);display('forgotPasswordLink',true);
+    display('createFirstSchoolPanel',false);showAuthView('login');
     // School names become visible ONLY after a verified Supabase Auth session,
     // and only for institutions having an active membership for this account.
     const permitted=[];
@@ -874,9 +891,11 @@
     }finally{picker.disabled=false;}
   }));
   $('showOwnerSignup').addEventListener('click',()=>{
-    const form=$('ownerSignupForm');const open=form.classList.contains('hidden');
-    display('ownerSignupForm',open);if(open)$('ownerSignupEmail').focus();
+    showAuthView('signup');$('ownerSignupEmail').value=$('loginEmail').value.trim()||$('ownerSignupEmail').value;
+    $('ownerSignupEmail').focus();
   });
+  $('returnToLoginFromSignup').addEventListener('click',()=>{showAuthView('login');$('loginEmail').focus();});
+  $('returnToLoginFromForgot').addEventListener('click',()=>{showAuthView('login');$('loginEmail').focus();});
   $('ownerSignupForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const button=$('ownerSignupSubmit');if(button.disabled)return;
     const email=$('ownerSignupEmail').value.trim().toLowerCase(),password=$('ownerSignupPassword').value;
@@ -886,9 +905,9 @@
       const res=await authRequest('signup?redirect_to='+encodeURIComponent(emailReturnUrl()),{email,password});
       $('ownerSignupPassword').value='';
       if(res.access_token&&res.refresh_token){
-        saveSession(res);display('ownerSignupForm',false);await load();
+        saveSession(res);showAuthView('login');await load();
       }else{
-        display('ownerSignupForm',false);
+        showAuthView('login');
         emailDialog('pending',email);
       }
     }finally{button.disabled=false;}
@@ -962,10 +981,8 @@
     finally{btn.disabled=false}
   })});
   $('forgotPasswordLink').addEventListener('click',()=>{
-    const form=$('forgotPasswordForm');
-    const show=form.classList.contains('hidden');
-    display('forgotPasswordForm',show);
-    if(show){$('forgotEmail').value=$('loginEmail').value.trim();$('forgotEmail').focus();}
+    showAuthView('forgot');
+    $('forgotEmail').value=$('loginEmail').value.trim();$('forgotEmail').focus();
   });
   $('forgotPasswordForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const button=$('sendResetEmail');
@@ -986,7 +1003,7 @@
       // Deliberately identical whether the email exists or not.
       notify('If this email is registered, a password reset link will arrive in your inbox. Check Spam too.');
       $('forgotPasswordForm').reset();
-      display('forgotPasswordForm',false);
+      showAuthView('login');
     }finally{button.disabled=false;}
   })});
   $('activateForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
@@ -1197,20 +1214,20 @@
   }
   $('attendanceDate').value=dateLocal();
   if(FROM_LOCAL){
-    display('localSchoolNotice',true);
+    // Local draft information belongs to the authenticated school-creation step,
+    // never the public sign-in screen; it is not a login error.
     if(LOCAL_DRAFT){
-      put('localSchoolNoticeTitle',LOCAL_DRAFT.name+' is on this device, NOT in Supabase.');
-      put('localSchoolNoticeText','Sign in or register your cloud owner email. You can import the local school profile and eligible records only after Supabase confirms the new school. No device data will be deleted before read-back.');
+      put('localSchoolNoticeTitle','Saved school setup: '+LOCAL_DRAFT.name);
+      put('localSchoolNoticeText','This browser contains a school setup that is not yet verified online. If this is your school, choose the import option after signing in. Nothing is deleted before successful online read-back.');
       $('firstSchoolName').value=LOCAL_DRAFT.name;
       $('loginEmail').value=LOCAL_DRAFT.email;
       $('ownerSignupEmail').value=LOCAL_DRAFT.email;
       display('localSchoolImportLabel',true);
       $('createFirstSchoolButton').textContent='Create '+LOCAL_DRAFT.name+' in Supabase';
     }else{
-      put('localSchoolNoticeTitle','Real Supabase school registration');
-      put('localSchoolNoticeText','Use a verified cloud owner account. No offline-only school will be created.');
+      put('localSchoolNoticeTitle','Review existing school setup');
+      put('localSchoolNoticeText','We could not read the saved setup on this browser. Existing data has not been changed.');
     }
-    display('ownerSignupForm',true);
   }
   // Only Supabase-issued authenticated invite fragments are processed; tokens
   // are immediately removed from address bar after parsing.
@@ -1225,7 +1242,7 @@
       recoveryMode=hash.get('type')==='recovery';
       confirmedByEmailLink=['signup','email'].includes(hash.get('type'));
       if(['invite','recovery'].includes(hash.get('type'))){
-        display('activation',true);
+        showAuthView('activation');
         if(recoveryMode){
           put('activationTitle','Reset staff password');
           put('activationDescription','Set a new password for your school account. The old password will not be emailed.');
