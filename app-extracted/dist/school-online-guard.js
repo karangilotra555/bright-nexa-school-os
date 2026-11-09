@@ -37,8 +37,17 @@
     catch(error){update('conflict',error);}
     finally{recover.disabled=false;}
   };
+  const signOut=root.document.createElement('button');
+  signOut.type='button';signOut.dataset.role='signout';signOut.textContent='Sign out';
+  signOut.style.cssText='background:#fff;color:#0a3155;border:1px solid #b6c8dc;border-radius:8px;padding:12px 16px;font-weight:650;cursor:pointer';
+  signOut.onclick=()=>{
+    if(root.BNSchoolLogout?.signOut)return root.BNSchoolLogout.signOut();
+    // Only sign-out session keys, never local records/backups.
+    for(const key of ['bn_school_staff_session_v1','bn_school_staff_selected_school_v1','bright-nexa-school-os:session:v2'])root.sessionStorage.removeItem(key);
+    root.location.replace('./teacher-access.html?loggedOut=1');
+  };
   const login=root.document.createElement('a');login.href='./teacher-access.html?staffPortal=1';login.textContent='Staff login';login.style.cssText='padding:12px 10px;color:#087bc5';
-  controls.append(retry,recover,login);card.append(heading,message,controls);el.append(card);root.document.body.append(el);
+  controls.append(retry,recover,signOut,login);card.append(heading,message,controls);el.append(card);root.document.body.append(el);
   return el;
  }
  function update(status,error){
