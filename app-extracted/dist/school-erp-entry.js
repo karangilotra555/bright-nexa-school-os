@@ -156,6 +156,7 @@
       if(key.startsWith('bright-nexa-school-os:cloud:v1:'))window.localStorage.removeItem(key);
     }
     window.localStorage.removeItem('bn_school_import_pending_clear_v1');
+    window.localStorage.removeItem('bn_school_cloud_handoff_intent_v1');
   }
   async function start(){
     const store=window.sessionStorage,staff=parse(store.getItem(STAFF_KEY));
