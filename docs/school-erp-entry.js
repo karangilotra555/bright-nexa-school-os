@@ -53,19 +53,22 @@
   // school is a local draft, NOT an activated institution or a cloud save.
   function showCloudGate(){
     const draft=localSchoolDraft(window.localStorage);
-    const holder=showStatus(draft
-      ? '“'+draft.name+'” is saved only on this device. No school record has been confirmed in Supabase. Your local details have NOT been deleted.'
-      : 'Sign in or register a verified school-owner account to create or open a real school in Supabase.');
+    const holder=showStatus('Sign in to access your Bright Nexa school. Your existing school records remain unchanged.');
     if(!holder)return;
     const link=document.createElement('a');
-    link.href=ROOT+'?fromLocal=1';
-    link.textContent=draft?'Connect '+draft.name+' to Supabase':'Create / sign in to cloud school';
+    link.href=ROOT;
+    link.textContent='Sign in to your school';
     link.style.cssText='display:inline-block;margin-top:14px;padding:12px 18px;background:#087dcc;color:#fff;border-radius:9px;font-weight:700;text-decoration:none';
     holder.append(link);
-    const note=document.createElement('p');
-    note.textContent='Cloud registration requires email verification. Local records will be preserved until a successful cloud import is confirmed.';
-    note.style.cssText='font-size:13px;color:#475569;margin-top:15px';
-    holder.append(note);
+    if(draft){
+      const extra=document.createElement('p');
+      extra.style.cssText='font-size:12px;color:#64748b;margin-top:20px';
+      extra.append('Have an older school setup on this device? ');
+      const review=document.createElement('a');
+      review.href=ROOT+'?fromLocal=1';
+      review.textContent='Review it after signing in';
+      extra.append(review);holder.append(extra);
+    }
   }
   function showError(error){
     if(typeof document==='undefined')return;
@@ -166,6 +169,10 @@
     const search=window.location.search;
     const hosted=window.location.protocol==='https:'||window.location.protocol==='http:';
     if(hosted&&!staff?.access_token){
+      // A sign-out must not leave the cloud conflict overlay covering the login.
+      // Never erase local workspace, pending edits, or their conflict backups.
+      if(erp?.cloudVerified)window.BNWorkspaceOnlineGuard?.update('synced');
+      store.removeItem(ERP_KEY);
       showCloudGate();
       return false; // Never start the local login/onboarding bundle on hosted ERP.
     }

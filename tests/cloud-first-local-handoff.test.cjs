@@ -11,7 +11,7 @@ const localProfile={institution:{id:'local-1',name:'Hps',email:'yrskaran@gmail.c
 function localStorageMock(map){
  return {getItem:k=>Object.hasOwn(map,k)?map[k]:null};
 }
-test('hosted ERP never opens a local-only school, and retains its records',async()=>{
+test('hosted ERP shows clean sign-in without auto-opening a local-only school, retaining its records',async()=>{
  const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',
    {url:'https://bright-nexa-school-os.onrender.com/',runScripts:'outside-only'});
  const json=JSON.stringify(localProfile);
@@ -19,8 +19,9 @@ test('hosted ERP never opens a local-only school, and retains its records',async
  dom.window.eval(read('school-erp-entry.js'));
  await Promise.resolve();
  const body=dom.window.document.getElementById('root');
- assert.match(body.textContent,/Hps/);
- assert.match(body.textContent,/No school record has been confirmed in Supabase/i);
+ assert.match(body.textContent,/Sign in to access your Bright Nexa school/i);
+ assert.doesNotMatch(body.textContent,/No school record has been confirmed in Supabase/i);
+ assert.ok(body.querySelector('a[href="./teacher-access.html"]'));
  assert.ok(body.querySelector('a[href*="teacher-access.html?fromLocal=1"]'));
  assert.equal(dom.window.localStorage.getItem('bright-nexa-school-os:snapshot:v1'),json);
  assert.equal(dom.window.document.querySelector('script[type="module"]'),null);

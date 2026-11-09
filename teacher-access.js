@@ -50,12 +50,12 @@
     put('bnEmailDescription',verified
       ?'Your email is confirmed. Continue to your secure school account.'
       :expired?'This confirmation link has expired or is invalid. Request a fresh verification email below.'
-      :pending?'We sent a confirmation link to your email. Open the link to activate your secure school account. Check Spam if you cannot find it.'
+      :pending?'If this is a new account awaiting verification, check your inbox or Spam folder. Already registered and verified? You can sign in directly—another email is not needed.'
       :'Your account exists, but its email address has not been verified. Check your inbox or resend a fresh confirmation link.');
     put('bnEmailSymbol',verified?'✓':expired?'!':'✉');
     $('bnEmailAddressWrap').classList.toggle('hidden',verified);
     $('bnEmailResend').classList.toggle('hidden',verified);
-    $('bnEmailContinue').textContent=verified?'Continue to school':'Back to login';
+    $('bnEmailContinue').textContent=verified?'Continue to school':'Go to sign in';
     dialog.dataset.verified=verified?'true':'false';
     if(dialog.open)dialog.close();
     dialog.showModal();
@@ -78,7 +78,7 @@
     try{
       // Supabase Auth's public resend endpoint, not a privileged admin operation.
       await authRequest('resend?redirect_to='+encodeURIComponent(emailReturnUrl()),{type:'signup',email});
-      feedback.textContent='If this email has a pending registration, a new verification link has been requested. Check your inbox and Spam.';
+      feedback.textContent='Request accepted. Email is sent only for a registration still awaiting confirmation. If your account is already verified, no new email is needed—choose Go to sign in.';
     }catch(error){
       feedback.classList.add('error');
       feedback.textContent=/rate|429|too many/i.test(error.message||'')
@@ -156,6 +156,9 @@
     session=null;me=null;identity=null;rolePermissions=null;feeStudentRoster=[];recoveryMode=false;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(SELECTED_SCHOOL_KEY);
+    // Logging out of staff access must also revoke the local ERP UI bridge.
+    // This does not touch school records, sync queues, local drafts or backups.
+    sessionStorage.removeItem('bright-nexa-school-os:session:v2');
     invalidateRoster();clearProfileEditor();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
     display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);showAuthView('login');
@@ -203,6 +206,9 @@
       display('logout',true);notify('No school is assigned to this account. Create your empty school below.');return;
     }
     display('createFirstSchoolPanel',false);showAuthView('login');
+    // A real school membership wins over a stale browser-only import intent.
+    // Preserve draft bytes; clear only the obsolete navigation flag.
+    if(FROM_LOCAL)localStorage.removeItem('bn_school_cloud_handoff_intent_v1');
     // School names become visible ONLY after a verified Supabase Auth session,
     // and only for institutions having an active membership for this account.
     const permitted=[];
