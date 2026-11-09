@@ -16,7 +16,7 @@ test('all three served entrypoints load the synced cloud guard before controller
    assert.match(html,/CACHE_VERSION = '20261109-real-only-v1'/);
    const sw=read(prefix+'sw.js');
    assert.match(sw,/school-online-guard.js\?v=20261109-conflict-recovery-v1/);
-   assert.match(sw,/school-erp-entry.js\?v=20261107-parent-publish-v2/);
+   assert.match(sw,/school-erp-entry.js\?v=20261109-real-only-v1/);
    assert.match(sw,/school-workspace-controller.js\?v=20261109-conflict-recovery-v1/);
  }
 });
