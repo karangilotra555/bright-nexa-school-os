@@ -64,3 +64,22 @@ test('revoked refresh keeps local records and does not retry unauthorized worksp
  assert.equal(h.calls.filter(c=>c.url.endsWith('/rpc/school_workspace_push')).length,1);
  assert.equal(h.local.get('records'),'unchanged');
 });
+
+test('class transfer preserves historical attendance in the original class',()=>{
+ const s=snapshot();
+ s.operations.classes.push({id:'new-class',name:'7',section:'A'});
+ s.students[0].classId='new-class';
+ s.students[0].className='7';
+ // Previously published attendance must still point to the attended Class 6.
+ const p=cloud.buildProjection(s,()=>[]);
+ assert.equal(p.students[0].classLocalId,'new-class');
+ assert.equal(p.attendance[0].classLocalId,'class');
+ assert.equal(p.attendance[0].studentLocalId,'student');
+});
+test('historical attendance rejects a class missing from this school',()=>{
+ const s=snapshot();
+ s.operations.classes.push({id:'new-class',name:'7',section:'A'});
+ s.students[0].classId='new-class';
+ s.operations.attendance[0].classId='foreign-class';
+ assert.throws(()=>cloud.buildProjection(s,()=>[]),/unknown class reference/i);
+});
