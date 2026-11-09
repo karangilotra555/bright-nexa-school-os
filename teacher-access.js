@@ -7,6 +7,8 @@
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
   const TOKEN_KEY='bn_school_staff_session_v1';
   const SELECTED_SCHOOL_KEY='bn_school_staff_selected_school_v1';
+  const FROM_LOCAL=new URLSearchParams(location.search).get('fromLocal')==='1';
+  const LOCAL_DRAFT=FROM_LOCAL?window.BNSchoolLocalHandoff?.read(localStorage):null;
   const ROLES=['school_admin','principal','teacher','accountant','librarian','receptionist','transport_staff'];
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
@@ -838,12 +840,55 @@
     try{
       // The authenticated, SECURITY DEFINER RPC enforces one school per account.
       // It creates a fresh institution and a verified school_admin membership.
+      const importing=!!LOCAL_DRAFT;
+      if(importing){
+        if(!window.BNWorkspaceCloud?.buildProjection||!window.BNSchoolLocalHandoff)
+          throw Error('Local-to-Supabase import service is unavailable. Refresh without clearing data.');
+        if(!$('localSchoolImportConsent').checked)
+          throw Error('Confirm that this local school belongs to you before importing it.');
+        if(LOCAL_DRAFT.name!==name)
+          throw Error('Use the saved local school name to connect your draft. Existing local records were not changed.');
+        const ops=LOCAL_DRAFT.operations||{};
+        if(['feeStructures','feePayments','studentFeeDues','classFeeCharges'].some(k=>Array.isArray(ops[k])&&ops[k].length))
+          throw Error('Local fee records require separate reconciliation. Cloud school was not created.');
+      }
+      // The first-school RPC authenticates the email-confirmed owner and
+      // atomically creates the tenant and school_admin membership.
       const schoolId=await api('rpc/register_first_school','','POST',{p_school_name:name});
       if(!/^[0-9a-f-]{36}$/i.test(String(schoolId)))throw Error('School creation returned no valid school ID.');
       sessionStorage.setItem(SELECTED_SCHOOL_KEY,String(schoolId));
-      await api('rpc/bn_initialize_school_workspace','','POST',{p_institution_id:String(schoolId)});
+      let initial;
+      try{
+        initial=await api('rpc/bn_initialize_school_workspace','','POST',{p_institution_id:String(schoolId)});
+        if(initial?.school?.id!==String(schoolId)||!initial?.snapshot)
+          throw Error('The new cloud workspace was not confirmed.');
+        if(importing){
+          const {snapshot,projection}=window.BNSchoolLocalHandoff.prepare(
+            LOCAL_DRAFT,initial,window.BNWorkspaceCloud.buildProjection);
+          const saved=await api('rpc/school_workspace_push','','POST',{
+            p_institution_id:String(schoolId),p_expected_revision:initial.revision,
+            p_snapshot:snapshot,p_projection:projection});
+          if(saved?.school?.id!==String(schoolId)||!(saved.revision>initial.revision))
+            throw Error('Supabase did not confirm the imported school.');
+          const checked=await api('rpc/school_workspace_pull','','POST',{p_institution_id:String(schoolId)});
+          if(checked?.school?.id!==String(schoolId)||
+             checked.snapshot?.institution?.institution?.name!==name||
+             checked.revision!==saved.revision||
+             !Array.isArray(checked.snapshot?.students)||
+             checked.snapshot.students.length!==snapshot.students.length)
+            throw Error('Imported local records failed cloud read-back verification.');
+          // Only a confirmed cloud save authorizes clearing the same-device
+          // legacy IndexedDB snapshot, and only after the ERP verifies the tenant.
+          localStorage.setItem('bn_school_import_pending_clear_v1',JSON.stringify({
+            schoolId:String(schoolId),revision:checked.revision,name}));
+        }
+      }catch(err){
+        throw Error('School "'+name+'" was registered in Supabase, but '+(importing?'local import':'workspace initialization')+
+          ' is not verified: '+(err.message||err)+
+          '. Your original device data is still retained. Sign in again rather than creating a duplicate school.');
+      }
       await load(String(schoolId));
-      notify('New empty school created. Open the dashboard to add your first class.');
+      notify(importing?'Local school '+name+' imported and verified in Supabase.':'New empty Supabase school created.');
     }finally{button.disabled=false;}
   })});
   $('createSchoolChangeAccount').addEventListener('click',()=>run(switchToDifferentAccount));
@@ -1087,6 +1132,22 @@
     return yyyy+'-'+m+'-'+day;
   }
   $('attendanceDate').value=dateLocal();
+  if(FROM_LOCAL){
+    display('localSchoolNotice',true);
+    if(LOCAL_DRAFT){
+      put('localSchoolNoticeTitle',LOCAL_DRAFT.name+' is on this device, NOT in Supabase.');
+      put('localSchoolNoticeText','Sign in or register your cloud owner email. You can import the local school profile and eligible records only after Supabase confirms the new school. No device data will be deleted before read-back.');
+      $('firstSchoolName').value=LOCAL_DRAFT.name;
+      $('loginEmail').value=LOCAL_DRAFT.email;
+      $('ownerSignupEmail').value=LOCAL_DRAFT.email;
+      display('localSchoolImportLabel',true);
+      $('createFirstSchoolButton').textContent='Create '+LOCAL_DRAFT.name+' in Supabase';
+    }else{
+      put('localSchoolNoticeTitle','Real Supabase school registration');
+      put('localSchoolNoticeText','Use a verified cloud owner account. No offline-only school will be created.');
+    }
+    display('ownerSignupForm',true);
+  }
   // Only Supabase-issued authenticated invite fragments are processed; tokens
   // are immediately removed from address bar after parsing.
   try {
