@@ -76,6 +76,23 @@ tr td select{padding:7px;min-width:115px}
 }
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
 @media(max-width:470px){.bar{flex-wrap:wrap}.bar>.flex{width:100%}.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
+
+/* Scoped confirmation modal: existing school layout, forms and navigation remain unchanged. */
+.bn-email-dialog{border:0;padding:0;border-radius:22px;width:min(452px,calc(100vw - 28px));max-width:calc(100vw - 28px);max-height:calc(100dvh - 28px);overflow:auto;background:#fff;color:#102640;box-shadow:0 25px 80px #061a3659}
+.bn-email-dialog::backdrop{background:rgba(3,15,35,.72);backdrop-filter:blur(4px)}
+.bn-email-content{position:relative;padding:30px 26px 26px}
+.bn-email-mark{height:58px;width:58px;border-radius:19px;display:grid;place-items:center;background:#e7f3ff;color:#0b6bac;font-size:29px;font-weight:800;margin-bottom:20px}
+.bn-email-dialog h2{font-size:23px;line-height:1.25;letter-spacing:-.5px;margin:0 25px 10px 0;color:#061a36}
+.bn-email-dialog .bn-email-description{font-size:14px;line-height:1.65;color:#526681;margin:0 0 19px}
+.bn-email-dialog .bn-email-close{position:absolute;right:14px;top:13px;border:0;border-radius:10px;background:#f1f5f9;color:#30455b;font-size:23px;line-height:1;width:35px;height:35px}
+.bn-email-dialog label{font-size:13px;color:#30455b;margin-bottom:7px}
+.bn-email-dialog #bnEmailInput{width:100%;min-height:45px}
+.bn-email-actions{display:grid;gap:10px;margin-top:17px}
+.bn-email-actions button{width:100%;min-height:46px}
+.bn-email-actions button:disabled{opacity:.65;cursor:wait}
+.bn-email-feedback{font-size:12px;color:#136348;line-height:1.5;margin:10px 0 0}
+.bn-email-feedback.error{color:#a82b3f}
+@media(max-width:470px){.bn-email-content{padding:24px 19px}.bn-email-dialog h2{font-size:21px}}
 </style>
 <script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./school-timetable-cloud.js?v=20261107-timetable-v1" defer></script><script src="./school-student-photo-cloud.js?v=20261107-photo-v1" defer></script><script src="./school-role-entry.js?v=20261109-owner-dashboard-v1" defer></script><script src="./school-workspace-cloud.js?v=20261109-historical-attendance-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./teacher-access.js?v=20261109-cloud-first-v2" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
@@ -366,4 +383,19 @@ tr td select{padding:7px;min-width:115px}
 </section>
 <div class="footer">Bright Nexa School OS · Cloud Teacher Access · © 2026</div>
 </main>
+
+<dialog id="bnEmailDialog" class="bn-email-dialog" aria-labelledby="bnEmailTitle" aria-describedby="bnEmailDescription">
+  <div class="bn-email-content">
+    <button id="bnEmailClose" class="bn-email-close" aria-label="Close verification message" type="button">×</button>
+    <div id="bnEmailSymbol" class="bn-email-mark" aria-hidden="true">✉</div>
+    <h2 id="bnEmailTitle">Email verification required</h2>
+    <p class="bn-email-description" id="bnEmailDescription">Please confirm your email to access your school.</p>
+    <div id="bnEmailAddressWrap"><label for="bnEmailInput">Registered email address</label><input id="bnEmailInput" type="email" autocomplete="email" required placeholder="name@school.com"></div>
+    <p id="bnEmailFeedback" class="bn-email-feedback" role="status" aria-live="polite"></p>
+    <div class="bn-email-actions">
+      <button id="bnEmailResend" type="button" class="primary">Resend verification email</button>
+      <button id="bnEmailContinue" type="button" class="ghost">Back to login</button>
+    </div>
+  </div>
+</dialog>
 </body></html>
