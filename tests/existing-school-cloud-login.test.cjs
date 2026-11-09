@@ -79,7 +79,7 @@ test('bad school and non-UUID user IDs are rejected',async()=>{
 test('current root, docs and PWA distribution load verification bootstrap instead of the old unconditional module tag',()=>{
  for(const prefix of ['', 'docs/','app-extracted/dist/']){
   const html=read(prefix+'index.html');
-  assert.match(html,/school-erp-entry\.js\?v=20261109-auth-entry-v4/);
+  assert.match(html,/school-erp-entry\.js\?v=20261109-school-login-v5/);
   assert.doesNotMatch(html,/<script type="module" crossorigin src="\.\/assets\/index-brightnexa-v2\.js/);
   assert.ok(read(prefix+'school-erp-entry.js').includes("school_workspace_pull"),prefix);
  }
