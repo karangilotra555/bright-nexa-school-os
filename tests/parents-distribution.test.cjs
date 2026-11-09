@@ -21,11 +21,12 @@ test('School OS has parents download entry on app server and static docs',()=>{
    assert.match(html,/navigator\.clipboard/);
  }
 });
-test('Android demo identifies school separately and does not claim real sync',()=>{
- const html=read('android-parents/app/src/main/assets/demo.html');
- assert.match(html,/BRIGHT NEXA DEMO ACADEMY/);
- assert.match(html,/No school is connected/);
- assert.match(html,/DEMO PREVIEW/);
+test('Android parents app has no fictional demo data or offline preview',()=>{
+ assert.equal(fs.existsSync(path.join(__dirname,'../android-parents/app/src/main/assets/demo.html')),false);
+ const java=read('android-parents/app/src/main/java/com/brightnexa/parents/MainActivity.java');
+ assert.doesNotMatch(java,/openPreview|DEMO MODE|demo\\.html/);
+ assert.match(java,/openSchool\\(configuredUrl\\)/);
+ assert.match(java,/parents\\.html/);
  const wf=read('.github/workflows/build-parents-apk.yml');
  assert.match(wf,/gh release create/);
  assert.match(wf,/--prerelease/);
