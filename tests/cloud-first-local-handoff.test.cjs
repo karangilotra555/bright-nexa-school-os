@@ -16,6 +16,7 @@ test('hosted ERP shows clean sign-in without auto-opening a local-only school, r
    {url:'https://bright-nexa-school-os.onrender.com/',runScripts:'outside-only'});
  const json=JSON.stringify(localProfile);
  dom.window.localStorage.setItem('bright-nexa-school-os:snapshot:v1',json);
+ dom.window.setTimeout=()=>0; // Unit test: no real cross-page navigation in JSDOM.
  dom.window.eval(read('school-erp-entry.js'));
  await Promise.resolve();
  const body=dom.window.document.getElementById('root');
@@ -82,11 +83,12 @@ test('ERP entry ignores a stale signed-out cloud session and hides its overlay w
   const saved=JSON.stringify(localProfile);
   window.localStorage.setItem('bright-nexa-school-os:snapshot:v1',saved);
   window.sessionStorage.setItem('bright-nexa-school-os:session:v2',JSON.stringify({cloudVerified:true}));
+  window.setTimeout=()=>0; // Unit test: preserve redirect fallback without navigating.
   window.eval(read('school-erp-entry.js'));
   await Promise.resolve();
   assert.equal(window.sessionStorage.getItem('bright-nexa-school-os:session:v2'),null);
   assert.ok(updates.includes('synced'));
-  assert.match(window.document.getElementById('root').textContent,/Sign in to access your Bright Nexa school/);
+  assert.match(window.document.getElementById('root').textContent,/Opening secure school sign-in/);
   assert.equal(window.localStorage.getItem('bright-nexa-school-os:snapshot:v1'),saved);
   dom.window.close();
 });
