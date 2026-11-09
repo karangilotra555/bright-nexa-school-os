@@ -33,6 +33,59 @@
     const e=$('status');e.textContent=msg;e.classList.remove('hidden','error','ok');e.classList.add(isError?'error':'ok');
   }
   function clearNotice(){ $('status').classList.add('hidden');$('status').textContent=''; }
+
+  // Host-safe confirmation and recovery destinations; never send mail to localhost from a deployed app.
+  function emailReturnUrl(){
+    const url=new URL('./teacher-access.html',location.href);
+    return ['https:','http:'].includes(url.protocol)&&!['localhost','127.0.0.1'].includes(url.hostname)
+      ?url.href:'https://bright-nexa-school-os.onrender.com/teacher-access.html';
+  }
+  function emailDialog(mode,email=''){
+    const dialog=$('bnEmailDialog'),address=$('bnEmailInput'),feedback=$('bnEmailFeedback');
+    if(!dialog)return notify('Email verification needs attention. Check your inbox and try again.',true);
+    address.value=email||'';
+    feedback.textContent='';feedback.classList.remove('error');
+    const verified=mode==='verified',expired=mode==='expired',pending=mode==='pending';
+    put('bnEmailTitle',verified?'Email verified successfully':expired?'Verification link expired':pending?'Check your email':'Email verification required');
+    put('bnEmailDescription',verified
+      ?'Your email is confirmed. Continue to your secure school account.'
+      :expired?'This confirmation link has expired or is invalid. Request a fresh verification email below.'
+      :pending?'We sent a confirmation link to your email. Open the link to activate your secure school account. Check Spam if you cannot find it.'
+      :'Your account exists, but its email address has not been verified. Check your inbox or resend a fresh confirmation link.');
+    put('bnEmailSymbol',verified?'✓':expired?'!':'✉');
+    $('bnEmailAddressWrap').classList.toggle('hidden',verified);
+    $('bnEmailResend').classList.toggle('hidden',verified);
+    $('bnEmailContinue').textContent=verified?'Continue to school':'Back to login';
+    dialog.dataset.verified=verified?'true':'false';
+    if(dialog.open)dialog.close();
+    dialog.showModal();
+    (verified?$('bnEmailContinue'):address).focus();
+  }
+  $('bnEmailClose').addEventListener('click',()=>$('bnEmailDialog').close());
+  $('bnEmailContinue').addEventListener('click',()=>{
+    const dialog=$('bnEmailDialog'),verified=dialog.dataset.verified==='true';
+    dialog.close();
+    if(verified&&session)$('continuePreviousSession').click();
+    else $('loginEmail').focus();
+  });
+  $('bnEmailResend').addEventListener('click',async()=>{
+    const email=$('bnEmailInput').value.trim().toLowerCase();
+    const feedback=$('bnEmailFeedback'),button=$('bnEmailResend');
+    if(!$('bnEmailInput').checkValidity()||!email){
+      feedback.textContent='Enter your registered email address.';feedback.classList.add('error');return;
+    }
+    button.disabled=true;feedback.classList.remove('error');
+    try{
+      // Supabase Auth's public resend endpoint, not a privileged admin operation.
+      await authRequest('resend?redirect_to='+encodeURIComponent(emailReturnUrl()),{type:'signup',email});
+      feedback.textContent='If this email has a pending registration, a new verification link has been requested. Check your inbox and Spam.';
+    }catch(error){
+      feedback.classList.add('error');
+      feedback.textContent=/rate|429|too many/i.test(error.message||'')
+        ?'Too many requests. Please try again later.'
+        :'Could not request a verification email. Please retry or contact your school administrator.';
+    }finally{button.disabled=false;}
+  });
   function put(id,value){$(id).textContent=values(value);}
   function dom(tag,text,cls){
     const e=document.createElement(tag); if(text!==undefined)e.textContent=values(text);if(cls)e.className=cls;return e;
@@ -798,7 +851,11 @@
     if(!allAssignments.length)listing.append(dom('p','No teacher class assignments yet.'));
   }
   async function run(task){
-    try{clearNotice();await task()}catch(e){notify(e.message||'Operation could not be completed.',true)}
+    try{clearNotice();await task()}catch(e){
+      if(/email.*(?:not.confirmed|not.verified|unconfirmed)|confirm your email/i.test(e.message||''))
+        emailDialog('unconfirmed',$('loginEmail').value.trim()||$('ownerSignupEmail').value.trim());
+      else notify(e.message||'Operation could not be completed.',true);
+    }
   }
   $('continuePreviousSession').addEventListener('click',()=>run(async()=>{
     display('savedSessionPanel',false);
@@ -826,13 +883,13 @@
     if(!email||password.length<12)throw Error('Enter a valid email and password with at least 12 characters.');
     button.disabled=true;
     try{
-      const res=await authRequest('signup',{email,password});
+      const res=await authRequest('signup?redirect_to='+encodeURIComponent(emailReturnUrl()),{email,password});
       $('ownerSignupPassword').value='';
       if(res.access_token&&res.refresh_token){
         saveSession(res);display('ownerSignupForm',false);await load();
       }else{
         display('ownerSignupForm',false);
-        notify('Registration requested. Verify your email, then sign in to create a new empty school.');
+        emailDialog('pending',email);
       }
     }finally{button.disabled=false;}
   })});
@@ -1157,11 +1214,16 @@
   }
   // Only Supabase-issued authenticated invite fragments are processed; tokens
   // are immediately removed from address bar after parsing.
+  let confirmedByEmailLink=false;
+  let authLinkExpired=false;
   try {
     const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+    authLinkExpired=!!hash.get('error')&&/expired|invalid|denied|access_denied/i.test((hash.get('error_code')||'')+' '+hash.get('error'));
+    if(authLinkExpired)history.replaceState(null,'',location.pathname+location.search);
     if(hash.has('access_token')&&hash.has('refresh_token')){
       saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_in:parseInt(hash.get('expires_in')||'3600',10)});
       recoveryMode=hash.get('type')==='recovery';
+      confirmedByEmailLink=['signup','email'].includes(hash.get('type'));
       if(['invite','recovery'].includes(hash.get('type'))){
         display('activation',true);
         if(recoveryMode){
@@ -1175,6 +1237,14 @@
       if(saved)session=JSON.parse(saved);
     }
   }catch{dropSession()}
+  if(authLinkExpired)emailDialog('expired');
+  if(confirmedByEmailLink&&session){
+    fetch(BASE+'/auth/v1/user',{headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'})
+      .then(responseJson).then(user=>{
+        if(user.email_confirmed_at||user.confirmed_at)emailDialog('verified',user.email||'');
+        else notify('Email confirmation has not been verified. Request another email link.',true);
+      }).catch(()=>notify('Could not verify the email confirmation. Please sign in again.',true));
+  }
   if(session&&!$('activation').classList.contains('hidden')){
     notify(recoveryMode?'Secure recovery link verified. Set your new password.':'Invitation verified. Set your new password to continue.');
   }else if(session){
