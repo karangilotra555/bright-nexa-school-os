@@ -840,6 +840,8 @@
     try{
       // The authenticated, SECURITY DEFINER RPC enforces one school per account.
       // It creates a fresh institution and a verified school_admin membership.
+      if(FROM_LOCAL&&!LOCAL_DRAFT&&localStorage.getItem('bright-nexa-school-os:snapshot:v1'))
+        throw Error('Your existing local school could not be read. Device data was preserved; do not create a different school.');
       const importing=!!LOCAL_DRAFT;
       if(importing){
         if(!window.BNWorkspaceCloud?.buildProjection||!window.BNSchoolLocalHandoff)
