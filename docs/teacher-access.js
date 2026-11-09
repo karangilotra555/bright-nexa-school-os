@@ -46,7 +46,7 @@
     address.value=email||'';
     feedback.textContent='';feedback.classList.remove('error');
     const verified=mode==='verified',expired=mode==='expired',pending=mode==='pending';
-    put('bnEmailTitle',verified?'Email verified successfully':expired?'Verification link expired':pending?'Check your email':'Email verification required');
+    put('bnEmailTitle',verified?'Email verified successfully':expired?'Verification link expired':pending?'Check your account':'Email verification required');
     put('bnEmailDescription',verified
       ?'Your email is confirmed. Continue to your secure school account.'
       :expired?'This confirmation link has expired or is invalid. Request a fresh verification email below.'

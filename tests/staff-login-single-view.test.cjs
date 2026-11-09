@@ -59,3 +59,15 @@ test('production and published docs share the same login markup and script',()=>
   assert.ok(read('teacher-access.html').indexOf('id="localSchoolNotice"')>read('teacher-access.html').indexOf('id="createFirstSchoolPanel"'));
   assert.doesNotMatch(read('teacher-access.js'),/display\('ownerSignupForm',true\);\s*}\s*\/\/ Only Supabase-issued/);
 });
+
+test('staff logout clears only the ERP login bridge and keeps browser school drafts',async()=>{
+  const dom=portal();const {window}=dom;
+  window.sessionStorage.setItem('bright-nexa-school-os:session:v2',JSON.stringify({cloudVerified:true}));
+  const before=window.localStorage.getItem('bright-nexa-school-os:snapshot:v1');
+  byId(window,'logout').click();
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(window.sessionStorage.getItem('bright-nexa-school-os:session:v2'),null);
+  assert.equal(window.localStorage.getItem('bright-nexa-school-os:snapshot:v1'),before);
+  assert.equal(visible(byId(window,'loginForm')),true);
+  dom.window.close();
+});

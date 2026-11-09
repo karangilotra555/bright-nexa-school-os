@@ -73,3 +73,20 @@ test('root/docs/desktop scripts and cloud owner signup are in sync',()=>{
  assert.match(portal,/localSchoolImportConsent/);
  assert.match(read('school-erp-entry.js'),/clearImportedDeviceDraft/);
 });
+
+test('ERP entry ignores a stale signed-out cloud session and hides its overlay without erasing drafts',async()=>{
+  const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',
+    {url:'https://bright-nexa-school-os.onrender.com/',runScripts:'outside-only'});
+  const {window}=dom, updates=[];
+  window.BNWorkspaceOnlineGuard={update:status=>updates.push(status)};
+  const saved=JSON.stringify(localProfile);
+  window.localStorage.setItem('bright-nexa-school-os:snapshot:v1',saved);
+  window.sessionStorage.setItem('bright-nexa-school-os:session:v2',JSON.stringify({cloudVerified:true}));
+  window.eval(read('school-erp-entry.js'));
+  await Promise.resolve();
+  assert.equal(window.sessionStorage.getItem('bright-nexa-school-os:session:v2'),null);
+  assert.ok(updates.includes('synced'));
+  assert.match(window.document.getElementById('root').textContent,/Sign in to access your Bright Nexa school/);
+  assert.equal(window.localStorage.getItem('bright-nexa-school-os:snapshot:v1'),saved);
+  dom.window.close();
+});
