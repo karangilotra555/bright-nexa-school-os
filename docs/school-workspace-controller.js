@@ -66,7 +66,7 @@
     }
     async function openSchool(schoolId){
       if(running)await running;
-      var start=generation, before=clone(o.getSnapshot()),observed=watch(schoolId,institutionId(o.getSnapshot()));notify('loading');
+      var recovering=status==='conflict', start=generation, before=clone(o.getSnapshot()),observed=watch(schoolId,institutionId(o.getSnapshot()));notify('loading');
       try{
         var remote=await o.client.pull(schoolId);
         observed.check();
@@ -84,13 +84,22 @@
         var nextRecord={revision:remote.revision,pending:null};
         var preflight=PREFIX+'preflight.'+Date.now();
         storage.setItem(preflight,JSON.stringify({binding:next,record:nextRecord}));storage.removeItem(preflight);
-        await o.applySnapshot(clone(remote.snapshot),function(){return start===generation&&observed.valid();});
+        var applied=await o.applySnapshot(clone(remote.snapshot),function(){return start===generation&&observed.valid();});
+        if(applied===false)throw error('Cloud records could not be applied safely; local records were retained.');
         observed.check();
         if(start!==generation)throw error('Local edits occurred while applying the school. Local records were retained.');
         nextRecord.fingerprint=fingerprint(o.getSnapshot());
         storage.setItem(recordKey(next),JSON.stringify(nextRecord));storage.setItem(bindingKey(next.localId),JSON.stringify(next));
         binding=next;record=nextRecord;disk=JSON.stringify(record);++generation;notify('synced');return remote;
-      }catch(e){if(e.code==='CONFLICT')conflict(e);else notify(record&&record.pending?'pending':binding?'pending':'local',e);throw e;}
+      }catch(e){if(e.code==='CONFLICT'||recovering)conflict(e);else notify(record&&record.pending?'pending':binding?'pending':'local',e);throw e;}
+    }
+    async function recoverCloudSchool(){
+      if(status!=='conflict'||!binding)return state();
+      if(!sameInstitution(o.getSnapshot()))throw error('School identity changed. Sign in to the correct school before recovery.');
+      // Explicit recovery never pushes a pending snapshot; openSchool first
+      // backs up the current device and any separately retained pending copy.
+      await openSchool(binding.schoolId);
+      return state();
     }
     async function uploadLocal(schoolId){
       if(running)await running;
@@ -146,9 +155,10 @@
       return state();
     }
     function disconnect(){++generation;if(binding)storage.removeItem(bindingKey(binding.localId));binding=null;record=null;disk=null;notify('local');return state();}
-    function dispose(){disposed=true;++generation;binding=null;record=null;disk=null;if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(null);}
+    function dispose(){disposed=true;++generation;binding=null;record=null;disk=null;if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(null);if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRecover)window.BNWorkspaceOnlineGuard.setRecover(null);}
     if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(function(){return sync();});
-    return {dispose:dispose,initialize:initialize,openSchool:openSchool,uploadLocal:uploadLocal,autosave:autosave,sync:sync,disconnect:disconnect,state:state,connect:function(){return o.client.connect();}};
+    if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRecover)window.BNWorkspaceOnlineGuard.setRecover(function(){return recoverCloudSchool();});
+    return {dispose:dispose,initialize:initialize,openSchool:openSchool,uploadLocal:uploadLocal,autosave:autosave,sync:sync,recoverCloudSchool:recoverCloudSchool,disconnect:disconnect,state:state,connect:function(){return o.client.connect();}};
   }
   return {create:create};
 });
