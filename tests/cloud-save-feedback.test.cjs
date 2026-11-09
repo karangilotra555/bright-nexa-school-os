@@ -49,10 +49,10 @@ test('source and served copies show pending cloud acknowledgment instead of prem
  assert.equal(read(bundles[0]),read(bundles[2]));
  for(const base of ['','docs/','app-extracted/dist/']){
   const index=read(base+'index.html'),sw=read(base+'sw.js');
-  assert.match(index,/CACHE_VERSION = '20261109-school-login-v5'/);
+  assert.match(index,/CACHE_VERSION = '20261109-signout-v6'/);
   const sha=file=>crypto.createHash('sha256').update(Buffer.from(read(file),'utf8')).digest('hex');
-  assert.ok(sw.includes('"url":"school-online-guard.js?v=20261109-conflict-recovery-v2","revision":"'+sha(base+'school-online-guard.js')+'"'));
-  assert.ok(sw.includes('"url":"school-workspace-controller.js?v=20261109-conflict-recovery-v2","revision":"'+sha(base+'school-workspace-controller.js')+'"'));
+  assert.ok(sw.includes('"url":"school-online-guard.js?v=20261109-logout-ready-v3","revision":"'+sha(base+'school-online-guard.js')+'"'));
+  assert.ok(sw.includes('"url":"school-workspace-controller.js?v=20261109-logout-ready-v3","revision":"'+sha(base+'school-workspace-controller.js')+'"'));
   assert.ok(sw.includes('url:"assets/index-brightnexa-v2.js",revision:"'+sha(base+'assets/index-brightnexa-v2.js')+'"'));
   assert.equal(read(base+'school-online-guard.js'),read('school-online-guard.js'));
   assert.equal(read(base+'school-workspace-controller.js'),read('school-workspace-controller.js'));
