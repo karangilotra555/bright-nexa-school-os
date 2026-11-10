@@ -42308,7 +42308,7 @@ var Ts = [
   {
     label: `Teachers · Online Access`,
     icon: _Component4,
-    roles: ws
+    roles: ws,
     href: `./teacher-access.html?staffPortal=1`,
     navId: `bn-teacher-access-nav`,
     directKind: `teachers`
@@ -42321,7 +42321,7 @@ var Ts = [
   {
     label: `School Timetable`,
     icon: _Component16,
-    roles: ws
+    roles: ws,
     href: `./teacher-access.html?view=timetable`,
     navId: `bn-timetable-nav`,
     directKind: `timetable`
@@ -42374,7 +42374,7 @@ var Ts = [
   {
     label: `Parents App · Download`,
     icon: Te,
-    roles: ws
+    roles: ws,
     href: `./parent-app-download.html`,
     navId: `bn-parents-app-nav`,
     directKind: `parents`
