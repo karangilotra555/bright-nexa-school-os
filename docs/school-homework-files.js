@@ -9,7 +9,32 @@ async function validate(file){
  if(!valid)throw Error('The selected file does not match its PDF / image format.');
 }
 function create({base,key,token,fetcher=root.fetch?.bind(root)}){
- async function authFetch(path,options={}){const jwt=await token();if(!jwt)throw Error('Please log in again.');const res=await fetcher(base+path,{...options,headers:{apikey:key,Authorization:'Bearer '+jwt,...options.headers},cache:'no-store'});if(!res.ok){const p=await res.json().catch(()=>({}));throw Error(p.message||p.error||'File request denied. Please retry.');}return res;}
+ async function timedFileFetch(url,options={}){
+  const ctl=typeof AbortController==='function'?new AbortController():null;
+  let expired=false,timer,abortHandler=null;
+  if(ctl&&options.signal){
+   if(options.signal.aborted)ctl.abort();
+   else if(typeof options.signal.addEventListener==='function'){
+    abortHandler=()=>ctl.abort();options.signal.addEventListener('abort',abortHandler,{once:true});
+   }
+  }
+  try{
+   return await Promise.race([
+    Promise.resolve().then(()=>fetcher(url,{...options,...(ctl?{signal:ctl.signal}:{})})),
+    new Promise((_,reject)=>{timer=setTimeout(()=>{
+     expired=true;ctl?.abort();
+     reject(Error('Homework file cloud request timed out. Upload must be verified before retry.'));
+    },45000);})
+   ]);
+  }catch(e){
+   if(expired)throw Error('Homework file cloud request timed out. Upload must be verified before retry.');
+   throw e;
+  }finally{
+   clearTimeout(timer);
+   if(abortHandler)options.signal.removeEventListener('abort',abortHandler);
+  }
+ }
+ async function authFetch(path,options={}){const jwt=await token();if(!jwt)throw Error('Please log in again.');const res=await timedFileFetch(base+path,{...options,headers:{apikey:key,Authorization:'Bearer '+jwt,...options.headers},cache:'no-store'});if(!res.ok){const p=await res.json().catch(()=>({}));const err=Error(p.message||p.error||'File request denied. Please retry.');err.status=res.status;throw err;}return res;}
  async function json(path,method='GET',body){const res=await authFetch(path,{method,headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:body===undefined?undefined:JSON.stringify(body)});return res.json();}
  async function list(ids){if(!ids.length)return [];return json('/rest/v1/school_homework_files?select=*&homework_id=in.('+ids.join(',')+')&order=created_at.asc');}
  async function upload(homework,files){
@@ -19,7 +44,19 @@ function create({base,key,token,fetcher=root.fetch?.bind(root)}){
    const id=crypto.randomUUID(),path=homework.institution_id+'/'+homework.id+'/'+id+'.'+MIME[f.type];
    await json('/rest/v1/school_homework_files','POST',{id,homework_id:homework.id,institution_id:homework.institution_id,storage_path:path,name:f.name.slice(0,180),mime:f.type,size:f.size});
    try{await authFetch('/storage/v1/object/school-homework/'+path,{method:'POST',headers:{'Content-Type':f.type,'x-upsert':'false'},body:f});}
-   catch(e){await json('/rest/v1/school_homework_files?id=eq.'+id,'DELETE').catch(()=>{});throw e;}
+   catch(e){
+     // Storage may have committed the object even when its response was lost.
+     // Never delete verified uploaded-file metadata on an ambiguous timeout.
+     let verified=false,missing=false;
+     try{
+       await authFetch('/storage/v1/object/authenticated/school-homework/'+path,{
+         method:'GET',headers:{Range:'bytes=0-0'}
+       });
+       verified=true;
+     }catch(checkError){missing=checkError.status===404;}
+     if(missing)await json('/rest/v1/school_homework_files?id=eq.'+id,'DELETE').catch(()=>{});
+     if(!verified)throw Error(missing?e.message:'File upload confirmation unavailable. Metadata was preserved for recovery; refresh before uploading again. '+e.message);
+   }
   }
  }
  function links(container,files){for(const file of files||[]){const button=document.createElement('button');button.type='button';button.className='bn-file-button';button.textContent=(file.mime==='application/pdf'?'📄 ':'🖼 ')+file.name;button.addEventListener('click',()=>open(file));container.append(button);}}

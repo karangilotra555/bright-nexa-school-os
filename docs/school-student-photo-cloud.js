@@ -12,10 +12,24 @@
   const fetchFn=fetcher||root.fetch.bind(root);
   const uuid=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||''));
   const urlPath=path=>String(path).split('/').map(encodeURIComponent).join('/');
+  async function timedPhotoFetch(url,options={}){
+   const ctl=typeof AbortController==='function'?new AbortController():null;
+   let timer,expired=false;
+   try{return await Promise.race([
+     Promise.resolve().then(()=>fetchFn(url,{...options,...(ctl?{signal:ctl.signal}:{})})),
+     new Promise((_,reject)=>{timer=setTimeout(()=>{
+       expired=true;ctl?.abort();
+       reject(Error('Student photo cloud request timed out. Upload status was not confirmed.'));
+     },45000);})
+   ]);}catch(e){
+     if(expired||e?.name==='AbortError')throw Error('Student photo cloud request timed out. Upload status was not confirmed.');
+     throw e;
+   }finally{clearTimeout(timer);}
+  }
   async function secureFetch(path,opts={}){
    const jwt=await token();
    if(!jwt)throw Error('Sign in to the school portal again.');
-   const res=await fetchFn(base+path,{...opts,cache:'no-store',headers:{apikey:key,Authorization:'Bearer '+jwt,...opts.headers}});
+   const res=await timedPhotoFetch(base+path,{...opts,cache:'no-store',headers:{apikey:key,Authorization:'Bearer '+jwt,...opts.headers}});
    const type=res.headers?.get?.('content-type')||'';
    let result={};
    try{result=type.includes('json')?await res.json():{}}catch(_){}
@@ -34,7 +48,7 @@
    const path=schoolId+'/'+studentId+'/photo-'+suffix+'.'+ALLOWED[file.type];
    const jwt=await token();
    if(!jwt)throw Error('Please sign in again.');
-   const response=await fetchFn(base+'/storage/v1/object/'+BUCKET+'/'+urlPath(path),{
+   const response=await timedPhotoFetch(base+'/storage/v1/object/'+BUCKET+'/'+urlPath(path),{
     method:'POST',headers:{apikey:key,Authorization:'Bearer '+jwt,'Content-Type':file.type,'cache-control':'3600','x-upsert':'false'},
     body:file,cache:'no-store'
    });
@@ -46,7 +60,12 @@
    await secureFetch('/rest/v1/rpc/bn_save_student_photo',{method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({p_student_id:studentId,p_storage_path:path})});
-   return {path,url:await signedUrl(schoolId,studentId,path)};
+   // The RPC was committed. A temporary signed-preview error must not make
+   // an already-published photo look unsaved (and trigger duplicate uploads).
+   let url=null,previewWarning=false;
+   try{url=await signedUrl(schoolId,studentId,path);}
+   catch(_){previewWarning=true;}
+   return {path,url,previewWarning};
   }
   async function signedUrl(schoolId,studentId,path){
    if(!path)return null;

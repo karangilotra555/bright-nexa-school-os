@@ -411,7 +411,9 @@
       if(previous)readProfile=()=>{const p=previous();p.p_profile.details.photo_path=result.path;return p;};
       if(result.url){$('studentPhotoPreview').src=result.url;display('studentPhotoPreview',true);}
       $('studentPhotoInput').value='';
-      put('studentPhotoStatus','Student photo published securely. Linked student/parent will see it on refresh.');
+      put('studentPhotoStatus',result.previewWarning
+        ?'Student photo saved in Supabase. Preview could not load right now; refresh the photo later.'
+        :'Student photo published securely. Linked student/parent will see it on refresh.');
     }finally{button.disabled=false;}
   }));
   $('studentProfileForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
@@ -1247,8 +1249,22 @@
     if(selects.some(s=>!['present','absent','late','excused'].includes(s.value)))throw Error('Mark every student before saving attendance.');
     const records=selects.map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:me.institution_id,day,status:s.value,recorded_by:me.id}));
     const button=$('saveAttendance');if(button.disabled)return;button.disabled=true;
-    try{await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=minimal');
-    notify('Attendance saved for '+records.length+' students on '+day+'. Linked parents can refresh attendance in their app.');}finally{button.disabled=false;}
+    try{
+      const expected=new Map(records.map(row=>[row.student_id,row.status]));
+      let confirmed=false,writeFailure=null;
+      try{
+        const saved=await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=representation');
+        confirmed=Array.isArray(saved)&&saved.length===records.length&&saved.every(row=>expected.get(row.student_id)===row.status);
+      }catch(error){writeFailure=error;}
+      if(!confirmed){
+        try{
+          const readBack=await api('school_attendance',query({select:'student_id,status',class_id:eq(cls),day:eq(day),institution_id:eq(me.institution_id)}));
+          confirmed=Array.isArray(readBack)&&readBack.length===records.length&&readBack.every(row=>expected.get(row.student_id)===row.status);
+        }catch(_) {}
+      }
+      if(!confirmed)throw writeFailure||Error('Attendance write was not confirmed for the full class. Please refresh the roster before retrying.');
+      notify('Attendance verified in Supabase for '+records.length+' students on '+day+'. Linked parents can refresh attendance in their app.');
+    }finally{button.disabled=false;}
   }));
   $('homeworkForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const class_id=$('homeworkClass').value;
@@ -1256,12 +1272,31 @@
     const subject=$('homeworkSubject').value.trim(),title=$('homeworkTitle').value.trim();
     if(!subject||!title)throw Error('Subject and task are required.');
     const button=$('publishHomework');if(button.disabled)return;const selectedFiles=Array.from($('homeworkFiles').files||[]);if(selectedFiles.length>5)throw Error('Choose up to 5 files.');for(const file of selectedFiles)await window.BNHomeworkFiles.validate(file);button.disabled=true;
-    try{const published=await api('school_homework','','POST',{
-      institution_id:me.institution_id,class_id,subject,title,
-      instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null,created_by:me.id
-    });
-    let fileError=null;try{if(selectedFiles.length)await homeworkFiles.upload(published[0],selectedFiles);}catch(err){fileError=err;}
-    e.target.reset();await reload();notify(fileError?'Homework saved. Some files were not uploaded: '+fileError.message+' Use Add photo / PDF on this homework to retry.':'Homework published with '+selectedFiles.length+' file(s).',!!fileError);
+    try{
+      const form=$('homeworkForm');
+      const id=form.dataset.pendingHomeworkId||(form.dataset.pendingHomeworkId=crypto.randomUUID());
+      const payload={id,institution_id:me.institution_id,class_id,subject,title,
+        instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null,created_by:me.id};
+      let published=null,writeFailure=null;
+      try{
+        const result=await api('school_homework','','POST',payload);
+        if(Array.isArray(result)&&result.length===1&&result[0].id===id)published=result[0];
+      }catch(error){writeFailure=error;}
+      if(!published){
+        // A successful INSERT can lose its network response. Reuse this form's
+        // stable UUID and read back instead of creating duplicate homework.
+        try{
+          const saved=await api('school_homework',query({select:'*',id:eq(id),institution_id:eq(me.institution_id),limit:'2'}));
+          if(Array.isArray(saved)&&saved.length===1&&saved[0].class_id===class_id&&saved[0].title===title&&saved[0].subject===subject)published=saved[0];
+        }catch(_){}
+      }
+      if(!published)throw writeFailure||Error('Homework was not confirmed in Supabase. Retry without changing the form.');
+      delete form.dataset.pendingHomeworkId;
+      let fileError=null;
+      try{if(selectedFiles.length)await homeworkFiles.upload(published,selectedFiles);}
+      catch(err){fileError=err;}
+      e.target.reset();await reload();
+      notify(fileError?'Homework saved. Some files were not uploaded: '+fileError.message+' Use Add photo / PDF on this homework to retry.':'Homework verified in Supabase with '+selectedFiles.length+' file(s).',!!fileError);
     }finally{button.disabled=false;}
   })});
   $('inviteForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
