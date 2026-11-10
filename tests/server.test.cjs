@@ -15,6 +15,8 @@ before(async()=>{
 });
 after(async()=>{if(child){child.kill();await new Promise(r=>child.once('exit',r));} if(dir)fs.rmSync(dir,{recursive:true,force:true});});
 test('school profile API exposes public institution fields',async()=>{const r=await fetch(base+'/api/school-profile');assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/json/);const data=await r.json();assert.equal(typeof data.institution.name,'string');assert.equal(data.students,undefined);});
+test('fresh legacy SQLite API does not seed a school or sample students',async()=>{const health=await fetch(base+'/api/health').then(r=>r.json());assert.equal(health.enrolledStudents,0);assert.equal(health.institution,'');const school=await fetch(base+'/api/school-profile').then(r=>r.json());assert.equal(school.institution.name,'');});
+
 test('database cannot be downloaded as a static asset',async()=>{const r=await fetch(base+'/data/school.db');assert.equal(r.status,403);});
 test('server source cannot be downloaded',async()=>{const r=await fetch(base+'/server.js');assert.equal(r.status,403);});
 test('unknown API returns JSON 404 instead of the application HTML',async()=>{const r=await fetch(base+'/api/missing');assert.equal(r.status,404);assert.match(r.headers.get('content-type'),/json/);});
