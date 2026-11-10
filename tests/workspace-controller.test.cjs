@@ -197,3 +197,31 @@ test('failed durable pending write never uploads an unrecorded edit',async()=>{
  assert.equal(f.pushes.length,0);
  assert.equal(f.remote.snapshot.students[0].id,1);
 });
+
+test('missing IndexedDB pending pointer blocks all cloud replacement routes',async()=>{
+ const f=fixture(),backup=new Map();
+ f.opts.pendingStorage={
+  write:async(k,v)=>backup.set(k,v),
+  read:async k=>backup.get(k)
+ };
+ const first=f.make();await first.openSchool('school');
+ const old=f.store.setItem;
+ f.store.setItem=(key,value)=>{
+  if(key.includes('bn.workspace.v1.school.')&&value.length>400){
+   const e=Error('Quota exceeded');e.name='QuotaExceededError';throw e;
+  }
+  old(key,value);
+ };
+ f.fail=true;
+ const large=snap('local',3);large.students=Array.from({length:70},(_,i)=>({id:i+3,name:'Student '+i}));
+ f.current=large;await first.autosave(large);
+ const marker=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
+ assert.ok(marker.pendingRef);
+ backup.delete(marker.pendingRef);
+ const c=f.make();await c.initialize();
+ assert.equal(c.state().status,'conflict');
+ await assert.rejects(c.recoverCloudSchool(),/cannot be recovered/);
+ await assert.rejects(c.openSchool('school'),/recovery is incomplete/);
+ assert.equal(f.current.students.length,70);
+ assert.equal(f.pushes.length,0);
+});

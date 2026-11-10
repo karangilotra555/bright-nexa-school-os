@@ -6,7 +6,7 @@
   function fingerprint(value){if(Array.isArray(value))return '['+value.map(fingerprint).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().filter(function(k){return value[k]!==undefined;}).map(function(k){return JSON.stringify(k)+':'+fingerprint(value[k]);}).join(',')+'}';return JSON.stringify(value);}
   function institutionId(s){return s&&s.institution&&s.institution.institution&&s.institution.institution.id;}
   function create(options){
-    var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve();
+    var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve(), missingPendingRecovery=false;
     function bindingKey(id){return PREFIX+'binding.'+encodeURIComponent(id);}
     function recordKey(b){return PREFIX+'school.'+encodeURIComponent(b.localId)+'.'+encodeURIComponent(b.schoolId);}
     function state(){return {status:status,binding:!!binding,schoolId:binding&&binding.schoolId,localId:binding&&binding.localId,revision:record&&record.revision,pending:!!(record&&(record.pending||record.pendingRef)),error:lastError};}
@@ -159,6 +159,7 @@
       try{await migrateLegacyBackups();}catch(_){ /* later backup/persist reports the actionable error */ }
       var id=institutionId(o.getSnapshot());binding=null;record=null;disk=null;
       if(id!=null){var saved=storage.getItem(bindingKey(String(id)));if(saved){binding=JSON.parse(saved);disk=storage.getItem(recordKey(binding));record=disk?JSON.parse(disk):null;if(!record)binding=null;}}
+      missingPendingRecovery=false;
       if(record&&record.pendingRef){
         try{
           var queued=await pendingRead(record.pendingRef);
@@ -166,7 +167,8 @@
           record.pending=JSON.parse(queued);
           if(String(institutionId(record.pending))!==binding.localId)throw error('Pending edit belongs to another school.');
         }catch(e){
-          conflict(error('Pending changes could not be verified: '+e.message+'. Browser data has not been cleared or uploaded.'));
+          missingPendingRecovery=true;
+          conflict(error('Pending changes could not be verified: '+e.message+'. Browser data has not been cleared or uploaded. Do not open or overwrite this school until recovery storage is available.'));
           return state();
         }
       }
@@ -235,6 +237,8 @@
       notify('pending');return flush();
     }
     async function openSchool(schoolId){
+      if(missingPendingRecovery||(record&&record.pendingRef&&!record.pending))
+        throw error('Pending edit recovery is incomplete. Cloud records cannot replace this device until the original pending snapshot can be verified.');
       if(running)await running;
       var recovering=status==='conflict', start=generation, before=clone(o.getSnapshot()),observed=watch(schoolId,institutionId(o.getSnapshot()));notify('loading');
       try{
@@ -264,6 +268,7 @@
       }catch(e){if(e.code==='CONFLICT'||recovering)conflict(e);else notify(record&&record.pending?'pending':binding?'pending':'local',e);throw e;}
     }
     async function recoverCloudSchool(){
+      if(missingPendingRecovery)throw error('Local pending snapshot cannot be recovered. School records will not be replaced or cleared. Restore browser recovery storage before proceeding.');
       if(status!=='conflict'||!binding)return state();
       if(!sameInstitution(o.getSnapshot()))throw error('School identity changed. Sign in to the correct school before recovery.');
       // Explicit recovery never pushes a pending snapshot; openSchool first
