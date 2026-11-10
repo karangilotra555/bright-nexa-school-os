@@ -21099,11 +21099,10 @@ function _Component6({
 }) {
   let [i, a] = (0, w.useState)(() => (r ? _r(r) : ur));
   let availableClasses = (0, w.useMemo)(() => {
-    if (classes && classes.length > 0) {
-      return buildDynamicClassList(classes.filter(c => c.status !== 'Inactive'), e, false);
-    }
-    return buildDynamicClassList(classes, e, true);
-  }, [classes, e]);
+    const configured = (classes || []).filter(c => c.status !== 'Inactive');
+    // Admit students only to classes actually configured by this school.
+    return configured.length ? buildDynamicClassList(configured, [], false) : [];
+  }, [classes]);
   let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i.className, classes, e), [i.className, classes, e]);
   let [o, s] = (0, w.useState)({});
   let [c, l] = (0, w.useState)(``);
@@ -23121,7 +23120,7 @@ function Fr({
   let [s, c] = (0, w.useState)(e?.name || ``);
   let [l, u] = (0, w.useState)(e?.section || `A`);
   let [d, f] = (0, w.useState)(e?.academicStream);
-  let [p, m] = (0, w.useState)(e?.academicSession || r);
+  let [p, m] = (0, w.useState)(e?.academicSession || e?.academicYear || r);
   let [h, g] = (0, w.useState)(e?.capacity);
   let [_, v] = (0, w.useState)(e?.room || ``);
   let [y, b] = (0, w.useState)(e?.classTeacherId || ``);
@@ -23303,7 +23302,7 @@ function Fr({
   );
 }
 function Ir(e) {
-  return [e.academicSession || ``, e.name, e.section, e.academicStream || ``]
+  return [e.academicSession || e.academicYear || ``, e.name, e.section]
     .join(`|`)
     .toLowerCase();
 }
@@ -23312,74 +23311,6 @@ function Lr(e) {
 }
 function Rr(e) {
   return [e.name, e.section, e.academicStream].filter(Boolean).join(` • `);
-}
-function zr(e) {
-  let t = (t, n, r, i) => ({
-    id: crypto.randomUUID(),
-    name: t,
-    section: n,
-    room: ``,
-    classTeacherId: ``,
-    subjects: r,
-    academicSession: e,
-    academicStream: i,
-    capacity: 40,
-    status: `Active`,
-  });
-  return [
-    t(`9`, `A`, [
-      `English`,
-      `Hindi`,
-      `Mathematics`,
-      `Science`,
-      `Social Science`,
-    ]),
-    t(`10`, `A`, [
-      `English`,
-      `Hindi`,
-      `Mathematics`,
-      `Science`,
-      `Social Science`,
-    ]),
-    t(`11`, `A`, [`English`, `Physics`, `Chemistry`, `Biology`], `Medical`),
-    t(
-      `11`,
-      `B`,
-      [`English`, `Physics`, `Chemistry`, `Mathematics`],
-      `Non-Medical`,
-    ),
-    t(
-      `11`,
-      `C`,
-      [`English`, `Accountancy`, `Business Studies`, `Economics`],
-      `Commerce`,
-    ),
-    t(
-      `11`,
-      `D`,
-      [`English`, `History`, `Political Science`, `Geography`],
-      `Arts`,
-    ),
-    t(`12`, `A`, [`English`, `Physics`, `Chemistry`, `Biology`], `Medical`),
-    t(
-      `12`,
-      `B`,
-      [`English`, `Physics`, `Chemistry`, `Mathematics`],
-      `Non-Medical`,
-    ),
-    t(
-      `12`,
-      `C`,
-      [`English`, `Accountancy`, `Business Studies`, `Economics`],
-      `Commerce`,
-    ),
-    t(
-      `12`,
-      `D`,
-      [`English`, `History`, `Political Science`, `Geography`],
-      `Arts`,
-    ),
-  ];
 }
 function F({ eyebrow: e, title: t, subtitle: n, action: r }) {
   let i = Qt()?.role;
@@ -27351,7 +27282,7 @@ function z(e, t, n, r) {
       {
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
-        user: `Rajesh Sharma`,
+        user: Qt()?.name || `School administrator`,
         action: t,
         entity: n,
         detail: r,
@@ -42559,11 +42490,14 @@ function Ds() {
       await controller.sync();
       try{
         const params=new URLSearchParams(window.location.search);
-        if((params.get('openSchool')==='true'||params.get('tab'))&&!controller.state().binding){
+        if(params.get('openSchool')==='true'||params.get('tab')||g?.cloudVerified){
           const schools=await client.connect();
           const selectedSchool=g?.institutionId?schools?.find(s=>s.id===g.institutionId):(schools?.length===1?schools[0]:null);
           if(!selectedSchool)throw Error('Choose your verified school from Staff Login before opening ERP.');
-          await controller.openSchool(selectedSchool.id);
+          if(controller.state().schoolId !== selectedSchool.id){
+            if(controller.state().binding) controller.disconnect();
+            await controller.openSchool(selectedSchool.id);
+          }
         }
       }catch(error){if(active){setCloudError(error.message);window.BNWorkspaceOnlineGuard?.update('local',error);}}
     }).catch(error=>{if(active){setCloudError(error.message);window.BNWorkspaceOnlineGuard?.update('local',error);}});

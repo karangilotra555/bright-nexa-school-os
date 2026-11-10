@@ -13,7 +13,7 @@
  function buildProjection(snapshot,feeObligations){
   shape(snapshot);const ops=snapshot.operations,institution=snapshot.institution.institution;
   const localClasses=unique(rows(ops,'classes'),'class');
-  const classes=localClasses.map(c=>({localId:required(c.id,'Class ID'),name:required(c.name,'Class name'),section:str(c.section),academicYear:required(c.academicYear||institution.session,'Academic year')}));
+  const classes=localClasses.map(c=>({localId:required(c.id,'Class ID'),name:required(c.name,'Class name'),section:str(c.section),academicYear:required(c.academicSession||c.academicYear||institution.session,'Academic year')}));
   unique(classes,'class name / section / year',c=>[norm(c.name),norm(c.section),norm(c.academicYear)].join('|'));
   const classIds=new Set(classes.map(c=>c.localId));
   function classFor(row){if(str(row.classId)){if(!classIds.has(str(row.classId)))throw Error('Unknown class reference: '+row.classId);return str(row.classId);}const found=localClasses.filter(c=>norm(c.name)===norm(row.className)&&norm(c.section)===norm(row.section)&&(!str(row.academicStream)||norm(c.academicStream)===norm(row.academicStream)));if(found.length!==1)throw Error('Unknown or ambiguous class / section / stream for '+(row.name||row.id)+'.');return str(found[0].id);}
