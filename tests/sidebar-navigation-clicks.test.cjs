@@ -143,15 +143,37 @@ test('All 25 sidebar routes are in school workflow order, with portal shortcuts 
   const menu=source.slice(source.indexOf('label: `'+label+'`'));
   assert.ok(menu.includes('href: `'+href+'`'),label);
   assert.ok(menu.includes('navId: `'+id+'`'),id);
+  assert.ok(menu.includes('directKind: `'+({ 'bn-teacher-access-nav':'teachers','bn-timetable-nav':'timetable','bn-parents-app-nav':'parents' })[id]+'`'),id+' directKind');
  }
  assert.ok(base.includes('const NavItem = href ? `a` : Component2064'));
  assert.ok(base.includes('onClick={href ? undefined : () => se(e)}'));
+ assert.ok(base.includes('data-bn-direct-link={directKind || undefined}'));
  for(const f of assets){
   const app=read(f);
   const menu=app.slice(app.indexOf('var Ts = ['),app.indexOf('];',app.indexOf('var Ts = ['))+2);
   assert.deepEqual([...menu.matchAll(/label: `([^`]+)`/g)].map(x=>x[1]),expected,f);
   assert.ok(app.includes('href ? "a" : Component2064'),f);
+  assert.ok(app.includes('"data-bn-direct-link": directKind || void 0'),f);
  }
  assert.equal(read(assets[0]),read(assets[1]));
  assert.equal(read(assets[0]),read(assets[2]));
+});
+
+test('native React sidebar links use the same safe direct navigation without injected duplicates',()=>{
+ const app=simulate();
+ const targets=[
+  ['teachers','teacher-access.html?staffPortal=1'],
+  ['timetable','teacher-access.html?view=timetable'],
+  ['parents','parent-app-download.html']
+ ];
+ assert.equal(app.nav.children.length,0);
+ for(const [kind,page] of targets){
+  const anchor=app.document.createElement('a');
+  anchor.href='./'+page;
+  anchor.dataset.bnDirectLink=kind;
+  const nested=app.document.createElement('span');anchor.append(nested);app.nav.append(anchor);
+  const event=app.fire(nested);
+  assert.equal(event.defaultPrevented,true,kind);
+  assert.equal(app.destinations.at(-1),'https://bright-nexa-school-os.onrender.com/'+page);
+ }
 });

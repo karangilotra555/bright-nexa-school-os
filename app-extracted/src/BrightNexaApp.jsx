@@ -42310,7 +42310,8 @@ var Ts = [
     icon: _Component4,
     roles: ws
     href: `./teacher-access.html?staffPortal=1`,
-    navId: `bn-teacher-access-nav`
+    navId: `bn-teacher-access-nav`,
+    directKind: `teachers`
   },
   {
     label: `Non-Teaching Staff`,
@@ -42322,7 +42323,8 @@ var Ts = [
     icon: _Component16,
     roles: ws
     href: `./teacher-access.html?view=timetable`,
-    navId: `bn-timetable-nav`
+    navId: `bn-timetable-nav`,
+    directKind: `timetable`
   },
   {
     label: `Attendance`,
@@ -42374,7 +42376,8 @@ var Ts = [
     icon: Te,
     roles: ws
     href: `./parent-app-download.html`,
-    navId: `bn-parents-app-nav`
+    navId: `bn-parents-app-nav`,
+    directKind: `parents`
   },
   {
     label: `AI Teacher Tools`,
@@ -42961,13 +42964,14 @@ function Ds() {
           <_Component3 size={18} />
         </Component2061>
         <Component2065 className={`navigation`} aria-label={`Main navigation`}>
-          {b.map(({ label: e, icon: _Component81, href, navId }) => {
+          {b.map(({ label: e, icon: _Component81, href, navId, directKind }) => {
             const NavItem = href ? `a` : Component2064;
             return (
             <NavItem
               className={c === e ? `nav-item active` : `nav-item`}
               href={href || undefined}
               id={navId || undefined}
+              data-bn-direct-link={directKind || undefined}
               style={href ? { textDecoration: `none` } : undefined}
               onClick={href ? undefined : () => se(e)}
               key={e}

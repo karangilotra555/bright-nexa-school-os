@@ -37581,7 +37581,8 @@ var Ts = [
     icon: _Component4,
     roles: ws
     href: `./teacher-access.html?staffPortal=1`,
-    navId: `bn-teacher-access-nav`
+    navId: `bn-teacher-access-nav`,
+    directKind: `teachers`
   },
   {
     label: `Non-Teaching Staff`,
@@ -37593,7 +37594,8 @@ var Ts = [
     icon: _Component16,
     roles: ws
     href: `./teacher-access.html?view=timetable`,
-    navId: `bn-timetable-nav`
+    navId: `bn-timetable-nav`,
+    directKind: `timetable`
   },
   {
     label: `Attendance`,
@@ -37645,7 +37647,8 @@ var Ts = [
     icon: Te,
     roles: ws
     href: `./parent-app-download.html`,
-    navId: `bn-parents-app-nav`
+    navId: `bn-parents-app-nav`,
+    directKind: `parents`
   },
   {
     label: `AI Teacher Tools`,
@@ -38243,12 +38246,13 @@ function Ds() {
       "aria-label": `Close navigation`
     },
     /* @__PURE__ */ w.createElement(St, { size: 20 })
-  )), /* @__PURE__ */ w.createElement(Component2061, { className: `school-chip` }, /* @__PURE__ */ w.createElement(Component2057, { className: `school-avatar` }, ne), /* @__PURE__ */ w.createElement(Component2060, null, /* @__PURE__ */ w.createElement(Component2058, null, e2.institution.name), /* @__PURE__ */ w.createElement(Component2059, null, e2.institution.session)), /* @__PURE__ */ w.createElement(_Component3, { size: 18 })), /* @__PURE__ */ w.createElement(Component2065, { className: `navigation`, "aria-label": `Main navigation` }, b2.map(({ label: e3, icon: _Component81, href, navId }) => /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(Component2061, { className: `school-chip` }, /* @__PURE__ */ w.createElement(Component2057, { className: `school-avatar` }, ne), /* @__PURE__ */ w.createElement(Component2060, null, /* @__PURE__ */ w.createElement(Component2058, null, e2.institution.name), /* @__PURE__ */ w.createElement(Component2059, null, e2.institution.session)), /* @__PURE__ */ w.createElement(_Component3, { size: 18 })), /* @__PURE__ */ w.createElement(Component2065, { className: `navigation`, "aria-label": `Main navigation` }, b2.map(({ label: e3, icon: _Component81, href, navId, directKind }) => /* @__PURE__ */ w.createElement(
     href ? "a" : Component2064,
     {
       className: c2 === e3 ? `nav-item active` : `nav-item`,
       href: href || void 0,
       id: navId || void 0,
+      "data-bn-direct-link": directKind || void 0,
       style: href ? { textDecoration: `none` } : void 0,
       onClick: href ? void 0 : () => se(e3),
       key: e3
