@@ -9,6 +9,22 @@ function create(options){
  const fetcher=options?.fetcher||(typeof fetch==='function'?fetch.bind(globalThis):null);
  const storage=options?.sessionStorage||(typeof sessionStorage!=='undefined'?sessionStorage:null);
  if(!fetcher||!storage)throw Error('Cloud session is unavailable.');
+ async function timedFetch(url,options={}){
+  const ctl=typeof AbortController==='function'?new AbortController():null;
+  let timer,expired=false;
+  try{
+    return await Promise.race([
+      Promise.resolve().then(()=>fetcher(url,{...options,...(ctl?{signal:ctl.signal}:{})})),
+      new Promise((_,reject)=>{timer=setTimeout(()=>{
+        expired=true;ctl?.abort();
+        reject(Error('Teacher draft request timed out. No cloud save was confirmed; check connection and retry.'));
+      },20000);})
+    ]);
+  }catch(e){
+    if(expired||e?.name==='AbortError')throw Error('Teacher draft request timed out. No cloud save was confirmed; check connection and retry.');
+    throw e;
+  }finally{clearTimeout(timer);}
+ }
  async function decode(res){let result;try{result=await res.json()}catch(e){throw Error('Invalid Supabase response; draft not saved.')}
   if(!res.ok)throw Error(result?.message||result?.error_description||result?.error||'Cloud save unavailable; draft not saved.');
   return result;
@@ -18,7 +34,7 @@ function create(options){
   if(!s?.access_token)throw Error('Sign in through Teachers & Staff to save private drafts in Supabase.');
   if(!Number.isFinite(+s.expires_at)||s.expires_at<=Date.now()/1000+90){
    if(!s.refresh_token)throw Error('School session expired; sign in again.');
-   const refreshed=await decode(await fetcher(BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token}),cache:'no-store'}));
+   const refreshed=await decode(await timedFetch(BASE+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token}),cache:'no-store'}));
    if(!refreshed.access_token)throw Error('Cloud session refresh failed.');
    s={access_token:refreshed.access_token,refresh_token:refreshed.refresh_token||s.refresh_token,expires_at:Math.floor(Date.now()/1000)+Number(refreshed.expires_in||3600)};
    storage.setItem(SESSION,JSON.stringify(s));
@@ -26,7 +42,7 @@ function create(options){
   return s;
  }
  async function request(path,token,method='GET',body=null){
-  return decode(await fetcher(BASE+path,{method,headers:{apikey:KEY,Authorization:'Bearer '+token,'Content-Type':'application/json',...(method==='POST'?{Prefer:'return=representation'}:{})},body:body===null?undefined:JSON.stringify(body),cache:'no-store'}));
+  return decode(await timedFetch(BASE+path,{method,headers:{apikey:KEY,Authorization:'Bearer '+token,'Content-Type':'application/json',...(method==='POST'?{Prefer:'return=representation'}:{})},body:body===null?undefined:JSON.stringify(body),cache:'no-store'}));
  }
  async function member(){
   const session=await readSession(),user=await request('/auth/v1/user',session.access_token);
