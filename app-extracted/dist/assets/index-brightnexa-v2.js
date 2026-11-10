@@ -20206,11 +20206,9 @@ function _Component6({
 }) {
   let [i2, a2] = (0, w.useState)(() => r2 ? _r(r2) : ur);
   let availableClasses = (0, w.useMemo)(() => {
-    if (classes && classes.length > 0) {
-      return buildDynamicClassList(classes.filter((c3) => c3.status !== "Inactive"), e2, false);
-    }
-    return buildDynamicClassList(classes, e2, true);
-  }, [classes, e2]);
+    const configured = (classes || []).filter((c3) => c3.status !== "Inactive");
+    return configured.length ? buildDynamicClassList(configured, [], false) : [];
+  }, [classes]);
   let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i2.className, classes, e2), [i2.className, classes, e2]);
   let [o2, s2] = (0, w.useState)({});
   let [c2, l2] = (0, w.useState)(``);
@@ -21829,7 +21827,7 @@ function Fr({
   let [s2, c2] = (0, w.useState)(e2?.name || ``);
   let [l2, u2] = (0, w.useState)(e2?.section || `A`);
   let [d2, f2] = (0, w.useState)(e2?.academicStream);
-  let [p2, m2] = (0, w.useState)(e2?.academicSession || r2);
+  let [p2, m2] = (0, w.useState)(e2?.academicSession || e2?.academicYear || r2);
   let [h2, g2] = (0, w.useState)(e2?.capacity);
   let [_2, v2] = (0, w.useState)(e2?.room || ``);
   let [y2, b2] = (0, w.useState)(e2?.classTeacherId || ``);
@@ -21969,81 +21967,13 @@ function Fr({
   );
 }
 function Ir(e2) {
-  return [e2.academicSession || ``, e2.name, e2.section, e2.academicStream || ``].join(`|`).toLowerCase();
+  return [e2.academicSession || e2.academicYear || ``, e2.name, e2.section].join(`|`).toLowerCase();
 }
 function Lr(e2) {
   return [e2.name, e2.section, e2.academicStream || ``].join(`|`).toLowerCase();
 }
 function Rr(e2) {
   return [e2.name, e2.section, e2.academicStream].filter(Boolean).join(` \u2022 `);
-}
-function zr(e2) {
-  let t2 = (t3, n2, r2, i2) => ({
-    id: crypto.randomUUID(),
-    name: t3,
-    section: n2,
-    room: ``,
-    classTeacherId: ``,
-    subjects: r2,
-    academicSession: e2,
-    academicStream: i2,
-    capacity: 40,
-    status: `Active`
-  });
-  return [
-    t2(`9`, `A`, [
-      `English`,
-      `Hindi`,
-      `Mathematics`,
-      `Science`,
-      `Social Science`
-    ]),
-    t2(`10`, `A`, [
-      `English`,
-      `Hindi`,
-      `Mathematics`,
-      `Science`,
-      `Social Science`
-    ]),
-    t2(`11`, `A`, [`English`, `Physics`, `Chemistry`, `Biology`], `Medical`),
-    t2(
-      `11`,
-      `B`,
-      [`English`, `Physics`, `Chemistry`, `Mathematics`],
-      `Non-Medical`
-    ),
-    t2(
-      `11`,
-      `C`,
-      [`English`, `Accountancy`, `Business Studies`, `Economics`],
-      `Commerce`
-    ),
-    t2(
-      `11`,
-      `D`,
-      [`English`, `History`, `Political Science`, `Geography`],
-      `Arts`
-    ),
-    t2(`12`, `A`, [`English`, `Physics`, `Chemistry`, `Biology`], `Medical`),
-    t2(
-      `12`,
-      `B`,
-      [`English`, `Physics`, `Chemistry`, `Mathematics`],
-      `Non-Medical`
-    ),
-    t2(
-      `12`,
-      `C`,
-      [`English`, `Accountancy`, `Business Studies`, `Economics`],
-      `Commerce`
-    ),
-    t2(
-      `12`,
-      `D`,
-      [`English`, `History`, `Political Science`, `Geography`],
-      `Arts`
-    )
-  ];
 }
 function F({ eyebrow: e2, title: t2, subtitle: n2, action: r2 }) {
   let i2 = Qt()?.role;
@@ -25117,7 +25047,7 @@ function z(e2, t2, n2, r2) {
       {
         id: crypto.randomUUID(),
         timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-        user: `Rajesh Sharma`,
+        user: Qt()?.name || `School administrator`,
         action: t2,
         entity: n2,
         detail: r2
@@ -37863,11 +37793,14 @@ function Ds() {
       await controller.sync();
       try {
         const params = new URLSearchParams(window.location.search);
-        if ((params.get("openSchool") === "true" || params.get("tab")) && !controller.state().binding) {
+        if (params.get("openSchool") === "true" || params.get("tab") || g2?.cloudVerified) {
           const schools = await client.connect();
           const selectedSchool = g2?.institutionId ? schools?.find((s3) => s3.id === g2.institutionId) : schools?.length === 1 ? schools[0] : null;
           if (!selectedSchool) throw Error("Choose your verified school from Staff Login before opening ERP.");
-          await controller.openSchool(selectedSchool.id);
+          if (controller.state().schoolId !== selectedSchool.id) {
+            if (controller.state().binding) controller.disconnect();
+            await controller.openSchool(selectedSchool.id);
+          }
         }
       } catch (error) {
         if (active) {

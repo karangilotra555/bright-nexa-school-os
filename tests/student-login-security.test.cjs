@@ -36,19 +36,23 @@ test('legacy student login rejects inactive accounts and hides identity existenc
    await new Promise(resolve=>setTimeout(resolve,100));
   }
   assert.ok(ready,'Isolated API failed to start: '+errorLog.slice(-400));
+  const fixture=await fetch(base+'/api/sync/snapshot',{method:'POST',
+    headers:{'Content-Type':'application/json','X-Admin-Key':'test-isolated-student-api-key'},
+    body:JSON.stringify({students:[{id:'1',admissionNumber:'TEST-LOGIN-001',name:'Isolated Login Fixture',dob:'12-03-2014',status:'Active'}]})});
+  assert.equal(fixture.status,200,'Auth test must explicitly seed its disposable database');
   async function login(admissionNumber,dob){
    const response=await fetch(base+'/api/auth/login',{method:'POST',
      headers:{'Content-Type':'application/json'},body:JSON.stringify({admissionNumber,dob})});
    return {status:response.status,body:await response.json()};
   }
   const unknown=await login('UNKNOWN-2026-X','12-03-2014');
-  const wrongDob=await login('BMS-2026-001','01-01-2010');
+  const wrongDob=await login('TEST-LOGIN-001','01-01-2010');
   assert.equal(unknown.status,401);
   assert.equal(wrongDob.status,401);
   assert.equal(unknown.body.error,wrongDob.body.error,'Student existence or DOB registration must not be disclosed');
   const internalId=await login('1','12-03-2014');
   assert.equal(internalId.status,401,'Internal student ID must not be a valid login identifier');
-  const valid=await login('BMS-2026-001','12-03-2014');
+  const valid=await login('TEST-LOGIN-001','12-03-2014');
   assert.equal(valid.status,200,'Active student must still be able to log in');
   assert.ok(typeof valid.body.token==='string');
   async function me(token){return fetch(base+'/api/portal/me',{headers:{Authorization:'Bearer '+token}})}
@@ -56,8 +60,8 @@ test('legacy student login rejects inactive accounts and hides identity existenc
   // Only mutate the fresh *temporary test database*. Existing school records
   // and production SQLite are not touched.
   const db=new DatabaseSync(path.join(tmp,'data','school.db'));
-  try{db.prepare("UPDATE students SET enrollmentStatus = 'INACTIVE' WHERE admissionNumber = ?").run('BMS-2026-001')}finally{db.close()}
-  const inactive=await login('BMS-2026-001','12-03-2014');
+  try{db.prepare("UPDATE students SET enrollmentStatus = 'INACTIVE' WHERE admissionNumber = ?").run('TEST-LOGIN-001')}finally{db.close()}
+  const inactive=await login('TEST-LOGIN-001','12-03-2014');
   assert.equal(inactive.status,401);
   assert.equal(inactive.body.error,wrongDob.body.error);
   assert.equal((await me(valid.body.token)).status,403,'Previously signed-in inactive student must lose portal access');

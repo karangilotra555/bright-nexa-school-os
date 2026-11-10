@@ -139,52 +139,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_student_status ON students(enrollmentStatus);
 `);
 
-// Seed default institutional info if empty
-const instRow = db.prepare('SELECT * FROM institution WHERE id = ?').get('default');
-if (!instRow) {
-  db.prepare(`
-    INSERT INTO institution (id, name, tagline, address, phone, email, session, principalName, logoUrl, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    'default',
-    'BRIGHT NEXA INTERNATIONAL ACADEMY',
-    'Empowering Future Innovators • Affiliated to CBSE',
-    'Shivalik Enclave, Haridwar',
-    '+91 7500058655',
-    'info@brightnexa.edu.in',
-    '2026-2027',
-    'DR. K. GILOTRA',
-    'app-icon-512.png',
-    new Date().toISOString()
-  );
-}
-
-// Seed official demo student records if table is brand new
-const studentCountRow = db.prepare('SELECT COUNT(*) as count FROM students').get();
-if (studentCountRow.count === 0) {
-  const insertStudent = db.prepare(`
-    INSERT INTO students (id, admissionNumber, name, rollNumber, className, section, dob, bloodGroup, fatherName, contactNumber, busStop, address, enrollmentStatus, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const initialStudents = [
-    { id: "1", adm: "BMS-2026-001", name: "AARAV SHARMA", roll: "01", cls: "Class VI", sec: "A", dob: "12-03-2014", blood: "O+", father: "MR. RAJESH SHARMA", phone: "9876543210", bus: "Route 3 (Gate No 2)", addr: "Sector 4, BHEL, Haridwar" },
-    { id: "2", adm: "BMS-2026-002", name: "ANANYA VERMA", roll: "02", cls: "Class VI", sec: "A", dob: "24-07-2014", blood: "B+", father: "MR. SUNIL VERMA", phone: "9812345678", bus: "Route 1 (Main Chowk)", addr: "Shivalik Nagar, Haridwar" },
-    { id: "3", adm: "DEMO-2026-003", name: "ROHAN MEHTA", roll: "03", cls: "Class VI", sec: "B", dob: "05-11-2013", blood: "A+", father: "MR. AMIT MEHTA", phone: "9988776655", bus: "Route 2 (Station)", addr: "Ranipur More, Haridwar" },
-    { id: "4", adm: "DEMO-2026-004", name: "PRIYA CHOUDHARY", roll: "04", cls: "Class VII", sec: "A", dob: "18-01-2013", blood: "AB+", father: "MR. VIKRAM SINGH", phone: "9765432109", bus: "Route 4 (Post Office)", addr: "Jwalapur, Haridwar" }
-  ];
-
-  db.exec('BEGIN TRANSACTION');
-  const now = new Date().toISOString();
-  for (const s of initialStudents) {
-    insertStudent.run(s.id, s.adm, s.name, s.roll, s.cls, s.sec, s.dob, s.blood, s.father, s.phone, s.bus, s.addr, 'ACTIVE', now, now);
-  }
-  db.exec('COMMIT');
-}
+// No default school or sample students are seeded at startup.
+// Schools and students must be added explicitly by authorized users; the
+// canonical ERP database is Supabase, not this legacy SQLite API.
 
 function getInstitution() {
   const row = db.prepare('SELECT * FROM institution WHERE id = ?').get('default');
-  return row || { name: "BRIGHT NEXA INTERNATIONAL ACADEMY", session: "2026-2027" };
+  return row || { name: '', session: '' };
 }
 
 function logAudit(event, ip, details) {
@@ -703,12 +664,12 @@ const server = http.createServer(async (req, res) => {
             updated_at = excluded.updated_at
         `).run(
           'default',
-          inst.name || 'BRIGHT NEXA INTERNATIONAL ACADEMY',
+          inst.name,
           inst.tagline || '',
           inst.address || '',
           inst.phone || '',
           inst.email || '',
-          inst.session || '2026-2027',
+          inst.session || '',
           inst.principalName || '',
           inst.logoUrl || 'app-icon-512.png',
           now
