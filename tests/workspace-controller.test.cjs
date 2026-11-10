@@ -151,3 +151,49 @@ test('quota while saving pending edit never falsely reports cloud success',async
  assert.equal(f.pushes.length,0);
  assert.equal(f.remote.snapshot.students[0].id,1);
 });
+
+test('large pending school snapshots use verified IndexedDB fallback and survive reload',async()=>{
+ const data=new Map(),f=fixture(data),pendingData=new Map();
+ f.opts.pendingStorage={
+  write:async(k,v)=>{pendingData.set(k,v);},
+  read:async k=>pendingData.get(k)
+ };
+ const first=f.make();await first.openSchool('school');
+ const original=f.store.setItem;
+ f.store.setItem=(key,val)=>{
+  if(key.includes('bn.workspace.v1.school.')&&val.length>450){
+   const err=Error('Storage quota exceeded');err.name='QuotaExceededError';throw err;
+  }
+  original(key,val);
+ };
+ f.fail=true;
+ const large=snap('local',2);large.students=Array.from({length:60},(_,i)=>({id:i+2,name:'Student '+i}));
+ f.current=large;
+ await first.autosave(large);
+ assert.equal(first.state().status,'pending');
+ const marker=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
+ assert.equal(marker.pending,null);
+ assert.ok(marker.pendingRef);
+ assert.ok(pendingData.has(marker.pendingRef));
+ const again=f.make();
+ await again.initialize();
+ assert.equal(again.state().status,'pending');
+ assert.equal(again.state().pending,true);
+ f.fail=false;await again.sync();
+ assert.equal(again.state().status,'synced');
+ assert.deepEqual(f.pushes.at(-1).students,large.students);
+ assert.equal(JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school')).pendingRef,null);
+});
+test('failed durable pending write never uploads an unrecorded edit',async()=>{
+ const f=fixture(),c=f.make();
+ await c.openSchool('school');
+ const old=f.store.setItem;
+ f.store.setItem=(key,value)=>{
+  if(key.includes('bn.workspace.v1.school.')&&value.includes('"pending":{'))throw Error('Storage full');
+  old(key,value);
+ };
+ await c.autosave(snap('local',77));
+ assert.equal(c.state().status,'conflict');
+ assert.equal(f.pushes.length,0);
+ assert.equal(f.remote.snapshot.students[0].id,1);
+});
