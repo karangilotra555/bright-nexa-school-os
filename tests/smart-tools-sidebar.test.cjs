@@ -42,6 +42,6 @@ test('Legacy Smart Tools external shortcuts are removed while other direct links
     assert.ok(script.includes("parents: {path:'parent-app-download.html'"));
     assert.ok(script.includes("teachers: {path:'teacher-access.html?staffPortal=1'"));
     assert.ok(script.includes("['bn-smart-tools-nav','bn-smart-tools-top']"));
-    assert.ok(read(prefix+'index.html').includes('parents-download-menu.js?v=20261104-smart-sidebar'));
+    assert.ok(read(prefix+'index.html').includes('parents-download-menu.js?v=20261111-sidebar-native-v1'));
   }
 });
