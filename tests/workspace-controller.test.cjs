@@ -131,3 +131,23 @@ test('cross-school, unverified or wrong-role sessions cannot auto-replace diverg
   finally{if(original===undefined)delete global.window;else global.window=original;}
  }
 });
+
+test('lost push response reconciles an already committed student without resubmitting',async()=>{
+ const f=fixture(),c=f.make();await c.openSchool('school');
+ let sends=0;
+ f.client.push=async(id,revision,snapshot)=>{sends++;f.remote={revision:revision+1,snapshot};throw Error('Failed to fetch');};
+ await c.autosave(snap('local',42));
+ assert.equal(c.state().status,'synced');
+ assert.equal(sends,1);
+ assert.equal(JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school')).revision,2);
+ await c.sync();assert.equal(sends,1);
+});
+test('quota while saving pending edit never falsely reports cloud success',async()=>{
+ const data=new Map(); const f=fixture(data),c=f.make();await c.openSchool('school');
+ const original=f.store.setItem;
+ f.store.setItem=(key,val)=>{if(key.includes('bn.workspace.v1.school.')){const e=Error('QuotaExceededError');e.name='QuotaExceededError';throw e;}original(key,val);};
+ await c.autosave(snap('local',55));
+ assert.equal(c.state().status,'pending');
+ assert.equal(f.pushes.length,0);
+ assert.equal(f.remote.snapshot.students[0].id,1);
+});
