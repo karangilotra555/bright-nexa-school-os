@@ -3,7 +3,22 @@
   'use strict';
   var PREFIX='bn.workspace.v1.';
   function clone(v){return JSON.parse(JSON.stringify(v));}
-  function fingerprint(value){if(Array.isArray(value))return '['+value.map(fingerprint).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().filter(function(k){return value[k]!==undefined;}).map(function(k){return JSON.stringify(k)+':'+fingerprint(value[k]);}).join(',')+'}';return JSON.stringify(value);}
+  function canonical(value){if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().filter(function(k){return value[k]!==undefined;}).map(function(k){return JSON.stringify(k)+':'+canonical(value[k]);}).join(',')+'}';return JSON.stringify(value);}
+  // Non-cryptographic, deterministic 128-bit content checksum, used solely for
+  // detecting local/cloud changes (never for authentication or authorization).
+  // Legacy "fingerprints" serialized the ENTIRE school JSON into localStorage.
+  function hashCanonical(value){
+    var a=0x811c9dc5,b=0x9e3779b9,c=0x85ebca6b,d=0xc2b2ae35;
+    for(var i=0;i<value.length;i++){
+      var x=value.charCodeAt(i);
+      a=Math.imul(a^x,0x01000193)>>>0;
+      b=Math.imul(b^(x+i),0x27d4eb2d)>>>0;
+      c=Math.imul(c+x,0x85ebca77)>>>0;
+      d=Math.imul(d^(x<<16|x),0xc2b2ae3d)>>>0;
+    }
+    return 'v2:'+value.length+':'+[a,b,c,d].map(function(x){return x.toString(16).padStart(8,'0');}).join('');
+  }
+  function fingerprint(value){return hashCanonical(canonical(value));}
   function institutionId(s){return s&&s.institution&&s.institution.institution&&s.institution.institution.id;}
   function create(options){
     var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve(), missingPendingRecovery=false;
@@ -169,6 +184,16 @@
         }catch(e){
           missingPendingRecovery=true;
           conflict(error('Pending changes could not be verified: '+e.message+'. Browser data has not been cleared or uploaded. Do not open or overwrite this school until recovery storage is available.'));
+          return state();
+        }
+      }
+      // Migrate old unbounded fingerprints without changing any school data.
+      // Hash the existing stored canonical string, which may refer to the last
+      // cloud-acknowledged revision rather than the current pending edit.
+      if(record&&typeof record.fingerprint==='string'&&!record.fingerprint.startsWith('v2:')){
+        try{await persist({...record,fingerprint:hashCanonical(record.fingerprint)});}
+        catch(e){
+          conflict(error('Could not upgrade browser sync metadata without deleting records: '+e.message));
           return state();
         }
       }

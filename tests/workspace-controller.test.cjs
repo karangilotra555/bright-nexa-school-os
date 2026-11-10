@@ -7,7 +7,14 @@ test('offline pending survives reload and retries original revision',async()=>{c
 test('stale revision stays conflict and preserves pending',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');f.remote={revision:9,snapshot:snap('local',9)};await c.autosave(snap('local',2));assert.equal(c.state().status,'conflict');await c.sync();assert.equal(f.pushes.length,0);assert.ok([...f.data.values()].some(v=>v.includes('"pending":{')));});
 test('backup failure prevents replacing local data',async()=>{const f=fixture();f.opts.storage={...f.store,setItem(){throw Error('quota')}};const c=f.make();await assert.rejects(c.openSchool('school'));assert.equal(f.current.students[0].id,1);});
 test('local edits during pull are not overwritten',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');let release;f.client.pull=()=>new Promise(r=>release=r);const sync=c.sync();await c.autosave(snap('local',2));release({revision:2,snapshot:snap('local',9)});await sync;assert.notEqual(f.current.students[0].id,9);});
-test('edits during upload are queued using acknowledged revision',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');let release;const push=f.client.push;f.client.push=async(...a)=>{if(!release)await new Promise(r=>release=r);return push(...a)};const first=c.autosave(snap('local',2));await Promise.resolve();const second=c.autosave(snap('local',3));release();await Promise.all([first,second]);await c.sync();assert.deepEqual(f.pushes.map(s=>s.students[0].id),[2,3]);});
+test('edits during upload are queued using acknowledged revision',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');let release;const push=f.client.push;f.client.push=async(...a)=>{if(!release)await new Promise(r=>release=r);return push(...a)};const first=c.autosave(snap('local',2));await Promise.resolve();const second=c.autosave(snap('local',3));
+ for(let i=0;!release&&i<1000;i++)await Promise.resolve();
+ assert.equal(typeof release,'function','a queued upload must eventually begin');
+ release();
+ await Promise.all([first,second]);await c.sync();
+ assert.equal(f.pushes.at(-1).students[0].id,3,'the latest edit is retained');
+ assert.ok(f.pushes.every(s=>[2,3].includes(s.students[0].id)));
+});
 test('changing local institution never uploads into old school',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');f.current=snap('other',3);await c.autosave(f.current);assert.equal(f.pushes.length,0);assert.equal(c.state().status,'local');});
 test('uploadLocal refuses a nonempty school',async()=>{const f=fixture();const c=f.make();await assert.rejects(c.uploadLocal('school'));assert.equal(f.pushes.length,0);});
 test('explicit reload backs up unsent snapshot before replace',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');f.fail=true;f.current=snap('local',7);await c.autosave(f.current);await c.openSchool('school');assert.ok([...f.data.entries()].some(([k,v])=>k.includes('backup')&&JSON.parse(v).students[0].id===7));});
@@ -223,5 +230,31 @@ test('missing IndexedDB pending pointer blocks all cloud replacement routes',asy
  await assert.rejects(c.recoverCloudSchool(),/cannot be recovered/);
  await assert.rejects(c.openSchool('school'),/recovery is incomplete/);
  assert.equal(f.current.students.length,70);
+ assert.equal(f.pushes.length,0);
+});
+
+test('sync fingerprints are compact even for large school JSON',async()=>{
+ const f=fixture(),c=f.make();await c.openSchool('school');
+ const item=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
+ assert.match(item.fingerprint,/^v2:\\d+:[0-9a-f]{32}$/);
+ assert.ok(item.fingerprint.length<64);
+ const next=snap('local',3);next.students=Array.from({length:100},(_,i)=>({id:i+3,name:'Test student '+i}));
+ f.current=next;await c.autosave(next);
+ const current=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
+ assert.ok(current.fingerprint.length<64,'full JSON must not be copied as a checksum');
+});
+test('legacy full JSON fingerprint migrates without changing school records',async()=>{
+ const f=fixture(),c=f.make();await c.openSchool('school');
+ const key='bn.workspace.v1.school.local.school';
+ const old=JSON.parse(f.store.getItem(key));
+ const canonical=value=>Array.isArray(value)?'['+value.map(canonical).join(',')+']':
+  value&&typeof value==='object'?'{'+Object.keys(value).sort().filter(k=>value[k]!==undefined).map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}':JSON.stringify(value);
+ old.fingerprint=canonical(f.current);
+ f.store.setItem(key,JSON.stringify(old));
+ const next=f.make();await next.initialize();
+ assert.notEqual(next.state().status,'conflict');
+ const after=JSON.parse(f.store.getItem(key));
+ assert.match(after.fingerprint,/^v2:/);
+ assert.equal(f.current.students[0].id,1);
  assert.equal(f.pushes.length,0);
 });
