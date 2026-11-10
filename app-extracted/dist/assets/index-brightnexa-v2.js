@@ -2450,7 +2450,7 @@ ${e4.stack}`;
     }
     Bt2(e3);
   }
-  function Zt2(e3, t3) {
+  function Zt(e3, t3) {
     if (t3) {
       var n3 = e3.firstChild;
       if (n3 && n3 === e3.lastChild && n3.nodeType === 3) {
@@ -10283,7 +10283,7 @@ ${e4.stack}`;
         if (e3.flags & 32) {
           a3 = e3.stateNode;
           try {
-            Zt2(a3, ``);
+            Zt(a3, ``);
           } catch (t4) {
             Z(e3, e3.return, t4);
           }
@@ -10512,7 +10512,7 @@ ${e4.stack}`;
           case 5:
             var o3 = n3.stateNode;
             if (n3.flags & 32) {
-              Zt2(o3, ``);
+              Zt(o3, ``);
               n3.flags &= -33;
             }
             Zc(e3, Yc(e3), o3);
@@ -13149,10 +13149,10 @@ ${e4.stack}`;
       case `children`:
         if (typeof r3 == `string`) {
           if (t3 !== `body` && (t3 !== `textarea` || r3 !== ``)) {
-            Zt2(e3, r3);
+            Zt(e3, r3);
           }
         } else if ((typeof r3 == `number` || typeof r3 == `bigint`) && t3 !== `body`) {
-          Zt2(e3, `${r3}`);
+          Zt(e3, `${r3}`);
         }
         break;
       case `className`:
@@ -13408,9 +13408,9 @@ ${e4.stack}`;
         break;
       case `children`:
         if (typeof r3 == `string`) {
-          Zt2(e3, r3);
+          Zt(e3, r3);
         } else if (typeof r3 == `number` || typeof r3 == `bigint`) {
-          Zt2(e3, `${r3}`);
+          Zt(e3, `${r3}`);
         }
         break;
       case `onScroll`:
@@ -18606,12 +18606,32 @@ function gn(e2) {
 var _n = `bright-nexa-school-os:snapshot:v1`;
 var vn = `bright-nexa-school-os:students:v1`;
 var yn = {
-  language: `en`, role: `OWNER`, connectivity: `online`,
-  institution: { id: ``, name: ``, city: ``, session: ``, students: 0, teachers: 0,
-    attendancePercent: 0, feeCollected: 0, feePending: 0, qualityScore: 0,
-    institutionType: `School`, address: ``, state: ``, pinCode: ``, contactNumber: ``,
-    email: ``, boardType: ``, schoolLevel: `Secondary`, medium: `English`,
-    directorName: ``, principalName: `` },
+  language: `en`,
+  role: `OWNER`,
+  connectivity: `online`,
+  institution: {
+    id: ``,
+    name: ``,
+    city: ``,
+    session: ``,
+    students: 0,
+    teachers: 0,
+    attendancePercent: 0,
+    feeCollected: 0,
+    feePending: 0,
+    qualityScore: 0,
+    institutionType: `School`,
+    address: ``,
+    state: ``,
+    pinCode: ``,
+    contactNumber: ``,
+    email: ``,
+    boardType: ``,
+    schoolLevel: `Secondary`,
+    medium: `English`,
+    directorName: ``,
+    principalName: ``
+  },
   services: [
     {
       id: `ai`,
@@ -18761,15 +18781,14 @@ function wn() {
   }
 }
 function bnReportBrowserSaveError(area, cause) {
-  const detail=String(cause?.message||cause||'Storage unavailable');
-  const error=new Error(area+' could not be saved on this device: '+detail+'. Supabase save is NOT confirmed.');
-  if(typeof window==='undefined')return;
-  if(window.BNWorkspaceOnlineGuard?.active?.()) {
-    window.BNWorkspaceOnlineGuard.update('pending',error);
-  } else if(typeof window.alert==='function') {
-    // Without a verified cloud session, still show local save failures to the user.
-    if(!window.__bnStorageErrorAt||Date.now()-window.__bnStorageErrorAt>5000){
-      window.__bnStorageErrorAt=Date.now();
+  const detail = String(cause?.message || cause || "Storage unavailable");
+  const error = new Error(area + " could not be saved on this device: " + detail + ". Supabase save is NOT confirmed.");
+  if (typeof window === "undefined") return;
+  if (window.BNWorkspaceOnlineGuard?.active?.()) {
+    window.BNWorkspaceOnlineGuard.update("pending", error);
+  } else if (typeof window.alert === "function") {
+    if (!window.__bnStorageErrorAt || Date.now() - window.__bnStorageErrorAt > 5e3) {
+      window.__bnStorageErrorAt = Date.now();
       window.alert(error.message);
     }
   }
@@ -18778,10 +18797,10 @@ function Tn(e2) {
   let t2 = pn(e2);
   try {
     window.localStorage.setItem(_n, JSON.stringify(t2));
-  } catch (e) {
-    bnReportBrowserSaveError('School profile',e);
+  } catch (e3) {
+    bnReportBrowserSaveError('School profile', e3);
   }
-  Ot(`snapshot`, t2).catch(e=>bnReportBrowserSaveError('School profile local cache',e));
+  Ot(`snapshot`, t2).catch((e3) => bnReportBrowserSaveError("School profile local cache", e3));
 }
 var En = [];
 function Dn() {
@@ -18800,10 +18819,10 @@ function On(e2) {
   let t2 = pn(e2);
   try {
     window.localStorage.setItem(vn, JSON.stringify(t2 ?? []));
-  } catch (e) {
-    bnReportBrowserSaveError('Student records',e);
+  } catch (e3) {
+    bnReportBrowserSaveError('Student records', e3);
   }
-  Ot(`students`, t2 ?? []).catch(e=>bnReportBrowserSaveError('Student records local cache',e));
+  Ot(`students`, t2 ?? []).catch((e3) => bnReportBrowserSaveError("Student records local cache", e3));
 }
 async function kn() {
   let [e2, t2] = await Promise.all([kt(`snapshot`), kt(`students`)]);
@@ -21720,7 +21739,11 @@ function Pr({ data: e2, institution: t2, onUpdate: n2 }) {
       eyebrow: `Academic master data`,
       title: c2,
       subtitle: s2 ? `Configure batches, groups, subjects, rooms, and faculty assignments` : `Define each class, section, senior-secondary stream, session, capacity, room, and class teacher`,
-      action: /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component323, { className: `primary-button`, onClick: () => i2(true) }, /* @__PURE__ */ w.createElement(_Component2, { size: 18 }), s2 ? `Add Batch` : `Add Class & Section`))
+      action: /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component323, { className: `primary-button`, onClick: () => i2(true) }, /* @__PURE__ */ w.createElement(_Component2, { size: 18 }), s2 ? `Add Batch` : `Add Class & Section`), e2.classes.length > 0 && /* @__PURE__ */ w.createElement(Component323, { type: `button`, className: `secondary-button`, onClick: () => {
+        if (window.confirm(`Delete all ${e2.classes.length} ${s2 ? `batches` : `classes`} from this school? Student records and their class placements will not be deleted. This cannot be undone.`)) {
+          n2({ ...e2, classes: [] }, `DELETE`, s2 ? `Batch` : `Class`, `All academic groups`);
+        }
+      } }, s2 ? `Clear all batches` : `Delete all classes`))
     }
   ), /* @__PURE__ */ w.createElement(Component325, { className: `inline-message academic-setup-help` }, /* @__PURE__ */ w.createElement(Component324, null, `How this setup works:`), ` Attendance, student placement, fee applicability, exams, and reports use these master records. Create each class yourself; data is saved only for the authenticated school.`), e2.classes.length ? /* @__PURE__ */ w.createElement(Component347, { className: `class-card-grid` }, e2.classes.map((t3) => {
     let n3 = e2.teachers.find((e3) => e3.id === t3.classTeacherId);
@@ -21755,7 +21778,7 @@ function Pr({ data: e2, institution: t2, onUpdate: n2 }) {
       t3.academicStream,
       t3.academicSession,
       t3.room && `Room ${t3.room}`
-    ].filter(Boolean).join(` \u2022 `) || `Academic placement configured`), /* @__PURE__ */ w.createElement(Component340, null, n3?.name && /* @__PURE__ */ w.createElement(Component333, null, /* @__PURE__ */ w.createElement(Component331, null, `Class teacher`), /* @__PURE__ */ w.createElement(Component332, null, n3.name)), t3.capacity !== void 0 && /* @__PURE__ */ w.createElement(Component336, null, /* @__PURE__ */ w.createElement(Component334, null, `Capacity`), /* @__PURE__ */ w.createElement(Component335, null, t3.capacity)), /* @__PURE__ */ w.createElement(Component339, null, /* @__PURE__ */ w.createElement(Component337, null, `Subjects`), /* @__PURE__ */ w.createElement(Component338, null, t3.subjects.length))), t3.subjects.length > 0 && /* @__PURE__ */ w.createElement(Component342, { className: `subject-pills` }, t3.subjects.map((e3) => /* @__PURE__ */ w.createElement(Component341, { key: e3 }, e3))), /* @__PURE__ */ w.createElement(Component345, { className: `row-actions` }, /* @__PURE__ */ w.createElement(
+    ].filter(Boolean).join(` \u2022 `) || `Academic placement configured`), /* @__PURE__ */ w.createElement(Component340, null, n3?.name && /* @__PURE__ */ w.createElement(Component333, null, /* @__PURE__ */ w.createElement(Component331, null, `Class teacher`), /* @__PURE__ */ w.createElement(Component332, null, n3.name)), t3.capacity !== void 0 && /* @__PURE__ */ w.createElement(Component336, null, /* @__PURE__ */ w.createElement(Component334, null, `Capacity`), /* @__PURE__ */ w.createElement(Component335, null, t3.capacity)), s2 && /* @__PURE__ */ w.createElement(Component339, null, /* @__PURE__ */ w.createElement(Component337, null, `Subjects`), /* @__PURE__ */ w.createElement(Component338, null, t3.subjects.length))), s2 && t3.subjects.length > 0 && /* @__PURE__ */ w.createElement(Component342, { className: `subject-pills` }, t3.subjects.map((e3) => /* @__PURE__ */ w.createElement(Component341, { key: e3 }, e3))), /* @__PURE__ */ w.createElement(Component345, { className: `row-actions` }, /* @__PURE__ */ w.createElement(
       Component343,
       {
         className: `secondary-button compact`,
@@ -21810,7 +21833,7 @@ function Fr({
   let [h2, g2] = (0, w.useState)(e2?.capacity);
   let [_2, v2] = (0, w.useState)(e2?.room || ``);
   let [y2, b2] = (0, w.useState)(e2?.classTeacherId || ``);
-  let [x2, S2] = (0, w.useState)(e2?.subjects.join(`, `) || ``);
+  let [x2, S2] = (0, w.useState)(e2?.subjects?.join(`, `) || ``);
   let [C2, T2] = (0, w.useState)(``);
   let E2 = s2 === `11` || s2 === `12`;
   const Component352 = `input`;
@@ -21860,7 +21883,7 @@ function Fr({
             section: l2,
             room: _2,
             classTeacherId: y2,
-            subjects: x2.split(`,`).map((e3) => e3.trim()).filter(Boolean),
+            subjects: i2 ? x2.split(`,`).map((e3) => e3.trim()).filter(Boolean) : e2?.subjects || [],
             academicSession: p2,
             academicStream: E2 ? d2 : void 0,
             capacity: h2,
@@ -21925,7 +21948,7 @@ function Fr({
             e3.target.value ? Number(e3.target.value.replace(/\D/g, ``)) : void 0
           )
         }
-      )), /* @__PURE__ */ w.createElement(R, { label: i2 ? `Faculty In-charge` : `Class Teacher` }, /* @__PURE__ */ w.createElement(Component366, { value: y2, onChange: (e3) => b2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component364, { value: `` }, `Not assigned`), t2.map((e3) => /* @__PURE__ */ w.createElement(Component365, { value: e3.id, key: e3.id }, e3.name || e3.employeeCode)))), /* @__PURE__ */ w.createElement(R, { label: `Subjects (comma separated)`, wide: true }, /* @__PURE__ */ w.createElement(
+      )), /* @__PURE__ */ w.createElement(R, { label: i2 ? `Faculty In-charge` : `Class Teacher` }, /* @__PURE__ */ w.createElement(Component366, { value: y2, onChange: (e3) => b2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component364, { value: `` }, `Not assigned`), t2.map((e3) => /* @__PURE__ */ w.createElement(Component365, { value: e3.id, key: e3.id }, e3.name || e3.employeeCode)))), i2 && /* @__PURE__ */ w.createElement(R, { label: `Subjects (comma separated)`, wide: true }, /* @__PURE__ */ w.createElement(
         Component367,
         {
           rows: 3,
@@ -21939,7 +21962,7 @@ function Fr({
         Vr,
         {
           onClose: a2,
-          saveLabel: e2 ? `Update Academic Group` : `Save Academic Group`
+          saveLabel: e2 ? i2 ? `Update Academic Group` : `Update Class & Section` : i2 ? `Save Academic Group` : `Save Class & Section`
         }
       )
     )
@@ -22085,7 +22108,7 @@ function L({ title: e2, subtitle: t2, onClose: n2, children: r2 }) {
           flexDirection: "column"
         } : void 0
       },
-      /* @__PURE__ */ w.createElement(Component389, null, /* @__PURE__ */ w.createElement(Component387, null, /* @__PURE__ */ w.createElement(Component384, null, `Saved locally`), /* @__PURE__ */ w.createElement(Component385, null, e2), /* @__PURE__ */ w.createElement(Component386, null, t2)), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", gap: "4px" } }, /* @__PURE__ */ w.createElement(
+      /* @__PURE__ */ w.createElement(Component389, null, /* @__PURE__ */ w.createElement(Component387, null, /* @__PURE__ */ w.createElement(Component384, null, `School record`), /* @__PURE__ */ w.createElement(Component385, null, e2), /* @__PURE__ */ w.createElement(Component386, null, t2)), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", alignItems: "center", gap: "4px" } }, /* @__PURE__ */ w.createElement(
         "button",
         {
           type: "button",
@@ -25056,10 +25079,10 @@ function ji(e2) {
   let t2 = pn(e2);
   try {
     window.localStorage.setItem(Di, JSON.stringify(t2));
-  } catch (e) {
-    bnReportBrowserSaveError('ERP operations',e);
+  } catch (e3) {
+    bnReportBrowserSaveError('ERP operations', e3);
   }
-  Ot(`operations`, t2).catch(e=>bnReportBrowserSaveError('ERP operations local cache',e));
+  Ot(`operations`, t2).catch((e3) => bnReportBrowserSaveError("ERP operations local cache", e3));
 }
 async function Mi() {
   let e2 = await kt(`operations`);
@@ -28305,8 +28328,8 @@ function Ea({ data, students } = {}) {
     let on2 = true;
     if (window.BNTeacherDrafts && sessionStorage.getItem("bn_school_staff_session_v1")) window.BNTeacherDrafts.list().then((rows) => {
       if (on2) _2(rows);
-    }).catch(error => {
-      if(on2)h2('Supabase saved drafts could not be loaded: '+(error?.message||String(error)));
+    }).catch((error) => {
+      if (on2) h2("Supabase saved drafts could not be loaded: " + (error?.message || String(error)));
     });
     return () => {
       on2 = false;
@@ -37842,15 +37865,21 @@ function Ds() {
         const params = new URLSearchParams(window.location.search);
         if ((params.get("openSchool") === "true" || params.get("tab")) && !controller.state().binding) {
           const schools = await client.connect();
-          const selectedSchool = g2?.institutionId ? schools?.find((s) => s.id === g2.institutionId) : (schools?.length === 1 ? schools[0] : null);
+          const selectedSchool = g2?.institutionId ? schools?.find((s3) => s3.id === g2.institutionId) : schools?.length === 1 ? schools[0] : null;
           if (!selectedSchool) throw Error("Choose your verified school from Staff Login before opening ERP.");
           await controller.openSchool(selectedSchool.id);
         }
       } catch (error) {
-        if (active) { setCloudError(error.message); window.BNWorkspaceOnlineGuard?.update("local", error); }
+        if (active) {
+          setCloudError(error.message);
+          window.BNWorkspaceOnlineGuard?.update("local", error);
+        }
       }
     }).catch((error) => {
-      if (active) { setCloudError(error.message); window.BNWorkspaceOnlineGuard?.update("local", error); }
+      if (active) {
+        setCloudError(error.message);
+        window.BNWorkspaceOnlineGuard?.update("local", error);
+      }
     });
     setCloud({ client, controller });
     const refresh = () => controller.sync().catch((error) => {
@@ -39305,7 +39334,6 @@ function Fs({ children: e2 }) {
     `Set up my institution `,
     /* @__PURE__ */ w.createElement(_Component102, { size: 18 })
   ), /* @__PURE__ */ w.createElement(
-    "a",  ), /* @__PURE__ */ w.createElement(
     "a",
     {
       className: "secondary-button auth-secondary",
