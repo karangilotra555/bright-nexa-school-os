@@ -25,7 +25,7 @@ test('new recovery code is mirrored and service-worker references updated',()=>{
   assert.match(read(prefix+'school-erp-entry.js'),/index-brightnexa-v2\.js\?v=20261111-sidebar-workflow-v1/);
   const crypto=require('node:crypto');
   const sha=p=>crypto.createHash('sha256').update(read(prefix+p).replace(/\r\n/g,'\n')).digest('hex');
-  assert.ok(read(prefix+'sw.js').includes('"url":"assets/index-brightnexa-v2.js","revision":"'+sha('assets/index-brightnexa-v2.js')+'"'));
+  assert.ok(read(prefix+'sw.js').includes('url:"assets/index-brightnexa-v2.js",revision:"'+sha('assets/index-brightnexa-v2.js')+'"'));
   assert.ok(read(prefix+'sw.js').includes('"url":"school-workspace-controller.js?v=20261109-conflict-recovery-v2","revision":"'+sha('school-workspace-controller.js')+'"'));
  }
 });
