@@ -12,7 +12,7 @@
   const STAFF_KEY='bn_school_staff_session_v1';
   const CHOSEN_KEY='bn_school_staff_selected_school_v1';
   const ERP_KEY='bright-nexa-school-os:session:v2';
-  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261111-student-category-v1';
+  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261111-sidebar-workflow-v1';
   const ROOT='./teacher-access.html';
   const errorText='Unable to open this school. Your records have not been changed.';
 
