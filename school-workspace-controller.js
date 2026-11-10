@@ -222,7 +222,7 @@
             if(binding!==b||record!==r)break;
             if(!consistent()){conflict();break;}
             var acknowledged={...r,revision:result.revision,fingerprint:fingerprint(snapshot),
-              pending:generation===sentGeneration?null:r.pending};
+              pending:generation===sentGeneration&&r.pending&&fingerprint(r.pending)===fingerprint(snapshot)?null:r.pending};
             await persist(acknowledged);notify(record.pending?'pending':'synced');
           }catch(e){
             // A POST can commit even if its response was lost. Before retrying
@@ -235,7 +235,7 @@
                   &&fingerprint(remote.snapshot)===fingerprint(snapshot)
                   &&binding===b&&record===r&&consistent()){
                   await persist({...r,revision:remote.revision,fingerprint:fingerprint(snapshot),
-                    pending:generation===sentGeneration?null:r.pending});
+                    pending:generation===sentGeneration&&r.pending&&fingerprint(r.pending)===fingerprint(snapshot)?null:r.pending});
                   notify(record.pending?'pending':'synced');
                   continue;
                 }
