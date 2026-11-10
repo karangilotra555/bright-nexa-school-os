@@ -114,6 +114,8 @@
     sessionStorage.setItem(TOKEN_KEY,JSON.stringify(session));
   }
   async function timedCloudFetch(url,options={}){
+    // Isolated Node/VM fixtures omit timers; browsers always provide them.
+    if(typeof setTimeout!=='function'||typeof clearTimeout!=='function')return fetch(url,options);
     const ctl=typeof AbortController==='function'?new AbortController():null;
     let timer,expired=false;
     try{

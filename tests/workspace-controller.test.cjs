@@ -236,7 +236,7 @@ test('missing IndexedDB pending pointer blocks all cloud replacement routes',asy
 test('sync fingerprints are compact even for large school JSON',async()=>{
  const f=fixture(),c=f.make();await c.openSchool('school');
  const item=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
- assert.match(item.fingerprint,/^v2:\\d+:[0-9a-f]{32}$/);
+ assert.match(item.fingerprint,/^v2:\d+:[0-9a-f]{32}$/);
  assert.ok(item.fingerprint.length<64);
  const next=snap('local',3);next.students=Array.from({length:100},(_,i)=>({id:i+3,name:'Test student '+i}));
  f.current=next;await c.autosave(next);

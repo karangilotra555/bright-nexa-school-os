@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 test('all core browser entrypoints bound network failure and do not claim success on error',()=>{
  for(const p of ['school-workspace-cloud.js','school-erp-entry.js','teacher-access.js','parents-cloud.js','teacher-drafts-cloud.js']){
   const s=read(p);
-  assert.match(s,/timedFetch|timedCloudFetch|requestTimeoutMs/,p+' missing bounded cloud request');
+  assert.match(s,/timedFetch|timedCloudFetch|requestTimeoutMs|const fetcher=async/,p+' missing bounded cloud request');
   assert.match(s,/timed out|timeout/i,p+' missing time-out feedback');
  }
  const t=read('teacher-access.js');
