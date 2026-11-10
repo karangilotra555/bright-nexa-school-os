@@ -80,7 +80,23 @@
   async function verify(options){
     const settings=options||{};
     const store=settings.store||window.sessionStorage;
-    const fetcher=settings.fetcher||window.fetch.bind(window);
+    const networkFetch=settings.fetcher||window.fetch.bind(window);
+    const fetcher=async(url,options={})=>{
+      const ctl=typeof AbortController==='function'?new AbortController():null;
+      let timer,expired=false;
+      try{
+        return await Promise.race([
+          Promise.resolve().then(()=>networkFetch(url,{...options,...(ctl?{signal:ctl.signal}:{})})),
+          new Promise((_,reject)=>{timer=setTimeout(()=>{
+            expired=true;ctl?.abort();
+            reject(Error('School login verification timed out. Workspace was not changed; retry opening school.'));
+          },20000);})
+        ]);
+      }catch(e){
+        if(expired||e?.name==='AbortError')throw Error('School login verification timed out. Workspace was not changed.');
+        throw e;
+      }finally{clearTimeout(timer);}
+    };
     let session=parse(store.getItem(STAFF_KEY));
     if(!session?.access_token)throw Error('School Admin session not found. Sign in to the existing school first.');
     const authURL=BASE+'/auth/v1/';

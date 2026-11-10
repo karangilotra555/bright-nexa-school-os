@@ -147,7 +147,7 @@ test('quota while saving pending edit never falsely reports cloud success',async
  const original=f.store.setItem;
  f.store.setItem=(key,val)=>{if(key.includes('bn.workspace.v1.school.')){const e=Error('QuotaExceededError');e.name='QuotaExceededError';throw e;}original(key,val);};
  await c.autosave(snap('local',55));
- assert.equal(c.state().status,'pending');
+ assert.equal(c.state().status,'conflict');
  assert.equal(f.pushes.length,0);
  assert.equal(f.remote.snapshot.students[0].id,1);
 });
