@@ -37562,6 +37562,11 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`]
   },
   {
+    label: `Classes & Batches`,
+    icon: _Component14,
+    roles: Cs
+  },
+  {
     label: `Students`,
     icon: Te,
     roles: Cs
@@ -37572,28 +37577,44 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`]
   },
   {
+    label: `Teachers · Online Access`,
+    icon: _Component4,
+    roles: ws,
+    href: `./teacher-access.html?staffPortal=1`,
+    navId: `bn-teacher-access-nav`,
+    directKind: `teachers`
+  },
+  {
     label: `Non-Teaching Staff`,
     icon: O,
     roles: [`OWNER`, `ADMIN`]
   },
   {
-    label: `Transport & Routes`,
-    icon: _Component68,
-    roles: [`OWNER`, `ADMIN`]
-  },
-  {
-    label: `Infrastructure & Assets`,
-    icon: _Component48,
-    roles: [`OWNER`, `ADMIN`]
-  },
-  {
-    label: `Classes & Batches`,
-    icon: _Component14,
-    roles: Cs
+    label: `School Timetable`,
+    icon: _Component16,
+    roles: ws,
+    href: `./teacher-access.html?view=timetable`,
+    navId: `bn-timetable-nav`,
+    directKind: `timetable`
   },
   {
     label: `Attendance`,
     icon: _Component16,
+    roles: ws
+  },
+  {
+    label: `Homework & Notices`,
+    icon: _Component28,
+    roles: ws
+  },
+  {
+    label: `Exams & Marks`,
+    icon: _Component27,
+    roles: Cs
+  },
+  {
+    label: `Report Cards`,
+    icon: M,
     roles: ws
   },
   {
@@ -37607,24 +37628,27 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`]
   },
   {
-    label: `Exams & Marks`,
-    icon: _Component27,
-    roles: Cs
+    label: `Transport & Routes`,
+    icon: _Component68,
+    roles: [`OWNER`, `ADMIN`]
   },
   {
-    label: `Report Cards`,
-    icon: M,
-    roles: ws
-  },
-  {
-    label: `Homework & Notices`,
-    icon: _Component28,
-    roles: ws
+    label: `Infrastructure & Assets`,
+    icon: _Component48,
+    roles: [`OWNER`, `ADMIN`]
   },
   {
     label: `Parent Messages`,
     icon: Ve,
     roles: [`OWNER`, `ADMIN`, `TEACHER`, `PARENT`]
+  },
+  {
+    label: `Parents App · Download`,
+    icon: Te,
+    roles: ws,
+    href: `./parent-app-download.html`,
+    navId: `bn-parents-app-nav`,
+    directKind: `parents`
   },
   {
     label: `AI Teacher Tools`,
@@ -37652,14 +37676,14 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`]
   },
   {
-    label: `Contact & Support`,
-    icon: Ne,
-    roles: ws
-  },
-  {
     label: `Settings`,
     icon: _Component101,
     roles: [`OWNER`, `ADMIN`]
+  },
+  {
+    label: `Contact & Support`,
+    icon: Ne,
+    roles: ws
   }
 ];
 var Es = new Intl.NumberFormat(`en-IN`, {
@@ -38222,11 +38246,15 @@ function Ds() {
       "aria-label": `Close navigation`
     },
     /* @__PURE__ */ w.createElement(St, { size: 20 })
-  )), /* @__PURE__ */ w.createElement(Component2061, { className: `school-chip` }, /* @__PURE__ */ w.createElement(Component2057, { className: `school-avatar` }, ne), /* @__PURE__ */ w.createElement(Component2060, null, /* @__PURE__ */ w.createElement(Component2058, null, e2.institution.name), /* @__PURE__ */ w.createElement(Component2059, null, e2.institution.session)), /* @__PURE__ */ w.createElement(_Component3, { size: 18 })), /* @__PURE__ */ w.createElement(Component2065, { className: `navigation`, "aria-label": `Main navigation` }, b2.map(({ label: e3, icon: _Component81 }) => /* @__PURE__ */ w.createElement(
-    Component2064,
+  )), /* @__PURE__ */ w.createElement(Component2061, { className: `school-chip` }, /* @__PURE__ */ w.createElement(Component2057, { className: `school-avatar` }, ne), /* @__PURE__ */ w.createElement(Component2060, null, /* @__PURE__ */ w.createElement(Component2058, null, e2.institution.name), /* @__PURE__ */ w.createElement(Component2059, null, e2.institution.session)), /* @__PURE__ */ w.createElement(_Component3, { size: 18 })), /* @__PURE__ */ w.createElement(Component2065, { className: `navigation`, "aria-label": `Main navigation` }, b2.map(({ label: e3, icon: _Component81, href, navId, directKind }) => /* @__PURE__ */ w.createElement(
+    href ? "a" : Component2064,
     {
       className: c2 === e3 ? `nav-item active` : `nav-item`,
-      onClick: () => se(e3),
+      href: href || void 0,
+      id: navId || void 0,
+      "data-bn-direct-link": directKind || void 0,
+      style: href ? { textDecoration: `none` } : void 0,
+      onClick: href ? void 0 : () => se(e3),
       key: e3
     },
     /* @__PURE__ */ w.createElement(_Component81, { size: 19, strokeWidth: 1.9 }),

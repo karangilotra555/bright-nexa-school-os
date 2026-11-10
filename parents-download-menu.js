@@ -91,7 +91,8 @@
       const nav=document.querySelector('.navigation');
       const actions=document.querySelector('.topbar-actions');
       for(const kind of Object.keys(destinations)){
-        appendLink(nav,kind,'nav');
+        // Sidebar links are rendered by the School OS React navigation.
+        // Keep the independent topbar shortcuts without duplicating sidebar entries.
         appendLink(actions,kind,'top');
       }
     }finally{mounting=false;}

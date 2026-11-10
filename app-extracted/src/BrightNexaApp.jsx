@@ -42291,6 +42291,11 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`],
   },
   {
+    label: `Classes & Batches`,
+    icon: _Component14,
+    roles: Cs,
+  },
+  {
     label: `Students`,
     icon: Te,
     roles: Cs,
@@ -42301,28 +42306,44 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`],
   },
   {
+    label: `Teachers · Online Access`,
+    icon: _Component4,
+    roles: ws,
+    href: `./teacher-access.html?staffPortal=1`,
+    navId: `bn-teacher-access-nav`,
+    directKind: `teachers`
+  },
+  {
     label: `Non-Teaching Staff`,
     icon: O,
     roles: [`OWNER`, `ADMIN`],
   },
   {
-    label: `Transport & Routes`,
-    icon: _Component68,
-    roles: [`OWNER`, `ADMIN`],
-  },
-  {
-    label: `Infrastructure & Assets`,
-    icon: _Component48,
-    roles: [`OWNER`, `ADMIN`],
-  },
-  {
-    label: `Classes & Batches`,
-    icon: _Component14,
-    roles: Cs,
+    label: `School Timetable`,
+    icon: _Component16,
+    roles: ws,
+    href: `./teacher-access.html?view=timetable`,
+    navId: `bn-timetable-nav`,
+    directKind: `timetable`
   },
   {
     label: `Attendance`,
     icon: _Component16,
+    roles: ws,
+  },
+  {
+    label: `Homework & Notices`,
+    icon: _Component28,
+    roles: ws,
+  },
+  {
+    label: `Exams & Marks`,
+    icon: _Component27,
+    roles: Cs,
+  },
+  {
+    label: `Report Cards`,
+    icon: M,
     roles: ws,
   },
   {
@@ -42336,24 +42357,27 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`],
   },
   {
-    label: `Exams & Marks`,
-    icon: _Component27,
-    roles: Cs,
+    label: `Transport & Routes`,
+    icon: _Component68,
+    roles: [`OWNER`, `ADMIN`],
   },
   {
-    label: `Report Cards`,
-    icon: M,
-    roles: ws,
-  },
-  {
-    label: `Homework & Notices`,
-    icon: _Component28,
-    roles: ws,
+    label: `Infrastructure & Assets`,
+    icon: _Component48,
+    roles: [`OWNER`, `ADMIN`],
   },
   {
     label: `Parent Messages`,
     icon: Ve,
     roles: [`OWNER`, `ADMIN`, `TEACHER`, `PARENT`],
+  },
+  {
+    label: `Parents App · Download`,
+    icon: Te,
+    roles: ws,
+    href: `./parent-app-download.html`,
+    navId: `bn-parents-app-nav`,
+    directKind: `parents`
   },
   {
     label: `AI Teacher Tools`,
@@ -42381,15 +42405,15 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`],
   },
   {
-    label: `Contact & Support`,
-    icon: Ne,
-    roles: ws,
-  },
-  {
     label: `Settings`,
     icon: _Component101,
     roles: [`OWNER`, `ADMIN`],
   },
+  {
+    label: `Contact & Support`,
+    icon: Ne,
+    roles: ws,
+  }
 ];
 var Es = new Intl.NumberFormat(`en-IN`, {
   style: `currency`,
@@ -42940,10 +42964,16 @@ function Ds() {
           <_Component3 size={18} />
         </Component2061>
         <Component2065 className={`navigation`} aria-label={`Main navigation`}>
-          {b.map(({ label: e, icon: _Component81 }) => (
-            <Component2064
+          {b.map(({ label: e, icon: _Component81, href, navId, directKind }) => {
+            const NavItem = href ? `a` : Component2064;
+            return (
+            <NavItem
               className={c === e ? `nav-item active` : `nav-item`}
-              onClick={() => se(e)}
+              href={href || undefined}
+              id={navId || undefined}
+              data-bn-direct-link={directKind || undefined}
+              style={href ? { textDecoration: `none` } : undefined}
+              onClick={href ? undefined : () => se(e)}
               key={e}
             >
               <_Component81 size={19} strokeWidth={1.9} />
@@ -42954,8 +42984,9 @@ function Ds() {
                   title={`Connected service`}
                 />
               )}
-            </Component2064>
-          ))}
+            </NavItem>
+          );
+          })}
         </Component2065>
         <Component2069 className={`sidebar-foot`}>
           <_Component21 size={19} />
