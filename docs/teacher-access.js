@@ -19,6 +19,7 @@
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
   let rolePermissions=null;
   let feeStudentRoster=[]; // Finance-only three-column RPC result; never reveal DOB/profile fields.
+  let editingFeeEntry=null;
   let recoveryMode=false;
   const photos=window.BNStudentPhotos?.create({base:BASE,key:APIKEY,
     token:async()=>{await ensureToken();return session?.access_token;}})||{
@@ -182,6 +183,7 @@
     if(name==='admin'&&!isAdmin())return;
     if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
+    if($('portalStats'))$('portalStats').classList.toggle('hidden',isAdmin()&&name!=='dashboard');
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
     if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
     if(name==='timetable'&&window.BNTimetable)window.BNTimetable.activate({
@@ -407,6 +409,51 @@
     }finally{button.disabled=false;}
   });});
 
+  function newFeeReceipt(){
+    if(!globalThis.crypto?.randomUUID)throw Error('Secure receipt generator unavailable. Use an official receipt number or a modern HTTPS browser.');
+    return 'RCP-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+globalThis.crypto.randomUUID().replaceAll('-','').slice(0,12).toUpperCase();
+  }
+  function feeCorrectionRows(original,replacement){
+    // Fee records are append-only under RLS. A single atomic bulk insert
+    // cancels the old amount, then records the corrected amount/student/date.
+    // Unique REV-<original UUID> prevents applying the same correction twice.
+    const reverseKind=original.kind==='payment'?'charge':'payment';
+    return [
+      {institution_id:me.institution_id,student_id:original.student_id,created_by:me.id,
+       kind:reverseKind,amount_rupees:Number(original.amount_rupees),
+       reference:'REV-'+original.id,
+       description:'Correction reversal of '+original.id,occurred_on:original.occurred_on},
+      replacement
+    ];
+  }
+  function stopFeeEdit(){
+    editingFeeEntry=null;
+    $('saveFeeEntry').textContent='Save ledger entry';
+    display('cancelFeeEdit',false);display('feeEditHint',false);
+    $('feeEntryForm').reset();
+    $('feeReference').value='';
+    $('feeDate').value='';
+  }
+  $('cancelFeeEdit').addEventListener('click',stopFeeEdit);
+  async function feeRowsSaved(rows){
+    // A network error may occur AFTER Supabase commits. Read both references
+    // back before reporting an error or trying a second insert.
+    try{
+      for(const row of rows){
+        const saved=await api('school_fee_entries',query({
+          select:'reference,student_id,kind,amount_rupees,occurred_on',
+          institution_id:eq(me.institution_id),reference:eq(row.reference),limit:'2'}));
+        if(!Array.isArray(saved)||!saved.some(record=>
+          record.reference===row.reference &&
+          record.student_id===row.student_id &&
+          record.kind===row.kind &&
+          Number(record.amount_rupees)===Number(row.amount_rupees) &&
+          record.occurred_on===row.occurred_on
+        ))return false;
+      }
+      return true;
+    }catch(_){return false;}
+  }
   const fmtINR=value=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2}).format(Number(value)||0);
   async function loadFees(){
     if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee ledger access denied for this role.');
@@ -416,7 +463,7 @@
         method:'POST',cache:'no-store',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
         body:JSON.stringify({p_institution:me.institution_id})
       })),
-      api('school_fee_entries',query({select:'student_id,kind,amount_rupees,reference,occurred_on',
+      api('school_fee_entries',query({select:'id,student_id,kind,amount_rupees,reference,description,occurred_on',
         institution_id:eq(me.institution_id),order:'occurred_on.desc',limit:'100'})),
       api('rpc/bn_finance_students','','POST',{p_institution_id:me.institution_id})
     ]);
@@ -434,14 +481,34 @@
     if(feeStudentRoster.some(x=>x.id===previous))picker.value=previous;
     const tbody=$('feeEntries');tbody.replaceChildren();
     const label=new Map(feeStudentRoster.map(s=>[s.id,s.admission_number]));
-    if(!entries.length){
+    const reversed=new Set(entries.filter(e=>/^REV-[0-9a-f-]{36}$/i.test(e.reference||'')).map(e=>e.reference.slice(4)));
+    const current=entries.filter(e=>!/^REV-[0-9a-f-]{36}$/i.test(e.reference||'')&&!reversed.has(e.id));
+    if(!current.length){
       const tr=dom('tr'),cell=dom('td','No fee entries recorded yet.');
-      cell.colSpan=5;tr.append(cell);tbody.append(tr);
+      cell.colSpan=6;tr.append(cell);tbody.append(tr);
     }else{
-      for(const entry of entries){
+      for(const entry of current){
         const tr=dom('tr');
         for(const v of [entry.occurred_on,label.get(entry.student_id)||'Student record',entry.kind,fmtINR(entry.amount_rupees),entry.reference||'—'])tr.append(dom('td',v));
-        tbody.append(tr);
+        const actions=dom('td');
+        if(['school_admin','accountant'].includes(me.role)){
+          const edit=dom('button','✏ Edit','ghost');edit.type='button';
+          edit.title='Correct this saved fee entry without deleting its audit record';
+          edit.addEventListener('click',()=>{
+            editingFeeEntry={...entry};
+            $('feeStudent').value=entry.student_id;
+            $('feeKind').value=entry.kind;
+            $('feeAmount').value=entry.amount_rupees;
+            $('feeDate').value=entry.occurred_on;
+            $('feeDescription').value=entry.description||'';
+            $('feeReference').value=''; // original reference stays in audit history
+            $('saveFeeEntry').textContent='Save correction';
+            display('cancelFeeEdit',true);display('feeEditHint',true);
+            $('feeEntryForm').scrollIntoView?.({behavior:'smooth',block:'nearest'});
+          });
+          actions.append(edit);
+        }
+        tr.append(actions);tbody.append(tr);
       }
     }
     const date=$('feeDate');
@@ -455,22 +522,33 @@
     const studentId=$('feeStudent').value;
     if(!feeStudentRoster.some(s=>s.id===studentId))throw Error('Select a student belonging to this school.');
     const kind=$('feeKind').value,amount=Number($('feeAmount').value);
-    const reference=$('feeReference').value.trim(),notes=$('feeDescription').value.trim();
-    const occurred_on=$('feeDate').value;
+    const notes=$('feeDescription').value.trim(),occurred_on=$('feeDate').value;
     if(!['charge','payment'].includes(kind))throw Error('Invalid fee entry type.');
     if(!Number.isFinite(amount)||amount<=0||amount>100000000||Math.abs(amount-Math.round(amount*100)/100)>1e-8)
       throw Error('Enter a valid amount with at most two decimals.');
-    if(!reference||reference.length>100)throw Error('Enter a unique receipt/reference.');
     if(notes.length>250||!/^\d{4}-\d{2}-\d{2}$/.test(occurred_on))throw Error('Invalid notes or date.');
+    // Generate exactly once per attempted save. If a response is lost, a retry
+    // reuses the same reference instead of posting a second payment.
+    const reference=$('feeReference').value.trim()||newFeeReceipt();
+    if(reference.length>100)throw Error('Receipt / reference cannot exceed 100 characters.');
+    $('feeReference').value=reference;
+    const original=editingFeeEntry;
+    const replacement={
+      institution_id:me.institution_id,student_id:studentId,created_by:me.id,
+      kind,amount_rupees:amount,reference,description:notes,occurred_on
+    };
+    if(original&&original.reference===reference)throw Error('Use a new reference for a corrected record.');
+    const rows=original?feeCorrectionRows(original,replacement):[replacement];
     const button=$('saveFeeEntry');if(button.disabled)return;button.disabled=true;
     try{
-      await api('school_fee_entries','','POST',{
-        institution_id:me.institution_id,student_id:studentId,created_by:me.id,
-        kind,amount_rupees:amount,reference,description:notes,occurred_on
-      });
-      $('feeEntryForm').reset();
+      try{
+        await api('school_fee_entries','','POST',original?rows:rows[0]);
+      }catch(writeError){
+        if(!await feeRowsSaved(rows))throw writeError;
+      }
+      stopFeeEdit();
       await loadFees();
-      notify('Fee ledger entry saved to your school cloud records.');
+      notify(original?'Fee correction saved in Supabase; original entry preserved in audit history.':'Fee entry saved in Supabase. Receipt: '+reference);
     }finally{button.disabled=false;}
   })});
 
@@ -597,8 +675,10 @@
     display('librarianApp',isAdm||role==='librarian'||role==='principal');
     display('profilesTab',isAdm||isTabVisibleForRole('profiles',role));
     display('timetableTab',isAdm||role==='teacher'||role==='principal');
-    display('schoolOsAdminNav',isAdm);
-    display('adminErpBanner',isAdm);
+    display('schoolOsAdminNav',false); // The real ERP has its own ordered sidebar; do not duplicate it here.
+    display('adminErpBanner',false); // The existing Dashboard and School OS shortcut already launch ERP.
+    display('portalPermissionNotice',!isAdm);
+    if($('loadProfile'))$('loadProfile').textContent=isAdm?'View / edit student':'View student details';
     display('staffDesktopShortcut',isAdm);
     display('staffBackToErp',isAdm);
     display('staffBrandBack',isAdm);

@@ -179,7 +179,7 @@
         await clearImportedDeviceDraft(verified);
         window.BNWorkspaceOnlineGuard?.update('loading');
         const url=new URL(window.location.href);
-        if(!url.searchParams.has('tab'))url.searchParams.set('openSchool','true');
+        url.searchParams.set('openSchool','true');
         window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);
       }catch(error){
         // A previously verified cloud session must never survive failed re-verification.

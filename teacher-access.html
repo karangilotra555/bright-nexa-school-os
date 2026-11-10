@@ -118,7 +118,7 @@ tr td select{padding:7px;min-width:115px}
 .bn-email-feedback.error{color:#a82b3f}
 @media(max-width:470px){.bn-email-content{padding:24px 19px}.bn-email-dialog h2{font-size:21px}}
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./school-timetable-cloud.js?v=20261107-timetable-v1" defer></script><script src="./school-student-photo-cloud.js?v=20261107-photo-v1" defer></script><script src="./school-role-entry.js?v=20261109-owner-dashboard-v1" defer></script><script src="./school-workspace-cloud.js?v=20261109-historical-attendance-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261109-logout-v1" defer></script><script src="./teacher-access.js?v=20261109-auth-single-view-v3" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261105-profile" defer></script><script src="./school-timetable-cloud.js?v=20261107-timetable-v1" defer></script><script src="./school-student-photo-cloud.js?v=20261107-photo-v1" defer></script><script src="./school-role-entry.js?v=20261109-owner-dashboard-v1" defer></script><script src="./school-workspace-cloud.js?v=20261109-historical-attendance-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261109-logout-v1" defer></script><script src="./teacher-access.js?v=20261111-fee-edit-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
 <header><div class="bar"><div class="brand"><a id="staffBrandBack" href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a id="staffBackToErp" href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a id="staffSmartToolsLink" href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
@@ -179,7 +179,7 @@ tr td select{padding:7px;min-width:115px}
     <button id="switchSchoolAccount" type="button" class="ghost">Switch school / account</button>
     <span class="pill" id="rolePill">VERIFIED ROLE</span>
   </div></div>
-  <div class="notice">Your school controls your assigned classes and permissions. Saved attendance and homework are available to the linked student / parent account.</div>
+  <div id="portalPermissionNotice" class="notice">Your school controls your assigned classes and permissions. Saved attendance and homework are available to the linked student / parent account.</div>
 
   <div class="portal-layout">
     <aside class="portal-nav" role="navigation" aria-label="Portal Navigation">
@@ -237,12 +237,12 @@ tr td select{padding:7px;min-width:115px}
         </div>
         <a href="./index.html?openSchool=true" class="primary" style="text-decoration:none;display:inline-flex;align-items:center;padding:9px 15px;border-radius:9px;font-size:13px;font-weight:750;background:#138ed8;color:#fff;white-space:nowrap">🚀 Launch Full School OS ERP</a>
       </div>
-      <div class="cards">
+      <div id="portalStats" class="cards">
         <div class="card"><b id="countClasses">0</b><small>Accessible classes</small></div>
         <div class="card"><b id="countStudents">0</b><small>Accessible students</small></div>
         <div class="card"><b id="countHomework">0</b><small>Homework posts</small></div>
       </div>
-  <div data-view="dashboard" class="panel hidden"><h2>Dashboard</h2><p class="sub">Your school summary is shown above. Use the existing modules below to enter and verify new school data.</p><a href="./index.html?openSchool=true&tab=Dashboard" class="primary" style="display:inline-block;text-decoration:none;font-size:13px">Open Full School OS Dashboard</a></div>
+  <div data-view="dashboard" class="panel hidden" style="padding:15px 20px"><h2 style="margin:0 0 9px">School OS Dashboard</h2><a href="./index.html?openSchool=true&tab=Dashboard" class="primary" style="display:inline-block;text-decoration:none;font-size:13px">Open Full School OS Dashboard</a></div>
   <div data-view="classes" class="panel"><div class="row"><h2>My accessible classes</h2><button class="ghost" id="reload" type="button">↻ Refresh</button></div><div id="classesList"></div></div>
   <div data-view="fees" class="panel hidden">
     <h2>School Fees & Payments</h2>
@@ -256,13 +256,14 @@ tr td select{padding:7px;min-width:115px}
       <div><label for="feeStudent">Student</label><select id="feeStudent" required></select></div>
       <div><label for="feeKind">Entry type</label><select id="feeKind" required><option value="payment">Payment received</option><option value="charge">Fee charge</option></select></div>
       <div><label for="feeAmount">Amount (₹)</label><input id="feeAmount" type="number" min="0.01" max="100000000" step="0.01" required></div>
-      <div><label for="feeReference">Unique receipt / reference</label><input id="feeReference" maxlength="100" required placeholder="e.g. RCP-2026-001"></div>
+      <div><label for="feeReference">Receipt / reference (optional)</label><input id="feeReference" maxlength="100" placeholder="Auto-generated if left blank" autocomplete="off"></div>
       <div><label for="feeDate">Date</label><input id="feeDate" type="date" required></div>
       <div><label for="feeDescription">Notes (optional)</label><input id="feeDescription" maxlength="250"></div>
-      <div><button id="saveFeeEntry" class="primary" type="submit">Save ledger entry</button></div>
+      <div><button id="saveFeeEntry" class="primary" type="submit">Save ledger entry</button> <button id="cancelFeeEdit" class="ghost hidden" type="button">Cancel edit</button></div>
     </form>
+    <p id="feeEditHint" class="muted hidden" role="status">Editing an entry creates a linked correction; the original remains in the audit history.</p>
     <h3>Recent ledger entries</h3>
-    <div class="tablewrap"><table><thead><tr><th>Date</th><th>Student</th><th>Type</th><th>Amount</th><th>Reference</th></tr></thead><tbody id="feeEntries"></tbody></table></div>
+    <div class="tablewrap"><table><thead><tr><th>Date</th><th>Student</th><th>Type</th><th>Amount</th><th>Reference</th><th>Action</th></tr></thead><tbody id="feeEntries"></tbody></table></div>
   </div>
   <div data-view="attendance" class="panel hidden">
     <h2>Class attendance</h2><div class="formgrid two">
@@ -288,7 +289,7 @@ tr td select{padding:7px;min-width:115px}
   </div>
   <div data-view="notices" class="panel hidden"><h2>School notices</h2><button class="ghost" id="refreshNotices" type="button">↻ Refresh notices</button><div id="noticesList"></div></div>
   <div data-view="timetable" class="panel hidden"><div id="schoolTimetableRoot"></div></div>
-  <div data-view="profiles" class="panel hidden"><h2>Student profile details</h2><p class="muted">School admin updates these records. The linked student / parent sees the same details in the mobile app and web.</p><div class="formgrid two"><div class="inputgroup"><label for="profileClassFilter">Filter by class</label><select id="profileClassFilter"><option value="">All accessible classes</option></select></div><div class="inputgroup"><label for="profileSearchInput">Search student (Name, Roll No, Admission No)</label><input type="search" id="profileSearchInput" placeholder="e.g. Aarav, 06, or BMS-2026-001" autocomplete="off"></div></div><div class="inputgroup" style="margin-bottom:12px"><label for="profileStudent">Student (<span id="profileStudentCount">0</span> available)</label><select id="profileStudent"></select></div><div id="profileSelectedBadge" class="notice hidden" style="margin-bottom:14px;border-left-color:#138ed8;background:#f0f8ff;color:#0b315e;font-weight:600"></div><button class="ghost" type="button" id="loadProfile">Load profile</button><form id="studentProfileForm" class="hidden"><div id="profileEditor"></div><button class="primary" id="saveProfile" type="submit">Save student details</button></form>
+  <div data-view="profiles" class="panel hidden"><h2>Student profile details</h2><p class="muted">School admin updates these records. The linked student / parent sees the same details in the mobile app and web.</p><div class="formgrid two"><div class="inputgroup"><label for="profileClassFilter">Filter by class</label><select id="profileClassFilter"><option value="">All accessible classes</option></select></div><div class="inputgroup"><label for="profileSearchInput">Search student (Name, Roll No, Admission No)</label><input type="search" id="profileSearchInput" placeholder="e.g. Aarav, 06, or BMS-2026-001" autocomplete="off"></div></div><div class="inputgroup" style="margin-bottom:12px"><label for="profileStudent">Student (<span id="profileStudentCount">0</span> available)</label><select id="profileStudent"></select></div><div id="profileSelectedBadge" class="notice hidden" style="margin-bottom:14px;border-left-color:#138ed8;background:#f0f8ff;color:#0b315e;font-weight:600"></div><button class="ghost" type="button" id="loadProfile">View / edit student</button><form id="studentProfileForm" class="hidden"><div id="profileEditor"></div><button class="primary" id="saveProfile" type="submit">Save student details</button></form>
     <div id="studentPhotoWrap" class="hidden" style="margin-top:14px;border-top:1px solid #e4ebf5;padding-top:14px">
       <h3>Student photo · Private cloud storage</h3>
       <p class="muted">School admin only. JPG, PNG or WebP, up to 5 MB. Linked student/parent and assigned teacher will see the approved photo.</p>
