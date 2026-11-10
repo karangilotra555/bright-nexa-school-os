@@ -11,12 +11,12 @@ test('all three served entrypoints load the synced cloud guard before controller
    const html=read(prefix+'index.html');
    const guard=html.indexOf('school-online-guard.js?v=20261109-logout-ready-v3');
    const controller=html.indexOf('school-workspace-controller.js?v=20261109-conflict-recovery-v2');
-   const entry=html.indexOf('school-erp-entry.js?v=20261110-class-setup-cloud-v1');
+   const entry=html.indexOf('school-erp-entry.js?v=20261111-owner-profile-v1');
    assert.ok(guard>0&&controller>guard&&entry>controller, prefix+' order');
    assert.match(html,/CACHE_VERSION = '20261109-signout-v6'/);
    const sw=read(prefix+'sw.js');
    assert.match(sw,/school-online-guard.js\?v=20261109-logout-ready-v3/);
-   assert.match(sw,/school-erp-entry.js\?v=20261110-class-setup-cloud-v1/);
+   assert.match(sw,/school-erp-entry.js\?v=20261111-owner-profile-v1/);
    assert.match(sw,/school-workspace-controller.js\?v=20261109-conflict-recovery-v2/);
  }
 });
