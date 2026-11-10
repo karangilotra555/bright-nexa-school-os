@@ -1,0 +1,88 @@
+diff --git a/app-extracted/src/BrightNexaApp.jsx b/app-extracted/src/BrightNexaApp.jsx
+--- a/app-extracted/src/BrightNexaApp.jsx
++++ b/app-extracted/src/BrightNexaApp.jsx
+@@ -22970,6 +22970,15 @@
+               <_Component2 size={18} />
+               {s ? `Add Batch` : `Add Class & Section`}
+             </Component323>
++            {e.classes.length > 0 && (
++              <Component323 type={`button`} className={`secondary-button`} onClick={() => {
++                if (window.confirm(`Delete all ${e.classes.length} ${s ? `batches` : `classes`} from this school? Student records and their class placements will not be deleted. This cannot be undone.`)) {
++                  n({ ...e, classes: [] }, `DELETE`, s ? `Batch` : `Class`, `All academic groups`);
++                }
++              }}>
++                {s ? `Clear all batches` : `Delete all classes`}
++              </Component323>
++            )}
+           </P.Fragment>
+         }
+       />
+@@ -23037,12 +23046,14 @@
+                       <Component335>{t.capacity}</Component335>
+                     </Component336>
+                   )}
++                  {s && (
+                   <Component339>
+                     <Component337>{`Subjects`}</Component337>
+                     <Component338>{t.subjects.length}</Component338>
+                   </Component339>
+-                </Component340>
+-                {t.subjects.length > 0 && (
++                  )}
++                </Component340>
++                {s && t.subjects.length > 0 && (
+                   <Component342 className={`subject-pills`}>
+                     {t.subjects.map((e) => (
+                       <Component341 key={e}>{e}</Component341>
+@@ -23114,7 +23125,7 @@
+   let [h, g] = (0, w.useState)(e?.capacity);
+   let [_, v] = (0, w.useState)(e?.room || ``);
+   let [y, b] = (0, w.useState)(e?.classTeacherId || ``);
+-  let [x, S] = (0, w.useState)(e?.subjects.join(`, `) || ``);
++  let [x, S] = (0, w.useState)(e?.subjects?.join(`, `) || ``);
+   let [C, T] = (0, w.useState)(``);
+   let E = s === `11` || s === `12`;
+   const Component352 = `input`;
+@@ -23167,10 +23178,7 @@
+             section: l,
+             room: _,
+             classTeacherId: y,
+-            subjects: x
+-              .split(`,`)
+-              .map((e) => e.trim())
+-              .filter(Boolean),
++            subjects: i ? x.split(`,`).map((e) => e.trim()).filter(Boolean) : (e?.subjects || []),
+             academicSession: p,
+             academicStream: E ? d : undefined,
+             capacity: h,
+@@ -23274,6 +23282,7 @@
+               ))}
+             </Component366>
+           </R>
++          {i && (
+           <R label={`Subjects (comma separated)`} wide={true}>
+             <Component367
+               rows={3}
+@@ -23282,11 +23291,12 @@
+               placeholder={`English, Mathematics, Physics`}
+             />
+           </R>
++          )}
+         </Component368>
+         {C && <Component369 className={`form-error`}>{C}</Component369>}
+         <Vr
+           onClose={a}
+-          saveLabel={e ? `Update Academic Group` : `Save Academic Group`}
++          saveLabel={e ? (i ? `Update Academic Group` : `Update Class & Section`) : (i ? `Save Academic Group` : `Save Class & Section`)}
+         />
+       </Component370>
+     </L>
+@@ -23458,7 +23468,7 @@
+       >
+         <Component389>
+           <Component387>
+-            <Component384>{`Saved locally`}</Component384>
++            <Component384>{`School record`}</Component384>
+             <Component385>{e}</Component385>
+             <Component386>{t}</Component386>
+           </Component387>
