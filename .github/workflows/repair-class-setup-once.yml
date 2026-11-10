@@ -1,0 +1,52 @@
+name: One-time class setup source repair
+on:
+  push:
+    branches: [fix/class-setup-subjects-and-reset-20261110]
+jobs:
+  repair-and-verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Apply focused original-source patch and rebuild the three UI bundles
+        run: |
+          git apply --check patches/class-setup-20261110.patch
+          git apply patches/class-setup-20261110.patch
+          node scripts/build-school-ui.cjs
+          node --test tests/class-setup-reset.test.cjs
+      - name: Bust the real school entry-point and PWA caches
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for base in (Path('.'), Path('docs'), Path('app-extracted/dist')):
+              entry = base / 'school-erp-entry.js'
+              before = entry.read_text()
+              assert '20261109-cloud-first-v2' in before, entry
+              entry.write_text(before.replace('20261109-cloud-first-v2','20261110-class-setup-v1'))
+              index = base / 'index.html'
+              html = index.read_text()
+              assert '20261109-school-login-v5' in html, index
+              index.write_text(html.replace('20261109-school-login-v5','20261110-class-setup-v1'))
+          PY
+          node scripts/build-school-ui.cjs
+      - name: Run all existing regression checks
+        run: |
+          node --test tests/class-setup-reset.test.cjs
+          npm test
+      - name: Commit only the verified source and generated artifacts
+        run: |
+          rm .github/workflows/repair-class-setup-once.yml patches/class-setup-20261110.patch
+          rmdir patches 2>/dev/null || true
+          git config user.name 'Bright Nexa CI'
+          git config user.email 'ci@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: remove subjects from class editor and allow explicit class reset'
+          git push origin HEAD:fix/class-setup-subjects-and-reset-20261110
