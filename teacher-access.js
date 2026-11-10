@@ -113,13 +113,31 @@
     session={access_token:next.access_token,refresh_token:next.refresh_token,expires_at:Math.floor(Date.now()/1000)+(Number(next.expires_in)||3600)};
     sessionStorage.setItem(TOKEN_KEY,JSON.stringify(session));
   }
+  async function timedCloudFetch(url,options={}){
+    // Isolated Node/VM fixtures omit timers; browsers always provide them.
+    if(typeof setTimeout!=='function'||typeof clearTimeout!=='function')return fetch(url,options);
+    const ctl=typeof AbortController==='function'?new AbortController():null;
+    let timer,expired=false;
+    try{
+      return await Promise.race([
+        Promise.resolve().then(()=>fetch(url,{...options,...(ctl?{signal:ctl.signal}:{})})),
+        new Promise((_,reject)=>{timer=setTimeout(()=>{
+          expired=true;ctl?.abort();
+          reject(Error('School cloud request timed out. Save was not confirmed; check internet and retry.'));
+        },20000);})
+      ]);
+    }catch(e){
+      if(expired||e?.name==='AbortError')throw Error('School cloud request timed out. Save was not confirmed; check internet and retry.');
+      throw e;
+    }finally{clearTimeout(timer);}
+  }
   async function responseJson(res){
     const data=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(data.message||data.msg||data.error_description||data.error||'Request denied by server');
     return data;
   }
   async function authRequest(path,body,method='POST'){
-    return responseJson(await fetch(BASE+'/auth/v1/'+path,{
+    return responseJson(await timedCloudFetch(BASE+'/auth/v1/'+path,{
       method,headers:{'apikey':APIKEY,'Content-Type':'application/json'},
       body:JSON.stringify(body),cache:'no-store'
     }));
@@ -133,12 +151,15 @@
   }
   async function api(table,query='',method='GET',body=null,prefer='return=representation'){
     await ensureToken();
-    const res=await fetch(BASE+'/rest/v1/'+table+(query?'?'+query:''),{
+    const res=await timedCloudFetch(BASE+'/rest/v1/'+table+(query?'?'+query:''),{
       method,headers:{'apikey':APIKEY,'Authorization':'Bearer '+session.access_token,
         'Content-Type':'application/json','Prefer':prefer},
       body:body===null?undefined:JSON.stringify(body),cache:'no-store'
     });
-    return responseJson(res);
+    const result=await responseJson(res);
+    if((method==='PATCH'||method==='DELETE')&&prefer.includes('return=representation')&&(!Array.isArray(result)||result.length===0))
+      throw Error('No authorized school record was changed. Reload before retrying; check school permissions.');
+    return result;
   }
   const query=params=>Object.entries(params).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
   const eq=x=>'eq.'+x;
@@ -175,7 +196,7 @@
     if(jwt){
       // Remove the previous session in the browser immediately. Server sign-out
       // is best effort; it must not stop the user entering another account.
-      await fetch(BASE+'/auth/v1/logout',{method:'POST',
+      await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',
         headers:{apikey:APIKEY,Authorization:'Bearer '+jwt},cache:'no-store'}).catch(()=>{});
     }
   }
@@ -194,7 +215,7 @@
   async function load(requestedSchoolId){
     const thisLoad=++schoolLoadEpoch;
     await ensureToken();
-    identity=await responseJson(await fetch(BASE+'/auth/v1/user',{headers:{
+    identity=await responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{headers:{
       apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'}));
     const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status,display_name',auth_user_id:eq(identity.id)}));
     if(thisLoad!==schoolLoadEpoch)return;
@@ -392,7 +413,9 @@
       if(previous)readProfile=()=>{const p=previous();p.p_profile.details.photo_path=result.path;return p;};
       if(result.url){$('studentPhotoPreview').src=result.url;display('studentPhotoPreview',true);}
       $('studentPhotoInput').value='';
-      put('studentPhotoStatus','Student photo published securely. Linked student/parent will see it on refresh.');
+      put('studentPhotoStatus',result.previewWarning
+        ?'Student photo saved in Supabase. Preview could not load right now; refresh the photo later.'
+        :'Student photo published securely. Linked student/parent will see it on refresh.');
     }finally{button.disabled=false;}
   }));
   $('studentProfileForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
@@ -459,7 +482,7 @@
     if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee ledger access denied for this role.');
     await ensureToken();
     const [summary,entries,financeStudents]=await Promise.all([
-      responseJson(await fetch(BASE+'/rest/v1/rpc/school_fee_summary',{
+      responseJson(await timedCloudFetch(BASE+'/rest/v1/rpc/school_fee_summary',{
         method:'POST',cache:'no-store',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
         body:JSON.stringify({p_institution:me.institution_id})
       })),
@@ -560,7 +583,7 @@
     for(const n of rows){const item=dom('div',undefined,'assignment');item.append(dom('h3',n.title),dom('p',n.body),dom('small',new Date(n.created_at).toLocaleDateString(),'muted'));root.append(item);}
   }
   $('refreshNotices').addEventListener('click',()=>run(loadNotices));
-  $('parentApp').addEventListener('click',async e=>{e.preventDefault();const jwt=session?.access_token;dropSession();if(jwt)await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt}}).catch(()=>{});location.assign('./parents.html');});
+  $('parentApp').addEventListener('click',async e=>{e.preventDefault();const jwt=session?.access_token;dropSession();if(jwt)await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt}}).catch(()=>{});location.assign('./parents.html');});
   function renderClasses(){
     const root=$('classesList');clearChildren(root);
     if(!allClasses.length){root.append(dom('p','No classes are assigned to your account yet. Ask the school administrator.'));return}
@@ -1080,7 +1103,7 @@
       // Supabase Auth mails a short-lived RESET LINK, never the old password.
       // Keep this URL restricted to this same school's verified HTTPS origin.
       const redirect=new URL('./teacher-access.html',location.href);
-      const res=await fetch(BASE+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirect.href),{
+      const res=await timedCloudFetch(BASE+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirect.href),{
         method:'POST',headers:{apikey:APIKEY,'Content-Type':'application/json'},
         body:JSON.stringify({email}),cache:'no-store'
       });
@@ -1101,7 +1124,7 @@
     $('activateForm').reset();
     if(recoveryMode){
       const token=session.access_token;
-      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+token}}).catch(()=>{});
+      await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+token}}).catch(()=>{});
       dropSession();
       notify('Password reset successfully. Sign in with your new password.');
       return;
@@ -1111,7 +1134,7 @@
   })});
   async function apiAuthUserUpdate(password,currentPassword,accessToken){
     await ensureToken();
-    return responseJson(await fetch(BASE+'/auth/v1/user',{method:'PUT',headers:{apikey:APIKEY,Authorization:'Bearer '+(accessToken||session.access_token),'Content-Type':'application/json'},body:JSON.stringify(currentPassword?{password,current_password:currentPassword}:{password})}));
+    return responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{method:'PUT',headers:{apikey:APIKEY,Authorization:'Bearer '+(accessToken||session.access_token),'Content-Type':'application/json'},body:JSON.stringify(currentPassword?{password,current_password:currentPassword}:{password})}));
   }
   // Staff self-service password change. Authenticate the CURRENT password
   // with Supabase Auth, then use that freshly authenticated short-lived session
@@ -1122,7 +1145,7 @@
     if(!nextName)throw Error('Enter a staff display name.');
     const button=$('saveAccountNameButton');button.disabled=true;
     try{
-      const savedIdentity=await responseJson(await fetch(BASE+'/auth/v1/user',{
+      const savedIdentity=await responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{
         method:'PUT',
         headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
         body:JSON.stringify({data:{full_name:nextName,name:nextName}})
@@ -1164,21 +1187,21 @@
       const result=await apiAuthUserUpdate(next,current,freshToken);
       if(result.id!==identity.id)throw new Error('Password update confirmation failed. Contact your school admin.');
       // Revoke fresh and original sessions after a successful change.
-      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
+      await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
       freshToken=null;
-      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
+      await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
       dropSession();
       notify('Password changed successfully. Please sign in again with your new password.');
     }finally{
       if(freshToken){
-        await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
+        await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
       }
       form.reset();
       button.disabled=false;
     }
   })});
   $('logout').addEventListener('click',()=>{run(async()=>{
-    if(session?.access_token)await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
+    if(session?.access_token)await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
     dropSession();notify('Signed out.');
   })});
   $('reload').addEventListener('click',()=>run(async()=>{await reload();notify('Updated from cloud.')}));
@@ -1228,8 +1251,22 @@
     if(selects.some(s=>!['present','absent','late','excused'].includes(s.value)))throw Error('Mark every student before saving attendance.');
     const records=selects.map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:me.institution_id,day,status:s.value,recorded_by:me.id}));
     const button=$('saveAttendance');if(button.disabled)return;button.disabled=true;
-    try{await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=minimal');
-    notify('Attendance saved for '+records.length+' students on '+day+'. Linked parents can refresh attendance in their app.');}finally{button.disabled=false;}
+    try{
+      const expected=new Map(records.map(row=>[row.student_id,row.status]));
+      let confirmed=false,writeFailure=null;
+      try{
+        const saved=await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=representation');
+        confirmed=Array.isArray(saved)&&saved.length===records.length&&saved.every(row=>expected.get(row.student_id)===row.status);
+      }catch(error){writeFailure=error;}
+      if(!confirmed){
+        try{
+          const readBack=await api('school_attendance',query({select:'student_id,status',class_id:eq(cls),day:eq(day),institution_id:eq(me.institution_id)}));
+          confirmed=Array.isArray(readBack)&&readBack.length===records.length&&readBack.every(row=>expected.get(row.student_id)===row.status);
+        }catch(_) {}
+      }
+      if(!confirmed)throw writeFailure||Error('Attendance write was not confirmed for the full class. Please refresh the roster before retrying.');
+      notify('Attendance verified in Supabase for '+records.length+' students on '+day+'. Linked parents can refresh attendance in their app.');
+    }finally{button.disabled=false;}
   }));
   $('homeworkForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const class_id=$('homeworkClass').value;
@@ -1237,12 +1274,31 @@
     const subject=$('homeworkSubject').value.trim(),title=$('homeworkTitle').value.trim();
     if(!subject||!title)throw Error('Subject and task are required.');
     const button=$('publishHomework');if(button.disabled)return;const selectedFiles=Array.from($('homeworkFiles').files||[]);if(selectedFiles.length>5)throw Error('Choose up to 5 files.');for(const file of selectedFiles)await window.BNHomeworkFiles.validate(file);button.disabled=true;
-    try{const published=await api('school_homework','','POST',{
-      institution_id:me.institution_id,class_id,subject,title,
-      instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null,created_by:me.id
-    });
-    let fileError=null;try{if(selectedFiles.length)await homeworkFiles.upload(published[0],selectedFiles);}catch(err){fileError=err;}
-    e.target.reset();await reload();notify(fileError?'Homework saved. Some files were not uploaded: '+fileError.message+' Use Add photo / PDF on this homework to retry.':'Homework published with '+selectedFiles.length+' file(s).',!!fileError);
+    try{
+      const form=$('homeworkForm');
+      const id=form.dataset.pendingHomeworkId||(form.dataset.pendingHomeworkId=crypto.randomUUID());
+      const payload={id,institution_id:me.institution_id,class_id,subject,title,
+        instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null,created_by:me.id};
+      let published=null,writeFailure=null;
+      try{
+        const result=await api('school_homework','','POST',payload);
+        if(Array.isArray(result)&&result.length===1&&result[0].id===id)published=result[0];
+      }catch(error){writeFailure=error;}
+      if(!published){
+        // A successful INSERT can lose its network response. Reuse this form's
+        // stable UUID and read back instead of creating duplicate homework.
+        try{
+          const saved=await api('school_homework',query({select:'*',id:eq(id),institution_id:eq(me.institution_id),limit:'2'}));
+          if(Array.isArray(saved)&&saved.length===1&&saved[0].class_id===class_id&&saved[0].title===title&&saved[0].subject===subject)published=saved[0];
+        }catch(_){}
+      }
+      if(!published)throw writeFailure||Error('Homework was not confirmed in Supabase. Retry without changing the form.');
+      delete form.dataset.pendingHomeworkId;
+      let fileError=null;
+      try{if(selectedFiles.length)await homeworkFiles.upload(published,selectedFiles);}
+      catch(err){fileError=err;}
+      e.target.reset();await reload();
+      notify(fileError?'Homework saved. Some files were not uploaded: '+fileError.message+' Use Add photo / PDF on this homework to retry.':'Homework verified in Supabase with '+selectedFiles.length+' file(s).',!!fileError);
     }finally{button.disabled=false;}
   })});
   $('inviteForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
@@ -1251,7 +1307,7 @@
     const invEmail=$('inviteEmail').value.trim();
     const invRole=$('inviteRole').value;
     const invName=($('inviteName')?.value||'').trim();
-    const r=await responseJson(await fetch(BASE+'/functions/v1/school-invite-staff',{
+    const r=await responseJson(await timedCloudFetch(BASE+'/functions/v1/school-invite-staff',{
       method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
       body:JSON.stringify({email:invEmail,role:invRole})
     }));

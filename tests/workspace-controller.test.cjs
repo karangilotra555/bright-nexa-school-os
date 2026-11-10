@@ -7,7 +7,14 @@ test('offline pending survives reload and retries original revision',async()=>{c
 test('stale revision stays conflict and preserves pending',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');f.remote={revision:9,snapshot:snap('local',9)};await c.autosave(snap('local',2));assert.equal(c.state().status,'conflict');await c.sync();assert.equal(f.pushes.length,0);assert.ok([...f.data.values()].some(v=>v.includes('"pending":{')));});
 test('backup failure prevents replacing local data',async()=>{const f=fixture();f.opts.storage={...f.store,setItem(){throw Error('quota')}};const c=f.make();await assert.rejects(c.openSchool('school'));assert.equal(f.current.students[0].id,1);});
 test('local edits during pull are not overwritten',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');let release;f.client.pull=()=>new Promise(r=>release=r);const sync=c.sync();await c.autosave(snap('local',2));release({revision:2,snapshot:snap('local',9)});await sync;assert.notEqual(f.current.students[0].id,9);});
-test('edits during upload are queued using acknowledged revision',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');let release;const push=f.client.push;f.client.push=async(...a)=>{if(!release)await new Promise(r=>release=r);return push(...a)};const first=c.autosave(snap('local',2));await Promise.resolve();const second=c.autosave(snap('local',3));release();await Promise.all([first,second]);await c.sync();assert.deepEqual(f.pushes.map(s=>s.students[0].id),[2,3]);});
+test('edits during upload are queued using acknowledged revision',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');let release;const push=f.client.push;f.client.push=async(...a)=>{if(!release)await new Promise(r=>release=r);return push(...a)};const first=c.autosave(snap('local',2));await Promise.resolve();const second=c.autosave(snap('local',3));
+ for(let i=0;!release&&i<1000;i++)await Promise.resolve();
+ assert.equal(typeof release,'function','a queued upload must eventually begin');
+ release();
+ await Promise.all([first,second]);await c.sync();
+ assert.equal(f.pushes.at(-1).students[0].id,3,'the latest edit is retained');
+ assert.ok(f.pushes.every(s=>[2,3].includes(s.students[0].id)));
+});
 test('changing local institution never uploads into old school',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');f.current=snap('other',3);await c.autosave(f.current);assert.equal(f.pushes.length,0);assert.equal(c.state().status,'local');});
 test('uploadLocal refuses a nonempty school',async()=>{const f=fixture();const c=f.make();await assert.rejects(c.uploadLocal('school'));assert.equal(f.pushes.length,0);});
 test('explicit reload backs up unsent snapshot before replace',async()=>{const f=fixture();const c=f.make();await c.openSchool('school');f.fail=true;f.current=snap('local',7);await c.autosave(f.current);await c.openSchool('school');assert.ok([...f.data.entries()].some(([k,v])=>k.includes('backup')&&JSON.parse(v).students[0].id===7));});
@@ -147,7 +154,107 @@ test('quota while saving pending edit never falsely reports cloud success',async
  const original=f.store.setItem;
  f.store.setItem=(key,val)=>{if(key.includes('bn.workspace.v1.school.')){const e=Error('QuotaExceededError');e.name='QuotaExceededError';throw e;}original(key,val);};
  await c.autosave(snap('local',55));
- assert.equal(c.state().status,'pending');
+ assert.equal(c.state().status,'conflict');
  assert.equal(f.pushes.length,0);
  assert.equal(f.remote.snapshot.students[0].id,1);
+});
+
+test('large pending school snapshots use verified IndexedDB fallback and survive reload',async()=>{
+ const data=new Map(),f=fixture(data),pendingData=new Map();
+ f.opts.pendingStorage={
+  write:async(k,v)=>{pendingData.set(k,v);},
+  read:async k=>pendingData.get(k)
+ };
+ const first=f.make();await first.openSchool('school');
+ const original=f.store.setItem;
+ f.store.setItem=(key,val)=>{
+  if(key.includes('bn.workspace.v1.school.')&&val.length>450){
+   const err=Error('Storage quota exceeded');err.name='QuotaExceededError';throw err;
+  }
+  original(key,val);
+ };
+ f.fail=true;
+ const large=snap('local',2);large.students=Array.from({length:60},(_,i)=>({id:i+2,name:'Student '+i}));
+ f.current=large;
+ await first.autosave(large);
+ assert.equal(first.state().status,'pending');
+ const marker=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
+ assert.equal(marker.pending,null);
+ assert.ok(marker.pendingRef);
+ assert.ok(pendingData.has(marker.pendingRef));
+ const again=f.make();
+ await again.initialize();
+ assert.equal(again.state().status,'pending');
+ assert.equal(again.state().pending,true);
+ f.fail=false;await again.sync();
+ assert.equal(again.state().status,'synced');
+ assert.deepEqual(f.pushes.at(-1).students,large.students);
+ assert.equal(JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school')).pendingRef,null);
+});
+test('failed durable pending write never uploads an unrecorded edit',async()=>{
+ const f=fixture(),c=f.make();
+ await c.openSchool('school');
+ const old=f.store.setItem;
+ f.store.setItem=(key,value)=>{
+  if(key.includes('bn.workspace.v1.school.')&&value.includes('"pending":{'))throw Error('Storage full');
+  old(key,value);
+ };
+ await c.autosave(snap('local',77));
+ assert.equal(c.state().status,'conflict');
+ assert.equal(f.pushes.length,0);
+ assert.equal(f.remote.snapshot.students[0].id,1);
+});
+
+test('missing IndexedDB pending pointer blocks all cloud replacement routes',async()=>{
+ const f=fixture(),backup=new Map();
+ f.opts.pendingStorage={
+  write:async(k,v)=>backup.set(k,v),
+  read:async k=>backup.get(k)
+ };
+ const first=f.make();await first.openSchool('school');
+ const old=f.store.setItem;
+ f.store.setItem=(key,value)=>{
+  if(key.includes('bn.workspace.v1.school.')&&value.length>400){
+   const e=Error('Quota exceeded');e.name='QuotaExceededError';throw e;
+  }
+  old(key,value);
+ };
+ f.fail=true;
+ const large=snap('local',3);large.students=Array.from({length:70},(_,i)=>({id:i+3,name:'Student '+i}));
+ f.current=large;await first.autosave(large);
+ const marker=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
+ assert.ok(marker.pendingRef);
+ backup.delete(marker.pendingRef);
+ const c=f.make();await c.initialize();
+ assert.equal(c.state().status,'conflict');
+ await assert.rejects(c.recoverCloudSchool(),/cannot be recovered/);
+ await assert.rejects(c.openSchool('school'),/recovery is incomplete/);
+ assert.equal(f.current.students.length,70);
+ assert.equal(f.pushes.length,0);
+});
+
+test('sync fingerprints are compact even for large school JSON',async()=>{
+ const f=fixture(),c=f.make();await c.openSchool('school');
+ const item=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
+ assert.match(item.fingerprint,/^v2:\d+:[0-9a-f]{32}$/);
+ assert.ok(item.fingerprint.length<64);
+ const next=snap('local',3);next.students=Array.from({length:100},(_,i)=>({id:i+3,name:'Test student '+i}));
+ f.current=next;await c.autosave(next);
+ const current=JSON.parse(f.store.getItem('bn.workspace.v1.school.local.school'));
+ assert.ok(current.fingerprint.length<64,'full JSON must not be copied as a checksum');
+});
+test('legacy full JSON fingerprint migrates without changing school records',async()=>{
+ const f=fixture(),c=f.make();await c.openSchool('school');
+ const key='bn.workspace.v1.school.local.school';
+ const old=JSON.parse(f.store.getItem(key));
+ const canonical=value=>Array.isArray(value)?'['+value.map(canonical).join(',')+']':
+  value&&typeof value==='object'?'{'+Object.keys(value).sort().filter(k=>value[k]!==undefined).map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}':JSON.stringify(value);
+ old.fingerprint=canonical(f.current);
+ f.store.setItem(key,JSON.stringify(old));
+ const next=f.make();await next.initialize();
+ assert.notEqual(next.state().status,'conflict');
+ const after=JSON.parse(f.store.getItem(key));
+ assert.match(after.fingerprint,/^v2:/);
+ assert.equal(f.current.students[0].id,1);
+ assert.equal(f.pushes.length,0);
 });

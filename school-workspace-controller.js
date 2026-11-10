@@ -3,18 +3,37 @@
   'use strict';
   var PREFIX='bn.workspace.v1.';
   function clone(v){return JSON.parse(JSON.stringify(v));}
-  function fingerprint(value){if(Array.isArray(value))return '['+value.map(fingerprint).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().filter(function(k){return value[k]!==undefined;}).map(function(k){return JSON.stringify(k)+':'+fingerprint(value[k]);}).join(',')+'}';return JSON.stringify(value);}
+  function canonical(value){if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().filter(function(k){return value[k]!==undefined;}).map(function(k){return JSON.stringify(k)+':'+canonical(value[k]);}).join(',')+'}';return JSON.stringify(value);}
+  // Non-cryptographic, deterministic 128-bit content checksum, used solely for
+  // detecting local/cloud changes (never for authentication or authorization).
+  // Legacy "fingerprints" serialized the ENTIRE school JSON into localStorage.
+  function hashCanonical(value){
+    var a=0x811c9dc5,b=0x9e3779b9,c=0x85ebca6b,d=0xc2b2ae35;
+    for(var i=0;i<value.length;i++){
+      var x=value.charCodeAt(i);
+      a=Math.imul(a^x,0x01000193)>>>0;
+      b=Math.imul(b^(x+i),0x27d4eb2d)>>>0;
+      c=Math.imul(c+x,0x85ebca77)>>>0;
+      d=Math.imul(d^(x<<16|x),0xc2b2ae3d)>>>0;
+    }
+    return 'v2:'+value.length+':'+[a,b,c,d].map(function(x){return x.toString(16).padStart(8,'0');}).join('');
+  }
+  function fingerprint(value){return hashCanonical(canonical(value));}
   function institutionId(s){return s&&s.institution&&s.institution.institution&&s.institution.institution.id;}
   function create(options){
-    var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false;
+    var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve(), missingPendingRecovery=false;
     function bindingKey(id){return PREFIX+'binding.'+encodeURIComponent(id);}
     function recordKey(b){return PREFIX+'school.'+encodeURIComponent(b.localId)+'.'+encodeURIComponent(b.schoolId);}
-    function state(){return {status:status,binding:!!binding,schoolId:binding&&binding.schoolId,localId:binding&&binding.localId,revision:record&&record.revision,pending:!!(record&&record.pending),error:lastError};}
+    function state(){return {status:status,binding:!!binding,schoolId:binding&&binding.schoolId,localId:binding&&binding.localId,revision:record&&record.revision,pending:!!(record&&(record.pending||record.pendingRef)),error:lastError};}
     function notify(s,error){if(disposed)return;status=s;lastError=error||null;if(o.onStatus)o.onStatus(s,state());if(error&&o.onError)o.onError(error);if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard)window.BNWorkspaceOnlineGuard.update(s,error);}
     function error(message){return new Error(message);}
     function changed(){var e=error('Another tab changed this school. Local records were retained.');e.code='CONFLICT';return e;}
     function watch(schoolId,localId){var values={};function add(b){[bindingKey(b.localId),recordKey(b)].forEach(function(k){if(!Object.prototype.hasOwnProperty.call(values,k))values[k]=storage.getItem(k);});}if(binding)add(binding);add({schoolId:String(schoolId),localId:String(localId)});return {add:add,valid:function(){return Object.keys(values).every(function(k){return storage.getItem(k)===values[k];});},check:function(){if(!this.valid())throw changed();}};}
-    function save(next){var value=JSON.stringify(next||record);storage.setItem(recordKey(binding),value);disk=value;if(next)Object.assign(record,next);}
+    // Commit the binding record only after the browser confirms the write.
+    // On quota failures the whole pending snapshot is stored in IndexedDB,
+    // leaving a small durable pointer in localStorage.
+    function saveValue(next,value){storage.setItem(recordKey(binding),value);disk=value;Object.assign(record,next);}
+    function pendingStorageAvailable(){return !!o.pendingStorage||canUseBackupDb();}
     function quotaError(e){return !!e&&(e.name==='QuotaExceededError'||e.code===22||/quota exceeded|storage quota|quotaexceeded/i.test(String(e.message||'')));}
     function canUseBackupDb(){return typeof window!=='undefined'&&window.indexedDB&&typeof window.indexedDB.open==='function';}
     // Large immutable snapshots belong in IndexedDB, never in the tiny
@@ -47,6 +66,30 @@
         };
       });
     }
+    function readBackupFromDb(key){
+      return new Promise(function(resolve,reject){
+        if(!canUseBackupDb())return reject(error('Recovery storage unavailable. Pending edits cannot be verified.'));
+        var req=window.indexedDB.open('bn-workspace-recovery-v1',1),db;
+        req.onerror=function(){reject(req.error||error('Cannot open pending recovery store.'));};
+        req.onupgradeneeded=function(){req.result.createObjectStore('backups');};
+        req.onsuccess=function(){
+          db=req.result;
+          try{
+            var tx=db.transaction('backups','readonly'),get=tx.objectStore('backups').get(key);
+            get.onerror=function(){db.close();reject(get.error||error('Pending edit cannot be read.'));};
+            get.onsuccess=function(){var value=get.result;db.close();resolve(value);};
+          }catch(e){db.close();reject(e);}
+        };
+      });
+    }
+    async function pendingRead(key){
+      return o.pendingStorage?o.pendingStorage.read(key):readBackupFromDb(key);
+    }
+    async function pendingWrite(key,value){
+      if(o.pendingStorage)await o.pendingStorage.write(key,value);
+      else await backupToDb(key,value);
+      if(await pendingRead(key)!==value)throw error('Pending edit backup verification failed. The school was not synchronized.');
+    }
     async function migrateLegacyBackups(){
       if(!canUseBackupDb()||!Number.isInteger(storage.length)||typeof storage.key!=='function')return 0;
       var keys=[];for(var i=0;i<storage.length;i++){var k=storage.key(i);if(k&&k.indexOf(PREFIX+'backup.')===0)keys.push(k);}
@@ -58,15 +101,40 @@
       }
       return moved;
     }
-    async function persist(next){
-      try{save(next);}
-      catch(e){
-        if(!quotaError(e)||!canUseBackupDb())throw e;
-        var moved=await migrateLegacyBackups();
-        if(!moved)throw e;
-        if(!consistent())throw changed();
-        save(next);
-      }
+    function persist(next){
+      var b=binding,r=record,desired={...(next||record)};
+      if(desired.pending)desired.pending=clone(desired.pending);
+      // Serialized writes prevent a slow IndexedDB quota fallback from
+      // overwriting a newer edit captured in the same browser tab.
+      var task=saving.then(async function(){
+        if(!b||!r||binding!==b||record!==r)throw changed();
+        var key=recordKey(b);
+        if(disk!==null&&storage.getItem(key)!==disk)throw changed();
+        var small={...desired,pendingRef:null};
+        var value=JSON.stringify(small);
+        var usePendingDb=!!(desired.pending&&r.pendingRef&&pendingStorageAvailable());
+        if(!usePendingDb){
+          try{saveValue(small,value);return;}
+          catch(e){
+            if(!quotaError(e))throw e;
+            if(canUseBackupDb()){
+              await migrateLegacyBackups();
+              if(binding!==b||record!==r||(disk!==null&&storage.getItem(key)!==disk))throw changed();
+              try{saveValue(small,value);return;}catch(retryError){if(!quotaError(retryError))throw retryError;}
+            }
+            if(!desired.pending||!pendingStorageAvailable())throw e;
+          }
+        }
+        var ref=PREFIX+'pending.'+encodeURIComponent(b.schoolId)+'.'+Date.now()+'.'+(++serial)+'.'+Math.random().toString(36).slice(2);
+        await pendingWrite(ref,JSON.stringify(desired.pending));
+        if(binding!==b||record!==r||(disk!==null&&storage.getItem(key)!==disk))throw changed();
+        var marker={...desired,pending:null,pendingRef:ref},metadata=JSON.stringify(marker);
+        storage.setItem(key,metadata);
+        disk=metadata;
+        Object.assign(record,{...desired,pendingRef:ref});
+      });
+      saving=task.catch(function(){});
+      return task;
     }
     function consistent(){return binding&&storage.getItem(bindingKey(binding.localId))===JSON.stringify(binding)&&storage.getItem(recordKey(binding))===disk;}
     function sameInstitution(snapshot){return binding&&String(institutionId(snapshot))===binding.localId;}
@@ -106,6 +174,29 @@
       try{await migrateLegacyBackups();}catch(_){ /* later backup/persist reports the actionable error */ }
       var id=institutionId(o.getSnapshot());binding=null;record=null;disk=null;
       if(id!=null){var saved=storage.getItem(bindingKey(String(id)));if(saved){binding=JSON.parse(saved);disk=storage.getItem(recordKey(binding));record=disk?JSON.parse(disk):null;if(!record)binding=null;}}
+      missingPendingRecovery=false;
+      if(record&&record.pendingRef){
+        try{
+          var queued=await pendingRead(record.pendingRef);
+          if(typeof queued!=='string')throw error('Saved pending edit is missing from browser recovery storage.');
+          record.pending=JSON.parse(queued);
+          if(String(institutionId(record.pending))!==binding.localId)throw error('Pending edit belongs to another school.');
+        }catch(e){
+          missingPendingRecovery=true;
+          conflict(error('Pending changes could not be verified: '+e.message+'. Browser data has not been cleared or uploaded. Do not open or overwrite this school until recovery storage is available.'));
+          return state();
+        }
+      }
+      // Migrate old unbounded fingerprints without changing any school data.
+      // Hash the existing stored canonical string, which may refer to the last
+      // cloud-acknowledged revision rather than the current pending edit.
+      if(record&&typeof record.fingerprint==='string'&&!record.fingerprint.startsWith('v2:')){
+        try{await persist({...record,fingerprint:hashCanonical(record.fingerprint)});}
+        catch(e){
+          conflict(error('Could not upgrade browser sync metadata without deleting records: '+e.message));
+          return state();
+        }
+      }
       if(binding&&((record.pending&&fingerprint(record.pending)!==fingerprint(o.getSnapshot()))||(!record.pending&&record.fingerprint!==fingerprint(o.getSnapshot())))){
         conflict(error('Saved browser records differ from the school workspace. No local changes were uploaded.'));
         if(verifiedExplicitOpen()){
@@ -131,7 +222,7 @@
             if(binding!==b||record!==r)break;
             if(!consistent()){conflict();break;}
             var acknowledged={...r,revision:result.revision,fingerprint:fingerprint(snapshot),
-              pending:generation===sentGeneration?null:r.pending};
+              pending:generation===sentGeneration&&r.pending&&fingerprint(r.pending)===fingerprint(snapshot)?null:r.pending};
             await persist(acknowledged);notify(record.pending?'pending':'synced');
           }catch(e){
             // A POST can commit even if its response was lost. Before retrying
@@ -144,7 +235,7 @@
                   &&fingerprint(remote.snapshot)===fingerprint(snapshot)
                   &&binding===b&&record===r&&consistent()){
                   await persist({...r,revision:remote.revision,fingerprint:fingerprint(snapshot),
-                    pending:generation===sentGeneration?null:r.pending});
+                    pending:generation===sentGeneration&&r.pending&&fingerprint(r.pending)===fingerprint(snapshot)?null:r.pending});
                   notify(record.pending?'pending':'synced');
                   continue;
                 }
@@ -163,12 +254,16 @@
       if(!sameInstitution(snapshot)){binding=null;record=null;disk=null;notify('local',error('School identity changed. Your edit was not uploaded to Supabase. Choose the verified school again.'));return state();}
       if(!consistent()){conflict();return state();}
       if(status==='conflict')return state();
-      record.pending=clone(snapshot);
-      try{await persist();}catch(e){notify('pending',e);return state();}
+      try{await persist({...record,pending:clone(snapshot)});}catch(e){
+        conflict(error('Browser could not preserve this unsent edit: '+e.message+'. The cloud was NOT updated. Do not clear this tab or browser data.'));
+        return state();
+      }
       if(status==='conflict')return state();
       notify('pending');return flush();
     }
     async function openSchool(schoolId){
+      if(missingPendingRecovery||(record&&record.pendingRef&&!record.pending))
+        throw error('Pending edit recovery is incomplete. Cloud records cannot replace this device until the original pending snapshot can be verified.');
       if(running)await running;
       var recovering=status==='conflict', start=generation, before=clone(o.getSnapshot()),observed=watch(schoolId,institutionId(o.getSnapshot()));notify('loading');
       try{
@@ -198,6 +293,7 @@
       }catch(e){if(e.code==='CONFLICT'||recovering)conflict(e);else notify(record&&record.pending?'pending':binding?'pending':'local',e);throw e;}
     }
     async function recoverCloudSchool(){
+      if(missingPendingRecovery)throw error('Local pending snapshot cannot be recovered. School records will not be replaced or cleared. Restore browser recovery storage before proceeding.');
       if(status!=='conflict'||!binding)return state();
       if(!sameInstitution(o.getSnapshot()))throw error('School identity changed. Sign in to the correct school before recovery.');
       // Explicit recovery never pushes a pending snapshot; openSchool first

@@ -7,8 +7,24 @@ function create(fetcher){
  let session=null,selected=null;
  const filesClient=typeof root.BNHomeworkFiles!=='undefined'?root.BNHomeworkFiles.create({base:BASE,key:KEY,token:async()=>session?.access_token,fetcher}):null;
  const photoClient=typeof root.BNStudentPhotos!=='undefined'?root.BNStudentPhotos.create({base:BASE,key:KEY,token:async()=>session?.access_token,fetcher}):null;
+ async function timedFetch(url,options={}){
+  const ctl=typeof AbortController==='function'?new AbortController():null;
+  let timer,expired=false;
+  try{
+    return await Promise.race([
+      Promise.resolve().then(()=>fetcher(url,{...options,...(ctl?{signal:ctl.signal}:{})})),
+      new Promise((_,reject)=>{timer=setTimeout(()=>{
+        expired=true;ctl?.abort();
+        reject(Error('Student portal request timed out. No cloud save was confirmed; check connection and retry.'));
+      },20000);})
+    ]);
+  }catch(e){
+    if(expired||e?.name==='AbortError')throw Error('Student portal request timed out. No cloud save was confirmed; check connection and retry.');
+    throw e;
+  }finally{clearTimeout(timer);}
+ }
  async function request(path,options={}){
-  const res=await fetcher(BASE+path,{...options,cache:'no-store',headers:{apikey:KEY,...(session?{Authorization:'Bearer '+session.access_token}:{}),'Content-Type':'application/json',...options.headers}});
+  const res=await timedFetch(BASE+path,{...options,cache:'no-store',headers:{apikey:KEY,...(session?{Authorization:'Bearer '+session.access_token}:{}),'Content-Type':'application/json',...options.headers}});
   const raw=await res.text();
   let body;try{body=raw?JSON.parse(raw):null;}catch(_){throw Error('Invalid response from school service');}
   if(!res.ok){if(res.status===401){session=null;selected=null;}throw Error(body?.error||body?.msg||body?.message||body?.error_description||'School connection unavailable');}
@@ -40,7 +56,7 @@ function create(fetcher){
  // Keep the rest of the portal working until the migration is deployed.
  async function classTeachers(link){
   try{
-   const res=await fetcher(BASE+'/rest/v1/rpc/bn_portal_class_teachers',{
+   const res=await timedFetch(BASE+'/rest/v1/rpc/bn_portal_class_teachers',{
     method:'POST',cache:'no-store',
     headers:{apikey:KEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
     body:JSON.stringify({p_institution_id:link.institution_id,p_student_id:link.student_id})
@@ -52,7 +68,7 @@ function create(fetcher){
  }
  async function studentTimetable(link){
   try{
-   const res=await fetcher(BASE+'/rest/v1/rpc/bn_portal_student_timetable',{
+   const res=await timedFetch(BASE+'/rest/v1/rpc/bn_portal_student_timetable',{
     method:'POST',cache:'no-store',
     headers:{apikey:KEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
     body:JSON.stringify({p_institution_id:link.institution_id,p_student_id:link.student_id})
