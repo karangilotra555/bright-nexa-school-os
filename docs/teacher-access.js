@@ -113,13 +113,29 @@
     session={access_token:next.access_token,refresh_token:next.refresh_token,expires_at:Math.floor(Date.now()/1000)+(Number(next.expires_in)||3600)};
     sessionStorage.setItem(TOKEN_KEY,JSON.stringify(session));
   }
+  async function timedCloudFetch(url,options={}){
+    const ctl=typeof AbortController==='function'?new AbortController():null;
+    let timer,expired=false;
+    try{
+      return await Promise.race([
+        Promise.resolve().then(()=>fetch(url,{...options,...(ctl?{signal:ctl.signal}:{})})),
+        new Promise((_,reject)=>{timer=setTimeout(()=>{
+          expired=true;ctl?.abort();
+          reject(Error('School cloud request timed out. Save was not confirmed; check internet and retry.'));
+        },20000);})
+      ]);
+    }catch(e){
+      if(expired||e?.name==='AbortError')throw Error('School cloud request timed out. Save was not confirmed; check internet and retry.');
+      throw e;
+    }finally{clearTimeout(timer);}
+  }
   async function responseJson(res){
     const data=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(data.message||data.msg||data.error_description||data.error||'Request denied by server');
     return data;
   }
   async function authRequest(path,body,method='POST'){
-    return responseJson(await fetch(BASE+'/auth/v1/'+path,{
+    return responseJson(await timedCloudFetch(BASE+'/auth/v1/'+path,{
       method,headers:{'apikey':APIKEY,'Content-Type':'application/json'},
       body:JSON.stringify(body),cache:'no-store'
     }));
@@ -133,12 +149,15 @@
   }
   async function api(table,query='',method='GET',body=null,prefer='return=representation'){
     await ensureToken();
-    const res=await fetch(BASE+'/rest/v1/'+table+(query?'?'+query:''),{
+    const res=await timedCloudFetch(BASE+'/rest/v1/'+table+(query?'?'+query:''),{
       method,headers:{'apikey':APIKEY,'Authorization':'Bearer '+session.access_token,
         'Content-Type':'application/json','Prefer':prefer},
       body:body===null?undefined:JSON.stringify(body),cache:'no-store'
     });
-    return responseJson(res);
+    const result=await responseJson(res);
+    if((method==='PATCH'||method==='DELETE')&&prefer.includes('return=representation')&&(!Array.isArray(result)||result.length===0))
+      throw Error('No authorized school record was changed. Reload before retrying; check school permissions.');
+    return result;
   }
   const query=params=>Object.entries(params).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
   const eq=x=>'eq.'+x;
@@ -175,7 +194,7 @@
     if(jwt){
       // Remove the previous session in the browser immediately. Server sign-out
       // is best effort; it must not stop the user entering another account.
-      await fetch(BASE+'/auth/v1/logout',{method:'POST',
+      await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',
         headers:{apikey:APIKEY,Authorization:'Bearer '+jwt},cache:'no-store'}).catch(()=>{});
     }
   }
@@ -194,7 +213,7 @@
   async function load(requestedSchoolId){
     const thisLoad=++schoolLoadEpoch;
     await ensureToken();
-    identity=await responseJson(await fetch(BASE+'/auth/v1/user',{headers:{
+    identity=await responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{headers:{
       apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'}));
     const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status,display_name',auth_user_id:eq(identity.id)}));
     if(thisLoad!==schoolLoadEpoch)return;
@@ -459,7 +478,7 @@
     if(!['school_admin','accountant'].includes(me?.role))throw Error('Fee ledger access denied for this role.');
     await ensureToken();
     const [summary,entries,financeStudents]=await Promise.all([
-      responseJson(await fetch(BASE+'/rest/v1/rpc/school_fee_summary',{
+      responseJson(await timedCloudFetch(BASE+'/rest/v1/rpc/school_fee_summary',{
         method:'POST',cache:'no-store',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
         body:JSON.stringify({p_institution:me.institution_id})
       })),
@@ -560,7 +579,7 @@
     for(const n of rows){const item=dom('div',undefined,'assignment');item.append(dom('h3',n.title),dom('p',n.body),dom('small',new Date(n.created_at).toLocaleDateString(),'muted'));root.append(item);}
   }
   $('refreshNotices').addEventListener('click',()=>run(loadNotices));
-  $('parentApp').addEventListener('click',async e=>{e.preventDefault();const jwt=session?.access_token;dropSession();if(jwt)await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt}}).catch(()=>{});location.assign('./parents.html');});
+  $('parentApp').addEventListener('click',async e=>{e.preventDefault();const jwt=session?.access_token;dropSession();if(jwt)await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt}}).catch(()=>{});location.assign('./parents.html');});
   function renderClasses(){
     const root=$('classesList');clearChildren(root);
     if(!allClasses.length){root.append(dom('p','No classes are assigned to your account yet. Ask the school administrator.'));return}
@@ -1080,7 +1099,7 @@
       // Supabase Auth mails a short-lived RESET LINK, never the old password.
       // Keep this URL restricted to this same school's verified HTTPS origin.
       const redirect=new URL('./teacher-access.html',location.href);
-      const res=await fetch(BASE+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirect.href),{
+      const res=await timedCloudFetch(BASE+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirect.href),{
         method:'POST',headers:{apikey:APIKEY,'Content-Type':'application/json'},
         body:JSON.stringify({email}),cache:'no-store'
       });
@@ -1101,7 +1120,7 @@
     $('activateForm').reset();
     if(recoveryMode){
       const token=session.access_token;
-      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+token}}).catch(()=>{});
+      await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+token}}).catch(()=>{});
       dropSession();
       notify('Password reset successfully. Sign in with your new password.');
       return;
@@ -1111,7 +1130,7 @@
   })});
   async function apiAuthUserUpdate(password,currentPassword,accessToken){
     await ensureToken();
-    return responseJson(await fetch(BASE+'/auth/v1/user',{method:'PUT',headers:{apikey:APIKEY,Authorization:'Bearer '+(accessToken||session.access_token),'Content-Type':'application/json'},body:JSON.stringify(currentPassword?{password,current_password:currentPassword}:{password})}));
+    return responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{method:'PUT',headers:{apikey:APIKEY,Authorization:'Bearer '+(accessToken||session.access_token),'Content-Type':'application/json'},body:JSON.stringify(currentPassword?{password,current_password:currentPassword}:{password})}));
   }
   // Staff self-service password change. Authenticate the CURRENT password
   // with Supabase Auth, then use that freshly authenticated short-lived session
@@ -1122,7 +1141,7 @@
     if(!nextName)throw Error('Enter a staff display name.');
     const button=$('saveAccountNameButton');button.disabled=true;
     try{
-      const savedIdentity=await responseJson(await fetch(BASE+'/auth/v1/user',{
+      const savedIdentity=await responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{
         method:'PUT',
         headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
         body:JSON.stringify({data:{full_name:nextName,name:nextName}})
@@ -1164,21 +1183,21 @@
       const result=await apiAuthUserUpdate(next,current,freshToken);
       if(result.id!==identity.id)throw new Error('Password update confirmation failed. Contact your school admin.');
       // Revoke fresh and original sessions after a successful change.
-      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
+      await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
       freshToken=null;
-      await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
+      await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
       dropSession();
       notify('Password changed successfully. Please sign in again with your new password.');
     }finally{
       if(freshToken){
-        await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
+        await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+freshToken}}).catch(()=>{});
       }
       form.reset();
       button.disabled=false;
     }
   })});
   $('logout').addEventListener('click',()=>{run(async()=>{
-    if(session?.access_token)await fetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
+    if(session?.access_token)await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
     dropSession();notify('Signed out.');
   })});
   $('reload').addEventListener('click',()=>run(async()=>{await reload();notify('Updated from cloud.')}));
@@ -1251,7 +1270,7 @@
     const invEmail=$('inviteEmail').value.trim();
     const invRole=$('inviteRole').value;
     const invName=($('inviteName')?.value||'').trim();
-    const r=await responseJson(await fetch(BASE+'/functions/v1/school-invite-staff',{
+    const r=await responseJson(await timedCloudFetch(BASE+'/functions/v1/school-invite-staff',{
       method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
       body:JSON.stringify({email:invEmail,role:invRole})
     }));
