@@ -20298,7 +20298,7 @@ function _Component6({
   const Component91 = `option`;
   const Component92 = `select`;
   const Component93 = `input`;
-  const Component94 = `input`;
+  const Component94 = `select`;
   const Component95 = `input`;
   const Component96 = `input`;
   const Component97 = `div`;
@@ -20460,9 +20460,15 @@ function _Component6({
         Component94,
         {
           value: i2.category || ``,
-          onChange: (e3) => p2(`category`, e3.target.value),
-          placeholder: `General / OBC / SC / ST`
-        }
+          onChange: (e3) => p2(`category`, e3.target.value)
+        },
+        /* @__PURE__ */ w.createElement(`option`, { value: `` }, `Select Category`),
+        /* @__PURE__ */ w.createElement(`option`, { value: `General` }, `General`),
+        /* @__PURE__ */ w.createElement(`option`, { value: `OBC` }, `OBC`),
+        /* @__PURE__ */ w.createElement(`option`, { value: `SC` }, `SC`),
+        /* @__PURE__ */ w.createElement(`option`, { value: `ST` }, `ST`),
+        /* @__PURE__ */ w.createElement(`option`, { value: `EWS` }, `EWS`),
+        /* @__PURE__ */ w.createElement(`option`, { value: `Other` }, `Other`)
       )), /* @__PURE__ */ w.createElement(_Component7, { label: `Previous School` }, /* @__PURE__ */ w.createElement(
         Component95,
         {

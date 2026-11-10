@@ -21198,7 +21198,7 @@ function _Component6({
   const Component91 = `option`;
   const Component92 = `select`;
   const Component93 = `input`;
-  const Component94 = `input`;
+  const Component94 = `select`;
   const Component95 = `input`;
   const Component96 = `input`;
   const Component97 = `div`;
@@ -21382,8 +21382,15 @@ function _Component6({
                 <Component94
                   value={i.category || ``}
                   onChange={(e) => p(`category`, e.target.value)}
-                  placeholder={`General / OBC / SC / ST`}
-                />
+                >
+                  <option value={``}>{`Select Category`}</option>
+                  <option value={`General`}>{`General`}</option>
+                  <option value={`OBC`}>{`OBC`}</option>
+                  <option value={`SC`}>{`SC`}</option>
+                  <option value={`ST`}>{`ST`}</option>
+                  <option value={`EWS`}>{`EWS`}</option>
+                  <option value={`Other`}>{`Other`}</option>
+                </Component94>
               </_Component7>
               <_Component7 label={`Previous School`}>
                 <Component95
