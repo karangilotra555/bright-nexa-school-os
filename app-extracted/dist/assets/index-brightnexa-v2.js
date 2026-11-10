@@ -29830,7 +29830,7 @@ function _Component49({
       value: t2.specialization || ``,
       onChange: (t3) => r2(e2, `specialization`, t3.target.value)
     }
-  )), /* @__PURE__ */ w.createElement(R, { label: `Date of Joining` }, /* @__PURE__ */ w.createElement(
+  )), e2 !== `directorProfile` && /* @__PURE__ */ w.createElement(R, { label: `Date of Joining` }, /* @__PURE__ */ w.createElement(
     Component1554,
     {
       type: `date`,
@@ -29889,7 +29889,7 @@ function Ba({ title: e2, profile: t2, fallbackName: n2 }) {
     [`Qualification`, t2?.qualification],
     [`Experience`, t2?.experienceYears],
     [`Specialisation`, t2?.specialization],
-    [`Date of Joining`, Ka(t2?.joiningDate)],
+    [`Date of Joining`, e2 === `Director / Owner` ? `` : Ka(t2?.joiningDate)],
     [`Professional Email`, t2?.email],
     [`Mobile Number`, t2?.mobile],
     [`Previous Institutions`, t2?.previousInstitutions],

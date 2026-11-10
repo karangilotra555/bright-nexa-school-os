@@ -33745,13 +33745,15 @@ function _Component49({
           onChange={(t) => r(e, `specialization`, t.target.value)}
         />
       </R>
-      <R label={`Date of Joining`}>
-        <Component1554
-          type={`date`}
-          value={t.joiningDate || ``}
-          onChange={(t) => r(e, `joiningDate`, t.target.value)}
-        />
-      </R>
+      {e !== `directorProfile` && (
+        <R label={`Date of Joining`}>
+          <Component1554
+            type={`date`}
+            value={t.joiningDate || ``}
+            onChange={(t) => r(e, `joiningDate`, t.target.value)}
+          />
+        </R>
+      )}
       <R label={`Mobile Number`}>
         <Component1555
           inputMode={`numeric`}
@@ -33805,7 +33807,7 @@ function Ba({ title: e, profile: t, fallbackName: n }) {
     [`Qualification`, t?.qualification],
     [`Experience`, t?.experienceYears],
     [`Specialisation`, t?.specialization],
-    [`Date of Joining`, Ka(t?.joiningDate)],
+    [`Date of Joining`, e === `Director / Owner` ? `` : Ka(t?.joiningDate)],
     [`Professional Email`, t?.email],
     [`Mobile Number`, t?.mobile],
     [`Previous Institutions`, t?.previousInstitutions],
