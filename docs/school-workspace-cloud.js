@@ -128,9 +128,26 @@
       if(verificationInFlight?.promise===work)verificationInFlight=null;
     }
   }
+  // Read the persisted, RLS-restricted workspace for an ambiguous POST result.
+  // school_workspace_pull() hydrates portal records and is NOT an exact copy
+  // of the JSON originally committed by school_workspace_push().
+  async function readback(id){
+    required(id,'School ID');
+    const auth=await authorize();
+    if(!auth.schools.some(s=>s.id===id))throw Error('School admin access is not available for this school.');
+    const rows=await request('/rest/v1/school_workspaces?'+new URLSearchParams({
+      select:'institution_id,revision,snapshot',institution_id:'eq.'+id,limit:'1'
+    }),auth.access);
+    if(!Array.isArray(rows)||rows.length!==1||rows[0].institution_id!==id||
+       !Number.isSafeInteger(rows[0].revision)||rows[0].revision<0||
+       !Object.hasOwn(rows[0],'snapshot'))
+      throw Error('Cloud write status could not be verified. Pending changes were retained.');
+    if(rows[0].snapshot!==null)shape(rows[0].snapshot);
+    return {revision:rows[0].revision,snapshot:rows[0].snapshot};
+  }
   function result(data,id){if(!obj(data)||!obj(data.school)||data.school.id!==id||!str(data.school.name)||!Number.isSafeInteger(data.revision)||data.revision<0||!Object.hasOwn(data,'snapshot'))throw Error('Invalid or cross-school cloud response. Local records are unchanged.');if(data.snapshot!==null)shape(data.snapshot);return data;}
   async function run(id,body){required(id,'School ID');const auth=await authorize();if(!auth.schools.some(s=>s.id===id))throw Error('School admin access is not available for this school.');return result(await request('/rest/v1/rpc/school_workspace_'+(body?'push':'pull'),auth.access,body||{p_institution_id:id}),id);}
-  return {buildProjection,connect:async()=>(await authorize()).schools,pull:id=>run(id),push:async(id,revision,snapshot,projection)=>{shape(snapshot);if(!Number.isSafeInteger(revision)||revision<0)throw Error('Invalid expected revision.');if(!obj(projection)||!['classes','students','attendance','homework','notices','fees'].every(k=>Array.isArray(projection[k])))throw Error('Invalid workspace projection.');const checked=buildProjection(snapshot,()=>[]);for(const k of ['classes','students','attendance','homework','notices'])if(JSON.stringify(checked[k])!==JSON.stringify(projection[k]))throw Error('Workspace projection does not match local '+k+'.');const studentIds=new Set(checked.students.map(s=>s.localId));unique(projection.fees,'fee',f=>f.localId);for(const f of projection.fees){if(!studentIds.has(f.studentLocalId)||!['charge','payment'].includes(f.kind)||typeof f.amountRupees!=='number'||!Number.isFinite(f.amountRupees)||f.amountRupees<0)throw Error('Invalid fee projection.');date(f.occurredOn,'Fee date',true);}const saved=await run(id,{p_institution_id:id,p_expected_revision:revision,p_snapshot:snapshot,p_projection:projection});if(saved.revision<=revision||saved.snapshot===null)throw Error('Cloud did not confirm the workspace save. Local records are unchanged.');return saved;}};
+  return {buildProjection,readback,connect:async()=>(await authorize()).schools,pull:id=>run(id),push:async(id,revision,snapshot,projection)=>{shape(snapshot);if(!Number.isSafeInteger(revision)||revision<0)throw Error('Invalid expected revision.');if(!obj(projection)||!['classes','students','attendance','homework','notices','fees'].every(k=>Array.isArray(projection[k])))throw Error('Invalid workspace projection.');const checked=buildProjection(snapshot,()=>[]);for(const k of ['classes','students','attendance','homework','notices'])if(JSON.stringify(checked[k])!==JSON.stringify(projection[k]))throw Error('Workspace projection does not match local '+k+'.');const studentIds=new Set(checked.students.map(s=>s.localId));unique(projection.fees,'fee',f=>f.localId);for(const f of projection.fees){if(!studentIds.has(f.studentLocalId)||!['charge','payment'].includes(f.kind)||typeof f.amountRupees!=='number'||!Number.isFinite(f.amountRupees)||f.amountRupees<0)throw Error('Invalid fee projection.');date(f.occurredOn,'Fee date',true);}const saved=await run(id,{p_institution_id:id,p_expected_revision:revision,p_snapshot:snapshot,p_projection:projection});if(saved.revision<=revision||saved.snapshot===null)throw Error('Cloud did not confirm the workspace save. Local records are unchanged.');return saved;}};
  }
  return {create,buildProjection};
 });
