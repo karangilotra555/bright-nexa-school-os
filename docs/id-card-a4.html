@@ -749,7 +749,7 @@
           📜 TC Certificate
         </a>
 
-        <a href="https://bright-nexa-school-os-api.onrender.com/student-portal.html" class="btn btn-gold" style="text-decoration:none;">
+        <a href="https://bright-nexa-school-os-api.onrender.com/student-portal.html" class="btn btn-gold" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
           📱 Student Portal
         </a>
 
@@ -865,7 +865,7 @@
     }
 
     // Standard ISO/IEC 18004 QRCode Canvas renderer with error correction
-    function generateRealQRCode(canvas, text) {
+    function generateRealQRCode(canvas, text, tries = 0) {
       if (!canvas) return;
       if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
         window.QRCode.toCanvas(canvas, text, {
@@ -879,8 +879,11 @@
         }, function(err) {
           if (err) console.error("QRCode render error:", err);
         });
+      } else if (tries < 10) {
+        setTimeout(() => generateRealQRCode(canvas, text, tries + 1), 90);
       } else {
-        setTimeout(() => generateRealQRCode(canvas, text), 60);
+        canvas.dataset.qrFailed = 'true';
+        reportCloudState('QR generator failed to load. Please reload before printing cards with verification codes.',true);
       }
     }
 
