@@ -16,7 +16,7 @@ test('Admin Attendance and Owner Reports refresh the same verified workspace on 
 });
 test('cloud client refresh correctly overlays relational student attendance even when workspace revision does not change',()=>{
  const controller=read('school-workspace-controller.js'),cloud=read('school-workspace-cloud.js');
- assert.match(controller,/Teacher\/student portals write relational records without changing the/);
+ assert.match(controller,/Staff\/student portals write relational records without changing the/);
  assert.match(controller,/remoteFingerprint!==record\.fingerprint/);
  assert.match(controller,/await o\.applySnapshot\(clone\(remote\.snapshot\)/);
  assert.match(cloud,/school_workspace_/);
