@@ -21887,12 +21887,12 @@ function Sr({ data: e, onUpdate: t }) {
       .toLowerCase()
       .includes(c.toLowerCase()),
   );
-  let d = (n) => {
+  let d = async (n) => {
     let i = e.teachers.some((e) => e.id === n.id);
     let a = i
       ? e.teachers.map((e) => (e.id === n.id ? n : e))
       : [n, ...e.teachers];
-    t(
+    const result = await t(
       {
         ...e,
         teachers: a,
@@ -21901,6 +21901,10 @@ function Sr({ data: e, onUpdate: t }) {
       `Teacher`,
       n.name || n.employeeCode || `Faculty record`,
     );
+    // An optimistic local state change is NOT a saved teacher account.
+    // Keep the form open until the revision-checked Supabase push is confirmed.
+    if (result?.status !== 'synced' || result.pending)
+      throw Error(result?.error?.message || 'Teacher is pending in this browser. Supabase has not confirmed the save. Keep this form open and retry with the same teacher ID.');
     r(false);
     s(null);
   };
@@ -22114,6 +22118,8 @@ function Cr({
   );
   let [s, c] = (0, w.useState)(a.subjects.join(`, `));
   let [l, u] = (0, w.useState)(``);
+  let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
+  let pendingTeacherId = (0, w.useRef)(n?.id || crypto.randomUUID());
   let d = (0, w.useRef)(null);
   let f = (0, w.useRef)(null);
   let p = (0, w.useRef)(null);
@@ -22211,8 +22217,9 @@ function Cr({
       onClose={r}
     >
       <Component284
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
+          if (savingToCloud) return;
           let r = s
             .split(`,`)
             .map((e) => e.trim())
@@ -22240,14 +22247,22 @@ function Cr({
             u(`Employee code already exists.`);
             return;
           }
-          i({
-            ...o,
-            id: n?.id || crypto.randomUUID(),
-            name: a.name.trim(),
-            employeeCode: a.employeeCode.trim(),
-            email: a.email.trim(),
-            qualification: a.qualification.trim(),
-          });
+          setSavingToCloud(true);
+          u(``);
+          try {
+            await i({
+              ...o,
+              id: pendingTeacherId.current,
+              name: a.name.trim(),
+              employeeCode: a.employeeCode.trim(),
+              email: a.email.trim(),
+              qualification: a.qualification.trim(),
+            });
+          } catch (error) {
+            u(error?.message || 'Teacher has not been confirmed in Supabase. Retry safely; this form keeps the same ID.');
+          } finally {
+            setSavingToCloud(false);
+          }
         }}
       >
         <Component232 className={`modal-record-section`}>
@@ -22630,7 +22645,7 @@ function Cr({
           </Component281>
         </Component282>
         {l && <Component283 className={`form-error`}>{l}</Component283>}
-        <Vr onClose={r} saveLabel={n ? `Update Teacher` : `Save Teacher`} />
+        <Vr onClose={r} saveLabel={savingToCloud ? `Saving teacher to Supabase...` : n ? `Update Teacher` : `Save Teacher`} />
       </Component284>
     </L>
   );
@@ -42851,6 +42866,17 @@ function Ds() {
     a(audited);
     ji(audited);
     bnBroadcastStoreSync(e, nextStudents, audited);
+    if (entityArg === `Teacher` && actionArg !== `DELETE`) {
+      const nextSnapshot = {institution:e,students:nextStudents,operations:audited};
+      latestWorkspace.current = nextSnapshot;
+      if (!cloud?.controller)
+        return Promise.resolve({status:'local',error:Error('School cloud is not connected. Teacher record is still on this device; open the verified school before saving.')});
+      // This direct, awaited save replaces the background effect for this
+      // exact snapshot. The form only closes after a verified cloud response.
+      lastWorkspace.current = JSON.stringify(nextSnapshot);
+      return cloud.controller.autosave(nextSnapshot)
+        .catch(error=>({status:'pending',pending:true,error}));
+    }
   };
   const Component2051 = `img`;
   const Component2052 = `strong`;

@@ -20859,10 +20859,10 @@ function Sr({ data: e2, onUpdate: t2 }) {
   let u2 = e2.teachers.filter(
     (e3) => [e3.name, e3.employeeCode, e3.mobile, ...e3.subjects].join(` `).toLowerCase().includes(c2.toLowerCase())
   );
-  let d2 = (n3) => {
+  let d2 = async (n3) => {
     let i3 = e2.teachers.some((e3) => e3.id === n3.id);
     let a3 = i3 ? e2.teachers.map((e3) => e3.id === n3.id ? n3 : e3) : [n3, ...e2.teachers];
-    t2(
+    const result = await t2(
       {
         ...e2,
         teachers: a3
@@ -20871,6 +20871,8 @@ function Sr({ data: e2, onUpdate: t2 }) {
       `Teacher`,
       n3.name || n3.employeeCode || `Faculty record`
     );
+    if (result?.status !== 'synced' || result.pending)
+      throw Error(result?.error?.message || 'Teacher is pending in this browser. Supabase has not confirmed the save. Keep this form open and retry with the same teacher ID.');
     r2(false);
     s2(null);
   };
@@ -21026,6 +21028,8 @@ function Cr({
   );
   let [s2, c2] = (0, w.useState)(a2.subjects.join(`, `));
   let [l2, u2] = (0, w.useState)(``);
+  let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
+  let pendingTeacherId = (0, w.useRef)(n2?.id || crypto.randomUUID());
   let d2 = (0, w.useRef)(null);
   let f2 = (0, w.useRef)(null);
   let p2 = (0, w.useRef)(null);
@@ -21125,8 +21129,9 @@ function Cr({
     /* @__PURE__ */ w.createElement(
       Component284,
       {
-        onSubmit: (e3) => {
+        onSubmit: async (e3) => {
           e3.preventDefault();
+          if (savingToCloud) return;
           let r3 = s2.split(`,`).map((e4) => e4.trim()).filter(Boolean);
           let o3 = {
             ...a2,
@@ -21146,14 +21151,22 @@ function Cr({
             u2(`Employee code already exists.`);
             return;
           }
-          i2({
-            ...o3,
-            id: n2?.id || crypto.randomUUID(),
-            name: a2.name.trim(),
-            employeeCode: a2.employeeCode.trim(),
-            email: a2.email.trim(),
-            qualification: a2.qualification.trim()
-          });
+          setSavingToCloud(true);
+          u2(``);
+          try {
+            await i2({
+              ...o3,
+              id: pendingTeacherId.current,
+              name: a2.name.trim(),
+              employeeCode: a2.employeeCode.trim(),
+              email: a2.email.trim(),
+              qualification: a2.qualification.trim()
+            });
+          } catch (error) {
+            u2(error?.message || 'Teacher has not been confirmed in Supabase. Retry safely; this form keeps the same ID.');
+          } finally {
+            setSavingToCloud(false);
+          }
         }
       },
       /* @__PURE__ */ w.createElement(Component232, { className: `modal-record-section` }, /* @__PURE__ */ w.createElement(Component210, null, `Personal and Contact Information`), /* @__PURE__ */ w.createElement(Component231, { className: `teacher-photo-row` }, /* @__PURE__ */ w.createElement(
@@ -21500,7 +21513,7 @@ function Cr({
         }
       ))),
       l2 && /* @__PURE__ */ w.createElement(Component283, { className: `form-error` }, l2),
-      /* @__PURE__ */ w.createElement(Vr, { onClose: r2, saveLabel: n2 ? `Update Teacher` : `Save Teacher` })
+      /* @__PURE__ */ w.createElement(Vr, { onClose: r2, saveLabel: savingToCloud ? `Saving teacher to Supabase...` : n2 ? `Update Teacher` : `Save Teacher` })
     )
   );
 }
@@ -38147,6 +38160,15 @@ function Ds() {
     a2(audited);
     ji(audited);
     bnBroadcastStoreSync(e2, nextStudents, audited);
+    if (entityArg === `Teacher` && actionArg !== `DELETE`) {
+      const nextSnapshot = {institution:e2,students:nextStudents,operations:audited};
+      latestWorkspace.current = nextSnapshot;
+      if (!cloud?.controller)
+        return Promise.resolve({status:'local',error:Error('School cloud is not connected. Teacher record is still on this device; open the verified school before saving.')});
+      lastWorkspace.current = JSON.stringify(nextSnapshot);
+      return cloud.controller.autosave(nextSnapshot)
+        .catch(error=>({status:'pending',pending:true,error}));
+    }
   };
   const Component2051 = `img`;
   const Component2052 = `strong`;
