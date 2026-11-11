@@ -288,3 +288,23 @@ test('network retries back off and stop on authorization and revision conflicts'
  await d.autosave(snap('local',13));assert.equal(d.state().status,'conflict');assert.equal(unwanted.length,0);
  d.dispose();
 });
+
+test('lost save response verifies original persisted JSON, not portal-hydrated pull',async()=>{
+ const f=fixture(),c=f.make();await c.openSchool('school');
+ let attempts=0,readbacks=0;
+ f.client.push=async(_id,revision,snapshot)=>{
+   attempts++;f.remote={revision:revision+1,snapshot};
+   throw Error('Failed to fetch after server commit');
+ };
+ f.client.pull=async()=>({...f.remote,snapshot:{...f.remote.snapshot,
+   students:f.remote.snapshot.students.map(student=>({...student,portalProfileField:'server-only'}))}});
+ f.client.readback=async()=>{readbacks++;return f.remote;};
+ const edited=snap('local',43);
+ edited.operations.externalFeeLedger=[{source:'portal'}];
+ f.current=edited;
+ await c.autosave(edited);
+ assert.equal(c.state().status,'synced');
+ assert.equal(c.state().pending,false);
+ assert.equal(attempts,1,'do not resubmit an already committed write');
+ assert.equal(readbacks,1,'check raw canonical workspace instead of portal overlay');
+});
