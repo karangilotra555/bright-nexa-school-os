@@ -842,10 +842,14 @@
     function sanitizeImageUrl(url, fallback) {
       if (!url || typeof url !== 'string') return fallback || '';
       const trimmed = url.trim();
-      // Allow only safe data:image, blob, http(s), or safe local file paths
-      if (/^(data:image\/(png|jpeg|jpg|webp|svg\+xml);base64,|blob:|https?:\/\/|\.\/|[a-zA-Z0-9_\-\.\/]+\.(png|jpg|jpeg|svg|webp))/i.test(trimmed)) {
-        return trimmed.replace(/[<>"'`;]/g, '');
-      }
+      // A base64 image MUST retain the semicolon in ;base64 — stripping it
+      // broke previously saved student photos on the printed ID card.
+      if (/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(trimmed)) return trimmed;
+      if (trimmed.startsWith('data:')) return fallback || ''; // no scriptable SVG data URLs
+      if (/[<>"'\x60]/.test(trimmed)) return fallback || ''; // no HTML attribute injection
+      if (/^blob:https?:\/\//i.test(trimmed)) return trimmed;
+      if (/^https?:\/\//i.test(trimmed)) return trimmed;
+      if (/^(?:\.\/)?[a-zA-Z0-9_\-./]+\.(?:png|jpe?g|svg|webp)$/i.test(trimmed)) return trimmed;
       return fallback || '';
     }
 
