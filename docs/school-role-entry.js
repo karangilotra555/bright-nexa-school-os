@@ -5,10 +5,13 @@
   const {role,verified=false,membershipCount=0,search=''}=input||{};
   if(!verified || membershipCount!==1)return null;
   const params=new URLSearchParams(search);
-  // Staff deep links must remain accessible for timetable, profile, permissions,
-  // and for explicit visits from the existing ERP navigation.
-  if(params.has('view')||params.has('staffPortal'))return null;
+  // Explicit module links from the full ERP must keep working. A bare
+  // "staffPortal=1" is only an entry hint, never a reason to display a second,
+  // mostly-empty Admin workspace. Authorization has already been verified.
+  if(params.has('view'))return null;
   if(role==='school_admin')return './index.html?openSchool=true&tab=Dashboard';
+  // Teachers, accountants and other staff retain their own role-bound portal.
+  if(params.has('staffPortal'))return null;
   if(role==='librarian')return './library.html';
   return null;
  }

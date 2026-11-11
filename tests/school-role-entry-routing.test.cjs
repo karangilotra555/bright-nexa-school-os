@@ -20,10 +20,24 @@ test('unverified identity, absent membership and multiple-school choice never sk
   {role:'transport_staff',verified:true,membershipCount:1}
  ])assert.equal(roleDestination(x),null,JSON.stringify(x));
 });
-test('explicit staff links avoid admin login redirect loops',()=>{
- for(const search of ['?view=timetable','?view=admin','?view=account','?staffPortal=1']){
+test('explicit module deep links still open requested staff tools, but plain Admin entry goes to one ERP',()=>{
+ for(const search of ['?view=timetable','?view=admin','?view=account','?view=fees','?staffPortal=1&view=classes']){
   assert.equal(roleDestination({role:'school_admin',verified:true,membershipCount:1,search}),null);
  }
+ for(const search of ['?staffPortal=1','?staffPortal=1&tab=Dashboard','?staffPortal=1&school=abc']){
+  assert.equal(roleDestination({role:'school_admin',verified:true,membershipCount:1,search}),
+    './index.html?openSchool=true&tab=Dashboard');
+ }
+});
+test('ordinary staff entry does not redirect teachers, accountants, principals or unverified admins',()=>{
+ for(const role of ['teacher','accountant','principal','receptionist','transport_staff','librarian']){
+  assert.equal(roleDestination({role,verified:true,membershipCount:1,search:'?staffPortal=1'}),null,role);
+ }
+ for(const input of [
+   {role:'school_admin',verified:false,membershipCount:1,search:'?staffPortal=1'},
+   {role:'school_admin',verified:true,membershipCount:0,search:'?staffPortal=1'},
+   {role:'school_admin',verified:true,membershipCount:2,search:'?staffPortal=1'}
+ ]) assert.equal(roleDestination(input),null,'never bypass verified membership');
 });
 test('librarian with verified membership reaches library; explicit account link stays in staff portal',()=>{
  assert.equal(roleDestination({role:'librarian',verified:true,membershipCount:1,search:''}),'./library.html');
@@ -40,7 +54,7 @@ test('Render and root staff assets remain mirrored and role logic is wired',()=>
  assert.equal(read('school-role-entry.js'),read('docs/school-role-entry.js'));
  for(const html of ['teacher-access.html','docs/teacher-access.html']){
   const source=read(html);
-  assert.match(source,/school-role-entry\.js/);
+  assert.match(source,/school-role-entry\.js\?v=20261111-direct-admin-erp-v1/);
   assert.match(source,/id="feesTab"/);
   assert.match(source,/id="feeEntryForm"/);
   assert.match(source,/id="staffDesktopShortcut"/);
