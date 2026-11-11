@@ -22843,6 +22843,8 @@ function Ur({
 }) {
   let [l2, u2] = (0, w.useState)({});
   let [d2, f2] = (0, w.useState)(false);
+  const [attendanceSaving,setAttendanceSaving]=(0,w.useState)(false);
+  const [attendanceSaveMessage,setAttendanceSaveMessage]=(0,w.useState)('');
   let [whatsAppAbsentOpen, setWhatsAppAbsentOpen] = (0, w.useState)(false);
   let p2 = e2.attendance.filter(
     (e3) => e3.date === r2 && (e3.classId && e3.classId === n2?.id || !e3.classId && e3.className === n2?.name && e3.section === n2?.section && e3.academicStream === n2?.academicStream)
@@ -22899,17 +22901,22 @@ function Ur({
     Component411,
     {
       className: `primary-button`,
-      disabled: !t2.length || !!s2,
-      onClick: () => {
-        if (!n2 || s2) {
+      disabled: !t2.length || !!s2 || attendanceSaving,
+      onClick: async () => {
+        if (!n2 || s2 || attendanceSaving) return;
+        if (!t2.some(student=>m2(student.id))) {
+          setAttendanceSaveMessage('Mark at least one student before saving. Unmarked students are not marked present.');
           return;
         }
+        setAttendanceSaving(true);
+        setAttendanceSaveMessage('');
+        try {
         let i3 = new Set(t2.map((e3) => e3.id));
         let a3 = e2.attendance.filter(
           (e3) => e3.date !== r2 || !i3.has(e3.studentId)
         );
         let o3 = t2.filter((e3) => m2(e3.id)).map((e3) => ({
-          id: crypto.randomUUID(),
+          id: p2.find(previous=>previous.studentId===e3.id)?.id || crypto.randomUUID(),
           date: r2,
           className: n2.name,
           section: n2.section,
@@ -22920,7 +22927,7 @@ function Ur({
           remark: ``,
           markedAt: (/* @__PURE__ */ new Date()).toISOString()
         }));
-        c2(
+        const result=await c2(
           {
             ...e2,
             attendance: [...a3, ...o3]
@@ -22929,13 +22936,25 @@ function Ur({
           `Student attendance`,
           `${ni(n2)} on ${r2}`
         );
+        if(result?.status!=='synced') {
+          f2(false);
+          setAttendanceSaveMessage(result?.error?.message || 'Attendance was NOT confirmed in Supabase. The pending entry remains on this device; retry cloud sync.');
+          return;
+        }
         f2(true);
-        setTimeout(() => f2(false), 1800);
+        setAttendanceSaveMessage('Attendance confirmed in Supabase.');
+        setTimeout(() => f2(false),1800);
+        } catch(error) {
+          f2(false);
+          setAttendanceSaveMessage(error?.message || 'Attendance could not be verified in Supabase.');
+        } finally {
+          setAttendanceSaving(false);
+        }
       }
     },
     /* @__PURE__ */ w.createElement(_Component17, { size: 16 }),
     d2 ? `Saved` : `Save Marked Records`
-  ), absentRoster.length > 0 && /* @__PURE__ */ w.createElement(
+  ), attendanceSaveMessage && /* @__PURE__ */ w.createElement("p",{role:"status","aria-live":"polite",className:"section-helper"},attendanceSaveMessage), absentRoster.length > 0 && /* @__PURE__ */ w.createElement(
     "button",
     {
       type: "button",
@@ -23073,6 +23092,8 @@ function Wr({
   let s2 = t2.filter((e3) => e3.status !== `Inactive`);
   let [c2, l2] = (0, w.useState)({});
   let [u2, d2] = (0, w.useState)(false);
+  const [attendanceSaving,setAttendanceSaving]=(0,w.useState)(false);
+  const [attendanceSaveMessage,setAttendanceSaveMessage]=(0,w.useState)('');
   let f2 = e2.staffAttendance.filter((e3) => e3.date === r2 && e3.staffType === n2);
   let p2 = (e3) => c2[e3] || f2.find((t3) => t3.staffId === e3)?.status;
   let m2 = (e3) => l2(Object.fromEntries(s2.map((t3) => [t3.id, e3])));
@@ -23114,24 +23135,29 @@ function Wr({
     Component435,
     {
       className: `primary-button`,
-      disabled: !s2.length || !!a2,
-      onClick: () => {
-        if (a2) {
+      disabled: !s2.length || !!a2 || attendanceSaving,
+      onClick: async () => {
+        if (a2 || attendanceSaving) return;
+        if (!s2.some(staff=>p2(staff.id))) {
+          setAttendanceSaveMessage('Mark at least one staff member before saving. Missing marks are not absences.');
           return;
         }
+        setAttendanceSaving(true);
+        setAttendanceSaveMessage('');
+        try {
         let t3 = new Set(s2.map((e3) => e3.id));
         let i3 = e2.staffAttendance.filter(
           (e3) => e3.date !== r2 || e3.staffType !== n2 || !t3.has(e3.staffId)
         );
         let c3 = s2.filter((e3) => p2(e3.id)).map((e3) => ({
-          id: crypto.randomUUID(),
+          id: f2.find(previous=>previous.staffId===e3.id)?.id || crypto.randomUUID(),
           date: r2,
           staffType: n2,
           staffId: e3.id,
           status: p2(e3.id),
           markedAt: (/* @__PURE__ */ new Date()).toISOString()
         }));
-        o2(
+        const result=await o2(
           {
             ...e2,
             staffAttendance: [...i3, ...c3]
@@ -23140,13 +23166,25 @@ function Wr({
           `${n2} attendance`,
           r2
         );
+        if(result?.status!=='synced') {
+          d2(false);
+          setAttendanceSaveMessage(result?.error?.message || 'Staff attendance was NOT confirmed in Supabase. Pending work stays on this device; retry sync.');
+          return;
+        }
         d2(true);
-        setTimeout(() => d2(false), 1800);
+        setAttendanceSaveMessage('Staff attendance confirmed in Supabase workspace.');
+        setTimeout(() => d2(false),1800);
+        } catch(error) {
+          d2(false);
+          setAttendanceSaveMessage(error?.message || 'Staff attendance could not be verified in Supabase.');
+        } finally {
+          setAttendanceSaving(false);
+        }
       }
     },
     /* @__PURE__ */ w.createElement(_Component17, { size: 16 }),
     u2 ? `Saved` : `Save Marked Records`
-  ), f2.length > 0 && /* @__PURE__ */ w.createElement(
+  ), attendanceSaveMessage && /* @__PURE__ */ w.createElement("p",{role:"status","aria-live":"polite",className:"section-helper"},attendanceSaveMessage), f2.length > 0 && /* @__PURE__ */ w.createElement(
     Component436,
     {
       className: `danger-button`,
@@ -38251,11 +38289,11 @@ function Ds() {
     a2(audited);
     ji(audited);
     bnBroadcastStoreSync(e2, nextStudents, audited);
-    if (entityArg === `Teacher` && actionArg !== `DELETE`) {
+    if ((entityArg === `Teacher` && actionArg !== `DELETE`) || [`Student attendance`,`Teaching attendance`,`Non-Teaching attendance`].includes(entityArg)) {
       const nextSnapshot = {institution:e2,students:nextStudents,operations:audited};
       latestWorkspace.current = nextSnapshot;
       if (!cloud?.controller)
-        return Promise.resolve({status:'local',error:Error('School cloud is not connected. Teacher record is still on this device; open the verified school before saving.')});
+        return Promise.resolve({status:'local',error:Error(entityArg === `Teacher`?'School cloud is not connected. Teacher record is still on this device; open the verified school before saving.':'School cloud is not connected. Attendance is only on this device and was NOT saved to Supabase.')});
       lastWorkspace.current = JSON.stringify(nextSnapshot);
       return cloud.controller.autosave(nextSnapshot)
         .catch(error=>({status:'pending',pending:true,error}));

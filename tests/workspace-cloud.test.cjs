@@ -16,7 +16,7 @@ function harness(options={}){
  else if(options.once401&&url.includes('school_workspace_push')&&!rejected){rejected=true;return {ok:false,status:401,json:async()=>({message:'JWT expired'})};}
  else if(url.includes('/school_workspaces?'))data=[{institution_id:options.crossReadback?'other':'school',revision:2,snapshot:snapshot()}];
  else if(options.conflict)return {ok:false,status:409,json:async()=>({message:'revision conflict'})};
- else data={revision:2,school:{id:options.crossSchool?'other':'school',name:'School'},snapshot:snapshot()};
+ else {const pulled=snapshot();if(options.attendanceStatus)pulled.operations.attendance[0].status=options.attendanceStatus;data={revision:2,school:{id:options.crossSchool?'other':'school',name:'School'},snapshot:pulled};}
  return {ok:true,status:200,json:async()=>data};};
  return {client:cloud.create({fetcher,storage:{setItem:()=>assert.fail('local writes forbidden'),getItem:k=>local.get(k)},sessionStorage}),calls,local};
 }
@@ -120,4 +120,17 @@ test('embedded photo is kept in authoritative ERP snapshot but not duplicated in
  assert.equal(s.students[0].photoDataUrl,photo,'original student photo must never be altered');
  assert.equal(projected.students[0].profile.details.photoDataUrl,undefined,'do not send photo twice in one transaction');
  assert.ok(JSON.stringify(projected).length<JSON.stringify(s).length/3,'profile projection should be much smaller than the student photo');
+});
+
+test('ERP Leave maps to valid Supabase excused status, and cloud pull restores ERP Leave',async()=>{
+ const s=snapshot();
+ s.operations.attendance[0].status='Leave';
+ const original=structuredClone(s);
+ const projection=cloud.buildProjection(s,()=>[]);
+ assert.equal(projection.attendance[0].status,'excused');
+ assert.deepEqual(s,original,'Cloud projection must never mutate the pending local records');
+ const h=harness({attendanceStatus:'Excused'});
+ const pulled=await h.client.pull('school');
+ assert.equal(pulled.snapshot.operations.attendance[0].status,'Leave');
+ assert.equal(cloud.buildProjection(pulled.snapshot,()=>[]).attendance[0].status,'excused');
 });

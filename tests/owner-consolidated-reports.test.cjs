@@ -83,11 +83,11 @@ test('Owner reports files and PWA cache are mirrored with exact content checksum
  for(const prefix of ['docs/','app-extracted/dist/']){
   for(const file of ['school-owner-reports.js','school-owner-reports.css','index.html','sw.js'])assert.equal(read(prefix+file),read(file),prefix+file);
  }
- assert.match(index,/school-owner-reports\.js\?v=20261111-owner-reports-v1/);
+ assert.match(index,/school-owner-reports\.js\?v=20261111-owner-reports-v2/);
  assert.match(index,/school-owner-reports\.css\?v=20261111-owner-reports-v1/);
  for(const [path,content] of [
   ['index.html',index],['assets/index-brightnexa-v2.js',bundle],
-  ['school-owner-reports.js?v=20261111-owner-reports-v1',js],
+  ['school-owner-reports.js?v=20261111-owner-reports-v2',js],
   ['school-owner-reports.css?v=20261111-owner-reports-v1',css]
  ]){
   const digest=crypto.createHash('sha256').update(content).digest('hex');
@@ -99,4 +99,21 @@ test('CSV export escapes cells, protecting spreadsheet formula injection',()=>{
  const csv=engine.csv([{name:'=SUM(1,1)',value:123,notes:'a"b'}],[['Name','name'],['Value','value'],['Notes','notes']]);
  assert.match(csv,/'=SUM/);
  assert.match(csv,/a""b/);
+});
+
+test('Owner Reports displays missed elapsed days, never future days as absent or pending',()=>{
+ const data={teachers:[{id:'t1',name:'Teacher',salary:10000,salaryFrequency:'Monthly',status:'Active'}]};
+ const before=engine.aggregate(data,[],'2026-11','2026-10-31');
+ assert.equal(before.staff[0].pending,0);
+ const sunday=engine.aggregate(data,[],'2026-11','2026-11-01');
+ assert.equal(sunday.staff[0].pending,0,'Sunday is not a working day');
+ const monday=engine.aggregate(data,[],'2026-11','2026-11-02');
+ assert.equal(monday.staff[0].pending,1);
+ const future=engine.aggregate(data,[],'2026-11','2026-11-11');
+ assert.ok(future.staff[0].pending<future.staff[0].scheduled);
+ assert.equal(future.staff[0].present,0);
+ assert.equal(future.staff[0].absent,0);
+ assert.match(read('school-owner-reports.js'),/Unmarked so far/);
+ assert.ok(read('school-owner-reports.js').indexOf("['Unmarked so far','pending']")<
+  read('school-owner-reports.js').indexOf("['Monthly Salary','monthlySalary']"));
 });
