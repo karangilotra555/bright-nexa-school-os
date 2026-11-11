@@ -42637,6 +42637,13 @@ function Ds() {
   const [cloudDialog, setCloudDialog] = w.useState(false);
   const [cloudError, setCloudError] = w.useState('');
   const [cloud, setCloud] = w.useState(null);
+  // Teacher Portal attendance can change without a workspace revision bump.
+  // Refresh relational overlay as soon as the Admin opens Attendance/Reports.
+  w.useEffect(()=>{
+    if(!workspaceReady || !cloud?.controller || !['Attendance','Owner Reports'].includes(c))return;
+    cloud.controller.sync().catch(error=>setCloudError(error?.message||'Cloud attendance refresh failed.'));
+  },[c,cloud,workspaceReady]);
+
   const latestWorkspace = w.useRef(null);
   const lastWorkspace = w.useRef('');
   const priorSyncState = w.useRef('local');
@@ -43742,7 +43749,13 @@ function Ds() {
             v === `PARENT` || v === `STUDENT` ? (
               <Ma data={i} students={y} />
             ) : (
-              <Hr data={i} students={y} onUpdate={j} />
+              <P.Fragment>
+                <button type="button" className="secondary-button" disabled={!cloud?.controller}
+                  onClick={()=>cloud?.controller?.sync().catch(error=>setCloudError(error?.message||'Cloud attendance refresh failed.'))}>
+                  ↻ Refresh Supabase attendance
+                </button>
+                <Hr data={i} students={y} onUpdate={j} />
+              </P.Fragment>
             )
           ) : c === `Fees` ? (
             v === `PARENT` ? (

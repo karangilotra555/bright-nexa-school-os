@@ -37923,6 +37923,13 @@ function Ds() {
   const [cloudDialog, setCloudDialog] = w.useState(false);
   const [cloudError, setCloudError] = w.useState("");
   const [cloud, setCloud] = w.useState(null);
+  // Teacher Portal attendance can change without a workspace revision bump.
+  // Refresh relational overlay as soon as the Admin opens Attendance/Reports.
+  w.useEffect(()=>{
+    if(!workspaceReady || !cloud?.controller || !['Attendance','Owner Reports'].includes(c2))return;
+    cloud.controller.sync().catch(error=>setCloudError(error?.message||'Cloud attendance refresh failed.'));
+  },[c2,cloud,workspaceReady]);
+
   const latestWorkspace = w.useRef(null);
   const lastWorkspace = w.useRef("");
   const priorSyncState = w.useRef("local");
@@ -38834,7 +38841,7 @@ function Ds() {
     title:'ID Cards, Marksheets and Certificates',key:printTool,
     src:'./'+printTool+'?embedded=1&schoolId='+encodeURIComponent(e2?.institution?.id||''),
     loading:'eager',style:{display:'block',width:'100%',height:'calc(100vh - 155px)',minHeight:650,border:'none',background:'transparent'}
-  }) : c2 === `Teachers` ? /* @__PURE__ */ w.createElement(Sr, { data: i2, onUpdate: j }) : c2 === `Non-Teaching Staff` ? /* @__PURE__ */ w.createElement(Qa, { data: i2, onUpdate: j }) : c2 === `Transport & Routes` ? /* @__PURE__ */ w.createElement(_Component91, { data: i2, students: n2, onUpdate: j }) : c2 === `Infrastructure & Assets` ? /* @__PURE__ */ w.createElement(_Component92, { data: i2, onUpdate: j }) : c2 === `Classes & Batches` ? /* @__PURE__ */ w.createElement(Pr, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Attendance` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Ma, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Hr, { data: i2, students: y2, onUpdate: j }) : c2 === `Fees` ? v2 === `PARENT` ? /* @__PURE__ */ w.createElement(Na, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(
+  }) : c2 === `Teachers` ? /* @__PURE__ */ w.createElement(Sr, { data: i2, onUpdate: j }) : c2 === `Non-Teaching Staff` ? /* @__PURE__ */ w.createElement(Qa, { data: i2, onUpdate: j }) : c2 === `Transport & Routes` ? /* @__PURE__ */ w.createElement(_Component91, { data: i2, students: n2, onUpdate: j }) : c2 === `Infrastructure & Assets` ? /* @__PURE__ */ w.createElement(_Component92, { data: i2, onUpdate: j }) : c2 === `Classes & Batches` ? /* @__PURE__ */ w.createElement(Pr, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Attendance` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Ma, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement('button', {type:'button',className:'secondary-button',disabled:!cloud?.controller,onClick:()=>cloud?.controller?.sync().catch(error=>setCloudError(error?.message||'Cloud attendance refresh failed.'))}, '↻ Refresh Supabase attendance'), /* @__PURE__ */ w.createElement(Hr, { data: i2, students: y2, onUpdate: j }) ) : c2 === `Fees` ? v2 === `PARENT` ? /* @__PURE__ */ w.createElement(Na, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(
     _Component93,
     {
       data: i2,
