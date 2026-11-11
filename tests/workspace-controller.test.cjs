@@ -293,7 +293,7 @@ test('lost save response verifies original persisted JSON, not portal-hydrated p
  const f=fixture(),c=f.make();await c.openSchool('school');
  let attempts=0,readbacks=0;
  f.client.push=async(_id,revision,snapshot)=>{
-   attempts++;f.remote={revision:revision+1,snapshot};
+   attempts++;const stored=JSON.parse(JSON.stringify(snapshot));delete stored.operations.externalFeeLedger;f.remote={revision:revision+1,snapshot:stored};
    throw Error('Failed to fetch after server commit');
  };
  f.client.pull=async()=>({...f.remote,snapshot:{...f.remote.snapshot,
