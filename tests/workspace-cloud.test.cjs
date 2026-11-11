@@ -111,3 +111,13 @@ test('ambiguous-write readback uses the raw school workspace, never a portal ove
  await assert.rejects(harness({role:'teacher'}).client.readback('school'),/admin|access/i);
  await assert.rejects(harness({crossReadback:true}).client.readback('school'),/verified|pending|cloud write status/i);
 });
+
+test('embedded photo is kept in authoritative ERP snapshot but not duplicated into profile projection',()=>{
+ const s=snapshot();
+ const photo='data:image/jpeg;base64,'+'A'.repeat(250000);
+ s.students[0].photoDataUrl=photo;
+ const projected=cloud.buildProjection(s,()=>[]);
+ assert.equal(s.students[0].photoDataUrl,photo,'original student photo must never be altered');
+ assert.equal(projected.students[0].profile.details.photoDataUrl,undefined,'do not send photo twice in one transaction');
+ assert.ok(JSON.stringify(projected).length<JSON.stringify(s).length/3,'profile projection should be much smaller than the student photo');
+});
