@@ -715,7 +715,7 @@
     display('librarianApp',isAdm||role==='librarian'||role==='principal');
     display('profilesTab',isAdm||isTabVisibleForRole('profiles',role));
     display('timetableTab',isAdm||role==='teacher'||role==='principal');
-    display('schoolOsAdminNav',false); // The real ERP has its own ordered sidebar; do not duplicate it here.
+    display('schoolOsAdminNav',isAdm); // Owner/admin can reach full ERP modules without losing this portal's working staff tools.
     display('adminErpBanner',false); // The existing Dashboard and School OS shortcut already launch ERP.
     display('portalPermissionNotice',!isAdm);
     if($('loadProfile'))$('loadProfile').textContent=isAdm?'View / edit student':'View student details';
