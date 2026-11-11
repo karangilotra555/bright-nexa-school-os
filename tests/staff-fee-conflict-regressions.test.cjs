@@ -14,6 +14,17 @@ test('admin staff portal no longer repeats ERP navigation and marketing blocks',
  for(const f of ['teacher-access.js','teacher-access.html'])assert.equal(read('docs/'+f),read(f));
 });
 
+test('admin ERP sidebar is scrollable on desktop and navigation links remain visible on mobile',()=>{
+ const html=read('teacher-access.html');
+ assert.match(html,/\.portal-nav\{[^}]*max-height:calc\(100dvh - 32px\);overflow-y:auto/);
+ assert.match(html,/\.portal-nav-brand,\.portal-nav-title,\.portal-nav-divider,\.portal-nav-foot\{display:none\}/);
+ assert.match(html,/\.nav-btn,\.portal-nav \.nav-link\{[^}]*display:inline-flex/);
+ assert.match(html,/#schoolOsAdminNav:not\(\.hidden\) \.portal-nav-title\{display:block/);
+ assert.match(html,/id="schoolOsAdminNav" class="hidden"/);
+ assert.match(read('teacher-access.js'),/display\('schoolOsAdminNav',isAdm\)/);
+ assert.equal(html,read('docs/teacher-access.html'));
+});
+
 test('fee receipt is optional for humans, generated securely for cloud uniqueness',()=>{
  const js=read('teacher-access.js'),html=read('teacher-access.html');
  assert.match(html,/for="feeReference">Receipt \/ reference \(optional\)/);
