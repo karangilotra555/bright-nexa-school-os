@@ -129,6 +129,9 @@
         at: Date.now(),
         modal: button.closest('.student-modal,[role="dialog"],.modal-content,.modal-dialog'),
       };
+    } else if (button) {
+      // Another upload control cancels the last photo chooser intent.
+      lastPhotoChoice = null;
     }
     const img = event.target.closest && event.target.closest('img');
     if (!img || !portraitType(img) || img.closest('button,a,[role="button"]')) return;
