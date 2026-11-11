@@ -15,10 +15,10 @@ test('staff admin opens useful classes rather than a duplicate empty dashboard',
 test('ERP and staff now reference revisioned retry clients without deleting data',()=>{
  for(const prefix of ['','docs/','app-extracted/dist/']){
   const html=read(prefix+'index.html'),cloud=read(prefix+'school-workspace-cloud.js'),controller=read(prefix+'school-workspace-controller.js'),sw=read(prefix+'sw.js');
-  assert.match(html,/school-workspace-controller\.js\?v=20261111-raw-readback-v1/);
-  assert.match(html,/school-workspace-cloud\.js\?v=20261111-raw-readback-v1/);
+  assert.match(html,/school-workspace-controller\.js\?v=20261111-attendance-leave-v1/);
+  assert.match(html,/school-workspace-cloud\.js\?v=20261111-attendance-leave-v1/);
   const crypto=require('node:crypto');
-  for(const [url,contents] of [['school-workspace-controller.js?v=20261111-raw-readback-v1',controller],['school-workspace-cloud.js?v=20261111-raw-readback-v1',cloud]]){
+  for(const [url,contents] of [['school-workspace-controller.js?v=20261111-raw-readback-v1',controller],['school-workspace-cloud.js?v=20261111-attendance-leave-v1',cloud]]){
    const hash=crypto.createHash('sha256').update(contents).digest('hex');
    assert.ok(sw.includes('"url":"'+url+'","revision":"'+hash+'"'),url+' not precached');
   }
