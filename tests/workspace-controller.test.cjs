@@ -258,3 +258,33 @@ test('legacy full JSON fingerprint migrates without changing school records',asy
  assert.equal(f.current.students[0].id,1);
  assert.equal(f.pushes.length,0);
 });
+
+test('transient cloud failure retries automatically and verifies before success',async()=>{
+ const f=fixture(),jobs=[];
+ f.opts.scheduleRetry=(fn,delay)=>{const job={fn,delay};jobs.push(job);return job;};
+ f.opts.cancelRetry=()=>{};
+ const c=f.make();await c.openSchool('school');
+ f.fail=true;await c.autosave(snap('local',23));
+ assert.equal(c.state().status,'pending');assert.equal(c.state().pending,true);
+ assert.equal(jobs.length,1);assert.ok(jobs[0].delay>=1000);
+ f.fail=false;await jobs[0].fn();
+ assert.equal(c.state().status,'synced');assert.equal(c.state().pending,false);
+ assert.equal(f.pushes.length,1);assert.equal(f.pushes[0].students[0].id,23);
+ c.dispose();
+});
+test('network retries back off and stop on authorization and revision conflicts',async()=>{
+ const f=fixture(),jobs=[];
+ f.opts.scheduleRetry=(fn,delay)=>{const job={fn,delay};jobs.push(job);return job;};
+ f.opts.cancelRetry=()=>{};
+ const c=f.make();await c.openSchool('school');
+ f.fail=true;await c.autosave(snap('local',22));await jobs[0].fn();
+ assert.ok(jobs.length>=2);assert.ok(jobs[1].delay>jobs[0].delay);c.dispose();
+ const g=fixture(),unwanted=[];
+ g.opts.scheduleRetry=fn=>{unwanted.push(fn);return fn;};
+ const d=g.make();await d.openSchool('school');
+ g.client.push=async()=>{const e=Error('Permission denied');e.status=403;throw e;};
+ await d.autosave(snap('local',12));assert.equal(d.state().status,'pending');assert.equal(unwanted.length,0);
+ g.client.push=async()=>{const e=Error('Revision conflict');e.status=409;throw e;};
+ await d.autosave(snap('local',13));assert.equal(d.state().status,'conflict');assert.equal(unwanted.length,0);
+ d.dispose();
+});
