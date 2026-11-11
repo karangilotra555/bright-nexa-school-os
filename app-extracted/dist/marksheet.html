@@ -134,6 +134,42 @@
       font-family: inherit;
     }
 
+
+    /* Embedded ERP toolbar: two equal selector columns, then responsive actions.
+       Fixed grid tracks prevent intrinsic button widths overflowing the A4 panel. */
+    .no-print-bar .control-actions {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      gap: 10px;
+    }
+    .no-print-bar .control-actions > select {
+      grid-column: span 3;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .no-print-bar .control-actions > .btn {
+      grid-column: span 2;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      padding: 10px 8px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.3;
+      min-height: 42px;
+      justify-content: center;
+    }
+    @media(max-width: 520px) {
+      .no-print-bar .control-actions > select {grid-column: span 6;}
+      .no-print-bar .control-actions > .btn {grid-column: span 3;}
+    }
+
     /* A4 Sheet Container */
     .a4-marksheet {
       width: 210mm;
