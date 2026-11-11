@@ -157,8 +157,7 @@ function activate(ctx){
   const daysWrap=node('div');daysWrap.style.gridColumn='1/-1';daysWrap.append(node('label','Working days'));
   for(let d=1;d<=6;d++){const span=node('label');span.style.marginRight='14px';const check=node('input');check.type='checkbox';check.checked=true;check.dataset.weekday=String(d);span.append(check,document.createTextNode(' '+DAYS[d]));daysWrap.append(span);}form.append(daysWrap);
   const create=node('button','Create initial bell schedule');create.className='primary';create.type='submit';form.append(create);
-  form.addEventListener('submit',e=>run(async()=>{
-   e.preventDefault();
+  form.addEventListener('submit',e=>{e.preventDefault();return run(async()=>{
    if(st.slots.length)throw Error('Timings already exist. Existing timetable preserved; edit individual slots separately.');
    const rows=buildBellSchedule({start:$('bnTimeStart').value,periods:Number($('bnTimePeriods').value),duration:Number($('bnTimeDuration').value),
      breakAfter:Number($('bnTimeBreakAt').value),breakMinutes:Number($('bnTimeBreakLength').value),
@@ -167,7 +166,7 @@ function activate(ctx){
    }).map(r=>({...r,institution_id:id}));
    await api('school_timetable_slots','','POST',rows);
    await fetchAll();
-  }));
+  });});
   schedule.append(form);
   if(st.slots.length){
    const editSlot=node('form');editSlot.className='formgrid two';editSlot.style.marginTop='14px';
@@ -192,8 +191,7 @@ function activate(ctx){
    };
    choose.addEventListener('change',loadSlot);loadSlot();
    const saveSlot=node('button','Update selected bell slot');saveSlot.type='submit';saveSlot.className='ghost';editSlot.append(saveSlot);
-   editSlot.addEventListener('submit',e=>run(async()=>{
-    e.preventDefault();
+   editSlot.addEventListener('submit',e=>{e.preventDefault();return run(async()=>{
     const selected=st.slots.find(x=>x.id===choose.value);
     if(!selected)throw Error('Select a slot.');
     if(st.published.some(x=>x.slot_id===selected.id)||st.drafts.some(x=>x.slot_id===selected.id))
@@ -204,7 +202,7 @@ function activate(ctx){
       kind:fields.kind.value,label:fields.label.value.trim(),starts_at:fmt(start)+':00',ends_at:fmt(end)+':00'
     });
     await fetchAll();
-   }));schedule.append(editSlot);
+   });});schedule.append(editSlot);
   }
   editor.append(schedule);
   const lesson=node('form');lesson.className='formgrid two';lesson.style.marginTop='18px';
@@ -225,9 +223,27 @@ function activate(ctx){
    opt(teacherPick,a.school_user_id,(u.display_name||u.email)+' · '+(a.assignment_type==='class_teacher'?'Class Teacher':a.subject));
   }
   teacherWrap.append(teacherPick);lesson.append(teacherWrap);
+  // Reuse class subject assignments instead of making staff retype the same mapping.
+  const assignedSubjects=[...new Set(teacherAssignments.map(a=>a.subject).filter(Boolean))];
+  if(assignedSubjects.length){
+   const suggestions=node('datalist');suggestions.id='bnTimeAssignedSubjects';
+   assignedSubjects.forEach(subject=>opt(suggestions,subject,subject));
+   subjectInput.setAttribute('list',suggestions.id);
+   subjectWrap.append(suggestions);
+  }
+  const matchSubjectTeacher=()=>{
+   const matches=teacherAssignments.filter(a=>a.subject&&a.subject.trim().toLowerCase()===subjectInput.value.trim().toLowerCase()
+     &&ctx.staff.some(u=>u.id===a.school_user_id&&u.role==='teacher'&&u.status==='active'));
+   if(matches.length===1)teacherPick.value=matches[0].school_user_id;
+  };
+  subjectInput.addEventListener('change',matchSubjectTeacher);
+  subjectInput.addEventListener('blur',matchSubjectTeacher);
+  teacherPick.addEventListener('change',()=>{
+   const matches=teacherAssignments.filter(a=>a.school_user_id===teacherPick.value&&a.subject);
+   if(matches.length===1)subjectInput.value=matches[0].subject;
+  });
   const button=node('button','Save draft period');button.type='submit';button.className='primary';lesson.append(button);
-  lesson.addEventListener('submit',e=>run(async()=>{
-   e.preventDefault();const slot=st.slots.find(x=>x.id===slotPick.value);
+  lesson.addEventListener('submit',e=>{e.preventDefault();return run(async()=>{const slot=st.slots.find(x=>x.id===slotPick.value);
    if(!slot)throw Error('Select a teaching period.');
    const subject=subjectInput.value.trim(),teacher=teacherPick.value||null;
    if(!subject)throw Error('Enter a subject.');
@@ -239,7 +255,7 @@ function activate(ctx){
    const record={institution_id:id,class_id:st.classId,slot_id:slot.id,academic_year:st.year,subject,teacher_user_id:teacher};
    await api('school_timetable_drafts',qry({on_conflict:'institution_id,class_id,slot_id'}),'POST',[record],'resolution=merge-duplicates,return=representation');
    await fetchAll();
-  }));
+  });});
   const reset=node('button','Remove draft period');reset.type='button';reset.className='ghost';
   reset.addEventListener('click',()=>run(async()=>{
    if(!slotPick.value)throw Error('Choose a period.');
@@ -263,8 +279,7 @@ function activate(ctx){
   if(!targetInputs.length)auto.append(node('p','Assign subject teachers first in Roles & Permissions.'));
   else{
    const fill=node('button','Generate missing draft periods');fill.type='submit';fill.className='ghost';autoForm.append(fill);
-   autoForm.addEventListener('submit',e=>run(async()=>{
-    e.preventDefault();
+   autoForm.addEventListener('submit',e=>{e.preventDefault();return run(async()=>{
     const targets=targetInputs.map(t=>({...t,count:Number(t.input.value)}));
     const records=autoFill({slots:st.slots,drafts:st.drafts,published:st.published,assignments:teacherAssignments,targets,classId:st.classId,schoolId:id,year:st.year});
     if(!records.length)throw Error('No unfilled periods matched the weekly subject targets.');
@@ -277,7 +292,7 @@ function activate(ctx){
       'POST',targetRecords,'resolution=merge-duplicates,return=representation');
     await api('school_timetable_drafts',qry({on_conflict:'institution_id,class_id,slot_id'}),'POST',records,'resolution=merge-duplicates,return=representation');
     await fetchAll();
-   }));
+   });});
    auto.append(autoForm);
   }editor.append(auto);
   const publish=node('button','Publish this class timetable to students, parents & teachers');publish.type='button';publish.className='primary';publish.style.marginTop='16px';
