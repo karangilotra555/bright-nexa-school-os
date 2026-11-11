@@ -117,12 +117,58 @@ tr td select{padding:7px;min-width:115px}
 .bn-email-feedback{font-size:12px;color:#136348;line-height:1.5;margin:10px 0 0}
 .bn-email-feedback.error{color:#a82b3f}
 @media(max-width:470px){.bn-email-content{padding:24px 19px}.bn-email-dialog h2{font-size:21px}}
+
+/* Public school sign-in and recovery only. Authenticated portal stays unchanged. */
+#publicAuthIntro{display:none}
+body:has(#loginSection:not(.hidden)){background:#f2f6fc}
+body:has(#loginSection:not(.hidden))>header{display:none}
+body:has(#loginSection:not(.hidden)) main{max-width:none;min-height:100dvh;padding:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(390px,1fr);align-items:center}
+body:has(#loginSection:not(.hidden)) #publicAuthIntro{grid-column:1;grid-row:1;display:flex;align-self:stretch;flex-direction:column;justify-content:space-between;min-height:100dvh;background:radial-gradient(circle at 8% 10%,#18518590,transparent 46%),linear-gradient(150deg,#061a36,#0b315e 72%,#154c78);color:#fff;padding:clamp(26px,5vw,84px)}
+.bn-auth-hero-brand{display:flex;align-items:center;gap:18px}
+.bn-auth-hero-brand img{width:132px;height:132px;border-radius:19px;object-fit:cover;background:#061a36;border:1px solid #50b1e24d;box-shadow:0 14px 35px #0004}
+.bn-auth-hero-brand strong{font-size:21px;line-height:1.2;display:block;letter-spacing:-.4px}
+.bn-auth-hero-brand small{font-size:12px;color:#b6dcf7;display:block;margin-top:5px}
+.bn-auth-hero-main h2{font-size:clamp(33px,3.65vw,58px);line-height:1.12;letter-spacing:-1.6px;color:#fff;max-width:660px;margin:0 0 20px}
+.bn-auth-hero-main p{font-size:15px;max-width:520px;line-height:1.75;color:#cae1f7;margin:0}
+.bn-auth-hero-badges{display:flex;gap:10px;flex-wrap:wrap}
+.bn-auth-hero-badges span{background:#ffffff14;border:1px solid #ffffff24;border-radius:11px;padding:12px 15px;color:#d9efff;font-size:12px;font-weight:650}
+body:has(#loginSection:not(.hidden)) .login{grid-column:2;grid-row:1;max-width:470px;width:calc(100% - 42px);margin:28px auto;padding:clamp(24px,3vw,35px);border-radius:20px;box-shadow:0 18px 50px #082b5117}
+body:has(#loginSection:not(.hidden)) #status:not(.hidden){position:fixed;bottom:14px;right:14px;z-index:15;width:min(445px,calc(100vw - 28px));box-shadow:0 5px 24px #061a3629}
+body:has(#loginSection:not(.hidden)) .footer{display:none}
+.login .bn-password-wrap{position:relative}
+.login .bn-password-wrap input{padding-right:56px}
+.login .bn-password-toggle{position:absolute;right:6px;top:5px;width:42px;height:38px;min-height:38px;border:0;background:transparent;color:#346081;font-size:12px;font-weight:750;border-radius:7px}
+.login .bn-password-toggle:hover{background:#eef5fc}
+.bn-reset-feedback{padding:12px 13px;margin:13px 0;border:1px solid #c6dfef;border-radius:11px;background:#edf7ff;color:#0b4f7c;font-size:13px;line-height:1.55}
+.bn-reset-feedback.error{background:#fff1f1;border-color:#f1c8cd;color:#962f44}
+@media(max-width:880px){
+  body:has(#loginSection:not(.hidden)) main{display:block;min-height:100dvh}
+  body:has(#loginSection:not(.hidden)) #publicAuthIntro{min-height:0;padding:15px 22px;display:flex}
+  .bn-auth-hero-brand img{width:58px;height:58px;border-radius:12px}
+  .bn-auth-hero-brand strong{font-size:18px}
+  .bn-auth-hero-main,.bn-auth-hero-badges{display:none}
+  body:has(#loginSection:not(.hidden)) .login{width:min(470px,calc(100% - 24px));margin:24px auto}
+}
+@media(max-width:470px){
+  body:has(#loginSection:not(.hidden)) .login{padding:22px 18px}
+  body:has(#loginSection:not(.hidden)) #publicAuthIntro{padding:12px 16px}
+}
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261107-timetable-v1" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261109-logout-v1" defer></script><script src="./teacher-access.js?v=20261111-admin-space-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261107-timetable-v1" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261109-logout-v1" defer></script><script src="./teacher-access.js?v=20261111-clean-auth-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
 <header><div class="bar"><div class="brand"><a id="staffBrandBack" href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a id="staffBackToErp" href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a id="staffSmartToolsLink" href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
 <main>
+<aside id="publicAuthIntro" aria-label="Bright Nexa School OS">
+  <div class="bn-auth-hero-brand">
+    <img src="./bright-nexa-official-logo.jpg" alt="Bright Nexa School OS logo">
+    <div><strong>Bright Nexa School OS</strong><small>Secure school management</small></div>
+  </div>
+  <div class="bn-auth-hero-main"><h2>Everything your school needs, in one place.</h2>
+    <p>Students, teachers, attendance, fees and learning—all connected through your school's secure workspace.</p>
+  </div>
+  <div class="bn-auth-hero-badges"><span>☁ Cloud-connected</span><span>🔒 School-controlled access</span><span>✓ One simple sign-in</span></div>
+</aside>
 <section id="loginSection" class="panel login">
   <div class="auth-kicker">BRIGHT NEXA · SECURE SCHOOL ACCESS</div>
   <h1 id="authHeading">Welcome back</h1>
@@ -136,7 +182,7 @@ tr td select{padding:7px;min-width:115px}
   </div>
   <form id="loginForm">
     <div class="inputgroup"><label for="loginEmail">Email address</label><input type="email" id="loginEmail" autocomplete="username" required placeholder="you@school.com"></div>
-    <div class="inputgroup" style="margin:15px 0 19px"><label for="loginPassword">Password</label><input type="password" id="loginPassword" autocomplete="current-password" required minlength="8" placeholder="Enter your password"></div>
+    <div class="inputgroup" style="margin:15px 0 19px"><label for="loginPassword">Password</label><div class="bn-password-wrap"><input type="password" id="loginPassword" autocomplete="current-password" required minlength="8" placeholder="Enter your password"><button id="toggleLoginPassword" class="bn-password-toggle" type="button" aria-label="Show password" aria-pressed="false">Show</button></div></div>
     <button type="submit" class="primary auth-submit">Sign in securely</button>
   </form>
   <button id="forgotPasswordLink" class="auth-text-link" type="button">Forgot password?</button>
@@ -153,7 +199,8 @@ tr td select{padding:7px;min-width:115px}
   </form>
   <form id="forgotPasswordForm" class="hidden" autocomplete="off">
     <div class="inputgroup"><label for="forgotEmail">Registered email address</label><input id="forgotEmail" type="email" autocomplete="email" required placeholder="you@school.com"></div>
-    <p class="sub">We'll email a secure password reset link if this account is registered.</p>
+    <p class="sub">We'll request a secure reset link for this email. Check your inbox and Spam folder.</p>
+    <p id="forgotFeedback" class="bn-reset-feedback hidden" role="status" aria-live="polite"></p>
     <button id="sendResetEmail" type="submit" class="primary auth-submit">Send reset link</button>
     <button id="returnToLoginFromForgot" type="button" class="auth-text-link auth-back-link">← Back to sign in</button>
   </form>
