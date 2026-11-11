@@ -14,6 +14,7 @@ function harness(options={}){
  else if(url.includes('/school_users?'))data=[{institution_id:'school',auth_user_id:'user',role:options.role||'school_admin',status:'active'}];
  else if(url.includes('/institutions?'))data=[{id:'school',name:'School',status:'active'}];
  else if(options.once401&&url.includes('school_workspace_push')&&!rejected){rejected=true;return {ok:false,status:401,json:async()=>({message:'JWT expired'})};}
+ else if(url.includes('/school_workspaces?'))data=[{institution_id:options.crossReadback?'other':'school',revision:2,snapshot:snapshot()}];
  else if(options.conflict)return {ok:false,status:409,json:async()=>({message:'revision conflict'})};
  else data={revision:2,school:{id:options.crossSchool?'other':'school',name:'School'},snapshot:snapshot()};
  return {ok:true,status:200,json:async()=>data};};
@@ -97,4 +98,16 @@ test('membership optimization cannot give teacher admin rights',async()=>{
  await assert.rejects(h.client.pull('school'),/admin|access/i);
  await assert.rejects(h.client.pull('school'),/admin|access/i);
  assert.equal(h.calls.filter(x=>x.url.endsWith('/rpc/school_workspace_push')).length,0);
+});
+
+test('ambiguous-write readback uses the raw school workspace, never a portal overlay',async()=>{
+ const h=harness(),stored=await h.client.readback('school');
+ assert.equal(stored.revision,2);
+ assert.deepEqual(stored.snapshot,snapshot());
+ const call=h.calls.find(x=>x.url.includes('/school_workspaces?'));
+ assert.ok(call,'readback must query the authoritative workspace table');
+ assert.equal(call.init.headers.Authorization,'Bearer token');
+ assert.ok(call.url.includes('institution_id=eq.school'));
+ await assert.rejects(harness({role:'teacher'}).client.readback('school'),/admin|access/i);
+ await assert.rejects(harness({crossReadback:true}).client.readback('school'),/verified|pending|cloud write status/i);
 });
