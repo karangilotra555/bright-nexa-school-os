@@ -21,6 +21,8 @@ Updated: 2026-11-12. This file is a durable issue/fix log. Do not mark a feature
 - `school-workspace-controller.js` plus docs/dist mirrors now attempts exact RAW cloud readback for **clean** browser snapshots with stale checksum metadata, and repairs metadata only on equal fingerprints and stable binding/generation. Real divergence uses verified-owner, backup-before-replace recovery; failed automatic recovery now reports its underlying error. Pending edits are never silently uploaded or dropped. A focused regression test was added and GitHub CI run `43093976035` passed.
 - Deployment and authenticated browser-local recovery still require independent verification. Never report cloud conflict as resolved on the user's machine without the device actually reaching `synced` and verifying a subsequent readback.
 
+- 2026-11-12: Responsive marksheet control toolbar repaired in `marksheet.html` and `marksheet-a4.html`, including docs/dist mirrors: flex wrapping, full-width action row, flexible selects, non-breaking button labels, compact mobile layout. A4 printed sheet design preserved. Regression test added to `tests/marksheet-component-integrity.test.cjs`; CI run `43094684525` passed. Live Render deployment still needs verification.
+
 ## Verification still required
 - Live authenticated student edit/create/reopen and Supabase readback; photo once + upload/change; marks entry via exam form + portal published feed; Cloud sync conflict recovery with explicit backed-up local records; native Android.
 - Main ERP profile and student editor live in the large React source/bundle; they were **not modified by the marksheet patch**. Do not say editing or duplicate photo is fixed.
