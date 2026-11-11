@@ -21146,6 +21146,15 @@ function _Component6({
   let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i.className, classes, e), [i.className, classes, e]);
   let [o, s] = (0, w.useState)({});
   let [c, l] = (0, w.useState)(``);
+  const [photoProcessing,setPhotoProcessing] = (0,w.useState)(false);
+  const initialStudentDraft = (0,w.useRef)(null);
+  if (initialStudentDraft.current === null) initialStudentDraft.current = JSON.stringify(i);
+  const closeStudentSafely = () => {
+    if (photoProcessing) { l('Photo is still being prepared. Keep the form open.'); return; }
+    if (JSON.stringify(i) !== initialStudentDraft.current &&
+        !window.confirm('Student details have not been saved. Discard changes?')) return;
+    t();
+  };
   let u = (0, w.useRef)(null);
   let d = (0, w.useRef)(null);
   let f = (0, w.useRef)(null);
@@ -21163,6 +21172,7 @@ function _Component6({
   };
   let m = (t) => {
     t.preventDefault();
+    if (photoProcessing) { l('Photo compression is not finished yet.'); return; }
     let a = {};
     if (!N(i)) {
       a.record = `Enter at least one student detail before saving.`;
@@ -21204,10 +21214,13 @@ function _Component6({
   let h = async (e, t) => {
     if (t) {
       try {
+        if (e === 'photoDataUrl') setPhotoProcessing(true);
         p(e, await (e === 'photoDataUrl' ? bnOptimizePortrait(t) : $n(t)));
         l(``);
       } catch (e) {
         l(e instanceof Error ? e.message : `Image upload failed.`);
+      } finally {
+        if (e === 'photoDataUrl') setPhotoProcessing(false);
       }
     }
   };
@@ -21287,7 +21300,6 @@ function _Component6({
     <Component138
       className={`modal-backdrop`}
       role={`presentation`}
-      onMouseDown={(e) => e.target === e.currentTarget && t()}
     >
       <Component137
         className={`student-modal`}
@@ -21309,7 +21321,7 @@ function _Component6({
           </Component70>
           <Component71
             className={`icon-button`}
-            onClick={t}
+            onClick={closeStudentSafely}
             aria-label={`Close student form`}
           >
             <St size={21} />
@@ -21633,10 +21645,10 @@ function _Component6({
               <Component132
                 type={`button`}
                 className={`secondary-button`}
-                onClick={t}
+                onClick={closeStudentSafely}
               >{`Cancel`}</Component132>
-              <Component133 type={`submit`} className={`primary-button`}>
-                {r ? `Update Student` : `Save Student`}
+              <Component133 type={`submit`} disabled={photoProcessing} className={`primary-button`}>
+                {photoProcessing ? `Optimizing photo...` : r ? `Update Student` : `Save Student`}
               </Component133>
             </Component134>
           </Component135>
@@ -22931,7 +22943,7 @@ function Or({ title: e, value: t, onChoose: n, onRemove: r }) {
       <Component313>
         <Component311>{e}</Component311>
         <Component312>
-          {t ? `Image securely attached` : `PNG, JPEG, or WebP up to 2.5 MB`}
+          {t ? `Image securely attached` : e === `Teacher Photograph` ? `JPG, PNG or WebP up to 12 MB (auto-compressed)` : `PNG, JPEG, or WebP up to 2.5 MB`}
         </Component312>
       </Component313>
       <Component314 type={`button`} className={`secondary-button`} onClick={n}>

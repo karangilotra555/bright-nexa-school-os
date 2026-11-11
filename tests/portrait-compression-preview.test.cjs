@@ -65,3 +65,19 @@ test('photograph upload compresses in browser; Aadhaar document upload remains u
   });
  }
 });
+
+test('student form protects photo compression and unsaved edits; teacher upload label reflects 12 MB limit',()=>{
+ for(const path of files){
+  const js=read(path);
+  const i=js.indexOf('function _Component6({'),j=js.indexOf('function _Component7(',i);
+  assert.ok(i>0&&j>i);
+  const student=js.slice(i,j);
+  assert.ok(student.includes('closeStudentSafely'),'student close must preserve edits');
+  assert.ok(student.includes('initialStudentDraft'));
+  assert.ok(student.includes('photoProcessing'));
+  assert.ok(student.includes('disabled={photoProcessing}')||student.includes('disabled: photoProcessing'));
+  assert.ok(student.includes('bnOptimizePortrait('));
+  const k=js.indexOf('function Or({ title:'),m=js.indexOf('function _Component13(',k);
+  assert.ok(js.slice(k,m).includes('12 MB (auto-compressed)'));
+ }
+});

@@ -20251,6 +20251,15 @@ function _Component6({
   let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i2.className, classes, e2), [i2.className, classes, e2]);
   let [o2, s2] = (0, w.useState)({});
   let [c2, l2] = (0, w.useState)(``);
+  const [photoProcessing,setPhotoProcessing] = (0,w.useState)(false);
+  const initialStudentDraft = (0,w.useRef)(null);
+  if (initialStudentDraft.current === null) initialStudentDraft.current = JSON.stringify(i2);
+  const closeStudentSafely = () => {
+    if (photoProcessing) { l2('Photo is still being prepared. Keep the form open.'); return; }
+    if (JSON.stringify(i2) !== initialStudentDraft.current &&
+        !window.confirm('Student details have not been saved. Discard changes?')) return;
+    t2();
+  };
   let u2 = (0, w.useRef)(null);
   let d2 = (0, w.useRef)(null);
   let f2 = (0, w.useRef)(null);
@@ -20268,6 +20277,7 @@ function _Component6({
   };
   let m2 = (t3) => {
     t3.preventDefault();
+    if (photoProcessing) { l2('Photo compression is not finished yet.'); return; }
     let a3 = {};
     if (!N(i2)) {
       a3.record = `Enter at least one student detail before saving.`;
@@ -20303,10 +20313,13 @@ function _Component6({
   let h2 = async (e3, t3) => {
     if (t3) {
       try {
+        if (e3 === 'photoDataUrl') setPhotoProcessing(true);
         p2(e3, await (e3 === 'photoDataUrl' ? bnOptimizePortrait(t3) : $n(t3)));
         l2(``);
       } catch (e4) {
         l2(e4 instanceof Error ? e4.message : `Image upload failed.`);
+      } finally {
+        if (e3 === 'photoDataUrl') setPhotoProcessing(false);
       }
     }
   };
@@ -20387,7 +20400,7 @@ function _Component6({
     {
       className: `modal-backdrop`,
       role: `presentation`,
-      onMouseDown: (e3) => e3.target === e3.currentTarget && t2()
+      onMouseDown: void 0
     },
     /* @__PURE__ */ w.createElement(
       Component137,
@@ -20401,7 +20414,7 @@ function _Component6({
         Component71,
         {
           className: `icon-button`,
-          onClick: t2,
+          onClick: closeStudentSafely,
           "aria-label": `Close student form`
         },
         /* @__PURE__ */ w.createElement(St, { size: 21 })
@@ -20690,10 +20703,10 @@ function _Component6({
         {
           type: `button`,
           className: `secondary-button`,
-          onClick: t2
+          onClick: closeStudentSafely
         },
         `Cancel`
-      ), /* @__PURE__ */ w.createElement(Component133, { type: `submit`, className: `primary-button` }, r2 ? `Update Student` : `Save Student`))))
+      ), /* @__PURE__ */ w.createElement(Component133, { type: `submit`, disabled: photoProcessing, className: `primary-button` }, photoProcessing ? `Optimizing photo...` : r2 ? `Update Student` : `Save Student`))))
     )
   );
 }
@@ -21734,7 +21747,7 @@ function Or({ title: e2, value: t2, onChoose: n2, onRemove: r2 }) {
   const Component314 = `button`;
   const Component315 = `button`;
   const Component316 = `article`;
-  return /* @__PURE__ */ w.createElement(Component316, { className: `identity-upload-card ${t2 ? `uploaded` : ``}` }, t2 ? /* @__PURE__ */ w.createElement(Component309, { src: t2, alt: e2 }) : /* @__PURE__ */ w.createElement(Component310, null, /* @__PURE__ */ w.createElement(De, { size: 23 })), /* @__PURE__ */ w.createElement(Component313, null, /* @__PURE__ */ w.createElement(Component311, null, e2), /* @__PURE__ */ w.createElement(Component312, null, t2 ? `Image securely attached` : `PNG, JPEG, or WebP up to 2.5 MB`)), /* @__PURE__ */ w.createElement(Component314, { type: `button`, className: `secondary-button`, onClick: n2 }, t2 ? `Replace` : `Upload`), t2 && /* @__PURE__ */ w.createElement(
+  return /* @__PURE__ */ w.createElement(Component316, { className: `identity-upload-card ${t2 ? `uploaded` : ``}` }, t2 ? /* @__PURE__ */ w.createElement(Component309, { src: t2, alt: e2 }) : /* @__PURE__ */ w.createElement(Component310, null, /* @__PURE__ */ w.createElement(De, { size: 23 })), /* @__PURE__ */ w.createElement(Component313, null, /* @__PURE__ */ w.createElement(Component311, null, e2), /* @__PURE__ */ w.createElement(Component312, null, t2 ? `Image securely attached` : e2 === `Teacher Photograph` ? `JPG, PNG or WebP up to 12 MB (auto-compressed)` : `PNG, JPEG, or WebP up to 2.5 MB`)), /* @__PURE__ */ w.createElement(Component314, { type: `button`, className: `secondary-button`, onClick: n2 }, t2 ? `Replace` : `Upload`), t2 && /* @__PURE__ */ w.createElement(
     Component315,
     {
       type: `button`,
