@@ -18,3 +18,15 @@ test('marksheets never fabricate PT, notebook, enrichment or annual marks from a
   assert.equal(read('app-extracted/dist/'+file),src,'dist must mirror published source');
  }
 });
+
+test('marksheet toolbar wraps within its own width and preserves A4 print sheet',()=>{
+ for(const file of ['marksheet.html','marksheet-a4.html']){
+  const src=read(file);
+  assert.match(src,/\.control-actions\s*\{[^}]*width:\s*100%;[^}]*flex-wrap:\s*wrap;/);
+  assert.match(src,/\.control-actions select\s*\{[^}]*flex:\s*1 1 230px;/);
+  assert.match(src,/\.control-actions \.btn\s*\{[^}]*white-space:\s*nowrap;/);
+  assert.match(src,/@media \(max-width: 600px\)/);
+  assert.match(src,/@media print/);
+  assert.match(src,/\.a4-marksheet\s*\{[^}]*width:\s*210mm;/);
+ }
+});
