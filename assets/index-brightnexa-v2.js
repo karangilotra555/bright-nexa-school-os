@@ -20122,7 +20122,7 @@ function _Component90({
     {
       className: `secondary-button`,
       style: { background: `#dbeafe`, color: `#0284c7`, borderColor: `#38bdf8`, fontWeight: 800 },
-      onClick: () => window.open(`./id-card-a4.html`, `_blank`)
+      onClick: () => window.dispatchEvent(new CustomEvent('bn-open-school-tool',{detail:{page:'id-card-a4.html'}}))
     },
     /* @__PURE__ */ w.createElement(_Component, { size: 17 }),
     `\u{1FAAA} ID Cards Bulk Generator`
@@ -20131,7 +20131,7 @@ function _Component90({
     {
       className: `secondary-button`,
       style: { background: `#fef9c3`, color: `#b45309`, borderColor: `#fde047`, fontWeight: 800 },
-      onClick: () => window.open(`./tc-certificate-a4.html`, `_blank`)
+      onClick: () => window.dispatchEvent(new CustomEvent('bn-open-school-tool',{detail:{page:'tc-certificate-a4.html'}}))
     },
     /* @__PURE__ */ w.createElement(_Component, { size: 17 }),
     `\u{1F4DC} Transfer TC`
@@ -26241,7 +26241,7 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
         {
           className: `secondary-button`,
           style: { background: `#dcfce7`, color: `#15803d`, borderColor: `#86efac`, fontWeight: 800 },
-          onClick: () => window.open(`./id-card-a4.html`, `_blank`)
+          onClick: () => window.dispatchEvent(new CustomEvent('bn-open-school-tool',{detail:{page:'id-card-a4.html'}}))
         },
         /* @__PURE__ */ w.createElement(Je, { size: 16 }),
         `\u{1FAAA} Student ID Cards`
@@ -37716,6 +37716,11 @@ var Ts = [
     roles: Cs
   },
   {
+    label: `ID Cards & Certificates`,
+    icon: Te,
+    roles: Cs
+  },
+  {
     label: `Teachers`,
     icon: _Component4,
     roles: [`OWNER`, `ADMIN`]
@@ -37899,6 +37904,16 @@ function Ds() {
     }
     return "Dashboard";
   });
+  const [printTool,setPrintTool] = w.useState('id-card-a4.html');
+  w.useEffect(()=>{
+    const openTool = event => {
+      const page=event?.detail?.page;
+      if (!['id-card-a4.html','marksheet-a4.html','tc-certificate-a4.html'].includes(page)) return;
+      setPrintTool(page);l2('ID Cards & Certificates');
+    };
+    window.addEventListener('bn-open-school-tool',openTool);
+    return ()=>window.removeEventListener('bn-open-school-tool',openTool);
+  },[]);
   let [u2, d2] = (0, w.useState)(false);
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
@@ -38815,7 +38830,11 @@ function Ds() {
       onUpdateStudent: de,
       onDeleteStudent: pe
     }
-  ) : c2 === `Teachers` ? /* @__PURE__ */ w.createElement(Sr, { data: i2, onUpdate: j }) : c2 === `Non-Teaching Staff` ? /* @__PURE__ */ w.createElement(Qa, { data: i2, onUpdate: j }) : c2 === `Transport & Routes` ? /* @__PURE__ */ w.createElement(_Component91, { data: i2, students: n2, onUpdate: j }) : c2 === `Infrastructure & Assets` ? /* @__PURE__ */ w.createElement(_Component92, { data: i2, onUpdate: j }) : c2 === `Classes & Batches` ? /* @__PURE__ */ w.createElement(Pr, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Attendance` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Ma, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Hr, { data: i2, students: y2, onUpdate: j }) : c2 === `Fees` ? v2 === `PARENT` ? /* @__PURE__ */ w.createElement(Na, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(
+  ) : c2 === `ID Cards & Certificates` ? /* @__PURE__ */ w.createElement('iframe', {
+    title:'ID Cards, Marksheets and Certificates',key:printTool,
+    src:'./'+printTool+'?embedded=1&schoolId='+encodeURIComponent(e2?.institution?.id||''),
+    loading:'eager',style:{display:'block',width:'100%',height:'calc(100vh - 155px)',minHeight:650,border:'none',background:'transparent'}
+  }) : c2 === `Teachers` ? /* @__PURE__ */ w.createElement(Sr, { data: i2, onUpdate: j }) : c2 === `Non-Teaching Staff` ? /* @__PURE__ */ w.createElement(Qa, { data: i2, onUpdate: j }) : c2 === `Transport & Routes` ? /* @__PURE__ */ w.createElement(_Component91, { data: i2, students: n2, onUpdate: j }) : c2 === `Infrastructure & Assets` ? /* @__PURE__ */ w.createElement(_Component92, { data: i2, onUpdate: j }) : c2 === `Classes & Batches` ? /* @__PURE__ */ w.createElement(Pr, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Attendance` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Ma, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Hr, { data: i2, students: y2, onUpdate: j }) : c2 === `Fees` ? v2 === `PARENT` ? /* @__PURE__ */ w.createElement(Na, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(
     _Component93,
     {
       data: i2,
