@@ -1093,20 +1093,20 @@
       (student.subjects || []).forEach((sub, i) => {
         const hasEntry = sub.hasEntry !== undefined ? sub.hasEntry : (sub.total > 0 || sub.grade !== '-');
         if (hasEntry) {
-          sumPt += sub.pt;
-          sumNb += sub.nb;
-          sumSe += sub.se;
-          sumAnn += sub.annual;
+          if (Number.isFinite(sub.pt)) sumPt += sub.pt;
+          if (Number.isFinite(sub.nb)) sumNb += sub.nb;
+          if (Number.isFinite(sub.se)) sumSe += sub.se;
+          if (Number.isFinite(sub.annual)) sumAnn += sub.annual;
           sumTot += sub.total;
         }
         tbodyHtml += `
           <tr>
             <td>${i + 1}</td>
             <td style="text-align: left; font-weight: 700;">${sub.name}</td>
-            <td>${hasEntry ? sub.pt.toFixed(1) : '-'}</td>
-            <td>${hasEntry ? sub.nb.toFixed(1) : '-'}</td>
-            <td>${hasEntry ? sub.se.toFixed(1) : '-'}</td>
-            <td>${hasEntry ? sub.annual.toFixed(1) : '-'}</td>
+            <td>${hasEntry && Number.isFinite(sub.pt) ? sub.pt.toFixed(1) : '-'}</td>
+            <td>${hasEntry && Number.isFinite(sub.nb) ? sub.nb.toFixed(1) : '-'}</td>
+            <td>${hasEntry && Number.isFinite(sub.se) ? sub.se.toFixed(1) : '-'}</td>
+            <td>${hasEntry && Number.isFinite(sub.annual) ? sub.annual.toFixed(1) : '-'}</td>
             <td style="font-weight: 800;">${hasEntry ? sub.total.toFixed(1) : '-'}</td>
             <td style="font-weight: 800; color: ${sub.grade === 'A1' ? '#059669' : (sub.grade === '-' || sub.grade === 'E' ? '#dc2626' : '#0284c7')};">${sub.grade}</td>
           </tr>
@@ -1191,10 +1191,8 @@
               if (enteredMark && typeof enteredMark.obtainedMarks === 'number') {
                 const maxM = (enteredMark.maximumMarks && enteredMark.maximumMarks > 0) ? enteredMark.maximumMarks : 100;
                 tot = Math.min(100, Math.max(0, parseFloat(((enteredMark.obtainedMarks / maxM) * 100).toFixed(1))));
-                pt = parseFloat((tot * 0.1).toFixed(1));
-                nb = parseFloat((tot * 0.05).toFixed(1));
-                se = parseFloat((tot * 0.05).toFixed(1));
-                annual = parseFloat((tot - pt - nb - se).toFixed(1));
+                // A total cannot establish separate examination component marks.
+                pt = nb = se = annual = null;
                 grade = calculateGrade(tot, 100);
                 totalMarks += tot;
                 enteredCount++;
