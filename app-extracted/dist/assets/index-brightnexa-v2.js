@@ -21026,6 +21026,18 @@ function Cr({
   let [l2, u2] = (0, w.useState)(``);
   let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
   let pendingTeacherId = (0, w.useRef)(n2?.id || crypto.randomUUID());
+  const initialTeacherDraft = (0, w.useRef)(null);
+  if (initialTeacherDraft.current === null) initialTeacherDraft.current = JSON.stringify({form:a2,subjects:s2});
+  const closeTeacherSafely = () => {
+    if (savingToCloud) {
+      u2('Teacher save is still running. Keep this form open until Supabase confirms it.');
+      return;
+    }
+    if (JSON.stringify({form:a2,subjects:s2}) !== initialTeacherDraft.current &&
+      !window.confirm('Teacher details have not been saved. Discard your changes?')) return;
+    r2();
+  };
+
   let d2 = (0, w.useRef)(null);
   let f2 = (0, w.useRef)(null);
   let p2 = (0, w.useRef)(null);
@@ -21120,7 +21132,8 @@ function Cr({
     {
       title: n2 ? `Edit Teacher Profile` : `Add Teacher`,
       subtitle: `Professional, employment, payroll, and identity record`,
-      onClose: r2
+      onClose: closeTeacherSafely,
+      dismissOnBackdrop: false
     },
     /* @__PURE__ */ w.createElement(
       Component284,
@@ -21509,7 +21522,7 @@ function Cr({
         }
       ))),
       l2 && /* @__PURE__ */ w.createElement(Component283, { className: `form-error` }, l2),
-      /* @__PURE__ */ w.createElement(Vr, { onClose: r2, saveLabel: savingToCloud ? `Saving teacher to Supabase...` : n2 ? `Update Teacher` : `Save Teacher` })
+      /* @__PURE__ */ w.createElement(Vr, { onClose: closeTeacherSafely, saveLabel: savingToCloud ? `Saving teacher to Supabase...` : n2 ? `Update Teacher` : `Save Teacher` })
     )
   );
 }
@@ -22020,7 +22033,7 @@ function Br({ query: e2, setQuery: t2, placeholder: n2, count: r2 }) {
     }
   )), /* @__PURE__ */ w.createElement(Component382, null, r2, ` record`, r2 === 1 ? `` : `s`));
 }
-function L({ title: e2, subtitle: t2, onClose: n2, children: r2 }) {
+function L({ title: e2, subtitle: t2, onClose: n2, children: r2, dismissOnBackdrop = true }) {
   const [maximized, setMaximized] = (0, w.useState)(false);
   const Component384 = `span`;
   const Component385 = `h2`;
@@ -22035,7 +22048,7 @@ function L({ title: e2, subtitle: t2, onClose: n2, children: r2 }) {
     Component392,
     {
       className: `modal-backdrop`,
-      onMouseDown: (e3) => e3.target === e3.currentTarget && n2()
+      onMouseDown: (e3) => e3.target === e3.currentTarget && dismissOnBackdrop && n2()
     },
     /* @__PURE__ */ w.createElement(
       Component391,

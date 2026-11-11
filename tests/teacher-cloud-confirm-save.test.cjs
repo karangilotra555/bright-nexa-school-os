@@ -19,9 +19,9 @@ test('Teacher record is not reported saved or modal closed until cloud acknowled
 });
 test('hosted application and PWA precache receive new teacher-save bundle',()=>{
  const e=read('school-erp-entry.js'),html=read('index.html'),sw=read('sw.js');
- assert.ok(e.includes('index-brightnexa-v2.js?v=20261111-teacher-confirm-v1'));
- assert.ok(html.includes('school-erp-entry.js?v=20261111-teacher-confirm-v1'));
- const items=[['assets/index-brightnexa-v2.js',read('assets/index-brightnexa-v2.js')],['school-erp-entry.js?v=20261111-teacher-confirm-v1',e],['index.html',html]];
+ assert.ok(e.includes('index-brightnexa-v2.js?v=20261111-teacher-modal-guard-v1'));
+ assert.ok(html.includes('school-erp-entry.js?v=20261111-teacher-modal-guard-v1'));
+ const items=[['assets/index-brightnexa-v2.js',read('assets/index-brightnexa-v2.js')],['school-erp-entry.js?v=20261111-teacher-modal-guard-v1',e],['index.html',html]];
  for(const [url,content] of items){
   const hash=crypto.createHash('sha256').update(content).digest('hex');
   assert.ok(sw.includes('url:"'+url+'",revision:"'+hash+'"')||sw.includes('"url":"'+url+'","revision":"'+hash+'"'), 'wrong SW hash '+url);
