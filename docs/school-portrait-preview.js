@@ -8,7 +8,7 @@
   root.BNPortraitPreviewLoaded = true;
 
   const VERSION = 'bn-passport-photo-v1';
-  const PORTRAIT_LABEL = /\b(?:teacher photograph|student photograph|student photo|profile photo|passport photo|passport photograph)\b/i;
+  const PORTRAIT_LABEL = /\b(?:teacher photograph|student photograph|student photo|profile photo|passport photo|passport photograph)/i;
   const DOCUMENT_LABEL = /\b(?:aadhaar|aadhar|identity document|pan card|certificate)\b/i;
   let lastPhotoChoice = null;
   let draftUrl = null;
@@ -51,7 +51,7 @@
       const type = portraitType(img);
       if (!type) return;
       img.classList.add(type === 'list' ? 'bn-passport-list-photo' : 'bn-passport-form-photo');
-      if (img.closest('button,a,[role="button"]')) return; // Existing React teacher viewer owns its click.
+      if (img.parentElement?.closest('button,a,[role="button"]')) return; // Existing React teacher viewer owns its click.
       img.classList.add('bn-passport-clickable');
       img.setAttribute('role', 'button');
       if (!img.hasAttribute('tabindex')) img.setAttribute('tabindex', '0');
@@ -137,7 +137,7 @@
       lastPhotoChoice = null;
     }
     const img = event.target.closest && event.target.closest('img');
-    if (!img || !portraitType(img) || img.closest('button,a,[role="button"]')) return;
+    if (!img || !portraitType(img) || img.parentElement?.closest('button,a,[role="button"]')) return;
     event.preventDefault();
     event.stopPropagation();
     openPhoto(img);
@@ -145,7 +145,7 @@
   doc.addEventListener('keydown', function (event) {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     const img = event.target;
-    if (!portraitType(img) || img.closest('button,a,[role="button"]')) return;
+    if (!portraitType(img) || img.parentElement?.closest('button,a,[role="button"]')) return;
     event.preventDefault();
     openPhoto(img);
   }, true);
