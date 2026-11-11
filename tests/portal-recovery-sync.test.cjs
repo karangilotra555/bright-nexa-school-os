@@ -13,7 +13,10 @@ test('Staff login has email reset form and safe recovery handling',()=>{
    assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
  }
  assert.ok(js.includes("auth/v1/recover?redirect_to="));
- assert.ok(js.includes("encodeURIComponent(redirect.href)"));
+ assert.ok(js.includes("const redirect=emailReturnUrl();"));
+ assert.ok(js.includes("encodeURIComponent(redirect)"));
+ assert.ok(js.includes("response.status===429"));
+ assert.ok(js.includes("resetFeedback("));
  assert.ok(js.includes("recoveryMode=hash.get('type')==='recovery'"));
  assert.ok(js.includes("If this email is registered"));
  assert.ok(js.includes("Password reset successfully. Sign in with your new password."));
