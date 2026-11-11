@@ -22117,6 +22117,18 @@ function Cr({
   let [l, u] = (0, w.useState)(``);
   let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
   let pendingTeacherId = (0, w.useRef)(n?.id || crypto.randomUUID());
+  const initialTeacherDraft = (0, w.useRef)(null);
+  if (initialTeacherDraft.current === null) initialTeacherDraft.current = JSON.stringify({form:a,subjects:s});
+  const closeTeacherSafely = () => {
+    if (savingToCloud) {
+      u('Teacher save is still running. Keep this form open until Supabase confirms it.');
+      return;
+    }
+    if (JSON.stringify({form:a,subjects:s}) !== initialTeacherDraft.current &&
+      !window.confirm('Teacher details have not been saved. Discard your changes?')) return;
+    r();
+  };
+
   let d = (0, w.useRef)(null);
   let f = (0, w.useRef)(null);
   let p = (0, w.useRef)(null);
@@ -22211,7 +22223,8 @@ function Cr({
     <L
       title={n ? `Edit Teacher Profile` : `Add Teacher`}
       subtitle={`Professional, employment, payroll, and identity record`}
-      onClose={r}
+      onClose={closeTeacherSafely}
+      dismissOnBackdrop={false}
     >
       <Component284
         onSubmit={async (e) => {
@@ -22642,7 +22655,7 @@ function Cr({
           </Component281>
         </Component282>
         {l && <Component283 className={`form-error`}>{l}</Component283>}
-        <Vr onClose={r} saveLabel={savingToCloud ? `Saving teacher to Supabase...` : n ? `Update Teacher` : `Save Teacher`} />
+        <Vr onClose={closeTeacherSafely} saveLabel={savingToCloud ? `Saving teacher to Supabase...` : n ? `Update Teacher` : `Save Teacher`} />
       </Component284>
     </L>
   );
@@ -23386,7 +23399,7 @@ function Br({ query: e, setQuery: t, placeholder: n, count: r }) {
     </Component383>
   );
 }
-function L({ title: e, subtitle: t, onClose: n, children: r }) {
+function L({ title: e, subtitle: t, onClose: n, children: r, dismissOnBackdrop = true }) {
   const [maximized, setMaximized] = (0, w.useState)(false);
   const Component384 = `span`;
   const Component385 = `h2`;
@@ -23400,7 +23413,7 @@ function L({ title: e, subtitle: t, onClose: n, children: r }) {
   return (
     <Component392
       className={`modal-backdrop`}
-      onMouseDown={(e) => e.target === e.currentTarget && n()}
+      onMouseDown={(e) => e.target === e.currentTarget && dismissOnBackdrop && n()}
     >
       <Component391
         className={`simple-modal`}
