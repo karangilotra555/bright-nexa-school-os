@@ -51,7 +51,7 @@ test('source and served copies show pending cloud acknowledgment instead of prem
   const index=read(base+'index.html'),sw=read(base+'sw.js');
   assert.match(index,/CACHE_VERSION = '20261109-signout-v6'/);
   const sha=file=>crypto.createHash('sha256').update(Buffer.from(read(file),'utf8')).digest('hex');
-  assert.ok(sw.includes('"url":"school-online-guard.js?v=20261109-logout-ready-v3","revision":"'+sha(base+'school-online-guard.js')+'"'));
+  assert.ok(sw.includes('"url":"school-online-guard.js?v=20261111-nonblocking-v1","revision":"'+sha(base+'school-online-guard.js')+'"'));
   assert.ok(sw.includes('"url":"school-workspace-controller.js?v=20261109-conflict-recovery-v2","revision":"'+sha(base+'school-workspace-controller.js')+'"'));
   assert.ok(sw.includes('url:"assets/index-brightnexa-v2.js",revision:"'+sha(base+'assets/index-brightnexa-v2.js')+'"'));
   assert.equal(read(base+'school-online-guard.js'),read('school-online-guard.js'));
@@ -91,5 +91,30 @@ test('conflict makes retry unavailable and offers explicit backup-first cloud re
  assert.equal(recovered,1);
  assert.equal(requested,2);
  assert.equal(modal.style.display,'none');
+ dom.window.close();
+});
+
+test('normal Teacher Add/Student Add pending sync never creates a page-blocking popup',()=>{
+ const dom=new JSDOM('<!doctype html><html><body><main id="erp"><button id="addTeacher">Add teacher</button></main></body></html>',{url:'https://bright-nexa-school-os.onrender.com',runScripts:'outside-only'});
+ dom.window.sessionStorage.setItem('bright-nexa-school-os:session:v2',JSON.stringify({cloudVerified:true}));
+ dom.window.eval(read('school-online-guard.js'));
+ const guard=dom.window.BNWorkspaceOnlineGuard;
+ guard.update('loading');guard.update('syncing');guard.update('pending');
+ assert.equal(dom.window.document.getElementById('bn-cloud-publish-status'),null);
+ assert.ok(dom.window.document.getElementById('addTeacher'),'underlying ERP remains visible');
+ guard.update('pending',new Error('School save failed'));
+ const notice=dom.window.document.getElementById('bn-cloud-publish-status');
+ assert.match(notice.textContent,/School save failed/);
+ assert.equal(notice.style.position,'fixed');
+ assert.equal(notice.style.inset,'');
+ assert.equal(notice.style.right,'16px');
+ assert.equal(notice.getAttribute('role'),'alert');
+ guard.update('pending');
+ assert.equal(notice.style.display,'none','normal background save hides old warning');
+ guard.update('conflict',new Error('Different school revisions'));
+ assert.equal(notice.style.display,'block');
+ assert.equal(notice.querySelector('[data-role=retry]').disabled,true);
+ guard.update('synced');
+ assert.equal(notice.style.display,'none');
  dom.window.close();
 });
