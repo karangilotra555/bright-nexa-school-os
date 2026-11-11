@@ -65,8 +65,29 @@
 
     .control-actions {
       display: flex;
+      width: 100%;
+      min-width: 0;
+      flex-wrap: wrap;
       align-items: center;
       gap: 10px;
+    }
+    .control-actions select {
+      flex: 1 1 230px;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 40px;
+    }
+    .control-actions .btn {
+      flex: 0 0 auto;
+      min-height: 40px;
+      justify-content: center;
+      white-space: nowrap;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      .no-print-bar { padding: 14px; }
+      .control-actions select { flex: 1 1 100%; }
+      .control-actions .btn { flex: 1 1 calc(50% - 10px); }
     }
 
     .btn {
