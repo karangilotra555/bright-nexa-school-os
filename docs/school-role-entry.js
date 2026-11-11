@@ -13,7 +13,7 @@
   return null;
  }
  function preferredView(role){
-  return ({school_admin:'dashboard',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'})[role]||'account';
+  return ({school_admin:'classes',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'})[role]||'account';
  }
  const api=Object.freeze({roleDestination,preferredView});
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
