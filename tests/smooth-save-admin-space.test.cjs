@@ -9,7 +9,7 @@ test('staff admin opens useful classes rather than a duplicate empty dashboard',
  assert.match(js,/portalStats'\)\)\$\('portalStats'\)\.classList\.toggle\('hidden',isAdmin\(\)\)/);
  assert.match(js,/School Admin tools/);
  assert.match(html,/teacher-access\.js\?v=20261111-admin-space-v1/);
- assert.match(html,/school-role-entry\.js\?v=20261111-admin-space-v1/);
+ assert.match(html,/school-role-entry\.js\?v=20261111-direct-admin-erp-v1/);
  assert.match(role,/school_admin:'classes'/);
 });
 test('ERP and staff now reference revisioned retry clients without deleting data',()=>{
