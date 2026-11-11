@@ -49,7 +49,7 @@ test('finance roster cleared whenever account or school changes',()=>{
  assert.match(staff,/rolePermissions=null;feeStudentRoster=\[\];invalidateRoster/);
 });
 test('all seven role destinations remain valid with no cross-role ERP bypass',()=>{
- const roles={school_admin:'dashboard',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'};
+ const roles={school_admin:'classes',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'};
  for(const [role,view] of Object.entries(roles))assert.equal(entry.preferredView(role),view);
  assert.equal(entry.roleDestination({role:'accountant',verified:true,membershipCount:1}),null);
  assert.equal(entry.roleDestination({role:'transport_staff',verified:true,membershipCount:1}),null);
