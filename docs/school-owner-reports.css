@@ -1,0 +1,27 @@
+.bn-owner-reports{display:grid;gap:17px;color:#0b2546;padding-bottom:36px}
+.bn-report-heading{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap}
+.bn-report-heading h1{margin:8px 0 4px;font-size:28px;letter-spacing:-.6px}
+.bn-report-heading p,.bn-report-section-head p{margin:4px 0;color:#63748a;font-size:13px;line-height:1.5}
+.bn-report-eyebrow{color:#0a77bf;letter-spacing:1.2px;font-size:10px;font-weight:850}
+.bn-report-month{font-size:12px;display:grid;gap:6px;font-weight:800}
+.bn-report-month input{font:inherit;color:#0b2546;padding:10px 12px;border-radius:10px;background:white;border:1px solid #d1e0ed}
+.bn-report-source{background:#eaf4fe;border:1px solid #c7e1f5;border-radius:10px;padding:12px 15px;color:#254e73;font-size:12px}
+.bn-report-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.bn-report-card{padding:18px;background:#fff;border:1px solid #dce6ef;border-radius:14px;box-shadow:0 5px 20px #0a31500b}
+.bn-report-card small{font-size:12px;color:#526b87;display:block;font-weight:700}
+.bn-report-card strong{display:block;font-size:25px;color:#0b315e;margin:9px 0 6px;overflow-wrap:anywhere}
+.bn-report-card p{font-size:11px;color:#6a8093;margin:0}
+.bn-report-note{font-size:12px;background:#fff9e8;color:#815a17;border:1px solid #f1dda4;border-radius:12px;padding:14px;line-height:1.6}
+.bn-report-section{background:white;border:1px solid #dce6ef;border-radius:16px;padding:19px;min-width:0}
+.bn-report-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.bn-report-section-head h2{font-size:19px;margin:0;color:#0b315e}
+.bn-report-section-head button{border:1px solid #b9d8ea;border-radius:9px;padding:9px 15px;color:#0b315e;background:#f2f8fd;font-weight:700;cursor:pointer}
+.bn-report-section-head button:disabled{opacity:.45;cursor:not-allowed}
+.bn-report-scroll{max-width:100%;overflow:auto}
+.bn-report-scroll table{border-collapse:collapse;min-width:760px;width:100%;font-size:12px}
+.bn-report-scroll th{position:sticky;top:0;background:#f0f5fa;text-align:left;color:#264461;font-weight:800;white-space:nowrap}
+.bn-report-scroll th,.bn-report-scroll td{padding:10px;border-bottom:1px solid #e6eef4;white-space:nowrap}
+.bn-report-scroll td{color:#243c52}
+.bn-report-empty{color:#73859c;font-size:13px;padding:12px}
+@media(max-width:960px){.bn-report-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:580px){.bn-report-cards{grid-template-columns:1fr}.bn-report-heading h1{font-size:23px}.bn-report-section{padding:12px}}
