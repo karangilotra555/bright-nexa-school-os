@@ -17,7 +17,7 @@ test('all three served entrypoints load the synced cloud guard before controller
    const sw=read(prefix+'sw.js');
    assert.match(sw,/school-online-guard.js\?v=20261111-nonblocking-v1/);
    assert.match(sw,/school-erp-entry.js\?v=20261111-portrait-compact-v1/);
-   assert.match(sw,/school-workspace-controller.js\?v=20261111-raw-readback-v1/);
+   assert.match(sw,/school-workspace-controller.js\?v=20261111-attendance-leave-v1/);
  }
 });
 test('source, web, docs, packaged app all contain verified-school auto connection and explicit error notification',()=>{
@@ -82,8 +82,8 @@ test('PWA precaches new school cloud adapter and no longer serves 20261106 revis
  for(const prefix of ['','docs/','app-extracted/dist/']){
   const html=read(prefix+'index.html');
   const sw=read(prefix+'sw.js');
-  assert.match(html,/school-workspace-cloud\.js\?v=20261111-raw-readback-v1/);
-  assert.match(sw,/school-workspace-cloud\.js\?v=20261111-raw-readback-v1/);
+  assert.match(html,/school-workspace-cloud\.js\?v=20261111-attendance-leave-v1/);
+  assert.match(sw,/school-workspace-cloud\.js\?v=20261111-attendance-leave-v1/);
   assert.match(sw,/school-online-guard\.js\?v=20261111-nonblocking-v1/);
  }
 });
