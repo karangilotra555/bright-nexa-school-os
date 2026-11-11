@@ -22,7 +22,7 @@ test('new recovery code is mirrored and service-worker references updated',()=>{
  assert.match(controller,/bn-workspace-recovery-v1/);
  for(const prefix of ['','docs/','app-extracted/dist/']){
   assert.match(read(prefix+'index.html'),/school-workspace-controller\.js\?v=20261111-raw-readback-v1/);
-  assert.match(read(prefix+'school-erp-entry.js'),/index-brightnexa-v2\.js\?v=20261111-teacher-modal-guard-v1/);
+  assert.match(read(prefix+'school-erp-entry.js'),/index-brightnexa-v2\.js\?v=20261111-portrait-compact-v1/);
   const crypto=require('node:crypto');
   const sha=p=>crypto.createHash('sha256').update(read(prefix+p).replace(/\r\n/g,'\n')).digest('hex');
   assert.ok(read(prefix+'sw.js').includes('url:"assets/index-brightnexa-v2.js",revision:"'+sha('assets/index-brightnexa-v2.js')+'"'));

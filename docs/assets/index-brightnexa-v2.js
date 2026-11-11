@@ -19169,6 +19169,49 @@ function $n(e2, t2 = 25e5) {
     return Promise.reject(Error(`Please select a PNG, JPEG, or WebP image.`));
   }
 }
+// Downsize portraits BEFORE adding them to the school snapshot. Identity
+// documents use the original lossless/document flow and are never recompressed.
+async function bnOptimizePortrait(file) {
+  if (!file || !['image/jpeg','image/png','image/webp'].includes(file.type))
+    throw Error('Choose a JPG, PNG or WebP photograph.');
+  if (!Number.isFinite(file.size) || file.size < 1 || file.size > 12000000)
+    throw Error('Photograph must be smaller than 12 MB.');
+  if (file.size <= 120000) return nr(file);
+  if (typeof document === 'undefined' || typeof Image === 'undefined' ||
+      typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function')
+    throw Error('Photo compression is unavailable here. Choose a smaller photograph.');
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const photo = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(Error('The selected photograph could not be decoded.'));
+      img.src = objectUrl;
+    });
+    const width = photo.naturalWidth, height = photo.naturalHeight;
+    if (!width || !height || width * height > 50000000)
+      throw Error('Invalid or excessively large photograph dimensions.');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', {alpha: false});
+    if (!ctx) throw Error('Photo compression is unavailable. Choose a smaller photograph.');
+    for (const edge of [900, 720, 600, 480]) {
+      const scale = Math.min(1, edge / Math.max(width, height));
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(photo, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.82, 0.70, 0.58]) {
+        const result = canvas.toDataURL('image/jpeg', quality);
+        if (result.startsWith('data:image/jpeg;base64,') && result.length <= 600000)
+          return result;
+      }
+    }
+    throw Error('Photo could not be compressed safely. Choose a smaller photograph.');
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 async function er(e2, t2, n2, r2 = 4e6) {
   if (!e2.type.startsWith(`image/`) && e2.type !== `application/pdf`) {
     throw Error(`Please select a PDF, PNG, JPEG, or WebP file.`);
@@ -20260,7 +20303,7 @@ function _Component6({
   let h2 = async (e3, t3) => {
     if (t3) {
       try {
-        p2(e3, await $n(t3));
+        p2(e3, await (e3 === 'photoDataUrl' ? bnOptimizePortrait(t3) : $n(t3)));
         l2(``);
       } catch (e4) {
         l2(e4 instanceof Error ? e4.message : `Image upload failed.`);
@@ -20852,6 +20895,7 @@ function Sr({ data: e2, onUpdate: t2 }) {
   let [i2, a2] = (0, w.useState)(null);
   let [o2, s2] = (0, w.useState)(null);
   let [c2, l2] = (0, w.useState)(``);
+  const [photoPreview, setPhotoPreview] = (0, w.useState)(null);
   let u2 = e2.teachers.filter(
     (e3) => [e3.name, e3.employeeCode, e3.mobile, ...e3.subjects].join(` `).toLowerCase().includes(c2.toLowerCase())
   );
@@ -20952,7 +20996,12 @@ function Sr({ data: e2, onUpdate: t2 }) {
     const Component202 = `button`;
     const Component203 = `td`;
     const Component204 = `tr`;
-    return /* @__PURE__ */ w.createElement(Component204, { key: e3.id }, /* @__PURE__ */ w.createElement(Component194, null, /* @__PURE__ */ w.createElement(Component193, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component189, null, e3.photoDataUrl ? /* @__PURE__ */ w.createElement(Component188, { src: e3.photoDataUrl, alt: `` }) : jr(t3)), /* @__PURE__ */ w.createElement(Component192, null, /* @__PURE__ */ w.createElement(Component190, null, t3), e3.mobile && /* @__PURE__ */ w.createElement(Component191, null, e3.mobile)))), /* @__PURE__ */ w.createElement(Component195, null, e3.employeeCode), /* @__PURE__ */ w.createElement(Component196, null, e3.designation), /* @__PURE__ */ w.createElement(Component197, null, e3.qualification), /* @__PURE__ */ w.createElement(Component198, null, e3.subjects.join(`, `)), /* @__PURE__ */ w.createElement(Component199, null, e3.appointmentDate || e3.joiningDate), /* @__PURE__ */ w.createElement(Component201, null, e3.status && /* @__PURE__ */ w.createElement(
+    return /* @__PURE__ */ w.createElement(Component204, { key: e3.id }, /* @__PURE__ */ w.createElement(Component194, null, /* @__PURE__ */ w.createElement(Component193, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component189, null, e3.photoDataUrl ? /* @__PURE__ */ w.createElement("button", {
+      type: "button", title: "Enlarge teacher photograph",
+      "aria-label": `Enlarge photograph of ${t3}`,
+      onClick: () => setPhotoPreview({src:e3.photoDataUrl,name:t3}),
+      style: {border:0,background:"transparent",padding:0,display:"block",cursor:"zoom-in"}
+    }, /* @__PURE__ */ w.createElement(Component188,{src:e3.photoDataUrl,alt:``})) : jr(t3)), /* @__PURE__ */ w.createElement(Component192, null, /* @__PURE__ */ w.createElement(Component190, null, t3), e3.mobile && /* @__PURE__ */ w.createElement(Component191, null, e3.mobile)))), /* @__PURE__ */ w.createElement(Component195, null, e3.employeeCode), /* @__PURE__ */ w.createElement(Component196, null, e3.designation), /* @__PURE__ */ w.createElement(Component197, null, e3.qualification), /* @__PURE__ */ w.createElement(Component198, null, e3.subjects.join(`, `)), /* @__PURE__ */ w.createElement(Component199, null, e3.appointmentDate || e3.joiningDate), /* @__PURE__ */ w.createElement(Component201, null, e3.status && /* @__PURE__ */ w.createElement(
       Component200,
       {
         className: `status-badge ${e3.status.toLowerCase()}`
@@ -20995,6 +21044,15 @@ function Sr({ data: e2, onUpdate: t2 }) {
       },
       onDelete: () => f2(i2)
     }
+  ), photoPreview && /* @__PURE__ */ w.createElement(
+    L,
+    {title: "Teacher Photograph", subtitle: photoPreview.name, onClose: () => setPhotoPreview(null)},
+    /* @__PURE__ */ w.createElement("div", {style:{textAlign:"center",padding:"12px"}},
+      /* @__PURE__ */ w.createElement("img",{
+        src:photoPreview.src,alt:`Photograph of ${photoPreview.name}`,
+        style:{display:"block",maxWidth:"100%",maxHeight:"70vh",width:"auto",margin:"0 auto",objectFit:"contain",borderRadius:10}
+      })
+    )
   ));
 }
 function Cr({
@@ -21025,10 +21083,12 @@ function Cr({
   let [s2, c2] = (0, w.useState)(a2.subjects.join(`, `));
   let [l2, u2] = (0, w.useState)(``);
   let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
+  const [photoProcessing, setPhotoProcessing] = (0,w.useState)(false);
   let pendingTeacherId = (0, w.useRef)(n2?.id || crypto.randomUUID());
   const initialTeacherDraft = (0, w.useRef)(null);
   if (initialTeacherDraft.current === null) initialTeacherDraft.current = JSON.stringify({form:a2,subjects:s2});
   const closeTeacherSafely = () => {
+    if (photoProcessing) { u2('Photo is still being prepared. Keep this form open.'); return; }
     if (savingToCloud) {
       u2('Teacher save is still running. Keep this form open until Supabase confirms it.');
       return;
@@ -21048,10 +21108,13 @@ function Cr({
   let h2 = async (e3, t3) => {
     if (t3) {
       try {
-        m2(e3, await $n(t3));
+        if (e3 === 'photoDataUrl') setPhotoProcessing(true);
+        m2(e3, await (e3 === 'photoDataUrl' ? bnOptimizePortrait(t3) : $n(t3)));
         u2(``);
       } catch (e4) {
         u2(e4 instanceof Error ? e4.message : `Image upload failed.`);
+      } finally {
+        if (e3 === 'photoDataUrl') setPhotoProcessing(false);
       }
     }
   };
@@ -21141,6 +21204,7 @@ function Cr({
         onSubmit: async (e3) => {
           e3.preventDefault();
           if (savingToCloud) return;
+          if (photoProcessing) { u2('Photograph is still being compressed.'); return; }
           let r3 = s2.split(`,`).map((e4) => e4.trim()).filter(Boolean);
           let o3 = {
             ...a2,
@@ -21522,7 +21586,8 @@ function Cr({
         }
       ))),
       l2 && /* @__PURE__ */ w.createElement(Component283, { className: `form-error` }, l2),
-      /* @__PURE__ */ w.createElement(Vr, { onClose: closeTeacherSafely, saveLabel: savingToCloud ? `Saving teacher to Supabase...` : n2 ? `Update Teacher` : `Save Teacher` })
+      /* @__PURE__ */ w.createElement(Vr, {onClose:closeTeacherSafely,saveDisabled:savingToCloud || photoProcessing,
+        saveLabel:photoProcessing ? `Optimizing photo...` : savingToCloud ? `Saving teacher to Supabase...` : n2 ? `Update Teacher` : `Save Teacher`})
     )
   );
 }
@@ -22407,7 +22472,7 @@ function R({ label: e2, wide: t2, children: n2 }) {
   const Component394 = `label`;
   return /* @__PURE__ */ w.createElement(Component394, { className: `form-field ${t2 ? `wide` : ``}` }, /* @__PURE__ */ w.createElement(Component393, null, e2), n2);
 }
-function Vr({ onClose: e2, saveLabel: t2 }) {
+function Vr({ onClose: e2, saveLabel: t2, saveDisabled = false }) {
   const Component395 = `button`;
   const Component396 = `button`;
   const Component397 = `div`;
@@ -22419,7 +22484,7 @@ function Vr({ onClose: e2, saveLabel: t2 }) {
       onClick: e2
     },
     `Cancel`
-  ), /* @__PURE__ */ w.createElement(Component396, { type: `submit`, className: `primary-button` }, t2));
+  ), /* @__PURE__ */ w.createElement(Component396, { type: `submit`, disabled: saveDisabled, className: `primary-button` }, t2));
 }
 function attendanceFollowUpDate(value) {
   return typeof value === `string` && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
