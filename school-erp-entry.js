@@ -203,6 +203,12 @@
         showError(error);return false;
       }
     }
+    // Load the accessible student/teacher photograph viewer after verified ERP entry.
+    // It never writes school records; React's own save remains authoritative.
+    const portraitViewer=document.createElement('script');
+    portraitViewer.src='./school-portrait-preview.js?v=20261111-passport-v1';
+    portraitViewer.async=true;
+    document.head.append(portraitViewer);
     const script=document.createElement('script');
     script.type='module';
     script.src=BUNDLE;
