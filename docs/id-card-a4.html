@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student ID Card Bulk Generator (A4 Print Sheets) — Bright Nexa School OS</title>
   <script src="./assets/qrcode.min.js"></script>
+  <script src="./school-workspace-cloud.js?v=20261111-attendance-leave-v1"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
 
@@ -39,6 +40,13 @@
       min-height: 100vh;
     }
 
+    /* Embedded within the authenticated ERP — leave its native sidebar visible. */
+    body.bn-embedded-print-page {padding:0;background:transparent}
+    body.bn-embedded-print-page .no-print-bar {width:100%;max-width:100%;box-shadow:none;border:1px solid #dae5f0}
+    .bn-print-back {display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#0b3860;text-decoration:none;font-weight:750;border:1px solid #cbd5e1;background:#f4f8fd;border-radius:8px;padding:7px 11px}
+    .bn-print-status {font-size:12px;color:#335c78;line-height:1.4;border:1px solid #cbddeb;padding:9px 12px;background:#f1f8ff;border-radius:8px}
+    .bn-print-status.error {background:#fff4f4;border-color:#edc6cc;color:#94344a}
+    @media print {.bn-print-back,.bn-print-status {display:none!important}}
     /* Top Control Bar */
     .no-print-bar {
       width: 210mm;
@@ -705,6 +713,7 @@
 <body>
 
   <!-- Top Action Control Bar -->
+  <a class="bn-print-back" id="bnPrintBack" href="./index.html?openSchool=true&tab=Students">← Back to School OS</a>
   <div class="no-print-bar">
     <div class="bar-top-row">
       <div class="bar-title">
@@ -713,9 +722,9 @@
       </div>
 
       <div class="control-actions">
-        <!-- Live vs Demo Indicator Pill -->
+        <!-- Authenticated cloud state is shown separately from local fallback. -->
         <span class="data-source-pill source-live" id="dataSourcePill">
-          🟢 Live School Records
+          ◌ Checking school cloud…
         </span>
 
         <label for="printSideMode" style="font-size:12px;font-weight:700;color:#334155">Print side:</label>
@@ -744,7 +753,7 @@
           📱 Student Portal
         </a>
 
-        <button class="btn btn-secondary" onclick="loadSchoolOSData()">
+        <button class="btn btn-secondary" id="reloadVerified" onclick="loadSchoolOSData()">
           🔄 Reload Data
         </button>
       </div>
@@ -755,8 +764,10 @@
       <select id="idPhotoStudent" aria-label="Choose student for photo"><option value="">Select student</option></select>
       <input id="idPhotoFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload student portrait" style="max-width:220px">
       <button class="btn btn-secondary" type="button" onclick="clearIdPhoto()">Remove photo</button>
-      <span class="photo-upload-hint">Portrait JPG/PNG/WebP, max 3 MB. Preview and print only; photo is not uploaded or saved.</span>
+      <span class="photo-upload-hint">Saved student photos load from Supabase automatically. Choose File is only a temporary print preview; save permanent photos in Students.</span>
     </div>
+
+    <div class="bn-print-status" role="status" aria-live="polite" id="bnPrintCloudStatus">Checking Supabase for the verified school roster and saved photographs…</div>
 
     <!-- Filters & Search Bar Row -->
     <div class="filter-bar-row">
@@ -888,6 +899,13 @@
     ];
 
     // State Variables
+    const isEmbedded = new URLSearchParams(location.search).get('embedded') === '1';
+    if (isEmbedded) {
+      document.body.classList.add('bn-embedded-print-page');
+      document.getElementById('bnPrintBack')?.remove();
+    }
+    let lastVerifiedCloudRevision = null;
+    let cloudLoadRequest = 0;
     let liveStudents = [];
     let activeStudents = [];
     let isDemoMode = false;
@@ -903,6 +921,66 @@
       logoUrl: "app-icon-512.png"
     };
 
+    function fromSchoolStudent(s,idx) {
+      const rawClass = String(s.className || '').trim();
+      const cName = rawClass ? (/^class\s/i.test(rawClass) ? rawClass : 'Class ' + rawClass) : 'Unassigned class';
+      return {
+        id: s.id || String(idx+1), name: String(s.name || 'Unnamed student').toUpperCase(),
+        rollNumber: s.rollNumber == null ? '' : String(s.rollNumber).padStart(2,'0'),
+        admissionNumber: String(s.admissionNumber || ''), className:cName,section:s.section||'',
+        fatherName: String(s.fatherName || s.guardianName || '').toUpperCase(),
+        contactNumber:s.parentMobile||s.contactNumber||s.phone||s.alternateMobile||'',
+        bloodGroup:s.bloodGroup||'',dob:s.dateOfBirth||s.dob||'',
+        address:s.address||'',busStop:s.busStop||s.transportRoute||'',
+        photoUrl:s.photoDataUrl||s.photoUrl||s.avatarUrl||null,isDemo:false
+      };
+    }
+    function reportCloudState(message,isError) {
+      const node=document.getElementById('bnPrintCloudStatus');
+      if(!node)return;
+      node.textContent=message;
+      node.classList.toggle('error',!!isError);
+    }
+    async function refreshSchoolCloudData() {
+      const requestId=++cloudLoadRequest;
+      lastVerifiedCloudRevision=null;
+      reportCloudState('Reading your verified school records and student photographs from Supabase…',false);
+      const cloud=window.BNWorkspaceCloud;
+      if(!cloud?.create) {
+        reportCloudState('Cloud adapter not loaded. Only unsynced device preview is available; reload the page.',true);
+        updateSourceUI();return;
+      }
+      try {
+        const client=cloud.create({fetcher:window.fetch.bind(window),sessionStorage:window.sessionStorage});
+        const schools=await client.connect();
+        const requestedId=new URLSearchParams(window.location.search).get('schoolId')||'';
+        const school=requestedId?schools.find(s=>s.id===requestedId):(schools.length===1?schools[0]:null);
+        if(!school)throw Error(requestedId?'School is not authorized for this login. Open the correct school in ERP.':'Choose an authorized school from Staff Login before opening the ID card generator.');
+        const response=await client.pull(school.id);
+        if(requestId!==cloudLoadRequest)return;
+        const snapshot=response?.snapshot;
+        if(!snapshot||!Array.isArray(snapshot.students)||!snapshot.institution?.institution)throw Error('Cloud school roster was incomplete. Local preview is unchanged.');
+        const profile=snapshot.institution.institution;
+        institution.name=profile.name||school.name;
+        institution.tagline=profile.tagline||'';
+        institution.address=[profile.address,profile.city,profile.state].filter(Boolean).join(', ');
+        institution.phone=profile.contactNumber||'';
+        institution.session=profile.session||'';
+        institution.principalName=profile.principalName||'';
+        institution.logoUrl=profile.logoDataUrl||'app-icon-512.png';
+        liveStudents=snapshot.students.map(fromSchoolStudent);
+        lastVerifiedCloudRevision=response.revision;
+        if(!isDemoMode)activeStudents=liveStudents;
+        const missing=liveStudents.filter(s=>!s.photoUrl).length;
+        reportCloudState('Supabase confirmed · Revision '+response.revision+' · '+liveStudents.length+' students · '+(liveStudents.length-missing)+' saved photos'+(missing?', '+missing+' without saved photos':'')+'.',false);
+        updateSourceUI();populateFilters();
+      } catch(error) {
+        if(requestId!==cloudLoadRequest)return;
+        lastVerifiedCloudRevision=null;
+        reportCloudState('Supabase records could not be verified: '+(error?.message||'Unknown error')+'. Showing device-only preview; do not treat it as synced.',true);
+        updateSourceUI();
+      }
+    }
     function loadSchoolOSData() {
       try {
         // Read Institution Profile
@@ -962,9 +1040,11 @@
         activeStudents = SAMPLE_DEMO_STUDENTS;
       }
 
+      lastVerifiedCloudRevision=null;
       updateSourceUI();
       populateFilters();
       renderCards();
+      void refreshSchoolCloudData();
     }
 
     function toggleDemoMode() {
@@ -994,7 +1074,7 @@
       } else {
         if (pill) {
           pill.className = 'data-source-pill source-live';
-          pill.innerHTML = `🟢 Live Records (${liveStudents.length})`;
+          pill.innerHTML = lastVerifiedCloudRevision===null ? `🟠 Device preview (${liveStudents.length})` : `🟢 Supabase Records (${liveStudents.length})`;
         }
         if (toggleBtn) {
           toggleBtn.className = 'btn btn-secondary';
@@ -1329,8 +1409,9 @@
     }
 
     // Auto-init on load
-    window.addEventListener('DOMContentLoaded', loadSchoolOSData);
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', loadSchoolOSData, {once:true});
+    } else {
       loadSchoolOSData();
     }
   </script>
