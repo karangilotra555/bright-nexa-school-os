@@ -10,6 +10,7 @@ function mount(options={}){
  assert.ok(s,'inline app script exists');
  let printed=0,pulls=0;
  w.print=()=>printed++;
+ w.fetch=async()=>{throw Error('Unit test must not make network requests');};
  w.QRCode={toCanvas(_canvas,_value,_settings,done){done?.(null);}};
  w.BNWorkspaceCloud={create:()=>({connect:async()=>options.fail?Promise.reject(Error('Session expired')):[{id:schoolId,name:'HPS'}],pull:async id=>{assert.equal(id,schoolId);pulls++;return{revision:42,snapshot};}})};
  w.localStorage.setItem('bright-nexa-school-os:students:v1',JSON.stringify([{id:'old',name:'STALE DEVICE STUDENT',admissionNumber:'OLD'}]));
