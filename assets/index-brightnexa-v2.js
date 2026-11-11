@@ -19694,19 +19694,15 @@ function bnScheduleCloudSync(snapshot, students, operations, setStatus) {
     return bnSyncQueue;
   }, 1e3);
 }
-function bnBroadcastStoreSync(institution, students, operations) {
+function bnBroadcastStoreSync(_institution, _students, _operations) {
+}
+function bnBroadcastCloudConfirmed(snapshot) {
+  const institutionId = snapshot?.institution?.institution?.id;
+  if (!institutionId || typeof BroadcastChannel === "undefined") return;
   try {
-    if (typeof BroadcastChannel !== "undefined") {
-      const channel = new BroadcastChannel("bright_nexa_store_sync");
-      channel.postMessage({
-        type: "BN_STORE_SYNC",
-        institution,
-        students,
-        operations,
-        timestamp: Date.now()
-      });
-      channel.close();
-    }
+    const channel = new BroadcastChannel("bright_nexa_store_sync");
+    channel.postMessage({type:"BN_CLOUD_CONFIRMED",institutionId,timestamp:Date.now()});
+    channel.close();
   } catch (_2) {
   }
 }
@@ -37822,6 +37818,7 @@ function Ds() {
         if (state === "synced") {
           setCloudError("");
           if (previous === "pending") {
+            bnBroadcastCloudConfirmed(latestWorkspace.current);
             p2("ERP changes saved to Supabase.");
             window.setTimeout(() => p2(""), 3500);
           }
@@ -37864,12 +37861,14 @@ function Ds() {
     const timer = window.setInterval(refresh, 3e4);
     window.addEventListener("online", refresh);
     window.addEventListener("focus", refresh);
+    window.addEventListener("bn-cloud-recheck", refresh);
     return () => {
       active = false;
       controller.dispose();
       window.clearInterval(timer);
       window.removeEventListener("online", refresh);
       window.removeEventListener("focus", refresh);
+      window.removeEventListener("bn-cloud-recheck", refresh);
     };
   }, [workspaceReady]);
   w.useEffect(() => {
@@ -37914,14 +37913,10 @@ function Ds() {
     try {
       channel = new BroadcastChannel("bright_nexa_store_sync");
       channel.onmessage = (event) => {
-        if (event.data && event.data.type === "BN_STORE_SYNC") {
-          const currentId = latestWorkspace.current?.institution?.institution?.id;
-          const incomingId = event.data.institution?.institution?.id;
-          if (currentId && incomingId && currentId !== incomingId) return;
-          if (event.data.institution) t2(event.data.institution);
-          if (event.data.students) r2(event.data.students);
-          if (event.data.operations) a2(event.data.operations);
-        }
+        if (event.data?.type !== "BN_CLOUD_CONFIRMED") return;
+        const currentId = latestWorkspace.current?.institution?.institution?.id;
+        if (!currentId || event.data.institutionId !== currentId) return;
+        window.dispatchEvent(new Event("bn-cloud-recheck"));
       };
     } catch (_3) {
     }

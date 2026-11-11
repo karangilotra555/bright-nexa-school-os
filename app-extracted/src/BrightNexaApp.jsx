@@ -20458,19 +20458,16 @@ function bnScheduleCloudSync(snapshot, students, operations, setStatus) {
   }, 1000);
 }
 
-function bnBroadcastStoreSync(institution, students, operations) {
+// Changes in browser state are unconfirmed until the revision-checked
+// Supabase write succeeds. Never forward pending data between tabs.
+function bnBroadcastStoreSync(_institution, _students, _operations) {}
+function bnBroadcastCloudConfirmed(snapshot) {
+  const institutionId = snapshot?.institution?.institution?.id;
+  if (!institutionId || typeof BroadcastChannel === 'undefined') return;
   try {
-    if (typeof BroadcastChannel !== 'undefined') {
-      const channel = new BroadcastChannel('bright_nexa_store_sync');
-      channel.postMessage({
-        type: 'BN_STORE_SYNC',
-        institution,
-        students,
-        operations,
-        timestamp: Date.now()
-      });
-      channel.close();
-    }
+    const channel = new BroadcastChannel('bright_nexa_store_sync');
+    channel.postMessage({type:'BN_CLOUD_CONFIRMED',institutionId,timestamp:Date.now()});
+    channel.close();
   } catch (_) {}
 }
 
@@ -42526,6 +42523,7 @@ function Ds() {
         if(state==='synced'){
           setCloudError('');
           if(previous==='pending'){
+            bnBroadcastCloudConfirmed(latestWorkspace.current);
             p('ERP changes saved to Supabase.');
             window.setTimeout(()=>p(''),3500);
           }
@@ -42552,8 +42550,8 @@ function Ds() {
     setCloud({client,controller});
     const refresh=()=>controller.sync().catch(error=>{if(active)setCloudError(error.message);});
     const timer=window.setInterval(refresh,30000);
-    window.addEventListener('online',refresh);window.addEventListener('focus',refresh);
-    return()=>{active=false;controller.dispose();window.clearInterval(timer);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
+    window.addEventListener('online',refresh);window.addEventListener('focus',refresh);window.addEventListener('bn-cloud-recheck',refresh);
+    return()=>{active=false;controller.dispose();window.clearInterval(timer);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);window.removeEventListener('bn-cloud-recheck',refresh);};
   },[workspaceReady]);
   w.useEffect(()=>{
     if(!cloud||!workspaceReady)return;
@@ -42601,14 +42599,10 @@ function Ds() {
     try {
       channel = new BroadcastChannel('bright_nexa_store_sync');
       channel.onmessage = (event) => {
-        if (event.data && event.data.type === 'BN_STORE_SYNC') {
-          const currentId=latestWorkspace.current?.institution?.institution?.id;
-          const incomingId=event.data.institution?.institution?.id;
-          if(currentId && incomingId && currentId !== incomingId)return;
-          if (event.data.institution) t(event.data.institution);
-          if (event.data.students) r(event.data.students);
-          if (event.data.operations) a(event.data.operations);
-        }
+        if (event.data?.type !== 'BN_CLOUD_CONFIRMED') return;
+        const currentId=latestWorkspace.current?.institution?.institution?.id;
+        if (!currentId || event.data.institutionId !== currentId) return;
+        window.dispatchEvent(new Event('bn-cloud-recheck'));
       };
     } catch (_) {}
     return () => {
