@@ -30382,6 +30382,21 @@ function $a({ initial: e2, onClose: t2, onSave: n2 }) {
           set: (e3) => u2(`employeeCode`, e3)
         }
       ), /* @__PURE__ */ w.createElement(
+        _Component57,
+        {
+          label: `Salary Amount (₹)`,
+          value: r2.salary,
+          set: (e3) => u2(`salary`, e3)
+        }
+      ), /* @__PURE__ */ w.createElement(
+        _Component55,
+        {
+          label: `Salary Frequency`,
+          value: r2.salaryFrequency,
+          set: (e3) => u2(`salaryFrequency`, e3),
+          options: [`Monthly`, `Daily`, `Hourly`]
+        }
+      ), /* @__PURE__ */ w.createElement(
         _Component55,
         {
           label: `Staff Category`,
@@ -30535,28 +30550,13 @@ function $a({ initial: e2, onClose: t2, onSave: n2 }) {
           options: [`Active`, `Inactive`]
         }
       ))),
-      /* @__PURE__ */ w.createElement(_o, { title: `Salary, Bank, and Verification Information` }, /* @__PURE__ */ w.createElement(
+      /* @__PURE__ */ w.createElement(_o, { title: `Bank and Verification Information` }, /* @__PURE__ */ w.createElement(
         Component1612,
         {
           className: `section-helper`
         },
         `Sensitive information is stored locally and displayed only in masked form.`
       ), /* @__PURE__ */ w.createElement(Component1613, { className: `modal-form-grid` }, /* @__PURE__ */ w.createElement(
-        _Component57,
-        {
-          label: `Salary Amount`,
-          value: r2.salary,
-          set: (e3) => u2(`salary`, e3)
-        }
-      ), /* @__PURE__ */ w.createElement(
-        _Component55,
-        {
-          label: `Salary Frequency`,
-          value: r2.salaryFrequency,
-          set: (e3) => u2(`salaryFrequency`, e3),
-          options: [`Monthly`, `Daily`, `Hourly`]
-        }
-      ), /* @__PURE__ */ w.createElement(
         U,
         {
           label: `Account Holder Name`,
@@ -37734,6 +37734,11 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`]
   },
   {
+    label: `Owner Reports`,
+    icon: _Component12,
+    roles: [`OWNER`]
+  },
+  {
     label: `Transport & Routes`,
     icon: _Component68,
     roles: [`OWNER`, `ADMIN`]
@@ -38780,7 +38785,7 @@ function Ds() {
       institution: e2.institution,
       onUpdate: j
     }
-  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, { data: i2, students: y2 }) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement(
+  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Owner Reports` ? v2 === `OWNER` && window.BNOwnerReports ? /* @__PURE__ */ w.createElement(window.BNOwnerReports.getView(w), { data: i2, students: y2, institution: e2.institution, syncStatus }) : /* @__PURE__ */ w.createElement('p',{role:'alert'},'Owner access is required or reports module did not load.') : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, { data: i2, students: y2 }) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement(
     "iframe",
     {
       title: `Smart School Tools`,

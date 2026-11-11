@@ -34399,6 +34399,17 @@ function $a({ initial: e, onClose: t, onSave: n }) {
                 value={r.employeeCode}
                 set={(e) => u(`employeeCode`, e)}
               />
+            <_Component57
+              label={`Salary Amount (₹)`}
+              value={r.salary}
+              set={(e) => u(`salary`, e)}
+            />
+            <_Component55
+              label={`Salary Frequency`}
+              value={r.salaryFrequency}
+              set={(e) => u(`salaryFrequency`, e)}
+              options={[`Monthly`, `Daily`, `Hourly`]}
+            />
               <_Component55
                 label={`Staff Category`}
                 value={r.category}
@@ -34530,22 +34541,11 @@ function $a({ initial: e, onClose: t, onSave: n }) {
             />
           </Component1611>
         </_o>
-        <_o title={`Salary, Bank, and Verification Information`}>
+        <_o title={`Bank and Verification Information`}>
           <Component1612
             className={`section-helper`}
           >{`Sensitive information is stored locally and displayed only in masked form.`}</Component1612>
           <Component1613 className={`modal-form-grid`}>
-            <_Component57
-              label={`Salary Amount`}
-              value={r.salary}
-              set={(e) => u(`salary`, e)}
-            />
-            <_Component55
-              label={`Salary Frequency`}
-              value={r.salaryFrequency}
-              set={(e) => u(`salaryFrequency`, e)}
-              options={[`Monthly`, `Daily`, `Hourly`]}
-            />
             <U
               label={`Account Holder Name`}
               value={r.bankAccountHolder}
@@ -42464,6 +42464,11 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`],
   },
   {
+    label: `Owner Reports`,
+    icon: _Component12,
+    roles: [`OWNER`],
+  },
+  {
     label: `Transport & Routes`,
     icon: _Component68,
     roles: [`OWNER`, `ADMIN`],
@@ -43688,6 +43693,10 @@ function Ds() {
             )
           ) : c === `Expenses & Budget` ? (
             <_Component94 data={i} institution={e.institution} onUpdate={j} />
+          ) : c === `Owner Reports` ? (
+            v === `OWNER` && window.BNOwnerReports
+              ? w.createElement(window.BNOwnerReports.getView(w), {data:i,students:y,institution:e.institution,syncStatus})
+              : w.createElement('p',{role:'alert'},'Owner access is required or reports module did not load.')
           ) : c === `Exams & Marks` ? (
             <P.Fragment>
               <B data={i} students={y} onUpdate={j} />
