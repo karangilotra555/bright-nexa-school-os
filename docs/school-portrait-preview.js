@@ -19,7 +19,7 @@
   css.id = VERSION;
   css.textContent = [
     '.student-cell img.bn-passport-list-photo{width:72px!important;height:96px!important;max-width:none!important;object-fit:contain!important;border-radius:6px;cursor:zoom-in;background:#edf2f8}',
-    '.student-modal img.bn-passport-form-photo,[role="dialog"] img.bn-passport-form-photo,.modal-content img.bn-passport-form-photo{width:120px!important;height:160px!important;max-width:100%!important;object-fit:contain!important;border-radius:7px;cursor:zoom-in;background:#edf2f8}',
+    '.student-modal img.bn-passport-form-photo,.simple-modal img.bn-passport-form-photo,[role="dialog"] img.bn-passport-form-photo,.modal-content img.bn-passport-form-photo{width:120px!important;height:160px!important;max-width:100%!important;object-fit:contain!important;border-radius:7px;cursor:zoom-in;background:#edf2f8}',
     '.bn-passport-clickable:focus-visible{outline:3px solid #1476c5;outline-offset:3px}',
     '.bn-passport-photo-dialog{border:0;border-radius:14px;padding:16px;background:white;color:#102640;box-shadow:0 18px 60px #0005;max-width:min(92vw,740px);max-height:94vh;overflow:auto}',
     '.bn-passport-photo-dialog::backdrop{background:#081d36bd}',
@@ -38,7 +38,10 @@
     if (!img || img.tagName !== 'IMG' || !sourceOf(img)) return null;
     if (img.closest('.student-cell')) return 'list';
     if (!/^(?:data:image\/|blob:|https?:)/i.test(sourceOf(img))) return null;
-    if (img.closest('.student-modal,[role="dialog"],.modal-content,.modal-dialog')) return 'form';
+    const teacherViewer = img.closest('.simple-modal');
+    if (teacherViewer && /^Teacher Photograph$/i.test(
+        (teacherViewer.querySelector('h2')?.textContent || '').trim())) return null;
+    if (img.closest('.student-modal,.simple-modal,[role="dialog"],.modal-content,.modal-dialog')) return 'form';
     return null;
   }
   function enhanceImages() {
@@ -127,7 +130,7 @@
     if (photoButton(button)) {
       lastPhotoChoice = {
         at: Date.now(),
-        modal: button.closest('.student-modal,[role="dialog"],.modal-content,.modal-dialog'),
+        modal: button.closest('.student-modal,.simple-modal,[role="dialog"],.modal-content,.modal-dialog'),
       };
     } else if (button) {
       // Another upload control cancels the last photo chooser intent.
@@ -136,6 +139,7 @@
     const img = event.target.closest && event.target.closest('img');
     if (!img || !portraitType(img) || img.closest('button,a,[role="button"]')) return;
     event.preventDefault();
+    event.stopPropagation();
     openPhoto(img);
   }, true);
   doc.addEventListener('keydown', function (event) {
@@ -152,7 +156,7 @@
     if (!file) return;
     const hint = [input.id, input.name, input.getAttribute('aria-label'), input.closest('label')?.textContent].join(' ');
     const marked = PORTRAIT_LABEL.test(hint) && !DOCUMENT_LABEL.test(hint);
-    const modal = input.closest('.student-modal,[role="dialog"],.modal-content,.modal-dialog');
+    const modal = input.closest('.student-modal,.simple-modal,[role="dialog"],.modal-content,.modal-dialog');
     const recent = lastPhotoChoice && Date.now() - lastPhotoChoice.at < 90000 &&
       (!lastPhotoChoice.modal || lastPhotoChoice.modal === modal);
     if (!marked && !recent) return; // Aadhaar and other uploads are left untouched.
