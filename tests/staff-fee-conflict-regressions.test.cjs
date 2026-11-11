@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
 test('admin staff portal no longer repeats ERP navigation and marketing blocks',()=>{
  const js=read('teacher-access.js'),html=read('teacher-access.html');
- assert.match(js,/display\('schoolOsAdminNav',false\)/);
+ assert.match(js,/display\('schoolOsAdminNav',isAdm\)/);
  assert.match(js,/display\('adminErpBanner',false\)/);
  assert.match(js,/portalStats'\)\)\$\('portalStats'\)\.classList\.toggle\('hidden',isAdmin\(\)\)/);
  assert.match(html,/id="portalStats"/);
