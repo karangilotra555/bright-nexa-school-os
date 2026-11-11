@@ -151,7 +151,7 @@ test('TDD: all served entrypoints load the AI client before the actual React bun
   const verifiedEntry=html.indexOf('school-erp-entry.js?v=');
   assert.ok(client>0&&verifiedEntry>client,'AI client must load before the verified school entry: '+prefix);
   const bootstrap=fs.readFileSync(prefix+'school-erp-entry.js','utf8');
-  assert.ok(bootstrap.includes('assets/index-brightnexa-v2.js?v=20261111-teacher-modal-guard-v1'));
+  assert.ok(bootstrap.includes('assets/index-brightnexa-v2.js?v=20261111-portrait-compact-v1'));
   assert.ok(bootstrap.includes('school_workspace_pull'));
   const js=fs.readFileSync(prefix+'assets/index-brightnexa-v2.js','utf8');
   assert.match(js,/BNSmartToolsAI/);
@@ -212,7 +212,7 @@ test('TDD RED: cache reset version changes with the AI client while keeping exis
  for(const dir of ['','docs/','app-extracted/dist/']){
   const html=fs.readFileSync(dir+'index.html','utf8');
   assert.match(html,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
-  assert.match(html,/school-erp-entry\.js\?v=20261111-teacher-modal-guard-v1/);
+  assert.match(html,/school-erp-entry\.js\?v=20261111-portrait-compact-v1/);
   assert.match(html,/CACHE_VERSION = '20261109-signout-v6'/);
   const sw=fs.readFileSync(dir+'sw.js','utf8');
   assert.match(sw,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);

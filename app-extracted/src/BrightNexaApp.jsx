@@ -19922,6 +19922,49 @@ function $n(e, t = 2500000) {
     return Promise.reject(Error(`Please select a PNG, JPEG, or WebP image.`));
   }
 }
+// Downsize portraits BEFORE adding them to the school snapshot. Identity
+// documents use the original lossless/document flow and are never recompressed.
+async function bnOptimizePortrait(file) {
+  if (!file || !['image/jpeg','image/png','image/webp'].includes(file.type))
+    throw Error('Choose a JPG, PNG or WebP photograph.');
+  if (!Number.isFinite(file.size) || file.size < 1 || file.size > 12000000)
+    throw Error('Photograph must be smaller than 12 MB.');
+  if (file.size <= 120000) return nr(file);
+  if (typeof document === 'undefined' || typeof Image === 'undefined' ||
+      typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function')
+    throw Error('Photo compression is unavailable here. Choose a smaller photograph.');
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const photo = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(Error('The selected photograph could not be decoded.'));
+      img.src = objectUrl;
+    });
+    const width = photo.naturalWidth, height = photo.naturalHeight;
+    if (!width || !height || width * height > 50000000)
+      throw Error('Invalid or excessively large photograph dimensions.');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', {alpha: false});
+    if (!ctx) throw Error('Photo compression is unavailable. Choose a smaller photograph.');
+    for (const edge of [900, 720, 600, 480]) {
+      const scale = Math.min(1, edge / Math.max(width, height));
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(photo, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.82, 0.70, 0.58]) {
+        const result = canvas.toDataURL('image/jpeg', quality);
+        if (result.startsWith('data:image/jpeg;base64,') && result.length <= 600000)
+          return result;
+      }
+    }
+    throw Error('Photo could not be compressed safely. Choose a smaller photograph.');
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 async function er(e, t, n, r = 4000000) {
   if (!e.type.startsWith(`image/`) && e.type !== `application/pdf`) {
     throw Error(`Please select a PDF, PNG, JPEG, or WebP file.`);
@@ -21103,6 +21146,15 @@ function _Component6({
   let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i.className, classes, e), [i.className, classes, e]);
   let [o, s] = (0, w.useState)({});
   let [c, l] = (0, w.useState)(``);
+  const [photoProcessing,setPhotoProcessing] = (0,w.useState)(false);
+  const initialStudentDraft = (0,w.useRef)(null);
+  if (initialStudentDraft.current === null) initialStudentDraft.current = JSON.stringify(i);
+  const closeStudentSafely = () => {
+    if (photoProcessing) { l('Photo is still being prepared. Keep the form open.'); return; }
+    if (JSON.stringify(i) !== initialStudentDraft.current &&
+        !window.confirm('Student details have not been saved. Discard changes?')) return;
+    t();
+  };
   let u = (0, w.useRef)(null);
   let d = (0, w.useRef)(null);
   let f = (0, w.useRef)(null);
@@ -21120,6 +21172,7 @@ function _Component6({
   };
   let m = (t) => {
     t.preventDefault();
+    if (photoProcessing) { l('Photo compression is not finished yet.'); return; }
     let a = {};
     if (!N(i)) {
       a.record = `Enter at least one student detail before saving.`;
@@ -21161,10 +21214,13 @@ function _Component6({
   let h = async (e, t) => {
     if (t) {
       try {
-        p(e, await $n(t));
+        if (e === 'photoDataUrl') setPhotoProcessing(true);
+        p(e, await (e === 'photoDataUrl' ? bnOptimizePortrait(t) : $n(t)));
         l(``);
       } catch (e) {
         l(e instanceof Error ? e.message : `Image upload failed.`);
+      } finally {
+        if (e === 'photoDataUrl') setPhotoProcessing(false);
       }
     }
   };
@@ -21244,7 +21300,6 @@ function _Component6({
     <Component138
       className={`modal-backdrop`}
       role={`presentation`}
-      onMouseDown={(e) => e.target === e.currentTarget && t()}
     >
       <Component137
         className={`student-modal`}
@@ -21266,7 +21321,7 @@ function _Component6({
           </Component70>
           <Component71
             className={`icon-button`}
-            onClick={t}
+            onClick={closeStudentSafely}
             aria-label={`Close student form`}
           >
             <St size={21} />
@@ -21590,10 +21645,10 @@ function _Component6({
               <Component132
                 type={`button`}
                 className={`secondary-button`}
-                onClick={t}
+                onClick={closeStudentSafely}
               >{`Cancel`}</Component132>
-              <Component133 type={`submit`} className={`primary-button`}>
-                {r ? `Update Student` : `Save Student`}
+              <Component133 type={`submit`} disabled={photoProcessing} className={`primary-button`}>
+                {photoProcessing ? `Optimizing photo...` : r ? `Update Student` : `Save Student`}
               </Component133>
             </Component134>
           </Component135>
@@ -21878,6 +21933,7 @@ function Sr({ data: e, onUpdate: t }) {
   let [i, a] = (0, w.useState)(null);
   let [o, s] = (0, w.useState)(null);
   let [c, l] = (0, w.useState)(``);
+  const [photoPreview, setPhotoPreview] = (0, w.useState)(null);
   let u = e.teachers.filter((e) =>
     [e.name, e.employeeCode, e.mobile, ...e.subjects]
       .join(` `)
@@ -22012,7 +22068,11 @@ function Sr({ data: e, onUpdate: t }) {
                       <Component193 className={`student-cell`}>
                         <Component189>
                           {e.photoDataUrl ? (
-                            <Component188 src={e.photoDataUrl} alt={``} />
+                            <button type="button" title="Enlarge teacher photograph" aria-label={`Enlarge photograph of ${t}`}
+                              onClick={() => setPhotoPreview({src:e.photoDataUrl,name:t})}
+                              style={{border:0,background:'transparent',padding:0,display:'block',cursor:'zoom-in'}}>
+                              <Component188 src={e.photoDataUrl} alt={``} />
+                            </button>
                           ) : (
                             jr(t)
                           )}
@@ -22083,6 +22143,14 @@ function Sr({ data: e, onUpdate: t }) {
           onDelete={() => f(i)}
         />
       )}
+      {photoPreview && (
+        <L title={`Teacher Photograph`} subtitle={photoPreview.name} onClose={() => setPhotoPreview(null)}>
+          <div style={{textAlign:'center',padding:'12px'}}>
+            <img src={photoPreview.src} alt={`Photograph of ${photoPreview.name}`}
+              style={{display:'block',maxWidth:'100%',maxHeight:'70vh',width:'auto',margin:'0 auto',objectFit:'contain',borderRadius:10}} />
+          </div>
+        </L>
+      )}
     </Component209>
   );
 }
@@ -22116,10 +22184,12 @@ function Cr({
   let [s, c] = (0, w.useState)(a.subjects.join(`, `));
   let [l, u] = (0, w.useState)(``);
   let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
+  const [photoProcessing, setPhotoProcessing] = (0,w.useState)(false);
   let pendingTeacherId = (0, w.useRef)(n?.id || crypto.randomUUID());
   const initialTeacherDraft = (0, w.useRef)(null);
   if (initialTeacherDraft.current === null) initialTeacherDraft.current = JSON.stringify({form:a,subjects:s});
   const closeTeacherSafely = () => {
+    if (photoProcessing) { u('Photo is still being prepared. Keep this form open.'); return; }
     if (savingToCloud) {
       u('Teacher save is still running. Keep this form open until Supabase confirms it.');
       return;
@@ -22140,10 +22210,13 @@ function Cr({
   let h = async (e, t) => {
     if (t) {
       try {
-        m(e, await $n(t));
+        if (e === 'photoDataUrl') setPhotoProcessing(true);
+        m(e, await (e === 'photoDataUrl' ? bnOptimizePortrait(t) : $n(t)));
         u(``);
       } catch (e) {
         u(e instanceof Error ? e.message : `Image upload failed.`);
+      } finally {
+        if (e === 'photoDataUrl') setPhotoProcessing(false);
       }
     }
   };
@@ -22230,6 +22303,7 @@ function Cr({
         onSubmit={async (e) => {
           e.preventDefault();
           if (savingToCloud) return;
+          if (photoProcessing) { u('Photograph is still being compressed.'); return; }
           let r = s
             .split(`,`)
             .map((e) => e.trim())
@@ -22655,7 +22729,8 @@ function Cr({
           </Component281>
         </Component282>
         {l && <Component283 className={`form-error`}>{l}</Component283>}
-        <Vr onClose={closeTeacherSafely} saveLabel={savingToCloud ? `Saving teacher to Supabase...` : n ? `Update Teacher` : `Save Teacher`} />
+        <Vr onClose={closeTeacherSafely} saveDisabled={savingToCloud || photoProcessing}
+          saveLabel={photoProcessing ? `Optimizing photo...` : savingToCloud ? `Saving teacher to Supabase...` : n ? `Update Teacher` : `Save Teacher`} />
       </Component284>
     </L>
   );
@@ -22868,7 +22943,7 @@ function Or({ title: e, value: t, onChoose: n, onRemove: r }) {
       <Component313>
         <Component311>{e}</Component311>
         <Component312>
-          {t ? `Image securely attached` : `PNG, JPEG, or WebP up to 2.5 MB`}
+          {t ? `Image securely attached` : e === `Teacher Photograph` ? `JPG, PNG or WebP up to 12 MB (auto-compressed)` : `PNG, JPEG, or WebP up to 2.5 MB`}
         </Component312>
       </Component313>
       <Component314 type={`button`} className={`secondary-button`} onClick={n}>
@@ -23865,7 +23940,7 @@ function R({ label: e, wide: t, children: n }) {
     </Component394>
   );
 }
-function Vr({ onClose: e, saveLabel: t }) {
+function Vr({ onClose: e, saveLabel: t, saveDisabled = false }) {
   const Component395 = `button`;
   const Component396 = `button`;
   const Component397 = `div`;
@@ -23876,7 +23951,7 @@ function Vr({ onClose: e, saveLabel: t }) {
         className={`secondary-button`}
         onClick={e}
       >{`Cancel`}</Component395>
-      <Component396 type={`submit`} className={`primary-button`}>
+      <Component396 type={`submit`} disabled={saveDisabled} className={`primary-button`}>
         {t}
       </Component396>
     </Component397>
