@@ -11,7 +11,7 @@ test('Teacher record is not reported saved or modal closed until cloud acknowled
   assert.ok(js.includes('pendingTeacherId.current'),'retries must reuse the same stable teacher ID');
   assert.ok(js.includes('if (savingToCloud) return;'),'double click must not submit twice');
   assert.ok(js.includes('Saving teacher to Supabase...'));
-  const from=js.indexOf('function Sr('),end=js.indexOf('function Cr(',from);
+  const from=js.indexOf('function Sr({ data:'),end=js.indexOf('function Cr({',from);
   const section=js.slice(from,end);
   assert.ok(section.indexOf("result?.status !== 'synced'")<section.indexOf('r(false)') || section.indexOf("result?.status !== 'synced'")<section.indexOf('r2(false)'), 'modal closes only after confirmation');
  }
