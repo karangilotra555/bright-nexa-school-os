@@ -83,8 +83,8 @@ test('Owner reports files and PWA cache are mirrored with exact content checksum
  for(const prefix of ['docs/','app-extracted/dist/']){
   for(const file of ['school-owner-reports.js','school-owner-reports.css','index.html','sw.js'])assert.equal(read(prefix+file),read(file),prefix+file);
  }
- assert.match(index,/school-owner-reports\.js\?v=20261111-owner-reports-v1/);
- assert.match(index,/school-owner-reports\.css\?v=20261111-owner-reports-v1/);
+ assert.match(index,/school-owner-reports\.js\?v=20261111-owner-reports-v2/);
+ assert.match(index,/school-owner-reports\.css\?v=20261111-owner-reports-v2/);
  for(const [path,content] of [
   ['index.html',index],['assets/index-brightnexa-v2.js',bundle],
   ['school-owner-reports.js?v=20261111-owner-reports-v2',js],
