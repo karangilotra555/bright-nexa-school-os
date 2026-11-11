@@ -109,6 +109,22 @@
       :view==='school'?'Your email is verified. Complete your school setup below.'
       :'Sign in to access your school\'s workspace.');
   }
+  // Recovery feedback belongs to the reset card, not a floating page-wide toast.
+  function resetFeedback(message,isError=false){
+    const node=$('forgotFeedback');
+    node.textContent=message;
+    node.classList.remove('hidden','error');
+    if(isError)node.classList.add('error');
+  }
+  $('toggleLoginPassword').addEventListener('click',()=>{
+    const input=$('loginPassword');
+    const showing=input.type==='password';
+    input.type=showing?'text':'password';
+    const button=$('toggleLoginPassword');
+    button.textContent=showing?'Hide':'Show';
+    button.setAttribute('aria-label',showing?'Hide password':'Show password');
+    button.setAttribute('aria-pressed',String(showing));
+  });
   function saveSession(next){
     session={access_token:next.access_token,refresh_token:next.refresh_token,expires_at:Math.floor(Date.now()/1000)+(Number(next.expires_in)||3600)};
     sessionStorage.setItem(TOKEN_KEY,JSON.stringify(session));
@@ -1092,30 +1108,52 @@
     finally{btn.disabled=false}
   })});
   $('forgotPasswordLink').addEventListener('click',()=>{
+    display('forgotFeedback',false);
     showAuthView('forgot');
     $('forgotEmail').value=$('loginEmail').value.trim();$('forgotEmail').focus();
   });
   $('forgotPasswordForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const button=$('sendResetEmail');
     if(button.disabled)return;
-    const email=$('forgotEmail').value.trim();
-    if(!email||!$('forgotEmail').checkValidity())throw Error('Enter a valid school email address.');
+    const email=$('forgotEmail').value.trim().toLowerCase();
+    if(!email||!$('forgotEmail').checkValidity()){
+      resetFeedback('Enter a valid registered email address.',true);return;
+    }
     button.disabled=true;
+    button.textContent='Requesting reset link...';
+    display('forgotFeedback',false);
     try{
-      // Supabase Auth mails a short-lived RESET LINK, never the old password.
-      // Keep this URL restricted to this same school's verified HTTPS origin.
-      const redirect=new URL('./teacher-access.html',location.href);
-      const res=await timedCloudFetch(BASE+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirect.href),{
+      // One canonical HTTPS recovery URL, also used by confirmation emails.
+      // Redirect must be allow-listed in Supabase Auth URL Configuration.
+      const redirect=emailReturnUrl();
+      const response=await timedCloudFetch(BASE+'/auth/v1/recover?redirect_to='+encodeURIComponent(redirect),{
         method:'POST',headers:{apikey:APIKEY,'Content-Type':'application/json'},
         body:JSON.stringify({email}),cache:'no-store'
       });
-      if(res.status===429)throw Error('Too many requests. Please try again later.');
-      if(!res.ok)throw Error('Password reset email is unavailable. Please contact your school administrator.');
-      // Deliberately identical whether the email exists or not.
-      notify('If this email is registered, a password reset link will arrive in your inbox. Check Spam too.');
-      $('forgotPasswordForm').reset();
-      showAuthView('login');
-    }finally{button.disabled=false;}
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok){
+        const detail=String(payload.error_code||payload.code||payload.msg||payload.message||payload.error||'');
+        if(response.status===429 || /rate.limit|too.many|only.request.this.after/i.test(detail)){
+          const retry=Number(response.headers?.get?.('retry-after'));
+          const wait=Number.isFinite(retry)&&retry>0?Math.ceil(retry)+' seconds':'about a minute';
+          throw Error('Too many password reset requests. Please wait '+wait+' before trying again.');
+        }
+        if(/email.*not.authorized|smtp|email.provider/i.test(detail))
+          throw Error('The school email service could not send this request. Administrator: check Supabase Auth email/SMTP settings.');
+        if(/redirect|not.allowed/i.test(detail))
+          throw Error('Password reset redirect is not authorized. Administrator: allow the School OS recovery URL in Supabase Auth.');
+        if(response.status>=500)
+          throw Error('The school email service is temporarily unavailable. Please try again later.');
+        throw Error('Reset request was rejected (HTTP '+response.status+'). Please contact the school administrator.');
+      }
+      // HTTP 200 confirms the request was accepted, NOT inbox delivery.
+      resetFeedback('Request accepted. If this email is registered, check your inbox and Spam folder for the secure reset link. Delivery may take a few minutes. Please wait at least a minute before requesting another.');
+    }catch(error){
+      resetFeedback(error?.message||'Could not request a password reset email. Check your connection and retry.',true);
+    }finally{
+      button.disabled=false;
+      button.textContent='Send reset link';
+    }
   })});
   $('activateForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!session)throw Error('Email link expired. Please request a fresh link.');
