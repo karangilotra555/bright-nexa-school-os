@@ -9,7 +9,7 @@ const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 test('all three served entrypoints load the synced cloud guard before controller and React app',()=>{
  for(const prefix of ['','docs/','app-extracted/dist/']){
    const html=read(prefix+'index.html');
-   const guard=html.indexOf('school-online-guard.js?v=20261109-logout-ready-v3');
+   const guard=html.indexOf('school-online-guard.js?v=20261111-nonblocking-v1');
    const controller=html.indexOf('school-workspace-controller.js?v=20261109-conflict-recovery-v2');
    const entry=html.indexOf('school-erp-entry.js?v=20261111-sidebar-workflow-v1');
    assert.ok(guard>0&&controller>guard&&entry>controller, prefix+' order');
