@@ -8,11 +8,11 @@ test('teacher form cannot dismiss on backdrop or discard unsaved input unnoticed
   const teacher=js.slice(js.indexOf('function Cr({'),js.indexOf('function _Component10({ teacher:'));
   assert.ok(modal.includes('dismissOnBackdrop = true'));
   assert.ok(modal.includes('dismissOnBackdrop &&'));
-  assert.match(teacher,/dismissOnBackdrop[=:]\\s*false/);
+  assert.match(teacher,/dismissOnBackdrop[=:]\s*false/);
   assert.ok(teacher.includes('initialTeacherDraft'));
   assert.ok(teacher.includes('const closeTeacherSafely = () =>'));
   assert.ok(teacher.includes('if (savingToCloud)'));
   assert.ok(teacher.includes("window.confirm('Teacher details have not been saved."));
-  assert.match(teacher,/onClose[=:]\\s*closeTeacherSafely/);
+  assert.match(teacher,/onClose[=:]\s*closeTeacherSafely/);
  }
 });
