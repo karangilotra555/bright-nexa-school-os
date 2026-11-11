@@ -30,3 +30,17 @@ test('marksheet toolbar wraps within its own width and preserves A4 print sheet'
   assert.match(src,/\.a4-marksheet\s*\{[^}]*width:\s*210mm;/);
  }
 });
+
+test('embedded marksheet toolbar uses bounded grid tracks so controls cannot spill horizontally',()=>{
+ for(const file of ['marksheet-a4.html','marksheet.html']){
+  const page=read(file);
+  assert.match(page,/\.no-print-bar \.control-actions\s*\{[^}]*display:\s*grid;/);
+  assert.match(page,/grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(page,/\.no-print-bar \.control-actions > select\s*\{[^}]*grid-column:\s*span 3;/);
+  assert.match(page,/\.no-print-bar \.control-actions > \.btn\s*\{[^}]*grid-column:\s*span 2;/);
+  assert.match(page,/\.no-print-bar \.control-actions > \.btn\s*\{[^}]*overflow-wrap:\s*anywhere;/);
+  assert.match(page,/@media\(max-width: 520px\)/);
+  assert.equal(page,read('docs/'+file));
+  assert.equal(page,read('app-extracted/dist/'+file));
+ }
+});
