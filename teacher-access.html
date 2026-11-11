@@ -52,7 +52,7 @@ tr td select{padding:7px;min-width:115px}
 .footer{font-size:12px;color:#78879a;text-align:center}
 .notice{border-left:4px solid #ff7818;background:#fff7ed;padding:11px 13px;border-radius:8px;font-size:13px;color:#82511b;margin-bottom:16px}
 .portal-layout{display:flex;gap:22px;align-items:flex-start;margin-top:16px}
-.portal-nav{width:260px;flex-shrink:0;background:radial-gradient(circle at 12% 0, #138ed838, #0000 32%), linear-gradient(180deg, #061a36 0%, #030f23 100%);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:14px;box-shadow:0 8px 32px rgba(4,19,38,0.35);position:sticky;top:16px;color:#fff}
+.portal-nav{width:260px;flex-shrink:0;max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#6080a0 transparent;background:radial-gradient(circle at 12% 0, #138ed838, #0000 32%), linear-gradient(180deg, #061a36 0%, #030f23 100%);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:14px;box-shadow:0 8px 32px rgba(4,19,38,0.35);position:sticky;top:16px;color:#fff}
 .portal-nav-brand{display:flex;align-items:center;gap:11px;padding:4px 6px 14px;border-bottom:1px solid rgba(255,255,255,0.12);margin-bottom:12px}
 .portal-nav-brand strong{font-size:16px;font-weight:800;color:#fff;display:block;letter-spacing:-0.2px}
 .portal-nav-brand small{color:#9fb0c8;font-size:11px;display:block;margin-top:1px}
@@ -70,9 +70,15 @@ tr td select{padding:7px;min-width:115px}
 .role-matrix td:first-child,.role-matrix th:first-child{text-align:left}
 @media(max-width:850px){
   .portal-layout{flex-direction:column}
-  .portal-nav{width:100%;position:static;display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-radius:14px}
-  .portal-nav-brand,.portal-nav-title,.portal-nav-divider,.portal-nav-foot,.nav-link{display:none}
-  .nav-btn{width:auto;padding:8px 12px}
+  .portal-nav{width:100%;max-height:none;overflow:visible;position:static;display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-radius:14px}
+  .portal-nav-brand,.portal-nav-title,.portal-nav-divider,.portal-nav-foot{display:none}
+  .nav-btn,.portal-nav .nav-link{width:auto;padding:8px 12px;display:inline-flex;align-items:center}
+}
+@media(max-width:850px){
+  #schoolOsAdminNav{width:100%}
+  #schoolOsAdminNav:not(.hidden) .portal-nav-title{display:block;margin:10px 6px 6px}
+  #schoolOsAdminNav:not(.hidden) .portal-nav-divider{display:block;width:100%}
+  #schoolOsAdminNav .nav-link{display:inline-flex;margin:3px 2px}
 }
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
 @media(max-width:470px){.bar{flex-wrap:wrap}.bar>.flex{width:100%}.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
