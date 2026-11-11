@@ -6,7 +6,7 @@ test('admin staff portal no longer repeats ERP navigation and marketing blocks',
  const js=read('teacher-access.js'),html=read('teacher-access.html');
  assert.match(js,/display\('schoolOsAdminNav',false\)/);
  assert.match(js,/display\('adminErpBanner',false\)/);
- assert.match(js,/portalStats'\)\)\$\('portalStats'\)\.classList\.toggle\('hidden',isAdmin\(\)&&name!=='dashboard'\)/);
+ assert.match(js,/portalStats'\)\)\$\('portalStats'\)\.classList\.toggle\('hidden',isAdmin\(\)\)/);
  assert.match(html,/id="portalStats"/);
  assert.match(html,/id="portalPermissionNotice"/);
  assert.doesNotMatch(html,/Your school summary is shown above/);
