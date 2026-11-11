@@ -24,21 +24,24 @@
   function holidayFor(holiday, category) {
     return holiday.appliesTo === 'All' || holiday.appliesTo === category;
   }
-  function attendanceScheduled(month, holidays, category) {
+  function attendanceScheduled(month, holidays, category, throughDate) {
     const [year, mo] = month.split('-').map(Number);
     const count = new Date(year, mo, 0).getDate();
     let scheduled = 0;
     for (let d=1; d<=count; d++) {
       const day = month+'-'+String(d).padStart(2,'0');
+      if (throughDate && day > throughDate) continue;
       if (new Date(year,mo-1,d).getDay()===0) continue;
       if (holidays.some(h=>h.date===day && holidayFor(h,category))) continue;
       scheduled++;
     }
     return scheduled;
   }
-  function aggregate(ops, studentList, month) {
+  function aggregate(ops, studentList, month, asOfDate) {
     if (!validMonth(month)) throw Error('Choose a valid reporting month (YYYY-MM).');
     const data = ops || {};
+    // Do not count future school days as missing attendance.
+    const today = asOfDate || [new Date().getFullYear(),String(new Date().getMonth()+1).padStart(2,'0'),String(new Date().getDate()).padStart(2,'0')].join('-');
     const students = new Map(list(studentList).map(student=>[student.id,student]));
     const holidays = list(data.holidays).filter(h=>monthDate(h.date)===month);
     const fees = list(data.feePayments).filter(p=>monthDate(p.paymentDate)===month)
@@ -83,6 +86,7 @@
       const allowance=amount(person.paidLeaveAllowedPerMonth)||0;
       const scheduled=attendanceScheduled(month,holidays,category);
       const excludedHolidays=holidays.filter(h=>holidayFor(h,category)).length;
+      const elapsedScheduled=attendanceScheduled(month,holidays,category,today);
       const deductible=absent+Math.max(0,paidLeave-allowance);
       const monthlySalary=person.salaryFrequency==='Monthly' ? amount(person.salary) : null;
       const estimated=monthlySalary!==null&&scheduled>0
@@ -91,7 +95,7 @@
         code:person.employeeCode||'',category,department:person.department||person.subjects?.join(', ')||'',
         salaryFrequency:person.salaryFrequency||'Not set',monthlySalary,estimated,
         present,absent,paidLeave,allowance,excludedHolidays,deductible,scheduled,
-        pending:Math.max(0,scheduled-records.length)};
+        pending:Math.max(0,elapsedScheduled-records.filter(r=>r.date<=today).length)};
     }).sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
     return {month,fees,expenses,staff,holidays,
       feeCollected:sum(validFees,'amount'),feeReceipts:validFees.length,
@@ -121,7 +125,7 @@
     const tableColumns={
       fees:[['Date','date'],['Receipt','receipt'],['Student','student'],['Admission No.','admission'],['Fee Head','category'],['Method','method'],['Amount','amount'],['Status','status']],
       expenses:[['Date','date'],['Expense','title'],['Category','category'],['Department','department'],['Paid To','payee'],['Method','method'],['Reference','reference'],['Billed','total'],['Paid','paid'],['Due','due'],['Status','status']],
-      staff:[['Staff','name'],['Employee Code','code'],['Role','category'],['Department / Subjects','department'],['Salary Type','salaryFrequency'],['Monthly Salary','monthlySalary'],['Estimated Payable','estimated'],['Working Days','scheduled'],['Present','present'],['Absent','absent'],['Paid Leave','paidLeave'],['Leave Allowance','allowance'],['School Holidays','excludedHolidays'],['Unmarked Days','pending']],
+      staff:[['Staff','name'],['Unmarked so far','pending'],['Employee Code','code'],['Role','category'],['Department / Subjects','department'],['Salary Type','salaryFrequency'],['Monthly Salary','monthlySalary'],['Estimated Payable','estimated'],['Working Days','scheduled'],['Present','present'],['Absent','absent'],['Paid Leave','paidLeave'],['Leave Allowance','allowance'],['School Holidays','excludedHolidays']],
       holidays:[['Date','date'],['Holiday','name'],['Applies To','appliesTo'],['Notes','notes']]
     };
     function Table({title,rows,columns,filename,description}) {
@@ -142,7 +146,7 @@
         ['Unpaid expenses',currency(report.expenseDue),'From recorded bills only'],
         ['Estimated monthly payroll',currency(report.estimatedPayroll),report.missingSalary+' staff need monthly salary setup'],
         ['Paid-leave days',String(report.paidLeaves),'Total marked staff paid-leave days'],
-        ['Unmarked staff days',String(report.unmarked),'Do not treat these as absences']];
+        ['Unmarked elapsed staff days',String(report.unmarked),'Future working days are excluded; do not treat missing marks as absences']];
       return h('section',{className:'bn-owner-reports'},
         h('div',{className:'bn-report-heading'},
           h('div',null,h('span',{className:'bn-report-eyebrow'},'OWNER CONTROL CENTRE'),h('h1',null,'Owner Reports & Analytics'),
@@ -157,7 +161,7 @@
         h(Table,{title:'Monthly expense ledger',rows:report.expenses,columns:tableColumns.expenses,
           filename:'expenses-'+month+'.csv',description:'Recorded billed, paid and unpaid expense amounts by category and vendor.'}),
         h(Table,{title:'Teacher and staff salary / leave report',rows:report.staff,columns:tableColumns.staff,
-          filename:'staff-payroll-'+month+'.csv',description:'Teaching and non-teaching staff, attendance, monthly salary, provisional payable and pending marks.'}),
+          filename:'staff-payroll-'+month+'.csv',description:'Teaching and non-teaching staff, attendance, monthly salary, provisional payable and unmarked elapsed workdays.'}),
         h(Table,{title:'School holidays',rows:report.holidays,columns:tableColumns.holidays,
           filename:'school-holidays-'+month+'.csv',description:'School-wide holidays and role-specific holidays; these are separate from individual paid leave.'})
       );
