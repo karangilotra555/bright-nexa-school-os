@@ -272,9 +272,16 @@
             // Only an exact match counts as saved: no duplicate admission.
             if(e&&(e.status===409||e.code==='WORKSPACE_CONFLICT'||/failed to fetch|network|timed out/i.test(String(e.message||'')))){
               try{
-                var remote=await o.client.pull(b.schoolId);
+                // Verify the RAW committed JSON, not the portal-enriched pull result.
+                // Pull merges student profiles/teacher attendance and can differ
+                // even when the original upload committed successfully.
+                var raw=typeof o.client.readback==='function';
+                var remote=await (raw?o.client.readback(b.schoolId):o.client.pull(b.schoolId));
+                var expected=clone(snapshot);
+                // The server intentionally excludes this derived ledger field.
+                if(raw&&expected.operations)delete expected.operations.externalFeeLedger;
                 if(remote&&remote.snapshot&&remote.revision>r.revision
-                  &&fingerprint(remote.snapshot)===fingerprint(snapshot)
+                  &&fingerprint(remote.snapshot)===fingerprint(expected)
                   &&binding===b&&record===r&&consistent()){
                   await persist({...r,revision:remote.revision,fingerprint:fingerprint(snapshot),
                     pending:generation===sentGeneration&&r.pending&&fingerprint(r.pending)===fingerprint(snapshot)?null:r.pending});
