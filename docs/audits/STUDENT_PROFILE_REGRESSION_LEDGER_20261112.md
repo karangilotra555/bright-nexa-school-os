@@ -23,6 +23,8 @@ Updated: 2026-11-12. This file is a durable issue/fix log. Do not mark a feature
 
 - 2026-11-12: Responsive marksheet control toolbar repaired in `marksheet.html` and `marksheet-a4.html`, including docs/dist mirrors: flex wrapping, full-width action row, flexible selects, non-breaking button labels, compact mobile layout. A4 printed sheet design preserved. Regression test added to `tests/marksheet-component-integrity.test.cjs`; CI run `43094684525` passed. Live Render deployment still needs verification.
 
+- 2026-11-12: User screenshot after Render deployment still showed controls overflowing the A4 marksheet toolbar inside the ERP `ID Cards & Certificates` iframe. Confirmed Render was already at `1b352fd`, so not a missing prior deploy. Applied deterministic 6-column bounded CSS grid with selector span 3, action span 2 and narrow-screen adaptation across both marksheet HTML variants and published mirrors; test `embedded marksheet toolbar uses bounded grid tracks` added. This repair is pending new deployment and live visual verification.
+
 ## Verification still required
 - Live authenticated student edit/create/reopen and Supabase readback; photo once + upload/change; marks entry via exam form + portal published feed; Cloud sync conflict recovery with explicit backed-up local records; native Android.
 - Main ERP profile and student editor live in the large React source/bundle; they were **not modified by the marksheet patch**. Do not say editing or duplicate photo is fixed.
