@@ -86,7 +86,9 @@
   function photoButton(button) {
     if (!button || button.tagName !== 'BUTTON') return false;
     let ancestor = button;
-    for (let depth = 0; depth < 4 && ancestor; depth++, ancestor = ancestor.parentElement) {
+    for (let depth = 0; depth < 3 && ancestor; depth++, ancestor = ancestor.parentElement) {
+      // Never mistake a whole form containing many upload buttons for this photo field.
+      if (ancestor !== button && ancestor.querySelectorAll('button').length > 1) break;
       const copy = (ancestor.textContent || '').trim();
       if (copy.length > 500) break;
       if (PORTRAIT_LABEL.test(copy) && !DOCUMENT_LABEL.test(copy)) return true;
