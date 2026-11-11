@@ -131,8 +131,8 @@ test('static and root navigation shims are identical and reference existing host
 });
 
 
-test('All 26 sidebar routes are in school workflow order, with portal shortcuts owned by React',()=>{
- const expected=["Dashboard","School Profile","Classes & Batches","Students","Teachers","Teachers · Online Access","Non-Teaching Staff","School Timetable","Attendance","Homework & Notices","Exams & Marks","Report Cards","Fees","Expenses & Budget","Owner Reports","Transport & Routes","Infrastructure & Assets","Parent Messages","Parents App · Download","AI Teacher Tools","Smart Tools","Opportunity Desk","Growth Passport","School Quality Score","Settings","Contact & Support"];
+test('All 27 sidebar routes are in school workflow order, with portal shortcuts owned by React',()=>{
+ const expected=["Dashboard","School Profile","Classes & Batches","Students","ID Cards & Certificates","Teachers","Teachers · Online Access","Non-Teaching Staff","School Timetable","Attendance","Homework & Notices","Exams & Marks","Report Cards","Fees","Expenses & Budget","Owner Reports","Transport & Routes","Infrastructure & Assets","Parent Messages","Parents App · Download","AI Teacher Tools","Smart Tools","Opportunity Desk","Growth Passport","School Quality Score","Settings","Contact & Support"];
  const base=read('app-extracted/src/BrightNexaApp.jsx');
  const assets=['assets/index-brightnexa-v2.js','docs/assets/index-brightnexa-v2.js','app-extracted/dist/assets/index-brightnexa-v2.js'];
  const source=base.slice(base.indexOf('var Ts = ['),base.indexOf('];',base.indexOf('var Ts = ['))+2);
