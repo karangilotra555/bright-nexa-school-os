@@ -95,7 +95,39 @@
     }
     return decode(response);
   }
-  async function authorize(){const access=await token(),user=await request('/auth/v1/user',access);if(!obj(user)||!str(user.id))throw Error('Authenticated user could not be verified.');const memberships=await request('/rest/v1/school_users?'+new URLSearchParams({select:'institution_id,auth_user_id,role,status',auth_user_id:'eq.'+user.id}),access);if(!Array.isArray(memberships))throw Error('School admin membership could not be verified.');const ids=[...new Set(memberships.filter(m=>m.auth_user_id===user.id&&m.role==='school_admin'&&m.status==='active').map(m=>str(m.institution_id)).filter(Boolean))];if(!ids.length)throw Error('Active school admin access is required.');const schools=[];for(const id of ids){const result=await request('/rest/v1/institutions?'+new URLSearchParams({select:'id,name,status',id:'eq.'+id}),access);if(!Array.isArray(result))throw Error('School could not be verified.');const s=result.find(s=>s.id===id&&['active','trial'].includes(s.status));if(s)schools.push({id:s.id,name:required(s.name,'School name')});}return {access,schools};}
+  // Short JWT-scoped cache removes redundant sequential membership requests
+  // from rapid ERP saves. The protected RPC still enforces backend RLS each time.
+  let verifiedCache=null,verificationInFlight=null;
+  async function authorize(){
+    const access=await token();
+    if(verifiedCache&&verifiedCache.access===access&&Date.now()-verifiedCache.checkedAt<15000)return verifiedCache.result;
+    if(verificationInFlight&&verificationInFlight.access===access)return verificationInFlight.promise;
+    const work=(async()=>{
+      const user=await request('/auth/v1/user',access);
+      if(!obj(user)||!str(user.id))throw Error('Authenticated user could not be verified.');
+      const memberships=await request('/rest/v1/school_users?'+new URLSearchParams({select:'institution_id,auth_user_id,role,status',auth_user_id:'eq.'+user.id}),access);
+      if(!Array.isArray(memberships))throw Error('School admin membership could not be verified.');
+      const ids=[...new Set(memberships.filter(m=>m.auth_user_id===user.id&&m.role==='school_admin'&&m.status==='active').map(m=>str(m.institution_id)).filter(Boolean))];
+      if(!ids.length)throw Error('Active school admin access is required.');
+      const schools=[];
+      for(const id of ids){
+        const rows=await request('/rest/v1/institutions?'+new URLSearchParams({select:'id,name,status',id:'eq.'+id}),access);
+        if(!Array.isArray(rows))throw Error('School could not be verified.');
+        const school=rows.find(s=>s.id===id&&['active','trial'].includes(s.status));
+        if(school)schools.push({id:school.id,name:required(school.name,'School name')});
+      }
+      return {access,schools};
+    })();
+    verificationInFlight={access,promise:work};
+    try{
+      const result=await work;
+      let current;try{current=JSON.parse(sessions&&sessions.getItem(TOKEN));}catch(_){}
+      if(current&&current.access_token===access)verifiedCache={access,result,checkedAt:Date.now()};
+      return result;
+    }finally{
+      if(verificationInFlight?.promise===work)verificationInFlight=null;
+    }
+  }
   function result(data,id){if(!obj(data)||!obj(data.school)||data.school.id!==id||!str(data.school.name)||!Number.isSafeInteger(data.revision)||data.revision<0||!Object.hasOwn(data,'snapshot'))throw Error('Invalid or cross-school cloud response. Local records are unchanged.');if(data.snapshot!==null)shape(data.snapshot);return data;}
   async function run(id,body){required(id,'School ID');const auth=await authorize();if(!auth.schools.some(s=>s.id===id))throw Error('School admin access is not available for this school.');return result(await request('/rest/v1/rpc/school_workspace_'+(body?'push':'pull'),auth.access,body||{p_institution_id:id}),id);}
   return {buildProjection,connect:async()=>(await authorize()).schools,pull:id=>run(id),push:async(id,revision,snapshot,projection)=>{shape(snapshot);if(!Number.isSafeInteger(revision)||revision<0)throw Error('Invalid expected revision.');if(!obj(projection)||!['classes','students','attendance','homework','notices','fees'].every(k=>Array.isArray(projection[k])))throw Error('Invalid workspace projection.');const checked=buildProjection(snapshot,()=>[]);for(const k of ['classes','students','attendance','homework','notices'])if(JSON.stringify(checked[k])!==JSON.stringify(projection[k]))throw Error('Workspace projection does not match local '+k+'.');const studentIds=new Set(checked.students.map(s=>s.localId));unique(projection.fees,'fee',f=>f.localId);for(const f of projection.fees){if(!studentIds.has(f.studentLocalId)||!['charge','payment'].includes(f.kind)||typeof f.amountRupees!=='number'||!Number.isFinite(f.amountRupees)||f.amountRupees<0)throw Error('Invalid fee projection.');date(f.occurredOn,'Fee date',true);}const saved=await run(id,{p_institution_id:id,p_expected_revision:revision,p_snapshot:snapshot,p_projection:projection});if(saved.revision<=revision||saved.snapshot===null)throw Error('Cloud did not confirm the workspace save. Local records are unchanged.');return saved;}};

@@ -21,11 +21,50 @@
   function fingerprint(value){return hashCanonical(canonical(value));}
   function institutionId(s){return s&&s.institution&&s.institution.institution&&s.institution.institution.id;}
   function create(options){
-    var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve(), missingPendingRecovery=false;
+    var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve(), missingPendingRecovery=false, retryTimer=null, retryFailures=0;
+    // Retry only transient errors. Cloud revision conflicts, school identity,
+    // invalid projections, RLS and missing recovery backups require intervention.
+    function transient(error){
+      var code=Number(error&&error.status);
+      if([408,425,429].includes(code)||(code>=500&&code<=599))return true;
+      if(code>=400)return false;
+      if(error&&error.code==='CLOUD_TIMEOUT')return true;
+      return /failed to fetch|fetch failed|network|offline|timed out|temporary|connection reset|networkerror|econnreset|load failed/i.test(String(error&&error.message||''));
+    }
+    function clearRetry(){
+      if(retryTimer!==null){
+        if(typeof o.cancelRetry==='function')o.cancelRetry(retryTimer);
+        else if(typeof clearTimeout==='function')clearTimeout(retryTimer);
+        retryTimer=null;
+      }
+    }
+    function scheduleRetry(error){
+      if(disposed||!binding||!record?.pending||status==='conflict'||!transient(error)||retryTimer!==null)return false;
+      var schedule=typeof o.scheduleRetry==='function'?o.scheduleRetry:
+        typeof window!=='undefined'&&typeof window.setTimeout==='function'?window.setTimeout.bind(window):null;
+      if(!schedule)return false;
+      ++retryFailures;
+      var delay=Math.min(30000,1200*Math.pow(2,Math.min(retryFailures-1,5))),token;
+      token=schedule(async function(){
+        if(retryTimer!==token)return;
+        retryTimer=null;
+        if(disposed||status==='conflict'||!binding||!record?.pending)return;
+        if(typeof window!=='undefined'&&window.navigator?.onLine===false)return;
+        return flush();
+      },delay);
+      retryTimer=token;
+      return true;
+    }
+    function resumeOnline(){
+      if(disposed||status==='conflict'||!binding||!record?.pending)return;
+      clearRetry();
+      Promise.resolve(flush()).catch(function(error){failed(error);});
+    }
+    if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('online',resumeOnline);
     function bindingKey(id){return PREFIX+'binding.'+encodeURIComponent(id);}
     function recordKey(b){return PREFIX+'school.'+encodeURIComponent(b.localId)+'.'+encodeURIComponent(b.schoolId);}
     function state(){return {status:status,binding:!!binding,schoolId:binding&&binding.schoolId,localId:binding&&binding.localId,revision:record&&record.revision,pending:!!(record&&(record.pending||record.pendingRef)),error:lastError};}
-    function notify(s,error){if(disposed)return;status=s;lastError=error||null;if(o.onStatus)o.onStatus(s,state());if(error&&o.onError)o.onError(error);if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard)window.BNWorkspaceOnlineGuard.update(s,error);}
+    function notify(s,error){if(disposed)return;if(s==='synced'){retryFailures=0;clearRetry();}else if(s==='conflict'||s==='local')clearRetry();status=s;lastError=error||null;if(o.onStatus)o.onStatus(s,state());if(error&&o.onError)o.onError(error);if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard)window.BNWorkspaceOnlineGuard.update(s,error);}
     function error(message){return new Error(message);}
     function changed(){var e=error('Another tab changed this school. Local records were retained.');e.code='CONFLICT';return e;}
     function watch(schoolId,localId){var values={};function add(b){[bindingKey(b.localId),recordKey(b)].forEach(function(k){if(!Object.prototype.hasOwnProperty.call(values,k))values[k]=storage.getItem(k);});}if(binding)add(binding);add({schoolId:String(schoolId),localId:String(localId)});return {add:add,valid:function(){return Object.keys(values).every(function(k){return storage.getItem(k)===values[k];});},check:function(){if(!this.valid())throw changed();}};}
@@ -139,7 +178,7 @@
     function consistent(){return binding&&storage.getItem(bindingKey(binding.localId))===JSON.stringify(binding)&&storage.getItem(recordKey(binding))===disk;}
     function sameInstitution(snapshot){return binding&&String(institutionId(snapshot))===binding.localId;}
     function conflict(e){notify('conflict',e||error('Another tab changed this school. Reload explicitly to preserve and resolve local changes.'));}
-    function failed(e){if(e&&(e.status===409||e.code==='CONFLICT'||/conflict|revision/i.test(e.message||'')))conflict(e);else notify('pending',e);}
+    function failed(e){if(e&&(e.status===409||e.code==='CONFLICT'||/conflict|revision/i.test(e.message||''))){conflict(e);return;}var willRetry=scheduleRetry(e);notify('pending',willRetry&&retryFailures<=2?null:e);}
     async function backup(snapshot){
       if(o.backup){await o.backup(clone(snapshot));return;}
       var key=PREFIX+'backup.'+Date.now()+'.'+(++serial)+'.'+Math.random().toString(36).slice(2);
@@ -207,10 +246,13 @@
         }
         return state();
       }
-      notify(binding?'pending':'local');return state();
+      notify(binding?'pending':'local');
+      if(binding&&record&&record.pending)scheduleRetry({code:'CLOUD_TIMEOUT'});
+      return state();
     }
     async function flush(){
       if(running)return running;
+      clearRetry();
       if(!binding||!record||!record.pending||status==='conflict')return state();
       if(!sameInstitution(o.getSnapshot())){binding=null;record=null;notify('local');return state();}
       running=(async function(){
@@ -353,8 +395,8 @@
       }catch(e){failed(e);}
       return state();
     }
-    function disconnect(){++generation;if(binding)storage.removeItem(bindingKey(binding.localId));binding=null;record=null;disk=null;notify('local');return state();}
-    function dispose(){disposed=true;++generation;binding=null;record=null;disk=null;if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(null);if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRecover)window.BNWorkspaceOnlineGuard.setRecover(null);}
+    function disconnect(){clearRetry();++generation;if(binding)storage.removeItem(bindingKey(binding.localId));binding=null;record=null;disk=null;notify('local');return state();}
+    function dispose(){disposed=true;clearRetry();if(typeof window!=='undefined'&&window.removeEventListener)window.removeEventListener('online',resumeOnline);++generation;binding=null;record=null;disk=null;if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(null);if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRecover)window.BNWorkspaceOnlineGuard.setRecover(null);}
     if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(function(){return sync();});
     if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRecover)window.BNWorkspaceOnlineGuard.setRecover(function(){return recoverCloudSchool();});
     return {dispose:dispose,initialize:initialize,openSchool:openSchool,uploadLocal:uploadLocal,autosave:autosave,sync:sync,recoverCloudSchool:recoverCloudSchool,disconnect:disconnect,state:state,connect:function(){return o.client.connect();}};

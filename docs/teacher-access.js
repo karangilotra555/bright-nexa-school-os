@@ -201,10 +201,11 @@
     }
   }
   function tab(name){
+    if(name==='dashboard'&&isAdmin()){location.assign('./index.html?openSchool=true&tab=Dashboard');return;}
     if(name==='admin'&&!isAdmin())return;
     if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
-    if($('portalStats'))$('portalStats').classList.toggle('hidden',isAdmin()&&name!=='dashboard');
+    if($('portalStats'))$('portalStats').classList.toggle('hidden',isAdmin());
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
     if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
     if(name==='timetable'&&window.BNTimetable)window.BNTimetable.activate({
@@ -268,7 +269,7 @@
     if($('accountEmailDisplay'))put('accountEmailDisplay',me.email);
     if($('accountRoleDisplay'))put('accountRoleDisplay',me.role.replaceAll('_',' ').toUpperCase());
     if($('accountNameInput'))$('accountNameInput').value=(myName&&myName!==me.email)?myName:'';
-    put('hello',me.role==='teacher'?'Teacher workspace':'School staff workspace');
+    put('hello',me.role==='teacher'?'Teacher workspace':isAdmin()?'School Admin tools':'School staff workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
     await loadRolePermissions();
     // Route only after Supabase Auth + tenant membership were verified above.
@@ -693,7 +694,7 @@
   function applyNavigationVisibility(){
     const role=me?.role||'teacher';
     const isAdm=isAdmin();
-    display('dashboardTab',isAdm);
+    display('dashboardTab',false); // Full ERP owns the Dashboard; this workspace keeps staff tools.
     display('adminTab',isAdm);
     display('librarianApp',isAdm||role==='librarian'||role==='principal');
     display('profilesTab',isAdm||isTabVisibleForRole('profiles',role));
@@ -710,7 +711,8 @@
     display('feesTab',isAdm||role==='accountant');
     document.querySelectorAll('[data-tab]').forEach(btn=>{
       const t=btn.dataset.tab;
-      if(t==='admin')btn.classList.toggle('hidden',!isAdm);
+      if(t==='dashboard')btn.classList.add('hidden');
+      else if(t==='admin')btn.classList.toggle('hidden',!isAdm);
       else if(t==='profiles')btn.classList.toggle('hidden',!(isAdm||isTabVisibleForRole('profiles',role)));
       else if(t!=='account'){
         btn.classList.toggle('hidden',!isTabVisibleForRole(t,role));

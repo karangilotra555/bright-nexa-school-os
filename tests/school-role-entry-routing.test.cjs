@@ -30,7 +30,7 @@ test('librarian with verified membership reaches library; explicit account link 
  assert.equal(roleDestination({role:'librarian',verified:true,membershipCount:1,search:'?view=account'}),null);
 });
 test('all seven real school roles have appropriate landing views',()=>{
- const expected={school_admin:'dashboard',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'};
+ const expected={school_admin:'classes',principal:'classes',teacher:'attendance',accountant:'fees',librarian:'account',receptionist:'profiles',transport_staff:'notices'};
  for(const [role,view] of Object.entries(expected))assert.equal(preferredView(role),view);
  assert.equal(preferredView('fabricated-role'),'account');
 });
@@ -75,5 +75,5 @@ test('empty-school re-registration is gated by a verified login and opens the da
  assert.match(js,/await api\('rpc\/register_first_school'/);
  assert.match(js,/await load\(String\(schoolId\)\)/);
  assert.match(js,/const allowedViews=\['dashboard'/);
- assert.match(read('school-role-entry.js'),/school_admin:'dashboard'/);
+ assert.match(read('school-role-entry.js'),/school_admin:'classes'/);
 });

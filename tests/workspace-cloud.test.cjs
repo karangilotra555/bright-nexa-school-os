@@ -83,3 +83,18 @@ test('historical attendance rejects a class missing from this school',()=>{
  s.operations.attendance[0].classId='foreign-class';
  assert.throws(()=>cloud.buildProjection(s,()=>[]),/unknown class reference/i);
 });
+
+test('rapid repeated school saves reuse JWT-bound verified membership for 15 seconds',async()=>{
+ const h=harness(),s=snapshot(),p=cloud.buildProjection(s,()=>[]);
+ await h.client.pull('school');await h.client.push('school',1,s,p);
+ assert.equal(h.calls.filter(x=>x.url.endsWith('/auth/v1/user')).length,1);
+ assert.equal(h.calls.filter(x=>x.url.includes('/school_users?')).length,1);
+ assert.equal(h.calls.filter(x=>x.url.includes('/institutions?')).length,1);
+ assert.equal(h.calls.filter(x=>x.url.endsWith('/rpc/school_workspace_push')).length,1);
+});
+test('membership optimization cannot give teacher admin rights',async()=>{
+ const h=harness({role:'teacher'});
+ await assert.rejects(h.client.pull('school'),/admin|access/i);
+ await assert.rejects(h.client.pull('school'),/admin|access/i);
+ assert.equal(h.calls.filter(x=>x.url.endsWith('/rpc/school_workspace_push')).length,0);
+});
