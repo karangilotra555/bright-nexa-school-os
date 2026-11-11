@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student ID Card Bulk Generator (A4 Print Sheets) — Bright Nexa School OS</title>
   <script src="./assets/qrcode.min.js"></script>
+  <script src="./school-workspace-cloud.js?v=20261111-attendance-leave-v1"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
 
@@ -39,6 +40,13 @@
       min-height: 100vh;
     }
 
+    /* Embedded within the authenticated ERP — leave its native sidebar visible. */
+    body.bn-embedded-print-page {padding:0;background:transparent}
+    body.bn-embedded-print-page .no-print-bar {width:100%;max-width:100%;box-shadow:none;border:1px solid #dae5f0}
+    .bn-print-back {display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#0b3860;text-decoration:none;font-weight:750;border:1px solid #cbd5e1;background:#f4f8fd;border-radius:8px;padding:7px 11px}
+    .bn-print-status {font-size:12px;color:#335c78;line-height:1.4;border:1px solid #cbddeb;padding:9px 12px;background:#f1f8ff;border-radius:8px}
+    .bn-print-status.error {background:#fff4f4;border-color:#edc6cc;color:#94344a}
+    @media print {.bn-print-back,.bn-print-status {display:none!important}}
     /* Top Control Bar */
     .no-print-bar {
       width: 210mm;
@@ -591,24 +599,140 @@
         height: 297mm !important;
       }
     }
+
+    /* Professional ID production console — screen only; A4 dimensions stay exact. */
+    @media screen {
+      body { background: #edf2f8; padding: 24px 12px 48px; }
+      .no-print-bar { border: 1px solid #d9e4f1; border-top: 4px solid #0e9ed1; border-radius: 18px; padding: 20px 22px; box-shadow: 0 12px 38px rgba(11,37,69,.08); gap: 16px; }
+      .bar-title h2 { font-size: 21px; letter-spacing: -.4px; }
+      .bar-title p { font-size: 12px; line-height: 1.5; }
+      .control-actions { gap: 8px; }
+      .control-actions .btn { min-height: 38px; padding: 9px 12px; }
+      .filter-bar-row { gap: 10px; padding-top: 15px; border-top: 1px solid #e4ebf4; }
+      .filter-bar-row select { min-height: 38px; }
+      .search-input-box { min-width: min(100%, 290px); }
+      .search-input-box input { min-height: 38px; }
+      .badge-count { padding: 10px 12px; }
+      .a4-sheet { box-shadow: 0 16px 42px rgba(11,37,69,.13); }
+      .photo-frame { background: linear-gradient(135deg,#e9f3fc,#f8fbff); border: 1px solid #8fa9c3; }
+      .student-name { font-size: 8pt; }
+      .qr-container { background: #f8fafc; }
+    }
+    .photo-upload-label { font-size: 12px; font-weight: 700; color: #334155; }
+    .photo-upload-hint { font-size: 11px; color: #64748b; line-height: 1.45; }
+    @media print { .photo-upload-controls { display:none !important; } }
+
+    /* Industry-standard CR80 portrait PVC cards: 54 mm wide x 85.6 mm tall.
+       One student's front and back sit beside each other; 3 complete sets per A4. */
+    .a4-sheet {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto repeat(3, 85.6mm);
+      column-gap: 0;
+      row-gap: 4mm;
+      justify-items: center;
+      align-content: start;
+      padding: 8mm 6mm;
+    }
+    .sheet-meta-tag { grid-column: 1; }
+    .id-card-vertical {
+      box-sizing: border-box;
+      width: 108mm;
+      height: 85.6mm;
+      padding: 0;
+      gap: 0;
+      border: 1px dashed #94a3b8;
+      border-radius: 0;
+      background: white;
+    }
+    .card-side {
+      box-sizing: border-box;
+      width: 54mm;
+      height: 85.6mm;
+      flex: 0 0 54mm;
+      border-radius: 0;
+      box-shadow: none;
+      border: 0.25mm solid #dbe5ef;
+    }
+    .card-header { padding-top: 5mm; padding-bottom: 4mm; }
+    .school-logo-img { width: 9mm; height: 9mm; }
+    .school-title { font-size: 8pt; }
+    .school-tagline { font-size: 5pt; }
+    .card-body { padding: 3mm 3mm 2mm; }
+    .photo-frame { width: 24mm; height: 29mm; margin-bottom: 2mm; }
+    .student-name { font-size: 10pt; max-width: 46mm; white-space: normal; }
+    .class-badge { font-size: 6pt; }
+    .info-list { font-size: 6pt; }
+    .back-body { padding: 3mm; font-size: 6pt; }
+    .back-header { font-size: 7pt; padding: 2.5mm; }
+    .qr-canvas { width: 17mm; height: 17mm; flex-shrink: 0; }
+    .qr-text { font-size: 5pt; }
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      .a4-sheet { padding: 8mm 6mm !important; }
+      .id-card-vertical { break-inside: avoid; }
+    }
+
+    /* CR80 portrait card production refinements */
+    .id-card-vertical .card-side { min-height: 85.6mm; }
+    .id-card-vertical .card-header { min-height: 18mm; padding: 3.5mm 2.5mm 2.5mm 13mm; display: flex; flex-direction: column; justify-content: center; }
+    .id-card-vertical .school-logo-img { left: 2.5mm; top: 4mm; width: 9mm; height: 9mm; }
+    .id-card-vertical .school-title { margin-left: 0; font-size: 7.2pt; line-height: 1.12; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; max-height: 11mm; }
+    .id-card-vertical .school-tagline { margin-left: 0; font-size: 4.5pt; line-height: 1.2; }
+    .id-card-vertical .card-body { justify-content: flex-start; padding: 2.5mm 3mm 1mm; }
+    .id-card-vertical .photo-frame { width: 23mm; height: 27mm; flex-shrink: 0; margin-bottom: 1.7mm; background: #eaf2fb; }
+    .id-card-vertical .photo-frame img { display: block; object-fit: cover; }
+    .id-card-vertical .student-name { font-size: 9pt; line-height: 1.2; max-width: 47mm; white-space: normal; overflow-wrap: anywhere; }
+    .id-card-vertical .class-badge { margin-bottom: 2mm; }
+    .id-card-vertical .info-list { width: 100%; font-size: 6pt; margin-top: 1mm; }
+    .id-card-vertical .info-row { min-height: 3.1mm; align-items: center; }
+    .id-card-vertical .info-label { font-size: 5.6pt; }
+    .id-card-vertical .info-val { font-size: 5.7pt; overflow-wrap: anywhere; }
+    .id-card-vertical .card-footer { min-height: 6mm; }
+    .id-card-vertical .card-side:nth-child(2) { background: linear-gradient(180deg,#fff 0%,#f7faff 100%); }
+    .id-card-vertical .qr-container { max-width: 100%; }
+    .id-card-vertical .qr-canvas { width: 18mm; height: 18mm; }
+
+    /* Separate 54 x 85.6 mm CR80 portrait cards for front/back sheet production. */
+    .a4-sheet { grid-template-columns: 1fr 1fr; grid-template-rows: auto repeat(3,85.6mm); column-gap: 5mm; row-gap: 4mm; }
+    .sheet-meta-tag { grid-column: 1 / -1; }
+    .id-card-vertical { width: 54mm; height: 85.6mm; border: 0.25mm dashed #94a3b8; }
+    .id-card-vertical .card-side { width: 54mm; height: 85.6mm; flex: 0 0 54mm; }
+    body[data-print-side="front"] .id-card-vertical .card-side:nth-child(2),
+    body[data-print-side="back"] .id-card-vertical .card-side:first-child { display: none; }
+    body[data-print-side="back"] .id-card-vertical .card-side:nth-child(2) { display: flex; }
+    body[data-print-side="both"] .a4-sheet { grid-template-columns: 1fr; }
+    body[data-print-side="both"] .id-card-vertical { width: 112mm; gap: 4mm; }
+    body[data-print-side="both"] .id-card-vertical .card-side { display: flex; }
+    @media print {
+      body[data-print-side="both"] .id-card-vertical .card-side:nth-child(2) { display: none; }
+      body[data-print-side="both"] .id-card-vertical { width: 54mm; }
+      body[data-print-side="both"] .a4-sheet { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
 
   <!-- Top Action Control Bar -->
+  <a class="bn-print-back" id="bnPrintBack" href="./index.html?openSchool=true&tab=Students">← Back to School OS</a>
   <div class="no-print-bar">
     <div class="bar-top-row">
       <div class="bar-title">
         <h2>🪪 Student ID Card Bulk Generator</h2>
-        <p>A4 Batch Print Engine (8 ID Cards per sheet with Front & Back fold guides)</p>
+        <p>A4 Batch Print Engine (3 students per A4 sheet · CR80 portrait (54 × 85.6 mm) front and back)</p>
       </div>
 
       <div class="control-actions">
-        <!-- Live vs Demo Indicator Pill -->
+        <!-- Authenticated cloud state is shown separately from local fallback. -->
         <span class="data-source-pill source-live" id="dataSourcePill">
-          🟢 Live School Records
+          ◌ Checking school cloud…
         </span>
 
+        <label for="printSideMode" style="font-size:12px;font-weight:700;color:#334155">Print side:</label>
+        <select id="printSideMode" onchange="setIdPrintSide(this.value)" aria-label="Choose ID card print side" style="min-height:38px;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px">
+          <option value="front">Front sheet</option>
+          <option value="back">Back sheet</option>
+          <option value="both">Preview both</option>
+        </select>
         <button class="btn btn-primary" onclick="handlePrint()">
           🖨️ Print A4 Sheets
         </button>
@@ -625,15 +749,25 @@
           📜 TC Certificate
         </a>
 
-        <a href="student-portal.html" class="btn btn-gold" style="text-decoration:none;">
+        <a href="https://bright-nexa-school-os-api.onrender.com/student-portal.html" class="btn btn-gold" style="text-decoration:none;">
           📱 Student Portal
         </a>
 
-        <button class="btn btn-secondary" onclick="loadSchoolOSData()">
+        <button class="btn btn-secondary" id="reloadVerified" onclick="loadSchoolOSData()">
           🔄 Reload Data
         </button>
       </div>
     </div>
+
+    <div class="photo-upload-controls" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:#f0f7ff;border:1px solid #d9e9f8;">
+      <label class="photo-upload-label" for="idPhotoStudent">Student photo:</label>
+      <select id="idPhotoStudent" aria-label="Choose student for photo"><option value="">Select student</option></select>
+      <input id="idPhotoFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload student portrait" style="max-width:220px">
+      <button class="btn btn-secondary" type="button" onclick="clearIdPhoto()">Remove photo</button>
+      <span class="photo-upload-hint">Saved student photos load from Supabase automatically. Choose File is only a temporary print preview; save permanent photos in Students.</span>
+    </div>
+
+    <div class="bn-print-status" role="status" aria-live="polite" id="bnPrintCloudStatus">Checking Supabase for the verified school roster and saved photographs…</div>
 
     <!-- Filters & Search Bar Row -->
     <div class="filter-bar-row">
@@ -716,134 +850,18 @@
     }
 
     // ==========================================
-    // 2. CRYPTOGRAPHIC HMAC-SHA256 SIGNATURE & GENUINE QR
-    // ==========================================
-    function normalizeDate(str) {
-      if (!str) return '';
-      const clean = String(str).trim();
-      const mIso = clean.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
-      if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
-      const mDmy = clean.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-      if (mDmy) return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
-      return clean;
-    }
+    // 2. STUDENT PORTAL QR — VERIFICATION REQUIRES SCHOOL-SIGNED ECDSA.
+    // Never produce a purportedly official signature from client JavaScript,
+    // localStorage or a hard-coded secret. The old local HMAC did not match
+    // the school API's ECDSA P-256 verifier and could be forged.
+    // This generator creates only an UNVERIFIED preview ID until the school's
+    // authenticated server-side signing workflow is connected.
+    const SCHOOL_VERIFICATION_PORTAL =
+      'https://bright-nexa-school-os-api.onrender.com/student-portal.html';
 
-    function sha256(ascii) {
-      function rightRotate(value, amount) {
-        return (value >>> amount) | (value << (32 - amount));
-      }
-      var mathPow = Math.pow;
-      var maxWord = mathPow(2, 32);
-      var lengthProperty = 'length';
-      var i, j;
-      var result = '';
-      var words = [];
-      var asciiBitLength = ascii[lengthProperty] * 8;
-      var hash = sha256.h = sha256.h || [];
-      var k = sha256.k = sha256.k || [];
-      var primeCounter = k[lengthProperty];
-      var isComposite = {};
-      for (var candidate = 2; primeCounter < 64; candidate++) {
-        if (!isComposite[candidate]) {
-          for (i = 0; i < 313; i += candidate) isComposite[i] = candidate;
-          hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
-          k[primeCounter++] = (mathPow(candidate, 1/3) * maxWord) | 0;
-        }
-      }
-      hash = hash.slice(0);
-      ascii += '\x80';
-      while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
-      for (i = 0; i < ascii[lengthProperty]; i++) {
-        j = ascii.charCodeAt(i);
-        words[i >> 2] |= j << ((3 - i) % 4) * 8;
-      }
-      words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
-      words[words[lengthProperty]] = (asciiBitLength | 0);
-      for (j = 0; j < words[lengthProperty];) {
-        var w = words.slice(j, j += 16);
-        var oldHash = hash;
-        hash = hash.slice(0, 8);
-        for (i = 0; i < 64; i++) {
-          var w15 = w[i - 15], w2 = w[i - 2];
-          var s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
-          var s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
-          var ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
-          var maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
-          var temp1 = hash[7] + (rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25)) + ch + k[i] + (w[i] = (i < 16) ? w[i] : (w[i - 16] + s0 + w[i - 7] + s1) | 0);
-          var temp2 = (rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22)) + maj;
-          hash = [(temp1 + temp2) | 0].concat(hash);
-          hash[4] = (hash[4] + temp1) | 0;
-        }
-        for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
-      }
-      for (i = 0; i < 8; i++) {
-        for (j = 3; j + 1; j--) {
-          var b = (hash[i] >> (j * 8)) & 255;
-          result += ((b < 16) ? 0 : '') + b.toString(16);
-        }
-      }
-      return result;
-    }
-
-    function hexToAscii(hex) {
-      var str = '';
-      for (var i = 0; i < hex.length; i += 2) {
-        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-      }
-      return str;
-    }
-
-    function hmacSha256(key, message) {
-      var blockSize = 64;
-      if (key.length > blockSize) key = sha256(key);
-      while (key.length < blockSize) key += '\x00';
-      var oKeyPad = '', iKeyPad = '';
-      for (var i = 0; i < blockSize; i++) {
-        var kByte = key.charCodeAt(i);
-        oKeyPad += String.fromCharCode(kByte ^ 0x5c);
-        iKeyPad += String.fromCharCode(kByte ^ 0x36);
-      }
-      return sha256(oKeyPad + hexToAscii(sha256(iKeyPad + message)));
-    }
-
-    const DEFAULT_INSTITUTION_KEY = 'bn_sec_key_7500058655_brightnexa_2026_cbse_v1';
-
-    function getSchoolSigningKey() {
-      const STORAGE_KEY = 'bright-nexa-school-os:signing-key:v1';
-      let key = localStorage.getItem(STORAGE_KEY);
-      if (!key || key.length < 32) {
-        try {
-          const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-          if (snapRaw) {
-            const snap = JSON.parse(snapRaw);
-            if (snap.institution && snap.institution.verificationSecretKey) {
-              key = snap.institution.verificationSecretKey;
-            }
-          }
-        } catch(e) {}
-      }
-      if (!key || key.length < 32) {
-        key = DEFAULT_INSTITUTION_KEY;
-        try {
-          localStorage.setItem(STORAGE_KEY, key);
-        } catch(e) {}
-      }
-      return key;
-    }
-
-    function computeStudentHMAC(st, inst) {
-      const key = getSchoolSigningKey();
-      const dobNorm = normalizeDate(st?.dob || st?.dateOfBirth || '');
-      const msg = `${inst?.name || 'Bright Nexa'}|${inst?.session || '2026-27'}|${st?.admissionNumber || ''}|${st?.rollNumber || ''}|${dobNorm}`;
-      return hmacSha256(key, msg).slice(0, 16).toUpperCase();
-    }
-
-    function getVerificationUrl(st, sig) {
-      const isWeb = window.location.protocol.startsWith('http');
-      const base = isWeb 
-        ? (window.location.origin + window.location.pathname.replace('id-card-a4.html', 'student-portal.html'))
-        : 'https://bright-nexa-school-os.onrender.com/student-portal.html';
-      return `${base}?action=verify&adm=${encodeURIComponent(st.admissionNumber)}&sig=${encodeURIComponent(sig)}`;
+    function getVerificationUrl(st) {
+      return SCHOOL_VERIFICATION_PORTAL
+        + '?action=verify&adm=' + encodeURIComponent(st.admissionNumber);
     }
 
     // Standard ISO/IEC 18004 QRCode Canvas renderer with error correction
@@ -881,6 +899,13 @@
     ];
 
     // State Variables
+    const isEmbedded = new URLSearchParams(location.search).get('embedded') === '1';
+    if (isEmbedded) {
+      document.body.classList.add('bn-embedded-print-page');
+      document.getElementById('bnPrintBack')?.remove();
+    }
+    let lastVerifiedCloudRevision = null;
+    let cloudLoadRequest = 0;
     let liveStudents = [];
     let activeStudents = [];
     let isDemoMode = false;
@@ -896,6 +921,66 @@
       logoUrl: "app-icon-512.png"
     };
 
+    function fromSchoolStudent(s,idx) {
+      const rawClass = String(s.className || '').trim();
+      const cName = rawClass ? (/^class\s/i.test(rawClass) ? rawClass : 'Class ' + rawClass) : 'Unassigned class';
+      return {
+        id: s.id || String(idx+1), name: String(s.name || 'Unnamed student').toUpperCase(),
+        rollNumber: s.rollNumber == null ? '' : String(s.rollNumber).padStart(2,'0'),
+        admissionNumber: String(s.admissionNumber || ''), className:cName,section:s.section||'',
+        fatherName: String(s.fatherName || s.guardianName || '').toUpperCase(),
+        contactNumber:s.parentMobile||s.contactNumber||s.phone||s.alternateMobile||'',
+        bloodGroup:s.bloodGroup||'',dob:s.dateOfBirth||s.dob||'',
+        address:s.address||'',busStop:s.busStop||s.transportRoute||'',
+        photoUrl:s.photoDataUrl||s.photoUrl||s.avatarUrl||null,isDemo:false
+      };
+    }
+    function reportCloudState(message,isError) {
+      const node=document.getElementById('bnPrintCloudStatus');
+      if(!node)return;
+      node.textContent=message;
+      node.classList.toggle('error',!!isError);
+    }
+    async function refreshSchoolCloudData() {
+      const requestId=++cloudLoadRequest;
+      lastVerifiedCloudRevision=null;
+      reportCloudState('Reading your verified school records and student photographs from Supabase…',false);
+      const cloud=window.BNWorkspaceCloud;
+      if(!cloud?.create) {
+        reportCloudState('Cloud adapter not loaded. Only unsynced device preview is available; reload the page.',true);
+        updateSourceUI();return;
+      }
+      try {
+        const client=cloud.create({fetcher:window.fetch.bind(window),sessionStorage:window.sessionStorage});
+        const schools=await client.connect();
+        const requestedId=new URLSearchParams(window.location.search).get('schoolId')||'';
+        const school=requestedId?schools.find(s=>s.id===requestedId):(schools.length===1?schools[0]:null);
+        if(!school)throw Error(requestedId?'School is not authorized for this login. Open the correct school in ERP.':'Choose an authorized school from Staff Login before opening the ID card generator.');
+        const response=await client.pull(school.id);
+        if(requestId!==cloudLoadRequest)return;
+        const snapshot=response?.snapshot;
+        if(!snapshot||!Array.isArray(snapshot.students)||!snapshot.institution?.institution)throw Error('Cloud school roster was incomplete. Local preview is unchanged.');
+        const profile=snapshot.institution.institution;
+        institution.name=profile.name||school.name;
+        institution.tagline=profile.tagline||'';
+        institution.address=[profile.address,profile.city,profile.state].filter(Boolean).join(', ');
+        institution.phone=profile.contactNumber||'';
+        institution.session=profile.session||'';
+        institution.principalName=profile.principalName||'';
+        institution.logoUrl=profile.logoDataUrl||'app-icon-512.png';
+        liveStudents=snapshot.students.map(fromSchoolStudent);
+        lastVerifiedCloudRevision=response.revision;
+        if(!isDemoMode)activeStudents=liveStudents;
+        const missing=liveStudents.filter(s=>!s.photoUrl).length;
+        reportCloudState('Supabase confirmed · Revision '+response.revision+' · '+liveStudents.length+' students · '+(liveStudents.length-missing)+' saved photos'+(missing?', '+missing+' without saved photos':'')+'.',false);
+        updateSourceUI();populateFilters();
+      } catch(error) {
+        if(requestId!==cloudLoadRequest)return;
+        lastVerifiedCloudRevision=null;
+        reportCloudState('Supabase records could not be verified: '+(error?.message||'Unknown error')+'. Showing device-only preview; do not treat it as synced.',true);
+        updateSourceUI();
+      }
+    }
     function loadSchoolOSData() {
       try {
         // Read Institution Profile
@@ -955,9 +1040,11 @@
         activeStudents = SAMPLE_DEMO_STUDENTS;
       }
 
+      lastVerifiedCloudRevision=null;
       updateSourceUI();
       populateFilters();
       renderCards();
+      void refreshSchoolCloudData();
     }
 
     function toggleDemoMode() {
@@ -987,7 +1074,7 @@
       } else {
         if (pill) {
           pill.className = 'data-source-pill source-live';
-          pill.innerHTML = `🟢 Live Records (${liveStudents.length})`;
+          pill.innerHTML = lastVerifiedCloudRevision===null ? `🟠 Device preview (${liveStudents.length})` : `🟢 Supabase Records (${liveStudents.length})`;
         }
         if (toggleBtn) {
           toggleBtn.className = 'btn btn-secondary';
@@ -997,6 +1084,10 @@
       }
     }
 
+    function setIdPrintSide(mode) {
+      document.body.dataset.printSide = ['front','back','both'].includes(mode) ? mode : 'front';
+    }
+    document.addEventListener('DOMContentLoaded', () => setIdPrintSide(document.getElementById('printSideMode')?.value || 'front'));
     function handlePrint() {
       if (isDemoMode) {
         const proceed = window.confirm(
@@ -1053,7 +1144,38 @@
       renderCards();
     }
 
+    const idPhotoOverrides = new Map();
+    function syncIdPhotoStudents() {
+      const picker = document.getElementById('idPhotoStudent');
+      if (!picker) return;
+      const previous = picker.value;
+      picker.replaceChildren(new Option('Select student', ''));
+      for (const st of activeStudents) picker.add(new Option(st.name + ' · ' + st.className, String(st.id)));
+      if ([...picker.options].some(o => o.value === previous)) picker.value = previous;
+    }
+    function clearIdPhoto() {
+      const key = document.getElementById('idPhotoStudent')?.value;
+      if (!key) return alert('Choose a student first.');
+      idPhotoOverrides.delete(key);
+      document.getElementById('idPhotoFile').value = '';
+      renderCards();
+    }
+    document.addEventListener('change', async function(event) {
+      if (event.target?.id !== 'idPhotoFile') return;
+      const key = document.getElementById('idPhotoStudent')?.value;
+      const file = event.target.files?.[0];
+      if (!key || !file) { alert('Choose a student and photo first.'); return; }
+      if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 3 * 1024 * 1024) {
+        alert('Choose a JPG, PNG or WebP image smaller than 3 MB.');
+        event.target.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => { idPhotoOverrides.set(key, reader.result); renderCards(); };
+      reader.readAsDataURL(file);
+    });
     function renderCards() {
+      syncIdPhotoStudents();
       const query = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
       const selectedClass = document.getElementById('classFilter')?.value || 'ALL';
       const selectedStudentId = document.getElementById('studentFilter')?.value || 'ALL';
@@ -1127,7 +1249,7 @@
       }
 
       // Chunk list into groups of 8 (A4 batch sheets)
-      const chunkSize = 8;
+      const chunkSize = 3;
       const totalPages = Math.ceil(list.length / chunkSize);
 
       for (let p = 0; p < totalPages; p++) {
@@ -1147,15 +1269,16 @@
         pageStudents.forEach((st, idx) => {
           const globalIdx = p * chunkSize + idx;
           const cleanInitials = (st.name || 'ST').replace(/[^A-Za-z0-9 ]/g, '').split(' ').map(w => w[0]).slice(0, 2).join('');
-          const avatarSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120" viewBox="0 0 100 120"><rect width="100" height="120" fill="%230b2545"/><circle cx="50" cy="45" r="22" fill="%23fef9c3"/><rect x="25" y="75" width="50" height="40" rx="10" fill="%230284c7"/><text x="50" y="52" font-family="Arial" font-size="16" font-weight="bold" fill="%230b2545" text-anchor="middle">${cleanInitials}</text></svg>`;
-          const photoSrc = sanitizeImageUrl(st.photoUrl, avatarSvg);
+          const avatarSvg = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120"><rect width="100" height="120" fill="#eaf2fb"/><circle cx="50" cy="42" r="21" fill="#9ebbd6"/><path d="M15 118v-17c0-21 17-34 35-34s35 13 35 34v17" fill="#18588f"/></svg>');
+          const photoSrc = sanitizeImageUrl(idPhotoOverrides.get(String(st.id)) || st.photoUrl, avatarSvg);
           const schoolLogoSrc = sanitizeImageUrl(institution.logoUrl, 'app-icon-512.png');
           
-          // Generate Cryptographic HMAC-SHA256 signature
-          const sig = computeStudentHMAC(st, institution);
+          // No client-side signatures: the school must issue its credential through the server.
 
           // Specimen watermark HTML for demo cards
-          const watermarkHtml = isDemoMode ? `<div class="watermark-specimen">SAMPLE SPECIMEN • NOT OFFICIAL</div>` : '';
+          const watermarkHtml = isDemoMode
+            ? `<div class="watermark-specimen">SAMPLE SPECIMEN • NOT OFFICIAL</div>`
+            : `<div class="watermark-specimen">UNVERIFIED PREVIEW • NOT OFFICIAL</div>`;
 
           const cardHtml = `
             <div class="id-card-vertical" id="card-${globalIdx}">
@@ -1170,7 +1293,7 @@
 
                 <div class="card-body">
                   <div class="photo-frame">
-                    <img src="${photoSrc}" alt="${escapeHtml(st.name)}" onerror="this.src='${avatarSvg}'">
+                    <img src="${photoSrc}" alt="${escapeHtml(st.name)}" onerror="this.onerror=null;this.src='${avatarSvg}'">
                   </div>
                   <div class="student-name">${escapeHtml(st.name)}</div>
                   <div class="class-badge">${escapeHtml(st.className)} - ${escapeHtml(st.section)}</div>
@@ -1186,7 +1309,7 @@
                     </div>
                     <div class="info-row">
                       <span class="info-label">Father:</span>
-                      <span class="info-val" style="font-size: 4.2pt;">${escapeHtml(st.fatherName)}</span>
+                      <span class="info-val">${escapeHtml(st.fatherName)}</span>
                     </div>
                     <div class="info-row">
                       <span class="info-label">Phone:</span>
@@ -1231,9 +1354,9 @@
                   <div class="qr-container">
                     <canvas id="qr-${globalIdx}" class="qr-canvas"></canvas>
                     <div class="qr-text">
-                      <strong>DIGITAL CREDENTIAL</strong><br>
-                      Scan to verify student admission & institutional authenticity.
-                      <span class="qr-verify-code">HMAC SIG: ${escapeHtml(sig)}</span>
+                      <strong>STUDENT ID PREVIEW</strong><br>
+                      Scan to request school-server verification; this preview is not signed.
+                      <span class="qr-verify-code">SERVER SIGNATURE PENDING</span>
                     </div>
                   </div>
 
@@ -1245,7 +1368,7 @@
                 </div>
 
                 <div class="card-footer" style="background: #0f172a; color: #94a3b8; font-size: 3.6pt; justify-content: center; letter-spacing: 0.3px;">
-                  BRIGHT NEXA SCHOOL OS • DIGITALLY VERIFIED STUDENT PASS
+                  BRIGHT NEXA SCHOOL OS • SERVER VERIFICATION REQUIRED
                 </div>
               </div>
             </div>
@@ -1257,7 +1380,7 @@
           setTimeout(() => {
             const canvas = document.getElementById(`qr-${globalIdx}`);
             if (canvas) {
-              const verifyUrl = getVerificationUrl(st, sig);
+              const verifyUrl = getVerificationUrl(st);
               generateRealQRCode(canvas, verifyUrl);
             }
           }, 10);
@@ -1286,8 +1409,9 @@
     }
 
     // Auto-init on load
-    window.addEventListener('DOMContentLoaded', loadSchoolOSData);
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', loadSchoolOSData, {once:true});
+    } else {
       loadSchoolOSData();
     }
   </script>
