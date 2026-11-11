@@ -239,10 +239,31 @@
       if(binding&&((record.pending&&fingerprint(record.pending)!==fingerprint(o.getSnapshot()))||(!record.pending&&record.fingerprint!==fingerprint(o.getSnapshot())))){
         conflict(error('Saved browser records differ from the school workspace. No local changes were uploaded.'));
         if(verifiedExplicitOpen()){
-          // Verified explicit login: back up current and queued records, then
-          // reopen the authorized cloud copy without publishing local edits.
-          try{await openSchool(binding.schoolId);}
-          catch(_){ /* openSchool retains an actionable conflict/error state */ }
+          // An older browser checksum can disagree even when the actual clean
+          // local school is byte-for-byte equal to the cloud. Confirm that
+          // against the raw Supabase workspace before changing any metadata.
+          // Never use this shortcut if an older pending edit is present.
+          try{
+            if(record&&!record.pending&&!record.pendingRef&&typeof o.client.readback==='function'){
+              var beforeFingerprint=fingerprint(o.getSnapshot()), b=binding, r=record, checkpoint=generation;
+              var confirmed=await o.client.readback(b.schoolId);
+              if(confirmed?.snapshot&&Number.isSafeInteger(confirmed.revision)
+                &&String(institutionId(confirmed.snapshot))===b.localId
+                &&fingerprint(confirmed.snapshot)===beforeFingerprint
+                &&checkpoint===generation&&binding===b&&record===r
+                &&consistent()&&fingerprint(o.getSnapshot())===beforeFingerprint){
+                await persist({...r,revision:confirmed.revision,fingerprint:beforeFingerprint,pending:null});
+                notify('synced');
+                return state();
+              }
+            }
+            // Genuine mismatch: only the verified owner on an explicit school
+            // launch can reopen the cloud copy, after *verified* backups of
+            // the current device and any separately queued pending changes.
+            await openSchool(binding.schoolId);
+          }catch(e){
+            conflict(error('Automatic cloud recovery could not finish safely: '+(e?.message||'Unknown error')+'. Local records and pending edits were not uploaded or deleted. Use Open cloud school (back up device first) after resolving the stated error.'));
+          }
         }
         return state();
       }
