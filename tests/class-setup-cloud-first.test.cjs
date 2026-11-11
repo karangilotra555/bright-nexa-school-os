@@ -51,9 +51,9 @@ test('all shipped UI and cloud files match, with cache-busting versions', () => 
     const index = read(dir+'index.html');
     const sw = read(dir+'sw.js');
     assert.match(index, /school-workspace-cloud\.js\?v=20261111-raw-readback-v1/);
-    assert.match(index, /school-erp-entry\.js\?v=20261111-teacher-confirm-v1/);
+    assert.match(index, /school-erp-entry\.js\?v=20261111-teacher-modal-guard-v1/);
     assert.match(sw, /school-workspace-cloud\.js\?v=20261111-raw-readback-v1/);
-    assert.match(sw, /school-erp-entry\.js\?v=20261111-teacher-confirm-v1/);
-    assert.match(read(dir+'school-erp-entry.js'), /index-brightnexa-v2\.js\?v=20261111-teacher-confirm-v1/);
+    assert.match(sw, /school-erp-entry\.js\?v=20261111-teacher-modal-guard-v1/);
+    assert.match(read(dir+'school-erp-entry.js'), /index-brightnexa-v2\.js\?v=20261111-teacher-modal-guard-v1/);
   }
 });
