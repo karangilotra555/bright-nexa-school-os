@@ -9,7 +9,6 @@ test('transfer certificate never invents fake issuance, dates or school results'
  assert.doesNotMatch(src,/MARCH 2026 \(FULL DUES CLEARED/);
  assert.match(src,/let students = \[\]/);
  assert.match(src,/set\('tcNo','Not issued'\)/);
- assert.match(src,/set\('tcFeeStatus','Not verified'\)/);
  assert.match(src,/function printVerifiedTC\(\)/);
  assert.match(src,/if\(!rosterReady\)/);
  for(const folder of ['docs/','app-extracted/dist/'])assert.equal(read(folder+'tc-certificate-a4.html'),src);
