@@ -182,6 +182,31 @@
   const isAdmin=()=>me?.role==='school_admin';
   const teacher=()=>me?.role==='teacher';
   const canAcademic=()=>['school_admin','principal','teacher'].includes(me?.role);
+  // Website is for school office roles. Teacher/student daily work uses
+  // the installed mobile PWA or trusted app WebView. This is a UX boundary;
+  // Supabase RLS remains the actual authorization control.
+  function isMobileAppContext(win=window){
+    const agent=String(win.navigator?.userAgent||'');
+    const mobile=/Android|iPhone|iPad|iPod/i.test(agent);
+    const installed=win.matchMedia?.('(display-mode: standalone)')?.matches===true
+      || win.navigator?.standalone===true;
+    const androidApp=/Android/i.test(agent)&&/(; wv\)|\bwv\b)/i.test(agent);
+    return mobile&&(installed||androidApp);
+  }
+  function showMobileOnlyNotice(){
+    const section=$('portalSection');
+    if(!section)return;
+    // No student, teacher, roster or finance request is made after this gate.
+    const page=document.createElement('section');
+    page.id='teacherMobileOnlyNotice';page.setAttribute('role','status');
+    page.style.cssText='max-width:580px;margin:48px auto;padding:28px;background:white;border:1px solid #dce6ef;border-radius:16px;color:#0b2545;box-shadow:0 10px 35px #061a3612';
+    const h=document.createElement('h2');h.textContent='Teacher access is available in the mobile app';
+    const p=document.createElement('p');p.textContent='For school security, teacher attendance, homework and marks are managed from the installed Bright Nexa Teacher app. The school office website is reserved for authorized Owner/Admin, Accountant and office staff.';
+    const link=document.createElement('a');link.href='./parent-app-download.html';link.textContent='Open mobile app instructions';link.style.cssText='display:inline-flex;padding:11px 15px;background:#0b315e;color:white;border-radius:10px;text-decoration:none;font-weight:700';
+    page.append(h,p,link);
+    section.replaceChildren(page);
+    display('loginSection',false);display('portalSection',true);display('logout',true);
+  }
   const className=c=>c?c.name+' '+(c.section||'')+' ('+c.academic_year+')':'Unknown class';
   function clearChildren(e){e.replaceChildren();}
   function options(target,records,label){
@@ -287,6 +312,10 @@
     if($('accountNameInput'))$('accountNameInput').value=(myName&&myName!==me.email)?myName:'';
     put('hello',me.role==='teacher'?'Teacher workspace':isAdmin()?'School Admin tools':'School staff workspace');
     put('rolePill',me.role.replaceAll('_',' ').toUpperCase());
+    if(me.role==='teacher'&&!isMobileAppContext()){
+      showMobileOnlyNotice();
+      return;
+    }
     await loadRolePermissions();
     // Route only after Supabase Auth + tenant membership were verified above.
     const next=window.BNSchoolRoleEntry?.roleDestination({
