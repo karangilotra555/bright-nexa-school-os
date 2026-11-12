@@ -115,7 +115,7 @@
       }
       if(content.includes('fees collected this month')){
         card.dataset.bnFeesNote='true';
-        card.title='Amount is filtered to this month. The existing receipt count covers all dates in this browser workspace; check cloud confirmation.';
+        card.title='Amount and receipt count cover this month only. They come from the current ERP workspace; verify cloud status before treating them as published.';
       }
     }
   }
@@ -126,7 +126,7 @@
       '.bn-sync-status-badge[aria-invalid="true"] span:nth-child(2){font-size:0!important}',
       '.bn-sync-status-badge[aria-invalid="true"] span:nth-child(2)::after{content:"Sync conflict — not published";font-size:12px;font-weight:700}',
       '.metric-grid .metric-card[data-bn-attendance-note="true"]::after{content:"Recorded entries only · verify coverage";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
-      '.metric-grid .metric-card[data-bn-fees-note="true"]::after{content:"Receipt count includes all dates";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
+      '.metric-grid .metric-card[data-bn-fees-note="true"]::after{content:"Current-month receipts · verify cloud";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
       '.metric-grid .metric-card[data-bn-cloud-count]::after{content:attr(data-bn-cloud-count);display:block;font-size:11px;color:#155a83;line-height:1.4;margin-top:5px}'
     ].join(' ');
     doc.head.append(style);
