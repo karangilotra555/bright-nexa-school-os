@@ -15,6 +15,7 @@ function harness(options = {}) {
       borderColor: '', color: '', background: '',
       removeProperty(name) { this[name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = ''; }
     },
+    hasAttribute(name) { return attrs.has(name); },
     getAttribute(name) { return attrs.has(name) ? attrs.get(name) : null; },
     setAttribute(name, value) { attrs.set(name, String(value)); },
     removeAttribute(name) { attrs.delete(name); }
@@ -94,5 +95,16 @@ test('status label returns to normal after a verified sync', () => {
   app.setCloudStatus({ status: 'synced', problem: '' });
   app.api.scan();
   assert.equal(app.badge.getAttribute('aria-invalid'), null);
+  assert.equal(app.badge.dataset.bnCloudWarning, undefined);
+});
+
+test('pending Supabase save does not appear as saved', () => {
+  const app = harness({ active: 'Dashboard', cloudStatus: { status: 'pending', problem: '' } });
+  app.api.scan();
+  assert.equal(app.badge.getAttribute('aria-busy'), 'true');
+  assert.equal(app.badge.dataset.bnCloudWarning, 'Saving to Supabase — not yet confirmed');
+  app.setCloudStatus({ status: 'synced', problem: '' });
+  app.api.scan();
+  assert.equal(app.badge.getAttribute('aria-busy'), null);
   assert.equal(app.badge.dataset.bnCloudWarning, undefined);
 });
