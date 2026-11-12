@@ -930,7 +930,7 @@
       reportCloudState('Reading your verified school records and student photographs from Supabase…',false);
       const cloud=window.BNWorkspaceCloud;
       if(!cloud?.create) {
-        reportCloudState('Cloud adapter not loaded. Only unsynced device preview is available; reload the page.',true);
+        reportCloudState('Cloud adapter not loaded. No student records are displayed. Sign in and reload.',true);
         updateSourceUI();return;
       }
       try {
@@ -960,67 +960,26 @@
       } catch(error) {
         if(requestId!==cloudLoadRequest)return;
         lastVerifiedCloudRevision=null;
-        reportCloudState('Supabase records could not be verified: '+(error?.message||'Unknown error')+'. Showing device-only preview; do not treat it as synced.',true);
+        liveStudents=[];activeStudents=[];
+        idPhotoOverrides.clear();
+        updateSourceUI();populateFilters();
+        reportCloudState('Supabase records could not be verified: '+(error?.message||'Unknown error')+'. Student cards are hidden.',true);
         updateSourceUI();
       }
     }
     function loadSchoolOSData() {
-      try {
-        // Read Institution Profile
-        const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-        if (snapRaw) {
-          const snap = JSON.parse(snapRaw);
-          if (snap.institution) {
-            institution.name = snap.institution.name || institution.name;
-            institution.tagline = snap.institution.tagline || institution.tagline;
-            institution.address = [snap.institution.address, snap.institution.city, snap.institution.state].filter(Boolean).join(', ') || institution.address;
-            institution.phone = snap.institution.contactNumber ? `+91 ${snap.institution.contactNumber}` : institution.phone;
-            institution.session = snap.institution.session || institution.session;
-            institution.principalName = snap.institution.principalName || institution.principalName;
-            if (snap.institution.logoDataUrl) institution.logoUrl = snap.institution.logoDataUrl;
-          }
-        }
-
-        // Read Live Students (bright-nexa-school-os:students:v1)
-        const stdRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
-        if (stdRaw) {
-          const parsed = JSON.parse(stdRaw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            liveStudents = parsed.map((s, idx) => {
-              const cName = s.className ? (String(s.className).toLowerCase().startsWith('class') ? s.className : `Class ${s.className}`) : 'Unassigned class';
-              return {
-                id: s.id || String(idx + 1),
-                name: (s.name || '').toUpperCase(),
-                rollNumber: s.rollNumber ? String(s.rollNumber).padStart(2, '0') : '',
-                admissionNumber: s.admissionNumber || '',
-                className: cName,
-                section: s.section || '',
-                fatherName: (s.fatherName || s.guardianName || '').toUpperCase(),
-                contactNumber: s.parentMobile || s.contactNumber || s.phone || s.alternateMobile || '',
-                bloodGroup: s.bloodGroup || '',
-                dob: s.dateOfBirth || s.dob || "",
-                address: s.address || '',
-                busStop: s.busStop || s.transportRoute || '',
-                photoUrl: s.photoDataUrl || s.photoUrl || s.avatarUrl || null
-              };
-            });
-          } else {
-            liveStudents = [];
-          }
-        } else {
-          liveStudents = [];
-        }
-      } catch (err) {
-        console.warn("Could not load from localStorage:", err);
-        liveStudents = [];
-      }
-
-      activeStudents = liveStudents;
-
+      // Official student PII is never restored from a stale device cache.
+      // Only an authenticated, tenant-scoped Supabase pull may expose cards.
       lastVerifiedCloudRevision=null;
+      liveStudents=[];
+      activeStudents=[];
+      idPhotoOverrides.clear();
+      institution={
+        name:'School profile not verified',tagline:'',address:'',phone:'',
+        email:'',session:'',principalName:'',logoUrl:'app-icon-512.png'
+      };
       updateSourceUI();
       populateFilters();
-      renderCards();
       void refreshSchoolCloudData();
     }
 
@@ -1029,7 +988,7 @@
       if(!pill)return;
       pill.className='data-source-pill source-live';
       pill.textContent=lastVerifiedCloudRevision===null
-        ? 'Device preview — Supabase not verified'
+        ? 'School cloud not verified — student cards hidden'
         : 'Supabase confirmed ('+liveStudents.length+' students)';
     }
 
@@ -1218,7 +1177,7 @@
         const metaTag = document.createElement('div');
         metaTag.className = 'sheet-meta-tag';
         metaTag.innerHTML = `
-          <span><strong>${escapeHtml(institution.name)}</strong> • Official Student ID Cards </span>
+          <span><strong>${escapeHtml(institution.name)}</strong> • Student ID Card Previews </span>
           <span>A4 Sheet ${p + 1} of ${totalPages} (${list.length} Total)</span>
         `;
         sheetDiv.appendChild(metaTag);
