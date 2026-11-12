@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modern CBSE A4 Academic Marksheet — Bright Nexa School OS</title>
+  <title>School Academic Marksheet (Published Results) — Bright Nexa School OS</title>
+  <script defer src="./school-workspace-cloud.js?v=20261111-attendance-leave-v1"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
 
@@ -707,20 +708,16 @@
 
   <!-- Controls for school admin -->
   <div class="no-print-bar">
-    <h2>🎓 Modern CBSE Academic Marksheet (A4 Format)</h2>
+    <h2>🎓 Published Academic Marksheet (A4)</h2>
     <div class="control-actions">
-      <select id="studentDropdown" onchange="switchStudent(this.value)">
-        <option value="0">Aarav Sharma (BMS-2026-001 • Class 6-A)</option>
-        <option value="1">Ananya Patel (BMS-2026-002 • Class 6-A)</option>
-        <option value="2">Rohan Verma (BMS-2026-003 • Class 6-A)</option>
+      <select id="studentDropdown" aria-label="Select verified student" onchange="switchStudent(this.value)">
+        <option value="">Sign in to load students</option>
       </select>
-      <select id="examDropdown" onchange="switchExam(this.value)">
-        <option value="annual">Annual Examination 2026-27</option>
-        <option value="halfyearly">Half Yearly Examination</option>
-        <option value="ut1">Unit Test 1 (Formative)</option>
+      <select id="examDropdown" aria-label="Select published exam" onchange="switchExam(this.value)">
+        <option value="">No published exam selected</option>
       </select>
-      <button class="btn btn-primary" onclick="window.print()">
-        🖨️ Print / Save PDF
+      <button id="bnMarksheetPrint" class="btn btn-primary" type="button" onclick="printPublishedMarksheet()" disabled>
+        🖨️ Print Published Result
       </button>
       <a href="id-card-a4.html" class="btn btn-secondary" style="text-decoration:none;">
         🪪 ID Cards
@@ -737,8 +734,9 @@
     </div>
   </div>
 
+  <p id="bnMarksheetCloudStatus" role="status" aria-live="polite" style="max-width:210mm;width:100%;margin:0 auto 16px;padding:10px 12px;background:#eaf3ff;color:#17476e;border:1px solid #bfd6ec;border-radius:9px;font:13px system-ui">Checking authenticated school and published marksheets…</p>
   <!-- A4 Certificate Sheet -->
-  <div class="a4-marksheet">
+  <div class="a4-marksheet" style="display:none" aria-label="Verified published marksheet">
     <!-- Watermark -->
     <div class="certificate-watermark">
       <img src="./bright-nexa-official-logo.jpg" onerror="this.src='./app-icon-512.png'" alt="Watermark">
@@ -756,26 +754,21 @@
         <img id="schoolLogo" src="./bright-nexa-official-logo.jpg" onerror="this.src='./app-icon-512.png'" alt="School Crest">
       </div>
       <div class="school-info-center">
-        <h1 class="school-main-title" id="schoolName">BRIGHT NEXA MODEL SR. SEC. SCHOOL</h1>
-        <div class="school-affiliation-tag" id="schoolAffil">
-          AFFILIATED TO CENTRAL BOARD OF SECONDARY EDUCATION (CBSE), NEW DELHI<br>
-          AFFILIATION NO.: 1730248 • SCHOOL CODE: 20458 • U-DISE CODE: 08240502104
-        </div>
+        <h1 class="school-main-title" id="schoolName">School profile not verified</h1>
+        <div class="school-affiliation-tag" id="schoolAffil">Board / affiliation not verified</div>
         <div class="school-contact-line" id="schoolContact">
-          Station Road, Sikar, Rajasthan - 332001 • Phone: +91 9876500000 • Email: office@brightnexa.edu.in
+          School contact details not loaded
         </div>
         <div class="report-title-ribbon">
-          <span class="main-tag">ANNUAL PROGRESS REPORT CARD (CCE)</span>
-          <span class="session-tag" id="sessionTag">• ACADEMIC SESSION: 2026 - 2027</span>
+          <span class="main-tag">PUBLISHED ACADEMIC RESULT</span>
+          <span class="session-tag" id="sessionTag">• ACADEMIC SESSION: Not verified</span>
         </div>
       </div>
       <div class="student-photo-frame">
         <div class="photo-inner-text">
           PASSPORT<br>PHOTO
         </div>
-        <div class="photo-stamp-badge">
-          SEAL<br>OK
-        </div>
+        
       </div>
     </header>
 
@@ -784,37 +777,37 @@
       <div class="profile-row">
         <div class="profile-cell">
           <label>Student's Full Name</label>
-          <strong id="studentName">AARAV SHARMA</strong>
+          <strong id="studentName">—</strong>
         </div>
         <div class="profile-cell">
           <label>Roll Number</label>
-          <strong id="rollNumber">06</strong>
+          <strong id="rollNumber">—</strong>
         </div>
         <div class="profile-cell">
           <label>Admission / S.R. No.</label>
-          <strong id="admissionNumber">BMS-2026-001</strong>
+          <strong id="admissionNumber">—</strong>
         </div>
         <div class="profile-cell">
           <label>Class & Section</label>
-          <strong id="classSection">VI - A (Secondary)</strong>
+          <strong id="classSection">—</strong>
         </div>
       </div>
       <div class="profile-row">
         <div class="profile-cell">
           <label>Mother's Name</label>
-          <strong id="motherName">MRS. NEHA SHARMA</strong>
+          <strong id="motherName">—</strong>
         </div>
         <div class="profile-cell">
           <label>Father's / Guardian's Name</label>
-          <strong id="fatherName">MR. VIKAS SHARMA</strong>
+          <strong id="fatherName">—</strong>
         </div>
         <div class="profile-cell">
           <label>Date of Birth (DOB)</label>
-          <strong id="dob">12-03-2014</strong>
+          <strong id="dob">—</strong>
         </div>
         <div class="profile-cell">
           <label>Attendance Record</label>
-          <strong id="attendance">196 / 212 Days (92.5%)</strong>
+          <strong id="attendance">—</strong>
         </div>
       </div>
     </section>
@@ -836,77 +829,12 @@
           <th style="width: 8%;">GRADE</th>
         </tr>
       </thead>
-      <tbody id="subjectTableBody">
-        <tr>
-          <td>1</td>
-          <td style="text-align: left; font-weight: 700;">English Language & Literature</td>
-          <td>8.5</td>
-          <td>4.5</td>
-          <td>4.5</td>
-          <td>68.0</td>
-          <td style="font-weight: 800;">85.5</td>
-          <td style="font-weight: 800; color: #0284c7;">A2</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td style="text-align: left; font-weight: 700;">Hindi (Course A)</td>
-          <td>8.0</td>
-          <td>5.0</td>
-          <td>4.0</td>
-          <td>65.0</td>
-          <td style="font-weight: 800;">82.0</td>
-          <td style="font-weight: 800; color: #0284c7;">A2</td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td style="text-align: left; font-weight: 700;">Mathematics</td>
-          <td>9.5</td>
-          <td>5.0</td>
-          <td>5.0</td>
-          <td>74.0</td>
-          <td style="font-weight: 800;">93.5</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-        <tr>
-          <td>4</td>
-          <td style="text-align: left; font-weight: 700;">Science & Technology</td>
-          <td>9.0</td>
-          <td>4.5</td>
-          <td>5.0</td>
-          <td>71.5</td>
-          <td style="font-weight: 800;">90.0</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-        <tr>
-          <td>5</td>
-          <td style="text-align: left; font-weight: 700;">Social Science</td>
-          <td>8.0</td>
-          <td>4.5</td>
-          <td>4.5</td>
-          <td>62.0</td>
-          <td style="font-weight: 800;">79.0</td>
-          <td style="font-weight: 800; color: #0284c7;">B1</td>
-        </tr>
-        <tr>
-          <td>6</td>
-          <td style="text-align: left; font-weight: 700;">Computer Science / AI & Coding</td>
-          <td>10.0</td>
-          <td>5.0</td>
-          <td>5.0</td>
-          <td>76.0</td>
-          <td style="font-weight: 800;">96.0</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-      </tbody>
+      <tbody id="subjectTableBody"></tbody>
       <tfoot>
         <tr>
-          <th colspan="2" style="text-align: right; padding-right: 12px;">GRAND TOTAL</th>
-          <th>53.0 / 60</th>
-          <th>28.5 / 30</th>
-          <th>28.0 / 30</th>
-          <th>416.5 / 480</th>
-          <th style="font-size: 11px; color: var(--navy);" id="grandTotal">526.0 / 600</th>
-          <th style="font-size: 11px; color: #0284c7;" id="overallGrade">A2</th>
+          <th colspan="2" style="text-align:right;padding-right:12px">GRAND TOTAL</th>
+          <th>—</th><th>—</th><th>—</th><th>—</th>
+          <th id="grandTotal">—</th><th id="overallGrade">—</th>
         </tr>
       </tfoot>
     </table>
@@ -918,27 +846,27 @@
     <div class="coscholastic-grid">
       <div class="coscholastic-card">
         <span>Work Education & Computer / AI</span>
-        <strong>Grade A</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Visual & Performing Arts</span>
-        <strong>Grade A</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Health & Physical Education / Sports</span>
-        <strong>Grade A+</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Scientific Temper & Critical Thinking</span>
-        <strong>Grade A</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Discipline, Punctuality & Attendance</span>
-        <strong>Grade A+</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Social Harmony & Peer Leadership</span>
-        <strong>Grade A</strong>
+        <strong>Not assessed</strong>
       </div>
     </div>
 
@@ -946,11 +874,11 @@
     <div class="summary-metrics-bar">
       <div class="metric-pill highlight">
         <span>Overall Percentage</span>
-        <strong id="percentageText">87.7%</strong>
+        <strong id="percentageText">—</strong>
       </div>
       <div class="metric-pill highlight">
         <span>Overall Grade</span>
-        <strong id="overallGradePill" style="color: #0284c7;">A2 (Excellent)</strong>
+        <strong id="overallGradePill" style="color: #0284c7;">—</strong>
       </div>
       <div class="metric-pill">
         <span>Class Rank / Position</span>
@@ -965,7 +893,7 @@
     <!-- Promotion Ribbon -->
     <div class="promotion-ribbon">
       <span>OFFICIAL PROMOTION STATUS:</span>
-      <strong id="promotionText">PROMOTED TO CLASS VII - A (SESSION 2027 - 2028) WITH COMMENDABLE DISTINCTION</strong>
+      <strong id="promotionText">—</strong>
     </div>
 
     <!-- Qualitative Remarks -->
@@ -1012,110 +940,34 @@
       <div class="seal-center-col">
         <div class="official-seal-graphic">
           <span class="seal-star">★ ★ ★</span>
-          <strong>BRIGHT NEXA</strong>
-          <small>OFFICIAL SEAL</small>
+          <strong>SCHOOL MARKS</strong>
+          <small>UNSIGNED COPY</small>
           <span class="seal-star">★ ★ ★</span>
         </div>
-        <span class="seal-caption">Verified Academic Document</span>
+        <span class="seal-caption">Published marks • unsigned print copy</span>
       </div>
       <div class="sig-col">
         <div class="sig-line"></div>
-        <span id="principalName">DR. KAVITA JOSHI</span>
+        <span id="principalName">Principal name not verified</span>
         <small>Principal / Head of Institution</small>
       </div>
-      <div class="qr-verify-col">
-        <div class="qr-box">
-          <svg viewBox="0 0 100 100" fill="#0b2545">
-            <path d="M0,0 h30 v30 h-30 z M5,5 v20 h20 v-20 z M10,10 h10 v10 h-10 z" />
-            <path d="M70,0 h30 v30 h-30 z M75,5 v20 h20 v-20 z M80,10 h10 v10 h-10 z" />
-            <path d="M0,70 h30 v30 h-30 z M5,75 v20 h20 v-20 z M10,80 h10 v10 h-10 z" />
-            <rect x="40" y="10" width="10" height="20" />
-            <rect x="55" y="15" width="10" height="10" />
-            <rect x="40" y="40" width="20" height="20" />
-            <rect x="70" y="45" width="20" height="10" />
-            <rect x="45" y="70" width="15" height="15" />
-            <rect x="75" y="75" width="20" height="20" />
-          </svg>
-        </div>
-        <div class="qr-text">
-          <strong>Digital Verification</strong>
-          Scan to verify certificate authenticity on School OS
-        </div>
+      <div class="qr-verify-col" style="font-size:10px;color:#64748b">
+        Published academic record. This printout has no cryptographic signature.
+        Contact the school to verify authenticity.
       </div>
     </footer>
   </div>
 
   <script>
-    const sampleStudents = [
-      {
-        name: "AARAV SHARMA",
-        roll: "06",
-        admission: "BMS-2026-001",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. NEHA SHARMA",
-        father: "MR. VIKAS SHARMA",
-        dob: "12-03-2014",
-        attendance: "196 / 212 Days (92.5%)",
-        rank: "3rd in Class",
-        percentage: "87.7%",
-        grade: "A2",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028) WITH COMMENDABLE DISTINCTION",
-        subjects: [
-          { name: "English Language & Literature", pt: 8.5, nb: 4.5, se: 4.5, annual: 68.0, total: 85.5, grade: "A2" },
-          { name: "Hindi (Course A)", pt: 8.0, nb: 5.0, se: 4.0, annual: 65.0, total: 82.0, grade: "A2" },
-          { name: "Mathematics", pt: 9.5, nb: 5.0, se: 5.0, annual: 74.0, total: 93.5, grade: "A1" },
-          { name: "Science & Technology", pt: 9.0, nb: 4.5, se: 5.0, annual: 71.5, total: 90.0, grade: "A1" },
-          { name: "Social Science", pt: 8.0, nb: 4.5, se: 4.5, annual: 62.0, total: 79.0, grade: "B1" },
-          { name: "Computer Science / AI & Coding", pt: 10.0, nb: 5.0, se: 5.0, annual: 76.0, total: 96.0, grade: "A1" },
-        ]
-      },
-      {
-        name: "ANANYA PATEL",
-        roll: "12",
-        admission: "BMS-2026-002",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. POOJA PATEL",
-        father: "MR. SURESH PATEL",
-        dob: "05-08-2014",
-        attendance: "205 / 212 Days (96.7%)",
-        rank: "1st in Class",
-        percentage: "94.2%",
-        grade: "A1",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028) - CLASS TOPPER",
-        subjects: [
-          { name: "English Language & Literature", pt: 9.5, nb: 5.0, se: 5.0, annual: 75.0, total: 94.5, grade: "A1" },
-          { name: "Hindi (Course A)", pt: 9.0, nb: 5.0, se: 5.0, annual: 73.0, total: 92.0, grade: "A1" },
-          { name: "Mathematics", pt: 10.0, nb: 5.0, se: 5.0, annual: 78.0, total: 98.0, grade: "A1" },
-          { name: "Science & Technology", pt: 9.5, nb: 5.0, se: 5.0, annual: 76.0, total: 95.5, grade: "A1" },
-          { name: "Social Science", pt: 9.0, nb: 4.5, se: 4.5, annual: 70.0, total: 88.0, grade: "A2" },
-          { name: "Computer Science / AI & Coding", pt: 10.0, nb: 5.0, se: 5.0, annual: 77.0, total: 97.0, grade: "A1" },
-        ]
-      },
-      {
-        name: "ROHAN VERMA",
-        roll: "18",
-        admission: "BMS-2026-003",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. SUNITA VERMA",
-        father: "MR. RAJESH VERMA",
-        dob: "21-11-2013",
-        attendance: "182 / 212 Days (85.8%)",
-        rank: "8th in Class",
-        percentage: "76.5%",
-        grade: "B1",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028)",
-        subjects: [
-          { name: "English Language & Literature", pt: 7.5, nb: 4.0, se: 4.0, annual: 60.0, total: 75.5, grade: "B1" },
-          { name: "Hindi (Course A)", pt: 8.0, nb: 4.0, se: 4.0, annual: 62.0, total: 78.0, grade: "B1" },
-          { name: "Mathematics", pt: 8.5, nb: 4.5, se: 4.5, annual: 61.0, total: 78.5, grade: "B1" },
-          { name: "Science & Technology", pt: 7.0, nb: 4.0, se: 4.0, annual: 58.0, total: 73.0, grade: "B2" },
-          { name: "Social Science", pt: 7.5, nb: 4.0, se: 4.0, annual: 59.0, total: 74.5, grade: "B1" },
-          { name: "Computer Science / AI & Coding", pt: 9.0, nb: 4.5, se: 5.0, annual: 69.5, total: 88.0, grade: "A2" },
-        ]
-      }
-    ];
-
-    let activeStudents = [...sampleStudents];
+    // Only authenticated school records and published exam results can render.
+    let activeStudents=[];
+    let verifiedSchoolId=null;
+    let selectedStudentIndex=-1;
+    let publishedExams=[];
+    let selectedPublished=null;
+    let markLoadId=0;
+    const SUPABASE_URL='https://mrfvbwmyxndrakskqyas.supabase.co';
+    const SUPABASE_PUBLIC_KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 
     function escapeHtml(val) {
       if (val === null || val === undefined) return '';
@@ -1139,9 +991,9 @@
       return 'E';
     }
 
-    function switchStudent(index) {
-      const student = activeStudents[index] || activeStudents[0];
-      if (!student) return;
+    function renderPublishedStudent(index) {
+      const student = activeStudents[index];
+      if(!student || !selectedPublished) return;
       document.getElementById('studentName').textContent = student.name;
       document.getElementById('rollNumber').textContent = student.roll;
       document.getElementById('admissionNumber').textContent = student.admission;
@@ -1158,14 +1010,21 @@
       const photoFrame = document.querySelector('.student-photo-frame');
       if (photoFrame) {
         if (student.photoDataUrl) {
-          photoFrame.innerHTML = `<img src="${student.photoDataUrl}" alt="${escapeHtml(student.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
+          const source=String(student.photoDataUrl);
+          if(/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(source)||
+             /^https:\/\/[^\s<>"']+$/i.test(source)){
+            photoFrame.replaceChildren();
+            const img=document.createElement('img');
+            img.src=source;img.alt=student.name;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:4px';
+            photoFrame.append(img);
+          }else{photoFrame.textContent='Photo unavailable';}
         } else {
-          photoFrame.innerHTML = `<div class="photo-inner-text">PASSPORT<br>PHOTO</div><div class="photo-stamp-badge">SEAL<br>OK</div>`;
+          photoFrame.textContent='Photo not uploaded';
         }
       }
 
       let tbodyHtml = '';
-      let sumPt = 0, sumNb = 0, sumSe = 0, sumAnn = 0, sumTot = 0;
+      let sumPt = 0, sumNb = 0, sumSe = 0, sumAnn = 0, sumTot = 0, sumMaximum = 0;
       (student.subjects || []).forEach((sub, i) => {
         const hasEntry = sub.hasEntry !== undefined ? sub.hasEntry : (sub.total > 0 || sub.grade !== '-');
         if (hasEntry) {
@@ -1174,6 +1033,7 @@
           if (Number.isFinite(sub.se)) sumSe += sub.se;
           if (Number.isFinite(sub.annual)) sumAnn += sub.annual;
           sumTot += sub.total;
+          sumMaximum += sub.max;
         }
         tbodyHtml += `
           <tr>
@@ -1190,166 +1050,186 @@
       });
       document.getElementById('subjectTableBody').innerHTML = tbodyHtml;
       const enteredSubs = (student.subjects || []).filter(s => s.hasEntry !== false && (s.total > 0 || s.grade !== '-'));
-      document.getElementById('grandTotal').textContent = enteredSubs.length > 0 ? `${sumTot.toFixed(1)} / ${enteredSubs.length * 100}` : '-';
+      document.getElementById('grandTotal').textContent = enteredSubs.length > 0 ? `${sumTot.toFixed(1)} / ${sumMaximum.toFixed(1)}` : '-';
     }
 
-    function switchExam(val) {
-      // Switches current examination term
+    function printStatus(message,error=false){
+      const note=document.getElementById('bnMarksheetCloudStatus');
+      if(note){note.textContent=message;note.style.color=error?'#8f2438':'#17476e';}
     }
-
-    function loadFromSchoolOS() {
-      // 1. Sync Live School Profile
-      try {
-        const snapshotRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-        if (snapshotRaw) {
-          const snapshot = JSON.parse(snapshotRaw);
-          const inst = snapshot.institution || {};
-          if (inst.name) document.getElementById('schoolName').textContent = inst.name.toUpperCase();
-          if (inst.principalName) document.getElementById('principalName').textContent = inst.principalName.toUpperCase();
-          if (inst.logoDataUrl) document.getElementById('schoolLogo').src = inst.logoDataUrl;
-          if (inst.boardType && document.getElementById('schoolAffil')) {
-            document.getElementById('schoolAffil').innerHTML = `AFFILIATED TO ${inst.boardType.toUpperCase()}<br>SCHOOL CODE: 20458 • AFFILIATION NO: 1730248`;
-          }
-          if (inst.session && document.getElementById('sessionTag')) {
-            document.getElementById('sessionTag').textContent = `• ACADEMIC SESSION: ${inst.session}`;
-          }
-          if (document.getElementById('schoolContact')) {
-            const addrParts = [inst.address, inst.city, inst.state, inst.pinCode ? '-' + inst.pinCode : ''].filter(Boolean).join(', ');
-            const ph = inst.contactNumber ? `Phone: +91 ${inst.contactNumber}` : '';
-            const em = inst.email ? `Email: ${inst.email}` : '';
-            const line = [addrParts, ph, em].filter(Boolean).join(' • ');
-            if (line) document.getElementById('schoolContact').textContent = line;
-          }
-        }
-      } catch (e) {
-        console.warn('Could not read localStorage snapshot', e);
-      }
-
-      // 2. Sync Real Students
-      try {
-        const studentsRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
-        const operationsRaw = localStorage.getItem('bright-nexa-school-os:operations:v1');
-        let realStudents = [];
-        if (studentsRaw) realStudents = JSON.parse(studentsRaw);
-        let operations = {};
-        if (operationsRaw) {
-          try { operations = JSON.parse(operationsRaw); } catch(e){}
-        }
-
-        if (Array.isArray(realStudents) && realStudents.length > 0) {
-          const defaultSubjects = [
-            "English Language & Literature",
-            "Hindi (Course A)",
-            "Mathematics",
-            "Science & Technology",
-            "Social Science",
-            "Computer Science / AI & Coding"
-          ];
-
-          activeStudents = realStudents.map((s, idx) => {
-            const studentMarks = (operations.marks || []).filter(m => m.studentId === s.id);
-            const studentAttendance = (operations.attendance || []).filter(a => a.studentId === s.id);
-            const subjectMarks = [];
-            let totalMarks = 0;
-            let enteredCount = 0;
-            const subs = (operations.subjects && operations.subjects.length > 0) ? operations.subjects : defaultSubjects;
-
-            subs.forEach((subName, sIdx) => {
-              const sTitle = typeof subName === 'string' ? subName : (subName.name || `Subject ${sIdx + 1}`);
-              const enteredMark = studentMarks.find(m => {
-                if (!m || !m.subject) return false;
-                const ms = m.subject.trim().toLowerCase();
-                const st = sTitle.trim().toLowerCase();
-                return ms === st || st.includes(ms) || ms.includes(st);
-              });
-
-              let pt = 0, nb = 0, se = 0, annual = 0, tot = 0, grade = '-';
-              if (enteredMark && typeof enteredMark.obtainedMarks === 'number') {
-                const maxM = (enteredMark.maximumMarks && enteredMark.maximumMarks > 0) ? enteredMark.maximumMarks : 100;
-                tot = Math.min(100, Math.max(0, parseFloat(((enteredMark.obtainedMarks / maxM) * 100).toFixed(1))));
-                // Do not manufacture component scores from a single total.
-                // PT, notebook, enrichment and annual scores require separate source entries.
-                pt = nb = se = annual = null;
-                grade = calculateGrade(tot, 100);
-                totalMarks += tot;
-                enteredCount++;
-              }
-
-              subjectMarks.push({
-                name: sTitle,
-                pt: Math.max(0, pt),
-                nb: Math.max(0, nb),
-                se: Math.max(0, se),
-                annual: Math.max(0, annual),
-                total: tot,
-                grade: grade,
-                hasEntry: !!enteredMark
-              });
-            });
-
-            let pct = 0;
-            let overallGrade = '-';
-            let promotion = 'MARKS AWAITED / PENDING';
-            if (enteredCount > 0) {
-              pct = (totalMarks / (enteredCount * 100)) * 100;
-              overallGrade = calculateGrade(pct);
-              promotion = pct >= 33 ? `PROMOTED TO NEXT HIGHER CLASS WITH ACADEMIC DISTINCTION` : 'NEEDS IMPROVEMENT / COMPARTMENT';
-            }
-
-            let attendanceStr = 'Not Marked';
-            if (studentAttendance.length > 0) {
-              const totalDays = studentAttendance.length;
-              const presentDays = studentAttendance.filter(a => a.status === 'Present' || a.status === 'Late' || a.status === 'Half-Day').length;
-              const pctAtt = ((presentDays / totalDays) * 100).toFixed(1);
-              attendanceStr = `${presentDays} / ${totalDays} Days (${pctAtt}%)`;
-            }
-
-            return {
-              id: s.id,
-              name: (s.name || 'STUDENT RECORD').toUpperCase(),
-              roll: s.rollNumber || '-',
-              admission: s.admissionNumber || ('BMS-2026-' + String(idx + 1).padStart(3, '0')),
-              classSec: `${s.className || 'Class VI'} ${s.section ? '- ' + s.section : '- A'}`.trim(),
-              mother: (s.motherName ? 'MRS. ' + s.motherName : (s.mother ? 'MRS. ' + s.mother : 'MRS. GUARDIAN')).toUpperCase(),
-              father: (s.fatherName ? 'MR. ' + s.fatherName : (s.guardianName ? 'MR. ' + s.guardianName : (s.father ? 'MR. ' + s.father : 'MR. PARENT'))).toUpperCase(),
-              dob: s.dateOfBirth || s.dob || '12-03-2014',
-              attendance: attendanceStr,
-              percentage: enteredCount > 0 ? pct.toFixed(1) + '%' : '-',
-              grade: overallGrade,
-              promotion: promotion,
-              photoDataUrl: s.photoDataUrl || s.photoUrl || null,
-              subjects: subjectMarks
-            };
-          });
-
-          const dropdown = document.getElementById('studentDropdown');
-          if (dropdown) {
-            dropdown.innerHTML = activeStudents.map((st, i) => 
-              `<option value="${i}">${escapeHtml(st.name)} (${escapeHtml(st.admission)} • ${escapeHtml(st.classSec)})</option>`
-            ).join('');
-          }
-        }
-      } catch (e) {
-        console.warn('Could not read real students from localStorage:', e);
-      }
-
-      // 3. Check URL query params for auto-selecting requested student
-      const urlParams = new URLSearchParams(window.location.search);
-      const studentId = urlParams.get('studentId') || urlParams.get('id');
-      const admission = urlParams.get('admission') || urlParams.get('adm');
-      let targetIndex = 0;
-      if (studentId || admission) {
-        const found = activeStudents.findIndex(st => st.id === studentId || st.admission === admission);
-        if (found !== -1) targetIndex = found;
-      }
-      const dd = document.getElementById('studentDropdown');
-      if (dd) dd.value = targetIndex;
-      switchStudent(targetIndex);
+    function hideUnverifiedMarksheet(){
+      document.querySelector('.a4-marksheet').style.display='none';
+      document.getElementById('bnMarksheetPrint').disabled=true;
+      selectedPublished=null;
     }
-
-    // Auto-initialize on DOM load
-    window.addEventListener('DOMContentLoaded', loadFromSchoolOS);
-    loadFromSchoolOS();
+    function setSchoolProfile(inst,school){
+      document.getElementById('schoolName').textContent=String(inst.name||school.name||'School');
+      document.getElementById('principalName').textContent=inst.principalName||'Principal not recorded';
+      document.getElementById('schoolAffil').textContent=inst.boardType
+        ? 'Board: '+inst.boardType+' • Affiliation number not independently verified'
+        : 'Board / affiliation not verified';
+      document.getElementById('sessionTag').textContent=inst.session
+        ? '• ACADEMIC SESSION: '+inst.session : '• ACADEMIC SESSION: Not recorded';
+      const address=[inst.address,inst.city,inst.state,inst.pinCode].filter(Boolean).join(', ');
+      document.getElementById('schoolContact').textContent=[
+        address,inst.contactNumber?'Phone: '+inst.contactNumber:'',
+        inst.email?'Email: '+inst.email:''
+      ].filter(Boolean).join(' • ')||'School contact details not recorded';
+      if(/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(inst.logoDataUrl||''))
+        document.getElementById('schoolLogo').src=inst.logoDataUrl;
+    }
+    function switchExam(val){
+      hideUnverifiedMarksheet();
+      const student=activeStudents[selectedStudentIndex];
+      const exam=publishedExams.find(e=>String(e.examId)===String(val));
+      if(!verifiedSchoolId||!student||!exam)return;
+      const subjectRows=exam.subjects;
+      if(!Array.isArray(subjectRows)||!subjectRows.length){
+        printStatus('No approved subject marks in this published exam.',true);return;
+      }
+      const subjects=[];
+      let obtained=0,maximum=0;
+      for(const row of subjectRows){
+        const name=String(row.subject||'').trim(),score=Number(row.obtained),max=Number(row.maximum);
+        if(!name||!Number.isFinite(score)||!Number.isFinite(max)||max<=0||score<0||score>max){
+          printStatus('Published marks contain invalid subject values; printing blocked.',true);
+          return;
+        }
+        obtained+=score;maximum+=max;
+        subjects.push({name,total:score,max,grade:calculateGrade(score,max),hasEntry:true,
+          pt:null,nb:null,se:null,annual:null});
+      }
+      student.subjects=subjects;
+      student.percentage=(obtained/maximum*100).toFixed(1)+'%';
+      student.grade=calculateGrade(obtained,maximum);
+      student.promotion='Promotion decision not included in published marks';
+      selectedPublished={studentId:student.id,examId:String(exam.examId),publishedAt:exam.publishedAt};
+      document.querySelector('.report-title-ribbon .main-tag').textContent='PUBLISHED RESULT • '+String(exam.examName||'Exam');
+      renderPublishedStudent(selectedStudentIndex);
+      document.querySelector('.a4-marksheet').style.display='';
+      document.getElementById('bnMarksheetPrint').disabled=false;
+      printStatus('Supabase published marks confirmed for '+student.name+' — '+exam.examName+'. This printout is unsigned.');
+    }
+    async function switchStudent(index){
+      const idx=Number(index),student=activeStudents[idx];
+      const requestId=++markLoadId;
+      selectedStudentIndex=idx;
+      publishedExams=[];
+      hideUnverifiedMarksheet();
+      const selector=document.getElementById('examDropdown');
+      selector.replaceChildren(new Option('Checking published exams…',''));
+      if(!verifiedSchoolId||!student){
+        printStatus('Choose a verified school student.',true);return;
+      }
+      printStatus('Checking Supabase for approved, published exams…');
+      try{
+        const session=JSON.parse(sessionStorage.getItem('bn_school_staff_session_v1')||'null');
+        if(!session?.access_token)throw Error('Sign in to your school admin account.');
+        // This RPC exposes published marks only; drafts and local-only scores are excluded.
+        const response=await fetch(SUPABASE_URL+'/rest/v1/rpc/bn_school_published_marksheets',{
+          method:'POST',cache:'no-store',
+          headers:{apikey:SUPABASE_PUBLIC_KEY,Authorization:'Bearer '+session.access_token,
+            'Content-Type':'application/json'},
+          body:JSON.stringify({p_school:verifiedSchoolId,p_student:student.id})
+        });
+        if(!response.ok)throw Error('Published result lookup was rejected ('+response.status+').');
+        const result=await response.json();
+        if(requestId!==markLoadId)return;
+        if(!Array.isArray(result))throw Error('Unexpected marksheet RPC response.');
+        publishedExams=result.filter(x=>x&&x.examId&&Array.isArray(x.subjects)&&x.subjects.length);
+        selector.replaceChildren();
+        if(!publishedExams.length){
+          selector.add(new Option('No published exam available',''));
+          printStatus('No exam has been published for this student. Draft marks cannot be printed.',true);
+          return;
+        }
+        for(const exam of publishedExams)
+          selector.add(new Option(String(exam.examName||exam.examId),String(exam.examId)));
+        selector.value=String(publishedExams[0].examId);
+        switchExam(selector.value);
+      }catch(error){
+        if(requestId!==markLoadId)return;
+        selector.replaceChildren(new Option('Published result unavailable',''));
+        printStatus(error.message||'Could not verify published marks.',true);
+      }
+    }
+    function printPublishedMarksheet(){
+      if(!verifiedSchoolId||!selectedPublished||
+        selectedPublished.studentId!==activeStudents[selectedStudentIndex]?.id||
+        selectedPublished.examId!==document.getElementById('examDropdown').value){
+        printStatus('Official printing needs a verified, published result. Please reload.',true);
+        return false;
+      }
+      window.print();return true;
+    }
+    async function loadFromSchoolOS(){
+      const requestId=++markLoadId;
+      verifiedSchoolId=null;activeStudents=[];selectedStudentIndex=-1;publishedExams=[];
+      hideUnverifiedMarksheet();
+      document.getElementById('studentDropdown').replaceChildren(new Option('Checking school account…',''));
+      document.getElementById('examDropdown').replaceChildren(new Option('No published exam selected',''));
+      printStatus('Verifying school administrator and Supabase roster…');
+      try{
+        if(!window.BNWorkspaceCloud?.create)throw Error('Supabase school adapter is unavailable.');
+        const client=window.BNWorkspaceCloud.create({
+          fetcher:window.fetch.bind(window),sessionStorage:window.sessionStorage
+        });
+        const schools=await client.connect();
+        const schoolId=new URLSearchParams(location.search).get('schoolId')||'';
+        const school=schoolId?schools.find(s=>s.id===schoolId):(schools.length===1?schools[0]:null);
+        if(!school)throw Error('Choose your verified school from Staff Login before opening Marksheets.');
+        const result=await client.pull(school.id);
+        if(requestId!==markLoadId)return;
+        const snapshot=result?.snapshot;
+        if(!snapshot?.institution?.institution||!Array.isArray(snapshot.students))
+          throw Error('Authenticated school roster was incomplete.');
+        setSchoolProfile(snapshot.institution.institution,school);
+        const session=JSON.parse(sessionStorage.getItem('bn_school_staff_session_v1')||'null');
+        if(!session?.access_token)throw Error('School admin session has expired.');
+        const query=new URLSearchParams({
+          select:'local_id,cloud_id',institution_id:'eq.'+school.id,entity:'eq.students'
+        });
+        const linkResponse=await fetch(SUPABASE_URL+'/rest/v1/school_workspace_links?'+query,{
+          cache:'no-store',
+          headers:{apikey:SUPABASE_PUBLIC_KEY,Authorization:'Bearer '+session.access_token}
+        });
+        if(!linkResponse.ok)throw Error('Student cloud ID links could not be verified.');
+        const links=await linkResponse.json();
+        if(!Array.isArray(links))throw Error('Invalid student cloud link response.');
+        const cloudIds=new Map(links.map(x=>[String(x.local_id||''),String(x.cloud_id||'')]));
+        activeStudents=snapshot.students.filter(s=>String(s.status||'Active').toLowerCase()==='active')
+          .map(s=>({
+            id:cloudIds.get(String(s.id||''))||'',name:String(s.name||''),roll:String(s.rollNumber||'—'),
+            admission:String(s.admissionNumber||'—'),
+            classSec:[s.className,s.section].filter(Boolean).join(' - ')||'Not assigned',
+            mother:s.motherName||'Not recorded',father:s.fatherName||s.guardianName||'Not recorded',
+            dob:s.dateOfBirth||'Not recorded',attendance:'Not verified',percentage:'—',
+            grade:'—',promotion:'Not verified',
+            photoDataUrl:s.photoDataUrl||null,subjects:[]
+          })).filter(s=>/^[a-f0-9-]{36}$/i.test(s.id)&&s.name);
+        const picker=document.getElementById('studentDropdown');
+        picker.replaceChildren();
+        activeStudents.forEach((s,idx)=>picker.add(new Option(
+          s.name+' ('+s.admission+' • '+s.classSec+')',String(idx))));
+        verifiedSchoolId=school.id;
+        if(!activeStudents.length){
+          picker.add(new Option('No active students in this school',''));
+          printStatus('No active students available for published marksheets.',true);
+          return;
+        }
+        const q=new URLSearchParams(location.search);
+        const target=q.get('studentId')||q.get('id')||q.get('adm')||q.get('admission');
+        const selected=Math.max(0,activeStudents.findIndex(s=>s.id===target||s.admission===target));
+        picker.value=String(selected);
+        await switchStudent(selected);
+      }catch(error){
+        if(requestId!==markLoadId)return;
+        verifiedSchoolId=null;hideUnverifiedMarksheet();
+        document.getElementById('studentDropdown').replaceChildren(new Option('School verification failed',''));
+        printStatus('Cannot load official marksheets: '+(error.message||String(error)),true);
+      }
+    }
+    window.addEventListener('DOMContentLoaded',loadFromSchoolOS);
   </script>
 </body>
 </html>
