@@ -119,6 +119,26 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
 <script>
 (() => {
 'use strict';
+// Mobile-only student/parent workspace. Never use device identification as
+// authorization; Supabase row-level policies restrict the actual records.
+function parentMobileAppContext(win=window){
+ const agent=String(win.navigator?.userAgent||'');
+ const mobile=/Android|iPhone|iPad|iPod/i.test(agent);
+ const installed=win.matchMedia?.('(display-mode: standalone)')?.matches===true
+   || win.navigator?.standalone===true;
+ const appWebView=/Android/i.test(agent)&&/(; wv\)|\bwv\b)/i.test(agent);
+ return mobile&&(installed||appWebView);
+}
+if(!parentMobileAppContext()){
+ const notice=document.createElement('main');
+ notice.id='parentMobileOnlyNotice';notice.setAttribute('role','status');
+ notice.style.cssText='max-width:540px;margin:12vh auto;padding:28px;border:1px solid #dce6ef;background:#fff;border-radius:18px;box-shadow:0 12px 40px #061a361a;font:16px system-ui;color:#0b2545;';
+ const h=document.createElement('h1');h.textContent='Student & Parent access is in the mobile app';h.style.cssText='font-size:23px';
+ const p=document.createElement('p');p.textContent='Install Bright Nexa Student & Parent on your phone to access your linked child’s school information. This computer website is for the school office.';p.style.cssText='line-height:1.55';
+ const a=document.createElement('a');a.textContent='Open mobile app instructions';a.href='./parent-app-download.html';a.style.cssText='display:inline-flex;margin-top:10px;padding:12px 16px;border-radius:10px;background:#0b315e;color:#fff;text-decoration:none';
+ notice.append(h,p,a);document.body.replaceChildren(notice);
+ return;
+}
 const $=id=>document.getElementById(id);
 const find=s=>document.querySelector(s);
 const TOKEN_KEY='bn_parents_session';
