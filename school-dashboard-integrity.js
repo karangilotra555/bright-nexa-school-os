@@ -86,7 +86,7 @@
       '.bn-sync-status-badge[aria-invalid="true"] span:nth-child(2)::after{content:"Sync conflict — not published";font-size:12px;font-weight:700}',
       '.metric-grid .metric-card[data-bn-attendance-note="true"]::after{content:"Recorded entries only · verify coverage";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
       '.metric-grid .metric-card[data-bn-fees-note="true"]::after{content:"Receipt count includes all dates";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}'
-    ].join('\\n');
+    ].join(' ');
     doc.head.append(style);
   }
   function scan(){alignRoute();badgeSafety();metricNotes();}
