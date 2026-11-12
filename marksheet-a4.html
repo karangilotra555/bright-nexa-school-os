@@ -831,68 +831,7 @@
           <th style="width: 8%;">GRADE</th>
         </tr>
       </thead>
-      <tbody id="subjectTableBody">
-        <tr>
-          <td>1</td>
-          <td style="text-align: left; font-weight: 700;">English Language & Literature</td>
-          <td>8.5</td>
-          <td>4.5</td>
-          <td>4.5</td>
-          <td>68.0</td>
-          <td style="font-weight: 800;">85.5</td>
-          <td style="font-weight: 800; color: #0284c7;">A2</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td style="text-align: left; font-weight: 700;">Hindi (Course A)</td>
-          <td>8.0</td>
-          <td>5.0</td>
-          <td>4.0</td>
-          <td>65.0</td>
-          <td style="font-weight: 800;">82.0</td>
-          <td style="font-weight: 800; color: #0284c7;">A2</td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td style="text-align: left; font-weight: 700;">Mathematics</td>
-          <td>9.5</td>
-          <td>5.0</td>
-          <td>5.0</td>
-          <td>74.0</td>
-          <td style="font-weight: 800;">93.5</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-        <tr>
-          <td>4</td>
-          <td style="text-align: left; font-weight: 700;">Science & Technology</td>
-          <td>9.0</td>
-          <td>4.5</td>
-          <td>5.0</td>
-          <td>71.5</td>
-          <td style="font-weight: 800;">90.0</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-        <tr>
-          <td>5</td>
-          <td style="text-align: left; font-weight: 700;">Social Science</td>
-          <td>8.0</td>
-          <td>4.5</td>
-          <td>4.5</td>
-          <td>62.0</td>
-          <td style="font-weight: 800;">79.0</td>
-          <td style="font-weight: 800; color: #0284c7;">B1</td>
-        </tr>
-        <tr>
-          <td>6</td>
-          <td style="text-align: left; font-weight: 700;">Computer Science / AI & Coding</td>
-          <td>10.0</td>
-          <td>5.0</td>
-          <td>5.0</td>
-          <td>76.0</td>
-          <td style="font-weight: 800;">96.0</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-      </tbody>
+      <tbody id="subjectTableBody"></tbody>
       <tfoot>
         <tr>
           <th colspan="2" style="text-align: right; padding-right: 12px;">GRAND TOTAL</th>
@@ -1007,8 +946,8 @@
       <div class="seal-center-col">
         <div class="official-seal-graphic">
           <span class="seal-star">★ ★ ★</span>
-          <strong>BRIGHT NEXA</strong>
-          <small>OFFICIAL SEAL</small>
+          <strong>SCHOOL MARKS</strong>
+          <small>UNSIGNED COPY</small>
           <span class="seal-star">★ ★ ★</span>
         </div>
         <span class="seal-caption">Published marks • unsigned print copy</span>
@@ -1251,9 +1190,22 @@
         if(!snapshot?.institution?.institution||!Array.isArray(snapshot.students))
           throw Error('Authenticated school roster was incomplete.');
         setSchoolProfile(snapshot.institution.institution,school);
+        const session=JSON.parse(sessionStorage.getItem('bn_school_staff_session_v1')||'null');
+        if(!session?.access_token)throw Error('School admin session has expired.');
+        const query=new URLSearchParams({
+          select:'local_id,cloud_id',institution_id:'eq.'+school.id,entity:'eq.students'
+        });
+        const linkResponse=await fetch(SUPABASE_URL+'/rest/v1/school_workspace_links?'+query,{
+          cache:'no-store',
+          headers:{apikey:SUPABASE_PUBLIC_KEY,Authorization:'Bearer '+session.access_token}
+        });
+        if(!linkResponse.ok)throw Error('Student cloud ID links could not be verified.');
+        const links=await linkResponse.json();
+        if(!Array.isArray(links))throw Error('Invalid student cloud link response.');
+        const cloudIds=new Map(links.map(x=>[String(x.local_id||''),String(x.cloud_id||'')]));
         activeStudents=snapshot.students.filter(s=>String(s.status||'Active').toLowerCase()==='active')
           .map(s=>({
-            id:String(s.id||''),name:String(s.name||''),roll:String(s.rollNumber||'—'),
+            id:cloudIds.get(String(s.id||''))||'',name:String(s.name||''),roll:String(s.rollNumber||'—'),
             admission:String(s.admissionNumber||'—'),
             classSec:[s.className,s.section].filter(Boolean).join(' - ')||'Not assigned',
             mother:s.motherName||'Not recorded',father:s.fatherName||s.guardianName||'Not recorded',
