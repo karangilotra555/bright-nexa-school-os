@@ -3496,7 +3496,7 @@ ${e4.stack}`;
       }
     }
   }
-  function zr2(e3, t3) {
+  function zr(e3, t3) {
     var n3 = {};
     n3[e3.toLowerCase()] = t3.toLowerCase();
     n3[`Webkit${e3}`] = `webkit${t3}`;
@@ -3504,13 +3504,13 @@ ${e4.stack}`;
     return n3;
   }
   var F2 = {
-    animationend: zr2(`Animation`, `AnimationEnd`),
-    animationiteration: zr2(`Animation`, `AnimationIteration`),
-    animationstart: zr2(`Animation`, `AnimationStart`),
-    transitionrun: zr2(`Transition`, `TransitionRun`),
-    transitionstart: zr2(`Transition`, `TransitionStart`),
-    transitioncancel: zr2(`Transition`, `TransitionCancel`),
-    transitionend: zr2(`Transition`, `TransitionEnd`)
+    animationend: zr(`Animation`, `AnimationEnd`),
+    animationiteration: zr(`Animation`, `AnimationIteration`),
+    animationstart: zr(`Animation`, `AnimationStart`),
+    transitionrun: zr(`Transition`, `TransitionRun`),
+    transitionstart: zr(`Transition`, `TransitionStart`),
+    transitioncancel: zr(`Transition`, `TransitionCancel`),
+    transitionend: zr(`Transition`, `TransitionEnd`)
   };
   var I2 = {};
   var Br2 = {};
@@ -18798,7 +18798,7 @@ function Tn(e2) {
   try {
     window.localStorage.setItem(_n, JSON.stringify(t2));
   } catch (e3) {
-    bnReportBrowserSaveError('School profile', e3);
+    bnReportBrowserSaveError("School profile", e3);
   }
   Ot(`snapshot`, t2).catch((e3) => bnReportBrowserSaveError("School profile local cache", e3));
 }
@@ -18820,7 +18820,7 @@ function On(e2) {
   try {
     window.localStorage.setItem(vn, JSON.stringify(t2 ?? []));
   } catch (e3) {
-    bnReportBrowserSaveError('Student records', e3);
+    bnReportBrowserSaveError("Student records", e3);
   }
   Ot(`students`, t2 ?? []).catch((e3) => bnReportBrowserSaveError("Student records local cache", e3));
 }
@@ -19169,45 +19169,42 @@ function $n(e2, t2 = 25e5) {
     return Promise.reject(Error(`Please select a PNG, JPEG, or WebP image.`));
   }
 }
-// Downsize portraits BEFORE adding them to the school snapshot. Identity
-// documents use the original lossless/document flow and are never recompressed.
 async function bnOptimizePortrait(file) {
-  if (!file || !['image/jpeg','image/png','image/webp'].includes(file.type))
-    throw Error('Choose a JPG, PNG or WebP photograph.');
-  if (!Number.isFinite(file.size) || file.size < 1 || file.size > 12000000)
-    throw Error('Photograph must be smaller than 12 MB.');
-  if (file.size <= 120000) return nr(file);
-  if (typeof document === 'undefined' || typeof Image === 'undefined' ||
-      typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function')
-    throw Error('Photo compression is unavailable here. Choose a smaller photograph.');
+  if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type))
+    throw Error("Choose a JPG, PNG or WebP photograph.");
+  if (!Number.isFinite(file.size) || file.size < 1 || file.size > 12e6)
+    throw Error("Photograph must be smaller than 12 MB.");
+  if (file.size <= 12e4) return nr(file);
+  if (typeof document === "undefined" || typeof Image === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function")
+    throw Error("Photo compression is unavailable here. Choose a smaller photograph.");
   const objectUrl = URL.createObjectURL(file);
   try {
     const photo = await new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(img);
-      img.onerror = () => reject(Error('The selected photograph could not be decoded.'));
+      img.onerror = () => reject(Error("The selected photograph could not be decoded."));
       img.src = objectUrl;
     });
     const width = photo.naturalWidth, height = photo.naturalHeight;
-    if (!width || !height || width * height > 50000000)
-      throw Error('Invalid or excessively large photograph dimensions.');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', {alpha: false});
-    if (!ctx) throw Error('Photo compression is unavailable. Choose a smaller photograph.');
+    if (!width || !height || width * height > 5e7)
+      throw Error("Invalid or excessively large photograph dimensions.");
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) throw Error("Photo compression is unavailable. Choose a smaller photograph.");
     for (const edge of [900, 720, 600, 480]) {
       const scale = Math.min(1, edge / Math.max(width, height));
       canvas.width = Math.max(1, Math.round(width * scale));
       canvas.height = Math.max(1, Math.round(height * scale));
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(photo, 0, 0, canvas.width, canvas.height);
-      for (const quality of [0.82, 0.70, 0.58]) {
-        const result = canvas.toDataURL('image/jpeg', quality);
-        if (result.startsWith('data:image/jpeg;base64,') && result.length <= 600000)
+      for (const quality of [0.82, 0.7, 0.58]) {
+        const result = canvas.toDataURL("image/jpeg", quality);
+        if (result.startsWith("data:image/jpeg;base64,") && result.length <= 6e5)
           return result;
       }
     }
-    throw Error('Photo could not be compressed safely. Choose a smaller photograph.');
+    throw Error("Photo could not be compressed safely. Choose a smaller photograph.");
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -19744,7 +19741,7 @@ function bnBroadcastCloudConfirmed(snapshot) {
   if (!institutionId || typeof BroadcastChannel === "undefined") return;
   try {
     const channel = new BroadcastChannel("bright_nexa_store_sync");
-    channel.postMessage({type:"BN_CLOUD_CONFIRMED",institutionId,timestamp:Date.now()});
+    channel.postMessage({ type: "BN_CLOUD_CONFIRMED", institutionId, timestamp: Date.now() });
     channel.close();
   } catch (_2) {
   }
@@ -20122,7 +20119,7 @@ function _Component90({
     {
       className: `secondary-button`,
       style: { background: `#dbeafe`, color: `#0284c7`, borderColor: `#38bdf8`, fontWeight: 800 },
-      onClick: () => window.dispatchEvent(new CustomEvent('bn-open-school-tool',{detail:{page:'id-card-a4.html'}}))
+      onClick: () => window.dispatchEvent(new CustomEvent("bn-open-school-tool", { detail: { page: "id-card-a4.html" } }))
     },
     /* @__PURE__ */ w.createElement(_Component, { size: 17 }),
     `\u{1FAAA} ID Cards Bulk Generator`
@@ -20131,7 +20128,7 @@ function _Component90({
     {
       className: `secondary-button`,
       style: { background: `#fef9c3`, color: `#b45309`, borderColor: `#fde047`, fontWeight: 800 },
-      onClick: () => window.dispatchEvent(new CustomEvent('bn-open-school-tool',{detail:{page:'tc-certificate-a4.html'}}))
+      onClick: () => window.dispatchEvent(new CustomEvent("bn-open-school-tool", { detail: { page: "tc-certificate-a4.html" } }))
     },
     /* @__PURE__ */ w.createElement(_Component, { size: 17 }),
     `\u{1F4DC} Transfer TC`
@@ -20251,13 +20248,15 @@ function _Component6({
   let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i2.className, classes, e2), [i2.className, classes, e2]);
   let [o2, s2] = (0, w.useState)({});
   let [c2, l2] = (0, w.useState)(``);
-  const [photoProcessing,setPhotoProcessing] = (0,w.useState)(false);
-  const initialStudentDraft = (0,w.useRef)(null);
+  const [photoProcessing, setPhotoProcessing] = (0, w.useState)(false);
+  const initialStudentDraft = (0, w.useRef)(null);
   if (initialStudentDraft.current === null) initialStudentDraft.current = JSON.stringify(i2);
   const closeStudentSafely = () => {
-    if (photoProcessing) { l2('Photo is still being prepared. Keep the form open.'); return; }
-    if (JSON.stringify(i2) !== initialStudentDraft.current &&
-        !window.confirm('Student details have not been saved. Discard changes?')) return;
+    if (photoProcessing) {
+      l2("Photo is still being prepared. Keep the form open.");
+      return;
+    }
+    if (JSON.stringify(i2) !== initialStudentDraft.current && !window.confirm("Student details have not been saved. Discard changes?")) return;
     t2();
   };
   let u2 = (0, w.useRef)(null);
@@ -20277,7 +20276,10 @@ function _Component6({
   };
   let m2 = (t3) => {
     t3.preventDefault();
-    if (photoProcessing) { l2('Photo compression is not finished yet.'); return; }
+    if (photoProcessing) {
+      l2("Photo compression is not finished yet.");
+      return;
+    }
     let a3 = {};
     if (!N(i2)) {
       a3.record = `Enter at least one student detail before saving.`;
@@ -20313,13 +20315,13 @@ function _Component6({
   let h2 = async (e3, t3) => {
     if (t3) {
       try {
-        if (e3 === 'photoDataUrl') setPhotoProcessing(true);
-        p2(e3, await (e3 === 'photoDataUrl' ? bnOptimizePortrait(t3) : $n(t3)));
+        if (e3 === "photoDataUrl") setPhotoProcessing(true);
+        p2(e3, await (e3 === "photoDataUrl" ? bnOptimizePortrait(t3) : $n(t3)));
         l2(``);
       } catch (e4) {
         l2(e4 instanceof Error ? e4.message : `Image upload failed.`);
       } finally {
-        if (e3 === 'photoDataUrl') setPhotoProcessing(false);
+        if (e3 === "photoDataUrl") setPhotoProcessing(false);
       }
     }
   };
@@ -20399,8 +20401,7 @@ function _Component6({
     Component138,
     {
       className: `modal-backdrop`,
-      role: `presentation`,
-      onMouseDown: void 0
+      role: `presentation`
     },
     /* @__PURE__ */ w.createElement(
       Component137,
@@ -20514,13 +20515,13 @@ function _Component6({
           value: i2.category || ``,
           onChange: (e3) => p2(`category`, e3.target.value)
         },
-        /* @__PURE__ */ w.createElement(`option`, { value: `` }, `Select Category`),
-        /* @__PURE__ */ w.createElement(`option`, { value: `General` }, `General`),
-        /* @__PURE__ */ w.createElement(`option`, { value: `OBC` }, `OBC`),
-        /* @__PURE__ */ w.createElement(`option`, { value: `SC` }, `SC`),
-        /* @__PURE__ */ w.createElement(`option`, { value: `ST` }, `ST`),
-        /* @__PURE__ */ w.createElement(`option`, { value: `EWS` }, `EWS`),
-        /* @__PURE__ */ w.createElement(`option`, { value: `Other` }, `Other`)
+        /* @__PURE__ */ w.createElement("option", { value: `` }, `Select Category`),
+        /* @__PURE__ */ w.createElement("option", { value: `General` }, `General`),
+        /* @__PURE__ */ w.createElement("option", { value: `OBC` }, `OBC`),
+        /* @__PURE__ */ w.createElement("option", { value: `SC` }, `SC`),
+        /* @__PURE__ */ w.createElement("option", { value: `ST` }, `ST`),
+        /* @__PURE__ */ w.createElement("option", { value: `EWS` }, `EWS`),
+        /* @__PURE__ */ w.createElement("option", { value: `Other` }, `Other`)
       )), /* @__PURE__ */ w.createElement(_Component7, { label: `Previous School` }, /* @__PURE__ */ w.createElement(
         Component95,
         {
@@ -20924,8 +20925,8 @@ function Sr({ data: e2, onUpdate: t2 }) {
       `Teacher`,
       n3.name || n3.employeeCode || `Faculty record`
     );
-    if (result?.status !== 'synced' || result.pending)
-      throw Error(result?.error?.message || 'Teacher is pending in this browser. Supabase has not confirmed the save. Keep this form open and retry with the same teacher ID.');
+    if (result?.status !== "synced" || result.pending)
+      throw Error(result?.error?.message || "Teacher is pending in this browser. Supabase has not confirmed the save. Keep this form open and retry with the same teacher ID.");
     r2(false);
     s2(null);
   };
@@ -21009,12 +21010,17 @@ function Sr({ data: e2, onUpdate: t2 }) {
     const Component202 = `button`;
     const Component203 = `td`;
     const Component204 = `tr`;
-    return /* @__PURE__ */ w.createElement(Component204, { key: e3.id }, /* @__PURE__ */ w.createElement(Component194, null, /* @__PURE__ */ w.createElement(Component193, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component189, null, e3.photoDataUrl ? /* @__PURE__ */ w.createElement("button", {
-      type: "button", title: "Enlarge teacher photograph",
-      "aria-label": `Enlarge photograph of ${t3}`,
-      onClick: () => setPhotoPreview({src:e3.photoDataUrl,name:t3}),
-      style: {border:0,background:"transparent",padding:0,display:"block",cursor:"zoom-in"}
-    }, /* @__PURE__ */ w.createElement(Component188,{src:e3.photoDataUrl,alt:``})) : jr(t3)), /* @__PURE__ */ w.createElement(Component192, null, /* @__PURE__ */ w.createElement(Component190, null, t3), e3.mobile && /* @__PURE__ */ w.createElement(Component191, null, e3.mobile)))), /* @__PURE__ */ w.createElement(Component195, null, e3.employeeCode), /* @__PURE__ */ w.createElement(Component196, null, e3.designation), /* @__PURE__ */ w.createElement(Component197, null, e3.qualification), /* @__PURE__ */ w.createElement(Component198, null, e3.subjects.join(`, `)), /* @__PURE__ */ w.createElement(Component199, null, e3.appointmentDate || e3.joiningDate), /* @__PURE__ */ w.createElement(Component201, null, e3.status && /* @__PURE__ */ w.createElement(
+    return /* @__PURE__ */ w.createElement(Component204, { key: e3.id }, /* @__PURE__ */ w.createElement(Component194, null, /* @__PURE__ */ w.createElement(Component193, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component189, null, e3.photoDataUrl ? /* @__PURE__ */ w.createElement(
+      "button",
+      {
+        type: "button",
+        title: "Enlarge teacher photograph",
+        "aria-label": `Enlarge photograph of ${t3}`,
+        onClick: () => setPhotoPreview({ src: e3.photoDataUrl, name: t3 }),
+        style: { border: 0, background: "transparent", padding: 0, display: "block", cursor: "zoom-in" }
+      },
+      /* @__PURE__ */ w.createElement(Component188, { src: e3.photoDataUrl, alt: `` })
+    ) : jr(t3)), /* @__PURE__ */ w.createElement(Component192, null, /* @__PURE__ */ w.createElement(Component190, null, t3), e3.mobile && /* @__PURE__ */ w.createElement(Component191, null, e3.mobile)))), /* @__PURE__ */ w.createElement(Component195, null, e3.employeeCode), /* @__PURE__ */ w.createElement(Component196, null, e3.designation), /* @__PURE__ */ w.createElement(Component197, null, e3.qualification), /* @__PURE__ */ w.createElement(Component198, null, e3.subjects.join(`, `)), /* @__PURE__ */ w.createElement(Component199, null, e3.appointmentDate || e3.joiningDate), /* @__PURE__ */ w.createElement(Component201, null, e3.status && /* @__PURE__ */ w.createElement(
       Component200,
       {
         className: `status-badge ${e3.status.toLowerCase()}`
@@ -21057,16 +21063,14 @@ function Sr({ data: e2, onUpdate: t2 }) {
       },
       onDelete: () => f2(i2)
     }
-  ), photoPreview && /* @__PURE__ */ w.createElement(
-    L,
-    {title: "Teacher Photograph", subtitle: photoPreview.name, onClose: () => setPhotoPreview(null)},
-    /* @__PURE__ */ w.createElement("div", {style:{textAlign:"center",padding:"12px"}},
-      /* @__PURE__ */ w.createElement("img",{
-        src:photoPreview.src,alt:`Photograph of ${photoPreview.name}`,
-        style:{display:"block",maxWidth:"100%",maxHeight:"70vh",width:"auto",margin:"0 auto",objectFit:"contain",borderRadius:10}
-      })
-    )
-  ));
+  ), photoPreview && /* @__PURE__ */ w.createElement(L, { title: `Teacher Photograph`, subtitle: photoPreview.name, onClose: () => setPhotoPreview(null) }, /* @__PURE__ */ w.createElement("div", { style: { textAlign: "center", padding: "12px" } }, /* @__PURE__ */ w.createElement(
+    "img",
+    {
+      src: photoPreview.src,
+      alt: `Photograph of ${photoPreview.name}`,
+      style: { display: "block", maxWidth: "100%", maxHeight: "70vh", width: "auto", margin: "0 auto", objectFit: "contain", borderRadius: 10 }
+    }
+  ))));
 }
 function Cr({
   classes: e2,
@@ -21096,21 +21100,22 @@ function Cr({
   let [s2, c2] = (0, w.useState)(a2.subjects.join(`, `));
   let [l2, u2] = (0, w.useState)(``);
   let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
-  const [photoProcessing, setPhotoProcessing] = (0,w.useState)(false);
+  const [photoProcessing, setPhotoProcessing] = (0, w.useState)(false);
   let pendingTeacherId = (0, w.useRef)(n2?.id || crypto.randomUUID());
   const initialTeacherDraft = (0, w.useRef)(null);
-  if (initialTeacherDraft.current === null) initialTeacherDraft.current = JSON.stringify({form:a2,subjects:s2});
+  if (initialTeacherDraft.current === null) initialTeacherDraft.current = JSON.stringify({ form: a2, subjects: s2 });
   const closeTeacherSafely = () => {
-    if (photoProcessing) { u2('Photo is still being prepared. Keep this form open.'); return; }
-    if (savingToCloud) {
-      u2('Teacher save is still running. Keep this form open until Supabase confirms it.');
+    if (photoProcessing) {
+      u2("Photo is still being prepared. Keep this form open.");
       return;
     }
-    if (JSON.stringify({form:a2,subjects:s2}) !== initialTeacherDraft.current &&
-      !window.confirm('Teacher details have not been saved. Discard your changes?')) return;
+    if (savingToCloud) {
+      u2("Teacher save is still running. Keep this form open until Supabase confirms it.");
+      return;
+    }
+    if (JSON.stringify({ form: a2, subjects: s2 }) !== initialTeacherDraft.current && !window.confirm("Teacher details have not been saved. Discard your changes?")) return;
     r2();
   };
-
   let d2 = (0, w.useRef)(null);
   let f2 = (0, w.useRef)(null);
   let p2 = (0, w.useRef)(null);
@@ -21121,13 +21126,13 @@ function Cr({
   let h2 = async (e3, t3) => {
     if (t3) {
       try {
-        if (e3 === 'photoDataUrl') setPhotoProcessing(true);
-        m2(e3, await (e3 === 'photoDataUrl' ? bnOptimizePortrait(t3) : $n(t3)));
+        if (e3 === "photoDataUrl") setPhotoProcessing(true);
+        m2(e3, await (e3 === "photoDataUrl" ? bnOptimizePortrait(t3) : $n(t3)));
         u2(``);
       } catch (e4) {
         u2(e4 instanceof Error ? e4.message : `Image upload failed.`);
       } finally {
-        if (e3 === 'photoDataUrl') setPhotoProcessing(false);
+        if (e3 === "photoDataUrl") setPhotoProcessing(false);
       }
     }
   };
@@ -21217,7 +21222,10 @@ function Cr({
         onSubmit: async (e3) => {
           e3.preventDefault();
           if (savingToCloud) return;
-          if (photoProcessing) { u2('Photograph is still being compressed.'); return; }
+          if (photoProcessing) {
+            u2("Photograph is still being compressed.");
+            return;
+          }
           let r3 = s2.split(`,`).map((e4) => e4.trim()).filter(Boolean);
           let o3 = {
             ...a2,
@@ -21249,7 +21257,7 @@ function Cr({
               qualification: a2.qualification.trim()
             });
           } catch (error) {
-            u2(error?.message || 'Teacher has not been confirmed in Supabase. Retry safely; this form keeps the same ID.');
+            u2(error?.message || "Teacher has not been confirmed in Supabase. Retry safely; this form keeps the same ID.");
           } finally {
             setSavingToCloud(false);
           }
@@ -21599,8 +21607,14 @@ function Cr({
         }
       ))),
       l2 && /* @__PURE__ */ w.createElement(Component283, { className: `form-error` }, l2),
-      /* @__PURE__ */ w.createElement(Vr, {onClose:closeTeacherSafely,saveDisabled:savingToCloud || photoProcessing,
-        saveLabel:photoProcessing ? `Optimizing photo...` : savingToCloud ? `Saving teacher to Supabase...` : n2 ? `Update Teacher` : `Save Teacher`})
+      /* @__PURE__ */ w.createElement(
+        Vr,
+        {
+          onClose: closeTeacherSafely,
+          saveDisabled: savingToCloud || photoProcessing,
+          saveLabel: photoProcessing ? `Optimizing photo...` : savingToCloud ? `Saving teacher to Supabase...` : n2 ? `Update Teacher` : `Save Teacher`
+        }
+      )
     )
   );
 }
@@ -22843,8 +22857,8 @@ function Ur({
 }) {
   let [l2, u2] = (0, w.useState)({});
   let [d2, f2] = (0, w.useState)(false);
-  const [attendanceSaving,setAttendanceSaving]=(0,w.useState)(false);
-  const [attendanceSaveMessage,setAttendanceSaveMessage]=(0,w.useState)('');
+  const [attendanceSaving, setAttendanceSaving] = (0, w.useState)(false);
+  const [attendanceSaveMessage, setAttendanceSaveMessage] = (0, w.useState)("");
   let [whatsAppAbsentOpen, setWhatsAppAbsentOpen] = (0, w.useState)(false);
   let p2 = e2.attendance.filter(
     (e3) => e3.date === r2 && (e3.classId && e3.classId === n2?.id || !e3.classId && e3.className === n2?.name && e3.section === n2?.section && e3.academicStream === n2?.academicStream)
@@ -22904,49 +22918,49 @@ function Ur({
       disabled: !t2.length || !!s2 || attendanceSaving,
       onClick: async () => {
         if (!n2 || s2 || attendanceSaving) return;
-        if (!t2.some(student=>m2(student.id))) {
-          setAttendanceSaveMessage('Mark at least one student before saving. Unmarked students are not marked present.');
+        if (!t2.some((student) => m2(student.id))) {
+          setAttendanceSaveMessage("Mark at least one student before saving. Unmarked students are not marked present.");
           return;
         }
         setAttendanceSaving(true);
-        setAttendanceSaveMessage('');
+        setAttendanceSaveMessage("");
         try {
-        let i3 = new Set(t2.map((e3) => e3.id));
-        let a3 = e2.attendance.filter(
-          (e3) => e3.date !== r2 || !i3.has(e3.studentId)
-        );
-        let o3 = t2.filter((e3) => m2(e3.id)).map((e3) => ({
-          id: p2.find(previous=>previous.studentId===e3.id)?.id || crypto.randomUUID(),
-          date: r2,
-          className: n2.name,
-          section: n2.section,
-          classId: n2.id,
-          academicStream: n2.academicStream,
-          studentId: e3.id,
-          status: m2(e3.id),
-          remark: ``,
-          markedAt: (/* @__PURE__ */ new Date()).toISOString()
-        }));
-        const result=await c2(
-          {
-            ...e2,
-            attendance: [...a3, ...o3]
-          },
-          `UPSERT`,
-          `Student attendance`,
-          `${ni(n2)} on ${r2}`
-        );
-        if(result?.status!=='synced') {
+          let i3 = new Set(t2.map((e3) => e3.id));
+          let a3 = e2.attendance.filter(
+            (e3) => e3.date !== r2 || !i3.has(e3.studentId)
+          );
+          let o3 = t2.filter((e3) => m2(e3.id)).map((e3) => ({
+            id: p2.find((previous) => previous.studentId === e3.id)?.id || crypto.randomUUID(),
+            date: r2,
+            className: n2.name,
+            section: n2.section,
+            classId: n2.id,
+            academicStream: n2.academicStream,
+            studentId: e3.id,
+            status: m2(e3.id),
+            remark: ``,
+            markedAt: (/* @__PURE__ */ new Date()).toISOString()
+          }));
+          const result = await c2(
+            {
+              ...e2,
+              attendance: [...a3, ...o3]
+            },
+            `UPSERT`,
+            `Student attendance`,
+            `${ni(n2)} on ${r2}`
+          );
+          if (result?.status !== "synced") {
+            f2(false);
+            setAttendanceSaveMessage(result?.error?.message || "Attendance was NOT confirmed in Supabase. The pending entry remains on this device; retry cloud sync.");
+            return;
+          }
+          f2(true);
+          setAttendanceSaveMessage("Attendance confirmed in Supabase.");
+          setTimeout(() => f2(false), 1800);
+        } catch (error) {
           f2(false);
-          setAttendanceSaveMessage(result?.error?.message || 'Attendance was NOT confirmed in Supabase. The pending entry remains on this device; retry cloud sync.');
-          return;
-        }
-        f2(true);
-        setAttendanceSaveMessage('Attendance confirmed in Supabase.');
-        setTimeout(() => f2(false),1800);
-        } catch(error) {
-          f2(false);
-          setAttendanceSaveMessage(error?.message || 'Attendance could not be verified in Supabase.');
+          setAttendanceSaveMessage(error?.message || "Attendance could not be verified in Supabase.");
         } finally {
           setAttendanceSaving(false);
         }
@@ -22954,7 +22968,7 @@ function Ur({
     },
     /* @__PURE__ */ w.createElement(_Component17, { size: 16 }),
     d2 ? `Saved` : `Save Marked Records`
-  ), attendanceSaveMessage && /* @__PURE__ */ w.createElement("p",{role:"status","aria-live":"polite",className:"section-helper"},attendanceSaveMessage), absentRoster.length > 0 && /* @__PURE__ */ w.createElement(
+  ), attendanceSaveMessage && /* @__PURE__ */ w.createElement("p", { role: "status", "aria-live": "polite", className: "section-helper" }, attendanceSaveMessage), absentRoster.length > 0 && /* @__PURE__ */ w.createElement(
     "button",
     {
       type: "button",
@@ -23092,8 +23106,8 @@ function Wr({
   let s2 = t2.filter((e3) => e3.status !== `Inactive`);
   let [c2, l2] = (0, w.useState)({});
   let [u2, d2] = (0, w.useState)(false);
-  const [attendanceSaving,setAttendanceSaving]=(0,w.useState)(false);
-  const [attendanceSaveMessage,setAttendanceSaveMessage]=(0,w.useState)('');
+  const [attendanceSaving, setAttendanceSaving] = (0, w.useState)(false);
+  const [attendanceSaveMessage, setAttendanceSaveMessage] = (0, w.useState)("");
   let f2 = e2.staffAttendance.filter((e3) => e3.date === r2 && e3.staffType === n2);
   let p2 = (e3) => c2[e3] || f2.find((t3) => t3.staffId === e3)?.status;
   let m2 = (e3) => l2(Object.fromEntries(s2.map((t3) => [t3.id, e3])));
@@ -23138,45 +23152,45 @@ function Wr({
       disabled: !s2.length || !!a2 || attendanceSaving,
       onClick: async () => {
         if (a2 || attendanceSaving) return;
-        if (!s2.some(staff=>p2(staff.id))) {
-          setAttendanceSaveMessage('Mark at least one staff member before saving. Missing marks are not absences.');
+        if (!s2.some((staff) => p2(staff.id))) {
+          setAttendanceSaveMessage("Mark at least one staff member before saving. Missing marks are not absences.");
           return;
         }
         setAttendanceSaving(true);
-        setAttendanceSaveMessage('');
+        setAttendanceSaveMessage("");
         try {
-        let t3 = new Set(s2.map((e3) => e3.id));
-        let i3 = e2.staffAttendance.filter(
-          (e3) => e3.date !== r2 || e3.staffType !== n2 || !t3.has(e3.staffId)
-        );
-        let c3 = s2.filter((e3) => p2(e3.id)).map((e3) => ({
-          id: f2.find(previous=>previous.staffId===e3.id)?.id || crypto.randomUUID(),
-          date: r2,
-          staffType: n2,
-          staffId: e3.id,
-          status: p2(e3.id),
-          markedAt: (/* @__PURE__ */ new Date()).toISOString()
-        }));
-        const result=await o2(
-          {
-            ...e2,
-            staffAttendance: [...i3, ...c3]
-          },
-          `UPSERT`,
-          `${n2} attendance`,
-          r2
-        );
-        if(result?.status!=='synced') {
+          let t3 = new Set(s2.map((e3) => e3.id));
+          let i3 = e2.staffAttendance.filter(
+            (e3) => e3.date !== r2 || e3.staffType !== n2 || !t3.has(e3.staffId)
+          );
+          let c3 = s2.filter((e3) => p2(e3.id)).map((e3) => ({
+            id: f2.find((previous) => previous.staffId === e3.id)?.id || crypto.randomUUID(),
+            date: r2,
+            staffType: n2,
+            staffId: e3.id,
+            status: p2(e3.id),
+            markedAt: (/* @__PURE__ */ new Date()).toISOString()
+          }));
+          const result = await o2(
+            {
+              ...e2,
+              staffAttendance: [...i3, ...c3]
+            },
+            `UPSERT`,
+            `${n2} attendance`,
+            r2
+          );
+          if (result?.status !== "synced") {
+            d2(false);
+            setAttendanceSaveMessage(result?.error?.message || "Staff attendance was NOT confirmed in Supabase. Pending work stays on this device; retry sync.");
+            return;
+          }
+          d2(true);
+          setAttendanceSaveMessage("Staff attendance confirmed in Supabase workspace.");
+          setTimeout(() => d2(false), 1800);
+        } catch (error) {
           d2(false);
-          setAttendanceSaveMessage(result?.error?.message || 'Staff attendance was NOT confirmed in Supabase. Pending work stays on this device; retry sync.');
-          return;
-        }
-        d2(true);
-        setAttendanceSaveMessage('Staff attendance confirmed in Supabase workspace.');
-        setTimeout(() => d2(false),1800);
-        } catch(error) {
-          d2(false);
-          setAttendanceSaveMessage(error?.message || 'Staff attendance could not be verified in Supabase.');
+          setAttendanceSaveMessage(error?.message || "Staff attendance could not be verified in Supabase.");
         } finally {
           setAttendanceSaving(false);
         }
@@ -23184,7 +23198,7 @@ function Wr({
     },
     /* @__PURE__ */ w.createElement(_Component17, { size: 16 }),
     u2 ? `Saved` : `Save Marked Records`
-  ), attendanceSaveMessage && /* @__PURE__ */ w.createElement("p",{role:"status","aria-live":"polite",className:"section-helper"},attendanceSaveMessage), f2.length > 0 && /* @__PURE__ */ w.createElement(
+  ), attendanceSaveMessage && /* @__PURE__ */ w.createElement("p", { role: "status", "aria-live": "polite", className: "section-helper" }, attendanceSaveMessage), f2.length > 0 && /* @__PURE__ */ w.createElement(
     Component436,
     {
       className: `danger-button`,
@@ -25154,7 +25168,7 @@ function ji(e2) {
   try {
     window.localStorage.setItem(Di, JSON.stringify(t2));
   } catch (e3) {
-    bnReportBrowserSaveError('ERP operations', e3);
+    bnReportBrowserSaveError("ERP operations", e3);
   }
   Ot(`operations`, t2).catch((e3) => bnReportBrowserSaveError("ERP operations local cache", e3));
 }
@@ -25443,14 +25457,26 @@ function B({ data: e2, students: t2, onUpdate: n2 }) {
         i2(false);
         o2(void 0);
       },
-      onSave: y2
+      onSave: y2,
+      classes: e2.classes,
+      students: t2
     }
   ));
 }
-function Pi({ initial: e2, onClose: t2, onSave: n2 }) {
+function Pi({ initial: e2, onClose: t2, onSave: n2, classes: configuredClasses = [], students: studentList = [] }) {
+  const availableExamClasses = (0, w.useMemo)(() => {
+    const configured = (configuredClasses || []).filter((c3) => c3.status !== "Inactive");
+    const names = configured.length ? buildDynamicClassList(configured, [], false) : [];
+    if (e2?.className && !names.includes(e2.className)) names.push(e2.className);
+    return names;
+  }, [configuredClasses, e2?.className]);
   let [r2, i2] = (0, w.useState)(e2?.name || ``);
   let [a2, o2] = (0, w.useState)(e2?.type || `Unit Test`);
-  let [s2, c2] = (0, w.useState)(e2?.className || `6`);
+  let [s2, c2] = (0, w.useState)(e2?.className || availableExamClasses[0] || ``);
+  const availableExamSections = (0, w.useMemo)(
+    () => buildDynamicSectionList(s2, configuredClasses, studentList),
+    [s2, configuredClasses, studentList]
+  );
   let [l2, u2] = (0, w.useState)(e2?.section || ``);
   let [d2, f2] = (0, w.useState)(e2?.academicStream);
   let [p2, m2] = (0, w.useState)(
@@ -25494,6 +25520,10 @@ function Pi({ initial: e2, onClose: t2, onSave: n2 }) {
           t3.preventDefault();
           if (!r2.trim()) {
             S2(`Exam name is required.`);
+            return;
+          }
+          if (!s2 || !availableExamClasses.includes(s2)) {
+            S2(`Create and select a class in Add Class before saving an examination.`);
             return;
           }
           if ((s2 === `11` || s2 === `12`) && !d2) {
@@ -25540,26 +25570,15 @@ function Pi({ initial: e2, onClose: t2, onSave: n2 }) {
           value: s2,
           onChange: (e3) => {
             c2(e3.target.value);
+            u2(``);
             if (e3.target.value !== `11` && e3.target.value !== `12`) {
               f2(void 0);
             }
           }
         },
-        [
-          `1`,
-          `2`,
-          `3`,
-          `4`,
-          `5`,
-          `6`,
-          `7`,
-          `8`,
-          `9`,
-          `10`,
-          `11`,
-          `12`
-        ].map((e3) => /* @__PURE__ */ w.createElement(Component791, { key: e3 }, e3))
-      )), /* @__PURE__ */ w.createElement(R, { label: `Section (Optional)` }, /* @__PURE__ */ w.createElement(Component795, { value: l2, onChange: (e3) => u2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component793, { value: `` }, `All Sections`), [`A`, `B`, `C`, `D`, `E`, `F`].map((e3) => /* @__PURE__ */ w.createElement(Component794, { key: e3 }, e3)))), (s2 === `11` || s2 === `12`) && /* @__PURE__ */ w.createElement(R, { label: `Academic Stream *` }, /* @__PURE__ */ w.createElement(Component798, { value: d2 || ``, onChange: (e3) => f2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component796, { value: `` }, `Select Stream`), Bn.map((e3) => /* @__PURE__ */ w.createElement(Component797, { key: e3 }, e3)))), /* @__PURE__ */ w.createElement(R, { label: `Start date` }, /* @__PURE__ */ w.createElement(
+        /* @__PURE__ */ w.createElement(Component791, { value: `` }, `Select Class`),
+        availableExamClasses.map((className) => /* @__PURE__ */ w.createElement(Component791, { key: className, value: className }, className))
+      )), /* @__PURE__ */ w.createElement(R, { label: `Section (Optional)` }, /* @__PURE__ */ w.createElement(Component795, { value: l2, onChange: (e3) => u2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component793, { value: `` }, `All Sections`), availableExamSections.map((section) => /* @__PURE__ */ w.createElement(Component794, { key: section, value: section }, section)))), (s2 === `11` || s2 === `12`) && /* @__PURE__ */ w.createElement(R, { label: `Academic Stream *` }, /* @__PURE__ */ w.createElement(Component798, { value: d2 || ``, onChange: (e3) => f2(e3.target.value) }, /* @__PURE__ */ w.createElement(Component796, { value: `` }, `Select Stream`), Bn.map((e3) => /* @__PURE__ */ w.createElement(Component797, { key: e3 }, e3)))), /* @__PURE__ */ w.createElement(R, { label: `Start date` }, /* @__PURE__ */ w.createElement(
         Component799,
         {
           type: `date`,
@@ -26241,7 +26260,7 @@ function Hi({ data: e2, students: t2, snapshot: n2 }) {
         {
           className: `secondary-button`,
           style: { background: `#dcfce7`, color: `#15803d`, borderColor: `#86efac`, fontWeight: 800 },
-          onClick: () => window.dispatchEvent(new CustomEvent('bn-open-school-tool',{detail:{page:'id-card-a4.html'}}))
+          onClick: () => window.dispatchEvent(new CustomEvent("bn-open-school-tool", { detail: { page: "id-card-a4.html" } }))
         },
         /* @__PURE__ */ w.createElement(Je, { size: 16 }),
         `\u{1FAAA} Student ID Cards`
@@ -30422,7 +30441,7 @@ function $a({ initial: e2, onClose: t2, onSave: n2 }) {
       ), /* @__PURE__ */ w.createElement(
         _Component57,
         {
-          label: `Salary Amount (₹)`,
+          label: `Salary Amount (\u20B9)`,
           value: r2.salary,
           set: (e3) => u2(`salary`, e3)
         }
@@ -37726,7 +37745,7 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`]
   },
   {
-    label: `Teachers · Online Access`,
+    label: `Teachers \xB7 Online Access`,
     icon: _Component4,
     roles: ws,
     href: `./teacher-access.html?staffPortal=1`,
@@ -37797,7 +37816,7 @@ var Ts = [
     roles: [`OWNER`, `ADMIN`, `TEACHER`, `PARENT`]
   },
   {
-    label: `Parents App · Download`,
+    label: `Parents App \xB7 Download`,
     icon: Te,
     roles: ws,
     href: `./parent-app-download.html`,
@@ -37904,16 +37923,17 @@ function Ds() {
     }
     return "Dashboard";
   });
-  const [printTool,setPrintTool] = w.useState('id-card-a4.html');
-  w.useEffect(()=>{
-    const openTool = event => {
-      const page=event?.detail?.page;
-      if (!['id-card-a4.html','marksheet-a4.html','tc-certificate-a4.html'].includes(page)) return;
-      setPrintTool(page);l2('ID Cards & Certificates');
+  const [printTool, setPrintTool] = w.useState("id-card-a4.html");
+  w.useEffect(() => {
+    const openTool = (event) => {
+      const page = event?.detail?.page;
+      if (!["id-card-a4.html", "marksheet-a4.html", "tc-certificate-a4.html"].includes(page)) return;
+      setPrintTool(page);
+      l2("ID Cards & Certificates");
     };
-    window.addEventListener('bn-open-school-tool',openTool);
-    return ()=>window.removeEventListener('bn-open-school-tool',openTool);
-  },[]);
+    window.addEventListener("bn-open-school-tool", openTool);
+    return () => window.removeEventListener("bn-open-school-tool", openTool);
+  }, []);
   let [u2, d2] = (0, w.useState)(false);
   let [f2, p2] = (0, w.useState)(``);
   let [m2, h2] = (0, w.useState)(``);
@@ -37923,13 +37943,10 @@ function Ds() {
   const [cloudDialog, setCloudDialog] = w.useState(false);
   const [cloudError, setCloudError] = w.useState("");
   const [cloud, setCloud] = w.useState(null);
-  // Teacher Portal attendance can change without a workspace revision bump.
-  // Refresh relational overlay as soon as the Admin opens Attendance/Reports.
-  w.useEffect(()=>{
-    if(!workspaceReady || !cloud?.controller || !['Attendance','Owner Reports'].includes(c2))return;
-    cloud.controller.sync().catch(error=>setCloudError(error?.message||'Cloud attendance refresh failed.'));
-  },[c2,cloud,workspaceReady]);
-
+  w.useEffect(() => {
+    if (!workspaceReady || !cloud?.controller || !["Attendance", "Owner Reports"].includes(c2)) return;
+    cloud.controller.sync().catch((error) => setCloudError(error?.message || "Cloud attendance refresh failed."));
+  }, [c2, cloud, workspaceReady]);
   const latestWorkspace = w.useRef(null);
   const lastWorkspace = w.useRef("");
   const priorSyncState = w.useRef("local");
@@ -38311,14 +38328,13 @@ function Ds() {
     a2(audited);
     ji(audited);
     bnBroadcastStoreSync(e2, nextStudents, audited);
-    if ((entityArg === `Teacher` && actionArg !== `DELETE`) || [`Student attendance`,`Teaching attendance`,`Non-Teaching attendance`].includes(entityArg)) {
-      const nextSnapshot = {institution:e2,students:nextStudents,operations:audited};
+    if (entityArg === `Teacher` && actionArg !== `DELETE` || [`Student attendance`, `Teaching attendance`, `Non-Teaching attendance`].includes(entityArg)) {
+      const nextSnapshot = { institution: e2, students: nextStudents, operations: audited };
       latestWorkspace.current = nextSnapshot;
       if (!cloud?.controller)
-        return Promise.resolve({status:'local',error:Error(entityArg === `Teacher`?'School cloud is not connected. Teacher record is still on this device; open the verified school before saving.':'School cloud is not connected. Attendance is only on this device and was NOT saved to Supabase.')});
+        return Promise.resolve({ status: "local", error: Error(entityArg === `Teacher` ? "School cloud is not connected. Teacher record is still on this device; open the verified school before saving." : "School cloud is not connected. Attendance is only on this device and was NOT saved to Supabase.") });
       lastWorkspace.current = JSON.stringify(nextSnapshot);
-      return cloud.controller.autosave(nextSnapshot)
-        .catch(error=>({status:'pending',pending:true,error}));
+      return cloud.controller.autosave(nextSnapshot).catch((error) => ({ status: "pending", pending: true, error }));
     }
   };
   const Component2051 = `img`;
@@ -38425,27 +38441,30 @@ function Ds() {
       "aria-label": `Close navigation`
     },
     /* @__PURE__ */ w.createElement(St, { size: 20 })
-  )), /* @__PURE__ */ w.createElement(Component2061, { className: `school-chip` }, /* @__PURE__ */ w.createElement(Component2057, { className: `school-avatar` }, ne), /* @__PURE__ */ w.createElement(Component2060, null, /* @__PURE__ */ w.createElement(Component2058, null, e2.institution.name), /* @__PURE__ */ w.createElement(Component2059, null, e2.institution.session)), /* @__PURE__ */ w.createElement(_Component3, { size: 18 })), /* @__PURE__ */ w.createElement(Component2065, { className: `navigation`, "aria-label": `Main navigation` }, b2.map(({ label: e3, icon: _Component81, href, navId, directKind }) => /* @__PURE__ */ w.createElement(
-    href ? "a" : Component2064,
-    {
-      className: c2 === e3 ? `nav-item active` : `nav-item`,
-      href: href || void 0,
-      id: navId || void 0,
-      "data-bn-direct-link": directKind || void 0,
-      style: href ? { textDecoration: `none` } : void 0,
-      onClick: href ? void 0 : () => se(e3),
-      key: e3
-    },
-    /* @__PURE__ */ w.createElement(_Component81, { size: 19, strokeWidth: 1.9 }),
-    /* @__PURE__ */ w.createElement(Component2062, null, C2(e3)),
-    e3 === `AI Teacher Tools` && /* @__PURE__ */ w.createElement(
-      Component2063,
+  )), /* @__PURE__ */ w.createElement(Component2061, { className: `school-chip` }, /* @__PURE__ */ w.createElement(Component2057, { className: `school-avatar` }, ne), /* @__PURE__ */ w.createElement(Component2060, null, /* @__PURE__ */ w.createElement(Component2058, null, e2.institution.name), /* @__PURE__ */ w.createElement(Component2059, null, e2.institution.session)), /* @__PURE__ */ w.createElement(_Component3, { size: 18 })), /* @__PURE__ */ w.createElement(Component2065, { className: `navigation`, "aria-label": `Main navigation` }, b2.map(({ label: e3, icon: _Component81, href, navId, directKind }) => {
+    const NavItem = href ? `a` : Component2064;
+    return /* @__PURE__ */ w.createElement(
+      NavItem,
       {
-        className: `paid-dot`,
-        title: `Connected service`
-      }
-    )
-  ))), /* @__PURE__ */ w.createElement(Component2069, { className: `sidebar-foot` }, /* @__PURE__ */ w.createElement(_Component21, { size: 19 }), /* @__PURE__ */ w.createElement(Component2068, null, /* @__PURE__ */ w.createElement(Component2066, null, _2.freeCore), /* @__PURE__ */ w.createElement(Component2067, null, _2.localSafe)))), o2 && /* @__PURE__ */ w.createElement(
+        className: c2 === e3 ? `nav-item active` : `nav-item`,
+        href: href || void 0,
+        id: navId || void 0,
+        "data-bn-direct-link": directKind || void 0,
+        style: href ? { textDecoration: `none` } : void 0,
+        onClick: href ? void 0 : () => se(e3),
+        key: e3
+      },
+      /* @__PURE__ */ w.createElement(_Component81, { size: 19, strokeWidth: 1.9 }),
+      /* @__PURE__ */ w.createElement(Component2062, null, C2(e3)),
+      e3 === `AI Teacher Tools` && /* @__PURE__ */ w.createElement(
+        Component2063,
+        {
+          className: `paid-dot`,
+          title: `Connected service`
+        }
+      )
+    );
+  })), /* @__PURE__ */ w.createElement(Component2069, { className: `sidebar-foot` }, /* @__PURE__ */ w.createElement(_Component21, { size: 19 }), /* @__PURE__ */ w.createElement(Component2068, null, /* @__PURE__ */ w.createElement(Component2066, null, _2.freeCore), /* @__PURE__ */ w.createElement(Component2067, null, _2.localSafe)))), o2 && /* @__PURE__ */ w.createElement(
     Component2071,
     {
       className: `scrim`,
@@ -38837,11 +38856,25 @@ function Ds() {
       onUpdateStudent: de,
       onDeleteStudent: pe
     }
-  ) : c2 === `ID Cards & Certificates` ? /* @__PURE__ */ w.createElement('iframe', {
-    title:'ID Cards, Marksheets and Certificates',key:printTool,
-    src:'./'+printTool+'?embedded=1&schoolId='+encodeURIComponent(e2?.institution?.id||''),
-    loading:'eager',style:{display:'block',width:'100%',height:'calc(100vh - 155px)',minHeight:650,border:'none',background:'transparent'}
-  }) : c2 === `Teachers` ? /* @__PURE__ */ w.createElement(Sr, { data: i2, onUpdate: j }) : c2 === `Non-Teaching Staff` ? /* @__PURE__ */ w.createElement(Qa, { data: i2, onUpdate: j }) : c2 === `Transport & Routes` ? /* @__PURE__ */ w.createElement(_Component91, { data: i2, students: n2, onUpdate: j }) : c2 === `Infrastructure & Assets` ? /* @__PURE__ */ w.createElement(_Component92, { data: i2, onUpdate: j }) : c2 === `Classes & Batches` ? /* @__PURE__ */ w.createElement(Pr, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Attendance` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Ma, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement('button', {type:'button',className:'secondary-button',disabled:!cloud?.controller,onClick:()=>cloud?.controller?.sync().catch(error=>setCloudError(error?.message||'Cloud attendance refresh failed.'))}, '↻ Refresh Supabase attendance'), /* @__PURE__ */ w.createElement(Hr, { data: i2, students: y2, onUpdate: j }) ) : c2 === `Fees` ? v2 === `PARENT` ? /* @__PURE__ */ w.createElement(Na, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(
+  ) : c2 === `ID Cards & Certificates` ? /* @__PURE__ */ w.createElement(
+    "iframe",
+    {
+      title: "ID Cards, Marksheets and Certificates",
+      key: printTool,
+      src: "./" + printTool + "?embedded=1&schoolId=" + encodeURIComponent(e2?.institution?.id || ""),
+      loading: "eager",
+      style: { display: "block", width: "100%", height: "calc(100vh - 155px)", minHeight: 650, border: "none", background: "transparent" }
+    }
+  ) : c2 === `Teachers` ? /* @__PURE__ */ w.createElement(Sr, { data: i2, onUpdate: j }) : c2 === `Non-Teaching Staff` ? /* @__PURE__ */ w.createElement(Qa, { data: i2, onUpdate: j }) : c2 === `Transport & Routes` ? /* @__PURE__ */ w.createElement(_Component91, { data: i2, students: n2, onUpdate: j }) : c2 === `Infrastructure & Assets` ? /* @__PURE__ */ w.createElement(_Component92, { data: i2, onUpdate: j }) : c2 === `Classes & Batches` ? /* @__PURE__ */ w.createElement(Pr, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Attendance` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Ma, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button",
+      disabled: !cloud?.controller,
+      onClick: () => cloud?.controller?.sync().catch((error) => setCloudError(error?.message || "Cloud attendance refresh failed."))
+    },
+    "\u21BB Refresh Supabase attendance"
+  ), /* @__PURE__ */ w.createElement(Hr, { data: i2, students: y2, onUpdate: j })) : c2 === `Fees` ? v2 === `PARENT` ? /* @__PURE__ */ w.createElement(Na, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(
     _Component93,
     {
       data: i2,
@@ -38849,7 +38882,7 @@ function Ds() {
       institution: e2.institution,
       onUpdate: j
     }
-  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Owner Reports` ? v2 === `OWNER` && window.BNOwnerReports ? /* @__PURE__ */ w.createElement(window.BNOwnerReports.getView(w), { data: i2, students: y2, institution: e2.institution, syncStatus }) : /* @__PURE__ */ w.createElement('p',{role:'alert'},'Owner access is required or reports module did not load.') : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, { data: i2, students: y2 }) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement(
+  ) : c2 === `Expenses & Budget` ? /* @__PURE__ */ w.createElement(_Component94, { data: i2, institution: e2.institution, onUpdate: j }) : c2 === `Owner Reports` ? v2 === `OWNER` && window.BNOwnerReports ? w.createElement(window.BNOwnerReports.getView(w), { data: i2, students: y2, institution: e2.institution, syncStatus }) : w.createElement("p", { role: "alert" }, "Owner access is required or reports module did not load.") : c2 === `Exams & Marks` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(B, { data: i2, students: y2, onUpdate: j }), /* @__PURE__ */ w.createElement(Gi, { data: i2, students: y2 })) : c2 === `Report Cards` ? /* @__PURE__ */ w.createElement(Hi, { data: i2, students: y2, snapshot: e2 }) : c2 === `Homework & Notices` ? v2 === `PARENT` || v2 === `STUDENT` ? /* @__PURE__ */ w.createElement(Pa, { data: i2, students: y2 }) : /* @__PURE__ */ w.createElement(Fi, { data: i2, onUpdate: j }) : c2 === `Parent Messages` ? /* @__PURE__ */ w.createElement(Ri, { students: y2 }) : c2 === `AI Teacher Tools` ? /* @__PURE__ */ w.createElement(Ea, { data: i2, students: y2 }) : c2 === `Smart Tools` ? /* @__PURE__ */ w.createElement(
     "iframe",
     {
       title: `Smart School Tools`,
