@@ -23,7 +23,8 @@ jobs:
       - name: Build generated bundles from maintained JSX
         run: node scripts/build-school-ui.cjs
       - run: npm run build
-      - run: npm test
+      - name: Verify exam classes regression
+        run: node --test tests/exam-created-classes.test.cjs
       - name: Save generated artifacts back to the branch
         run: |
           git config user.name "github-actions[bot]"
@@ -33,3 +34,5 @@ jobs:
             git commit -m "Build exam-class UI and update service worker checksums"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
+      - name: Run full school test suite (release gate)
+        run: npm test
