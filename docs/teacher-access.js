@@ -245,6 +245,12 @@
     if(name==='dashboard'&&isAdmin()){location.assign('./index.html?openSchool=true&tab=Dashboard');return;}
     if(name==='admin'&&!isAdmin())return;
     if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
+    // Owner timetable deep-links retain the main School OS context without
+    // spawning a second, duplicated staff/ERP sidebar.
+    const focused=isAdmin()&&name==='timetable'
+      &&new URLSearchParams(location.search).get('view')==='timetable';
+    document.body.classList.toggle('bn-owner-timetable',focused);
+    display('ownerTimetableNav',focused);
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
     if($('portalStats'))$('portalStats').classList.toggle('hidden',isAdmin());
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
@@ -1476,8 +1482,17 @@
   if(session&&!$('activation').classList.contains('hidden')){
     notify(recoveryMode?'Secure recovery link verified. Set your new password.':'Invitation verified. Set your new password to continue.');
   }else if(session){
-    // Never steal focus or skip the login screen when opening a new school.
-    // A valid remembered session may be resumed only by an explicit click.
-    display('savedSessionPanel',true);
+    const requested=new URLSearchParams(location.search).get('view');
+    let verifiedErp=null;
+    try{verifiedErp=JSON.parse(sessionStorage.getItem('bright-nexa-school-os:session:v2')||'null');}catch(_){}
+    // Only owner navigation from an already-verified ERP may auto-resume.
+    // load() ALWAYS rechecks the token, active school membership and role
+    // through Supabase; no browser-stored flag can grant data access.
+    if(requested==='timetable'&&verifiedErp?.cloudVerified===true
+      &&verifiedErp?.role==='OWNER'&&verifiedErp?.cloudUserId){
+      run(()=>load());
+    }else{
+      display('savedSessionPanel',true);
+    }
   }
 })();
