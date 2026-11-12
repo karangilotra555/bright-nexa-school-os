@@ -10,6 +10,8 @@ test('transfer certificate never invents fake issuance, dates or school results'
  assert.match(src,/let students = \[\]/);
  assert.match(src,/set\('tcNo','Not issued'\)/);
  assert.match(src,/function printVerifiedTC\(\)/);
- assert.match(src,/if\(!rosterReady\)/);
+ assert.match(src,/Official TC printing is blocked/);
+ assert.match(src,/BNWorkspaceCloud\.create/);
+ assert.doesNotMatch(src,/localStorage\.getItem/);
  for(const folder of ['docs/','app-extracted/dist/'])assert.equal(read(folder+'tc-certificate-a4.html'),src);
 });
