@@ -13,7 +13,7 @@ test('student category remains a native controlled select in all shipped copies'
  for(const p of ['docs/assets/index-brightnexa-v2.js','app-extracted/dist/assets/index-brightnexa-v2.js'])
   assert.equal(read(p),root);
  assert.match(root,/const Component94 = `select`;/);
- assert.ok(root.includes('w.createElement(`option`, { value: `ST` }, `ST`)'));
+ assert.match(root,/w\.createElement\(['\"`]option['\"`],\s*\{ value: ['\"`]ST['\"`] \},\s*['\"`]ST['\"`]\)/);
 });
 test('new recovery code is mirrored and service-worker references updated',()=>{
  const controller=read('school-workspace-controller.js');

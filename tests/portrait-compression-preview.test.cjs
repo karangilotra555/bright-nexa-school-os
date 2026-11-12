@@ -24,16 +24,16 @@ test('photograph upload compresses in browser; Aadhaar document upload remains u
   const helper=js.slice(js.indexOf('async function bnOptimizePortrait('),js.indexOf('async function er(',js.indexOf('async function bnOptimizePortrait(')));
   assert.ok(helper.includes('canvas.toDataURL'));
   assert.ok(helper.includes('URL.revokeObjectURL(objectUrl)'));
-  assert.ok(helper.includes('result.length <= 600000'));
-  assert.ok(helper.includes("['image/jpeg','image/png','image/webp']"));
+  assert.match(helper,/result\.length\s*<=\s*(?:600000|6e5)/);
+  assert.match(helper,/\[\s*['\"]image\/jpeg['\"],\s*['\"]image\/png['\"],\s*['\"]image\/webp['\"]\s*\]/);
   const section=js.slice(js.indexOf('function Cr({'),js.indexOf('function _Component10({ teacher:'));
   assert.ok(section.includes('photoProcessing'));
   assert.ok(section.includes('saveDisabled'));
   assert.ok(section.includes('bnOptimizePortrait('));
-  assert.ok(section.includes("'photoDataUrl' ? bnOptimizePortrait"));
+  assert.match(section,/['\"]photoDataUrl['\"]\s*\?\s*bnOptimizePortrait/);
   assert.ok(section.includes(': $n('),'Aadhaar documents must still use their old upload helper');
   const before=js.slice(0,js.indexOf('function Sr({ data:'));
-  assert.ok(before.includes("'photoDataUrl' ? bnOptimizePortrait"),'student portrait upload must be compressed too');
+  assert.match(before,/['\"]photoDataUrl['\"]\s*\?\s*bnOptimizePortrait/,'student portrait upload must be compressed too');
   let revoked=false,drawn=[],originalCount=0;
   const canvas={
    width:0,height:0,
