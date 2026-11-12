@@ -9,13 +9,13 @@ const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 test('all three served entrypoints load the synced cloud guard before controller and React app',()=>{
  for(const prefix of ['','docs/','app-extracted/dist/']){
    const html=read(prefix+'index.html');
-   const guard=html.indexOf('school-online-guard.js?v=20261111-nonblocking-v1');
+   const guard=html.indexOf('school-online-guard.js?v=20261112-cloud-status-v2');
    const controller=html.indexOf('school-workspace-controller.js?v=20261111-raw-readback-v1');
    const entry=html.indexOf('school-erp-entry.js?v=20261111-portrait-compact-v1');
    assert.ok(guard>0&&controller>guard&&entry>controller, prefix+' order');
    assert.match(html,/CACHE_VERSION = '20261109-signout-v6'/);
    const sw=read(prefix+'sw.js');
-   assert.match(sw,/school-online-guard.js\?v=20261111-nonblocking-v1/);
+   assert.match(sw,/school-online-guard.js\?v=20261112-cloud-status-v2/);
    assert.match(sw,/school-erp-entry.js\?v=20261111-portrait-compact-v1/);
    assert.match(sw,/school-workspace-controller.js\?v=20261111-raw-readback-v1/);
  }
@@ -84,6 +84,6 @@ test('PWA precaches new school cloud adapter and no longer serves 20261106 revis
   const sw=read(prefix+'sw.js');
   assert.match(html,/school-workspace-cloud\.js\?v=20261111-attendance-leave-v1/);
   assert.match(sw,/school-workspace-cloud\.js\?v=20261111-attendance-leave-v1/);
-  assert.match(sw,/school-online-guard\.js\?v=20261111-nonblocking-v1/);
+  assert.match(sw,/school-online-guard\.js\?v=20261112-cloud-status-v2/);
  }
 });
