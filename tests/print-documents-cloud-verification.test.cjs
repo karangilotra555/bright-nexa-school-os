@@ -129,3 +129,13 @@ test('ID card cloud roster excludes transferred, archived and incomplete student
   assert.ok(!options.some(o=>o.includes('transferred child')||o.includes('archived child')||o.includes('incomplete child')));
   dom.window.close();
 });
+
+test('browser print shortcut cannot bypass unissued TC or unverified ID-card checks',()=>{
+  const idCard=read('id-card-a4.html');
+  const tc=read('tc-certificate-a4.html');
+  assert.match(idCard,/body:not\(\.bn-id-print-verified\) #pagesContainer\{display:none!important\}/);
+  assert.match(idCard,/document\.body\.classList\.add\('bn-id-print-verified'\)/);
+  assert.match(idCard,/window\.addEventListener\('afterprint',release/);
+  assert.match(tc,/body:not\(\.bn-tc-server-issued\) \.a4-page\{display:none!important\}/);
+  assert.doesNotMatch(tc,/classList\.add\('bn-tc-server-issued'\)/);
+});
