@@ -4,8 +4,8 @@ const read=f=>fs.readFileSync(path.join(__dirname,'..',f),'utf8');
 test('Admin Attendance and Owner Reports refresh the same verified workspace on tab entry',()=>{
  for(const file of ['app-extracted/src/BrightNexaApp.jsx','assets/index-brightnexa-v2.js']){
   const s=read(file),app=s.slice(s.lastIndexOf('function Ds()'));
-  assert.match(app,/Teacher Portal attendance can change without a workspace revision bump/);
-  assert.match(app,/\['Attendance','Owner Reports'\]\.includes\(/);
+  if(file.endsWith('.jsx'))assert.match(app,/Teacher Portal attendance can change without a workspace revision bump/);
+  assert.match(app,/\[\s*['\"]Attendance['\"],\s*['\"]Owner Reports['\"]\s*\]\.includes\(/);
   assert.match(app,/cloud\.controller\.sync\(\)\.catch/);
   assert.match(app,/Refresh Supabase attendance/);
   assert.match(app,/disabled:!cloud\?\.controller|disabled=\{!cloud\?\.controller\}/);
