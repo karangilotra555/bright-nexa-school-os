@@ -151,7 +151,7 @@ test('All 27 sidebar routes are in school workflow order, with portal shortcuts 
  for(const f of assets){
   const app=read(f);
   const menu=app.slice(app.indexOf('var Ts = ['),app.indexOf('];',app.indexOf('var Ts = ['))+2);
-  assert.deepEqual([...menu.matchAll(/label: `([^`]+)`/g)].map(x=>x[1].replace(/\\\\xB7/g,'·')),expected,f);
+  assert.deepEqual([...menu.matchAll(/label: `([^`]+)`/g)].map(x=>x[1].replace(/\\xB7/g,'·')),expected,f);
   assert.ok(/href\s*\?\s*['\"`]a['\"`]\s*:\s*Component2064/.test(app),f);
   assert.ok(app.includes('"data-bn-direct-link": directKind || void 0'),f);
  }
