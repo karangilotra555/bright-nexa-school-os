@@ -12,7 +12,7 @@ test('teacher form cannot dismiss on backdrop or discard unsaved input unnoticed
   assert.ok(teacher.includes('initialTeacherDraft'));
   assert.ok(teacher.includes('const closeTeacherSafely = () =>'));
   assert.ok(teacher.includes('if (savingToCloud)'));
-  assert.ok(teacher.includes("window.confirm('Teacher details have not been saved."));
+  assert.match(teacher,/window\.confirm\(['\"]Teacher details have not been saved\./);
   assert.ok(teacher.includes('onClose={closeTeacherSafely}') || teacher.includes('onClose: closeTeacherSafely'));
  }
 });
