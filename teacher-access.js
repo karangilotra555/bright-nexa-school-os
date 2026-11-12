@@ -1454,11 +1454,7 @@
     await reload();notify('Teacher assignment saved.');
   })});
   $('studentForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
-    if(!isAdmin())throw Error('School admin required.');
-    throw Error('Add admissions in the main School OS Students module. This old test-student form is disabled to prevent duplicate records.'); 
-    await api('school_students','','POST',{institution_id:me.institution_id,
-      class_id:$('studentClass').value,name:$('studentName').value.trim(),admission_number:$('studentAdm').value.trim(),status:'active'});
-    e.target.reset();await reload();notify('Test student saved.');
+    throw Error('Add admissions in the main School OS Students module. This old test-student form is disabled to prevent duplicate records.');
   })});
   $('assignType').addEventListener('change',()=>{
     const subj=$('assignType').value==='subject_teacher';
