@@ -34,6 +34,36 @@ test('AI session with unknown expiry refreshes before sending a request',async()
  }});
  assert.match(await api.generate(base),/Verified/);
 });
+test('restricted Gemini 2.5 HTTP 404 retries once using newer Flash-Lite, never fabricates output',async()=>{
+ const calls=[];
+ const service=svc.createService({env:{GEMINI_API_KEY:'fixture',GEMINI_MODEL:'gemini-2.5-flash'},fetcher:async(url)=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
+  if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
+  if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  calls.push(url);
+  if(url.includes('gemini-2.5-flash:'))return {ok:false,status:404};
+  if(url.includes('gemini-3.5-flash-lite:'))return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:JSON.stringify({content:'Learning objective: explore safe low-voltage conductor tests. Explain how a complete circuit works, compare observations, and discuss everyday examples with the teacher.'})}]}}]})};
+  throw Error('unexpected model');
+ }});
+ const result=await service.generate({...base,tool:'Lesson Plan Generator'},'fixture-token');
+ assert.match(result.content,/Learning objective/);
+ assert.equal(calls.length,2);
+ assert.ok(calls[0].includes('gemini-2.5-flash:'));
+ assert.ok(calls[1].includes('gemini-3.5-flash-lite:'));
+});
+test('default Gemini model uses current Flash-Lite rather than restricted 2.5',async()=>{
+ const calls=[];
+ const service=svc.createService({env:{GEMINI_API_KEY:'fixture'},fetcher:async(url)=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
+  if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
+  if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  calls.push(url);
+  return {ok:false,status:404};
+ }});
+ await assert.rejects(()=>service.generate({...base,tool:'Lesson Plan Generator'},'fixture-token'),/unavailable|404/);
+ assert.equal(calls.length,1,'do not retry an unavailable current model or invent a lesson');
+ assert.ok(calls[0].includes('gemini-3.5-flash-lite:'));
+});
 test('provider transport failure falls back to Groq with bounded requests',async()=>{
  const service=svc.createService({env:{GEMINI_API_KEY:'fixture',GROQ_API_KEY:'fixture'},fetcher:async(url,opts)=>{
   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
