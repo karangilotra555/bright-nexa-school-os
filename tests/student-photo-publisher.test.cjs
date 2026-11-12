@@ -7,7 +7,7 @@ const STUDENT='22222222-2222-4222-8222-222222222222';
 const LOCAL='local-student-1';
 const PHOTO='data:image/jpeg;base64,'+Buffer.from('jpeg fixture bytes').toString('base64');
 const VERIFIED_PATH=SCHOOL+'/'+STUDENT+'/photo-0123456789abcdef.jpg';
-function context({authorized=true,alreadyLinked=false,wrongSchool=false,withImage=true}={}){
+function context({authorized=true,alreadyLinked=false,wrongSchool=false,withImage=true,unconfirmed=false}={}){
  const tokens=new Map([
   ['bright-nexa-school-os:session:v2',JSON.stringify({role:'OWNER',cloudVerified:authorized,institutionId:SCHOOL})],
   ['bn_school_staff_session_v1',JSON.stringify({access_token:'owner-test-jwt'})]
@@ -40,7 +40,7 @@ function context({authorized=true,alreadyLinked=false,wrongSchool=false,withImag
    assert.equal(student,STUDENT);
    assert.equal(file.type,'image/jpeg');
    assert.ok(file.size>0);
-   uploads++;published=VERIFIED_PATH;
+   uploads++;if(!unconfirmed)published=VERIFIED_PATH;
    return {path:VERIFIED_PATH};
  }};
  const client=create({storage,fetcher,photos});
@@ -87,8 +87,11 @@ test('decode rejects arbitrary URLs and oversized files',()=>{
  assert.throws(()=>decodePhoto('data:image/jpeg;base64,'+'A'.repeat(7000001)),/supported private JPEG/);
  assert.equal(decodePhoto(PHOTO).type,'image/jpeg');
 });
-test('missing Supabase photo profile is never declared published if readback lacks path',async()=>{
- const t=context();
+test('upload is never declared successful without matching Supabase profile readback',async()=>{
+ const t=context({unconfirmed:true});
  const r=await t.client.run();
- assert.equal(r.status,'verified');
+ assert.equal(r.status,'failed');
+ assert.match(r.message,/not verified/);
+ assert.equal(t.uploads,1);
+ assert.equal(t.published,null);
 });
