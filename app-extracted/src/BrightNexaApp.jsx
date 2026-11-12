@@ -22735,8 +22735,62 @@ function Cr({
     </L>
   );
 }
+async function bnInviteTeacherAppAccount(teacher) {
+  // A faculty profile is NOT an Auth user. This action runs only on an explicit
+  // admin click, against the existing admin-only Supabase Edge Function.
+  const email = String(teacher?.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw Error('Add a valid teacher email in the faculty profile first.');
+  }
+  const readSession = (key) => { try { return JSON.parse(sessionStorage.getItem(key) || 'null'); } catch (_) { return null; } };
+  const schoolSession = readSession('bn_school_staff_session_v1');
+  const erpAccount = readSession('bright-nexa-school-os:session:v2');
+  const selectedSchool = sessionStorage.getItem('bn_school_staff_selected_school_v1');
+  if (!schoolSession?.access_token || !erpAccount?.cloudVerified ||
+      !selectedSchool || String(erpAccount.institutionId) !== selectedSchool) {
+    throw Error('Open this school with your verified School Admin login before inviting a teacher.');
+  }
+  if (Number(schoolSession.expires_at || 0) <= Date.now() / 1000 + 10) {
+    throw Error('School Admin session has expired. Sign in again, then retry the invitation.');
+  }
+  const response = await fetch('https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-invite-staff', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      apikey: 'sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT',
+      Authorization: 'Bearer ' + schoolSession.access_token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email, role: 'teacher' })
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.ok || result?.role !== 'teacher' ||
+      String(result?.email || '').toLowerCase() !== email) {
+    throw Error(result?.error || 'Supabase did not confirm teacher account enrollment. No invitation success has been recorded.');
+  }
+  // Accepted by Supabase Auth != delivered to inbox or activated by teacher.
+  return { email, status: 'invited' };
+}
 function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r }) {
   let i = e.name || e.employeeCode || `Faculty Record`;
+  const [inviteBusy, setInviteBusy] = (0, w.useState)(false);
+  const [inviteFeedback, setInviteFeedback] = (0, w.useState)('');
+  const [inviteError, setInviteError] = (0, w.useState)(false);
+  async function inviteTeacher() {
+    if (inviteBusy) return;
+    setInviteBusy(true);
+    setInviteError(false);
+    setInviteFeedback('');
+    try {
+      const response = await bnInviteTeacherAppAccount(e);
+      setInviteFeedback('Account invitation requested for ' + response.email + '. The teacher must accept the email and set a password. Delivery and activation are not yet confirmed.');
+    } catch (error) {
+      setInviteError(true);
+      setInviteFeedback(error?.message || 'Teacher account invitation failed. Please retry.');
+    } finally {
+      setInviteBusy(false);
+    }
+  }
   let a = [
     [`Designation`, e.designation],
     [`Qualification`, e.qualification],
@@ -22868,6 +22922,17 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r }) {
               )}
             </Er>
           )}
+          <div className={`teacher-app-invite`} style={{marginTop: '16px'}}>
+            <button type="button" className={`secondary-button`}
+              disabled={inviteBusy || !e.email}
+              onClick={inviteTeacher}>
+              {inviteBusy ? 'Requesting account invitation...' : 'Create Teacher App Access / Send Invitation'}
+            </button>
+            <p role="status" aria-live="polite"
+              style={{fontSize:'12px', marginTop:'8px', color: inviteError ? '#b91c1c' : '#166534'}}>
+              {inviteFeedback || (!e.email ? 'Add teacher email to enable app access.' : 'Teacher app login is separate from the faculty record.')}
+            </p>
+          </div>
           <Component298 className={`modal-actions`}>
             <Component295 className={`secondary-button danger`} onClick={r}>
               <_Component1 size={16} />
