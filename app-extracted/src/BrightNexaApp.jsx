@@ -27772,15 +27772,29 @@ function B({ data: e, students: t, onUpdate: n }) {
             o(undefined);
           }}
           onSave={y}
+          classes={e.classes}
+          students={t}
         />
       )}
     </Component787>
   );
 }
-function Pi({ initial: e, onClose: t, onSave: n }) {
+function Pi({ initial: e, onClose: t, onSave: n, classes: configuredClasses = [], students: studentList = [] }) {
+  // Exams use the school's configured classes, never an independent 1–12 list.
+  const availableExamClasses = (0, w.useMemo)(() => {
+    const configured = (configuredClasses || []).filter(c => c.status !== 'Inactive');
+    const names = configured.length ? buildDynamicClassList(configured, [], false) : [];
+    // Allow an existing examination to be edited if its class was later archived.
+    if (e?.className && !names.includes(e.className)) names.push(e.className);
+    return names;
+  }, [configuredClasses, e?.className]);
   let [r, i] = (0, w.useState)(e?.name || ``);
   let [a, o] = (0, w.useState)(e?.type || `Unit Test`);
-  let [s, c] = (0, w.useState)(e?.className || `6`);
+  let [s, c] = (0, w.useState)(e?.className || availableExamClasses[0] || ``);
+  const availableExamSections = (0, w.useMemo)(
+    () => buildDynamicSectionList(s, configuredClasses, studentList),
+    [s, configuredClasses, studentList]
+  );
   let [l, u] = (0, w.useState)(e?.section || ``);
   let [d, f] = (0, w.useState)(e?.academicStream);
   let [p, m] = (0, w.useState)(
@@ -27822,6 +27836,10 @@ function Pi({ initial: e, onClose: t, onSave: n }) {
           t.preventDefault();
           if (!r.trim()) {
             S(`Exam name is required.`);
+            return;
+          }
+          if (!s || !availableExamClasses.includes(s)) {
+            S(`Create and select a class in Add Class before saving an examination.`);
             return;
           }
           if ((s === `11` || s === `12`) && !d) {
@@ -27879,34 +27897,23 @@ function Pi({ initial: e, onClose: t, onSave: n }) {
               value={s}
               onChange={(e) => {
                 c(e.target.value);
+                u(``);
                 if (e.target.value !== `11` && e.target.value !== `12`) {
                   f(undefined);
                 }
               }}
             >
-              {[
-                `1`,
-                `2`,
-                `3`,
-                `4`,
-                `5`,
-                `6`,
-                `7`,
-                `8`,
-                `9`,
-                `10`,
-                `11`,
-                `12`,
-              ].map((e) => (
-                <Component791 key={e}>{e}</Component791>
+              <Component791 value={``}>{`Select Class`}</Component791>
+              {availableExamClasses.map((className) => (
+                <Component791 key={className} value={className}>{className}</Component791>
               ))}
             </Component792>
           </R>
           <R label={`Section (Optional)`}>
             <Component795 value={l} onChange={(e) => u(e.target.value)}>
               <Component793 value={``}>{`All Sections`}</Component793>
-              {[`A`, `B`, `C`, `D`, `E`, `F`].map((e) => (
-                <Component794 key={e}>{e}</Component794>
+              {availableExamSections.map((section) => (
+                <Component794 key={section} value={section}>{section}</Component794>
               ))}
             </Component795>
           </R>
