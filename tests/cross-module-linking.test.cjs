@@ -48,10 +48,17 @@ test('marksheet.html and marksheet-a4.html link to real student marks, attendanc
     const content = read(f);
     assert.doesNotMatch(content, /72\s*\+\s*\(\(idx\s*\*\s*7/, `${f} must not contain invented marks formula`);
     assert.doesNotMatch(content, /202\s*\/\s*212\s*Days/, `${f} must not contain hardcoded attendance`);
-    assert.match(content, /operations\.marks/, `${f} must read operations.marks`);
-    assert.match(content, /operations\.attendance/, `${f} must read operations.attendance`);
-    assert.match(content, /photoDataUrl/, `${f} must support student photoDataUrl`);
-    assert.match(content, /photoFrame\.innerHTML/, `${f} must render student photo when available`);
+    if(f.includes('marksheet-a4.html')){
+      assert.match(content,/bn_school_published_marksheets/,f+' must read published exam marks');
+      assert.match(content,/school_workspace_links/,f+' must map local to cloud student ID');
+      assert.doesNotMatch(content,/localStorage\.getItem/,f+' must not use local draft marks');
+      assert.match(content,/photoFrame\.append\(img\)/,f+' must render safe student photo');
+    }else{
+      assert.match(content,/operations\.marks/,f+' must read marks');
+      assert.match(content,/operations\.attendance/,f+' must read attendance');
+      assert.match(content,/photoDataUrl/,f+' must have photo');
+      assert.match(content,/photoFrame\.innerHTML/,f+' must render photo');
+    }
   }
 });
 
