@@ -1,0 +1,94 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const {create,decodePhoto}=require('../school-student-photo-publisher.js');
+const SCHOOL='11111111-1111-4111-8111-111111111111';
+const STUDENT='22222222-2222-4222-8222-222222222222';
+const LOCAL='local-student-1';
+const PHOTO='data:image/jpeg;base64,'+Buffer.from('jpeg fixture bytes').toString('base64');
+const VERIFIED_PATH=SCHOOL+'/'+STUDENT+'/photo-0123456789abcdef.jpg';
+function context({authorized=true,alreadyLinked=false,wrongSchool=false,withImage=true}={}){
+ const tokens=new Map([
+  ['bright-nexa-school-os:session:v2',JSON.stringify({role:'OWNER',cloudVerified:authorized,institutionId:SCHOOL})],
+  ['bn_school_staff_session_v1',JSON.stringify({access_token:'owner-test-jwt'})]
+ ]);
+ const storage={getItem:key=>tokens.get(key)||null};
+ let published=alreadyLinked?VERIFIED_PATH:null,uploads=0,readbacks=0,workspaceReads=0;
+ const snapshots=[{revision:8,snapshot:{institution:{institution:{id:wrongSchool?
+   '99999999-9999-4999-8999-999999999999':SCHOOL}},students:[{
+   id:LOCAL,photoDataUrl:withImage?PHOTO:''}],operations:{}}}];
+ const fetcher=async(uri,options)=>{
+   const url=new URL(uri);
+   assert.equal(options.method,'GET');
+   assert.equal(options.headers.Authorization,'Bearer owner-test-jwt');
+   let data=[];
+   if(url.pathname.endsWith('/school_students'))
+     data=[{id:STUDENT,status:'active'}];
+   else if(url.pathname.endsWith('/school_student_profiles')){
+     readbacks++;
+     data=[{student_id:STUDENT,details:published?{photo_path:published}:{}}];
+   } else if(url.pathname.endsWith('/school_workspace_links'))
+     data=[{local_id:LOCAL,cloud_id:STUDENT}];
+   else if(url.pathname.endsWith('/school_workspaces')){
+     workspaceReads++;
+     data=snapshots;
+   }else throw Error('Unknown read request: '+url);
+   return {ok:true,status:200,async json(){return data}};
+ };
+ const photos={upload:async(school,student,file)=>{
+   assert.equal(school,SCHOOL);
+   assert.equal(student,STUDENT);
+   assert.equal(file.type,'image/jpeg');
+   assert.ok(file.size>0);
+   uploads++;published=VERIFIED_PATH;
+   return {path:VERIFIED_PATH};
+ }};
+ const client=create({storage,fetcher,photos});
+ return {client,tokens,get uploads(){return uploads},get workspaceReads(){return workspaceReads},
+ get readbacks(){return readbacks},get published(){return published}};
+}
+test('only a verified owner session can read student photo data',async()=>{
+ const t=context({authorized:false});
+ assert.equal((await t.client.run()).status,'not-authorized');
+ assert.equal(t.workspaceReads,0);assert.equal(t.uploads,0);
+});
+test('existing published private photo skips large workspace download',async()=>{
+ const t=context({alreadyLinked:true});
+ assert.equal((await t.client.run()).status,'up-to-date');
+ assert.equal(t.workspaceReads,0);assert.equal(t.uploads,0);
+});
+test('authenticated class/student link publishes missing photo and checks profile readback',async()=>{
+ const t=context();
+ const r=await t.client.run();
+ assert.equal(r.status,'verified');assert.equal(r.published,1);
+ assert.equal(t.uploads,1);assert.equal(t.published,VERIFIED_PATH);
+ assert.ok(t.readbacks>=3);
+});
+test('fresh remote photo readback prevents duplicate storage upload',async()=>{
+ const t=context();
+ assert.equal((await t.client.run()).status,'verified');
+ assert.equal((await t.client.run()).status,'retry-later');
+ assert.equal(t.uploads,1);
+});
+test('workspace must match the selected tenant before publishing',async()=>{
+ const t=context({wrongSchool:true});
+ const r=await t.client.run();
+ assert.equal(r.status,'failed');assert.equal(t.uploads,0);
+ assert.match(r.message,/Verified school photo workspace/);
+});
+test('no embedded photo means no upload and no destructive writes',async()=>{
+ const t=context({withImage:false});
+ assert.equal((await t.client.run()).status,'verified');
+ assert.equal(t.uploads,0);
+});
+test('decode rejects arbitrary URLs and oversized files',()=>{
+ assert.throws(()=>decodePhoto('https://example.com/student.jpg'),/valid JPEG/);
+ assert.throws(()=>decodePhoto('data:image/svg+xml;base64,AAAA'),/valid JPEG/);
+ assert.throws(()=>decodePhoto('data:image/jpeg;base64,'+'A'.repeat(7000001)),/supported private JPEG/);
+ assert.equal(decodePhoto(PHOTO).type,'image/jpeg');
+});
+test('missing Supabase photo profile is never declared published if readback lacks path',async()=>{
+ const t=context();
+ const r=await t.client.run();
+ assert.equal(r.status,'verified');
+});
