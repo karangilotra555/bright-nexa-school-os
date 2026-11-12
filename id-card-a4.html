@@ -1174,7 +1174,7 @@
       container.innerHTML = '';
 
       // Check if completely empty (Live mode with 0 students in DB)
-      if (!isDemoMode && liveStudents.length === 0) {
+      if (liveStudents.length === 0) {
         container.innerHTML = `
           <div class="empty-state-box">
             <div style="font-size: 48px; margin-bottom: 12px;">📭</div>
