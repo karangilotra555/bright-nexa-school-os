@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Modern CBSE A4 Academic Marksheet — Bright Nexa School OS</title>
+  <title>School Academic Marksheet (Published Results) — Bright Nexa School OS</title>
+  <script defer src="./school-workspace-cloud.js?v=20261111-attendance-leave-v1"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
 
@@ -707,20 +708,16 @@
 
   <!-- Controls for school admin -->
   <div class="no-print-bar">
-    <h2>🎓 Modern CBSE Academic Marksheet (A4 Format)</h2>
+    <h2>🎓 Published Academic Marksheet (A4)</h2>
     <div class="control-actions">
-      <select id="studentDropdown" onchange="switchStudent(this.value)">
-        <option value="0">Aarav Sharma (BMS-2026-001 • Class 6-A)</option>
-        <option value="1">Ananya Patel (BMS-2026-002 • Class 6-A)</option>
-        <option value="2">Rohan Verma (BMS-2026-003 • Class 6-A)</option>
+      <select id="studentDropdown" aria-label="Select verified student" onchange="switchStudent(this.value)">
+        <option value="">Sign in to load students</option>
       </select>
-      <select id="examDropdown" onchange="switchExam(this.value)">
-        <option value="annual">Annual Examination 2026-27</option>
-        <option value="halfyearly">Half Yearly Examination</option>
-        <option value="ut1">Unit Test 1 (Formative)</option>
+      <select id="examDropdown" aria-label="Select published exam" onchange="switchExam(this.value)">
+        <option value="">No published exam selected</option>
       </select>
-      <button class="btn btn-primary" onclick="window.print()">
-        🖨️ Print / Save PDF
+      <button id="bnMarksheetPrint" class="btn btn-primary" type="button" onclick="printPublishedMarksheet()" disabled>
+        🖨️ Print Published Result
       </button>
       <a href="id-card-a4.html" class="btn btn-secondary" style="text-decoration:none;">
         🪪 ID Cards
@@ -737,8 +734,9 @@
     </div>
   </div>
 
+  <p id="bnMarksheetCloudStatus" role="status" aria-live="polite" style="max-width:210mm;width:100%;margin:0 auto 16px;padding:10px 12px;background:#eaf3ff;color:#17476e;border:1px solid #bfd6ec;border-radius:9px;font:13px system-ui">Checking authenticated school and published marksheets…</p>
   <!-- A4 Certificate Sheet -->
-  <div class="a4-marksheet">
+  <div class="a4-marksheet" style="display:none" aria-label="Verified published marksheet">
     <!-- Watermark -->
     <div class="certificate-watermark">
       <img src="./bright-nexa-official-logo.jpg" onerror="this.src='./app-icon-512.png'" alt="Watermark">
@@ -756,17 +754,14 @@
         <img id="schoolLogo" src="./bright-nexa-official-logo.jpg" onerror="this.src='./app-icon-512.png'" alt="School Crest">
       </div>
       <div class="school-info-center">
-        <h1 class="school-main-title" id="schoolName">BRIGHT NEXA MODEL SR. SEC. SCHOOL</h1>
-        <div class="school-affiliation-tag" id="schoolAffil">
-          AFFILIATED TO CENTRAL BOARD OF SECONDARY EDUCATION (CBSE), NEW DELHI<br>
-          AFFILIATION NO.: 1730248 • SCHOOL CODE: 20458 • U-DISE CODE: 08240502104
-        </div>
+        <h1 class="school-main-title" id="schoolName">School profile not verified</h1>
+        <div class="school-affiliation-tag" id="schoolAffil">Board / affiliation not verified</div>
         <div class="school-contact-line" id="schoolContact">
-          Station Road, Sikar, Rajasthan - 332001 • Phone: +91 9876500000 • Email: office@brightnexa.edu.in
+          School contact details not loaded
         </div>
         <div class="report-title-ribbon">
           <span class="main-tag">ANNUAL PROGRESS REPORT CARD (CCE)</span>
-          <span class="session-tag" id="sessionTag">• ACADEMIC SESSION: 2026 - 2027</span>
+          <span class="session-tag" id="sessionTag">• ACADEMIC SESSION: Not verified</span>
         </div>
       </div>
       <div class="student-photo-frame">
@@ -918,27 +913,27 @@
     <div class="coscholastic-grid">
       <div class="coscholastic-card">
         <span>Work Education & Computer / AI</span>
-        <strong>Grade A</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Visual & Performing Arts</span>
-        <strong>Grade A</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Health & Physical Education / Sports</span>
-        <strong>Grade A+</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Scientific Temper & Critical Thinking</span>
-        <strong>Grade A</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Discipline, Punctuality & Attendance</span>
-        <strong>Grade A+</strong>
+        <strong>Not assessed</strong>
       </div>
       <div class="coscholastic-card">
         <span>Social Harmony & Peer Leadership</span>
-        <strong>Grade A</strong>
+        <strong>Not assessed</strong>
       </div>
     </div>
 
@@ -1016,106 +1011,30 @@
           <small>OFFICIAL SEAL</small>
           <span class="seal-star">★ ★ ★</span>
         </div>
-        <span class="seal-caption">Verified Academic Document</span>
+        <span class="seal-caption">Published marks • unsigned print copy</span>
       </div>
       <div class="sig-col">
         <div class="sig-line"></div>
-        <span id="principalName">DR. KAVITA JOSHI</span>
+        <span id="principalName">Principal name not verified</span>
         <small>Principal / Head of Institution</small>
       </div>
-      <div class="qr-verify-col">
-        <div class="qr-box">
-          <svg viewBox="0 0 100 100" fill="#0b2545">
-            <path d="M0,0 h30 v30 h-30 z M5,5 v20 h20 v-20 z M10,10 h10 v10 h-10 z" />
-            <path d="M70,0 h30 v30 h-30 z M75,5 v20 h20 v-20 z M80,10 h10 v10 h-10 z" />
-            <path d="M0,70 h30 v30 h-30 z M5,75 v20 h20 v-20 z M10,80 h10 v10 h-10 z" />
-            <rect x="40" y="10" width="10" height="20" />
-            <rect x="55" y="15" width="10" height="10" />
-            <rect x="40" y="40" width="20" height="20" />
-            <rect x="70" y="45" width="20" height="10" />
-            <rect x="45" y="70" width="15" height="15" />
-            <rect x="75" y="75" width="20" height="20" />
-          </svg>
-        </div>
-        <div class="qr-text">
-          <strong>Digital Verification</strong>
-          Scan to verify certificate authenticity on School OS
-        </div>
+      <div class="qr-verify-col" style="font-size:10px;color:#64748b">
+        Published academic record. This printout has no cryptographic signature.
+        Contact the school to verify authenticity.
       </div>
     </footer>
   </div>
 
   <script>
-    const sampleStudents = [
-      {
-        name: "AARAV SHARMA",
-        roll: "06",
-        admission: "BMS-2026-001",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. NEHA SHARMA",
-        father: "MR. VIKAS SHARMA",
-        dob: "12-03-2014",
-        attendance: "196 / 212 Days (92.5%)",
-        rank: "3rd in Class",
-        percentage: "87.7%",
-        grade: "A2",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028) WITH COMMENDABLE DISTINCTION",
-        subjects: [
-          { name: "English Language & Literature", pt: 8.5, nb: 4.5, se: 4.5, annual: 68.0, total: 85.5, grade: "A2" },
-          { name: "Hindi (Course A)", pt: 8.0, nb: 5.0, se: 4.0, annual: 65.0, total: 82.0, grade: "A2" },
-          { name: "Mathematics", pt: 9.5, nb: 5.0, se: 5.0, annual: 74.0, total: 93.5, grade: "A1" },
-          { name: "Science & Technology", pt: 9.0, nb: 4.5, se: 5.0, annual: 71.5, total: 90.0, grade: "A1" },
-          { name: "Social Science", pt: 8.0, nb: 4.5, se: 4.5, annual: 62.0, total: 79.0, grade: "B1" },
-          { name: "Computer Science / AI & Coding", pt: 10.0, nb: 5.0, se: 5.0, annual: 76.0, total: 96.0, grade: "A1" },
-        ]
-      },
-      {
-        name: "ANANYA PATEL",
-        roll: "12",
-        admission: "BMS-2026-002",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. POOJA PATEL",
-        father: "MR. SURESH PATEL",
-        dob: "05-08-2014",
-        attendance: "205 / 212 Days (96.7%)",
-        rank: "1st in Class",
-        percentage: "94.2%",
-        grade: "A1",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028) - CLASS TOPPER",
-        subjects: [
-          { name: "English Language & Literature", pt: 9.5, nb: 5.0, se: 5.0, annual: 75.0, total: 94.5, grade: "A1" },
-          { name: "Hindi (Course A)", pt: 9.0, nb: 5.0, se: 5.0, annual: 73.0, total: 92.0, grade: "A1" },
-          { name: "Mathematics", pt: 10.0, nb: 5.0, se: 5.0, annual: 78.0, total: 98.0, grade: "A1" },
-          { name: "Science & Technology", pt: 9.5, nb: 5.0, se: 5.0, annual: 76.0, total: 95.5, grade: "A1" },
-          { name: "Social Science", pt: 9.0, nb: 4.5, se: 4.5, annual: 70.0, total: 88.0, grade: "A2" },
-          { name: "Computer Science / AI & Coding", pt: 10.0, nb: 5.0, se: 5.0, annual: 77.0, total: 97.0, grade: "A1" },
-        ]
-      },
-      {
-        name: "ROHAN VERMA",
-        roll: "18",
-        admission: "BMS-2026-003",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. SUNITA VERMA",
-        father: "MR. RAJESH VERMA",
-        dob: "21-11-2013",
-        attendance: "182 / 212 Days (85.8%)",
-        rank: "8th in Class",
-        percentage: "76.5%",
-        grade: "B1",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028)",
-        subjects: [
-          { name: "English Language & Literature", pt: 7.5, nb: 4.0, se: 4.0, annual: 60.0, total: 75.5, grade: "B1" },
-          { name: "Hindi (Course A)", pt: 8.0, nb: 4.0, se: 4.0, annual: 62.0, total: 78.0, grade: "B1" },
-          { name: "Mathematics", pt: 8.5, nb: 4.5, se: 4.5, annual: 61.0, total: 78.5, grade: "B1" },
-          { name: "Science & Technology", pt: 7.0, nb: 4.0, se: 4.0, annual: 58.0, total: 73.0, grade: "B2" },
-          { name: "Social Science", pt: 7.5, nb: 4.0, se: 4.0, annual: 59.0, total: 74.5, grade: "B1" },
-          { name: "Computer Science / AI & Coding", pt: 9.0, nb: 4.5, se: 5.0, annual: 69.5, total: 88.0, grade: "A2" },
-        ]
-      }
-    ];
-
-    let activeStudents = [...sampleStudents];
+    // Only authenticated school records and published exam results can render.
+    let activeStudents=[];
+    let verifiedSchoolId=null;
+    let selectedStudentIndex=-1;
+    let publishedExams=[];
+    let selectedPublished=null;
+    let markLoadId=0;
+    const SUPABASE_URL='https://mrfvbwmyxndrakskqyas.supabase.co';
+    const SUPABASE_PUBLIC_KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 
     function escapeHtml(val) {
       if (val === null || val === undefined) return '';
