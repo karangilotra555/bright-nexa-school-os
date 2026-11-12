@@ -65,7 +65,7 @@ test('browser cache write failures are not silently ignored for every ERP store'
  for(const content of [source,bundle]){
   assert.match(content,/function bnReportBrowserSaveError\(/);
   for(const area of ['School profile','Student records','ERP operations']){
-   assert.ok(content.includes("bnReportBrowserSaveError('"+area+"'"),area);
+   assert.match(content,new RegExp("bnReportBrowserSaveError\\\\(['\\\"]"+area+"['\\\"]"),area);
   }
   assert.match(content,/Supabase saved drafts could not be loaded/);
  }
