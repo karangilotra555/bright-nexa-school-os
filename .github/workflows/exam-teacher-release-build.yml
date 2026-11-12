@@ -1,4 +1,5 @@
 name: Exam and teacher invitation release build
+# Re-run full suite after normalizing compiler quote/whitespace assertions.
 on:
   push:
     branches: [fix/exam-teacher-release-qa-20261112]
