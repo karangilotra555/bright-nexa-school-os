@@ -19825,7 +19825,13 @@ function _Component90({
           let s4 = r4(`class`);
           let c2 = r4(`parent mobile`).replace(/\D/g, ``).slice(-10);
           let l3 = gr(r4(`academic stream`));
-          if (!!i4 && !!a4 && !!s4 && c2.length === 10 && !u3.has(a4.toLowerCase()) && (s4 !== `11` && s4 !== `12` || !!l3)) {
+          if (!!i4 && !!a4 && !!s4 && c2.length === 10 && window.BNStudentAdmissionRules?.importAllowed({
+            name:i4,admissionNumber:a4,className:s4,section:r4(`section`)||`A`,
+            academicStream:l3,parentMobile:c2,status:`Active`,
+            dateOfBirth:r4(`date of birth`),
+            studentMobile:r4(`student mobile`).replace(/\D/g,``).slice(-10),
+            alternateMobile:r4(`alternate mobile`).replace(/\D/g,``).slice(-10)
+          },[...e2,...d3],classes)===true && !u3.has(a4.toLowerCase()) && (s4 !== `11` && s4 !== `12` || !!l3)) {
             u3.add(a4.toLowerCase());
             d3.push({
               id: crypto.randomUUID(),
@@ -19862,7 +19868,7 @@ function _Component90({
           );
         }
         n2(d3);
-        l2(`${d3.length} students imported successfully.`);
+        l2(`${d3.length} student records staged. Confirm Supabase sync before treating them as published.`);
       } catch (e3) {
         l2(e3 instanceof Error ? e3.message : `Workbook import failed.`);
       } finally {
@@ -20231,7 +20237,7 @@ var ur = {
   previousSchool: ``,
   transport: ``,
   admissionDate: ``,
-  status: ``
+  status: `Active`
 };
 function _Component6({
   students: e2,
@@ -20280,33 +20286,16 @@ function _Component6({
       l2("Photo compression is not finished yet.");
       return;
     }
-    let a3 = {};
-    if (!N(i2)) {
-      a3.record = `Enter at least one student detail before saving.`;
-    }
-    if (i2.admissionNumber && e2.some(
-      (e3) => e3.id !== r2?.id && e3.admissionNumber.toLowerCase() === i2.admissionNumber.trim().toLowerCase()
-    )) {
-      a3.admissionNumber = `Admission number already exists`;
-    }
-    if (i2.parentMobile && !/^\d{10}$/.test(i2.parentMobile)) {
-      a3.parentMobile = `Enter a valid 10-digit mobile number`;
-    }
-    if (i2.studentMobile && !/^\d{10}$/.test(i2.studentMobile)) {
-      a3.studentMobile = `Enter a valid 10-digit mobile number`;
-    }
-    if (i2.alternateMobile && !/^\d{10}$/.test(i2.alternateMobile)) {
-      a3.alternateMobile = `Enter a valid 10-digit mobile number`;
-    }
-    if ((i2.className === `11` || i2.className === `12`) && !i2.academicStream) {
-      a3.academicStream = `Select a stream for Class 11 or 12`;
-    }
+    const admissionRules=window.BNStudentAdmissionRules;
+    let a3=admissionRules
+      ? admissionRules.validate(i2,e2,classes,r2?.id)
+      : {record:'Student validation could not load. Refresh the page; nothing was saved.'};
     if (Object.keys(a3).length) {
       s2(a3);
       return;
     }
     n2({
-      ...i2,
+      ...admissionRules.normalize(i2),
       studentUniqueId: r2?.studentUniqueId || hn(e2),
       id: r2?.id || crypto.randomUUID(),
       createdAt: r2?.createdAt || (/* @__PURE__ */ new Date()).toISOString()
@@ -20411,7 +20400,7 @@ function _Component6({
         "aria-modal": `true`,
         "aria-labelledby": `add-student-title`
       },
-      /* @__PURE__ */ w.createElement(Component72, null, /* @__PURE__ */ w.createElement(Component70, null, /* @__PURE__ */ w.createElement(Component67, null, `Local Record \u2022 Lifetime Free`), /* @__PURE__ */ w.createElement(Component68, { id: `add-student-title` }, r2 ? `Edit Student` : `Add New Student`), /* @__PURE__ */ w.createElement(Component69, null, r2 ? `Update the student's academic and contact record` : `Enter the student's admission and contact information`)), /* @__PURE__ */ w.createElement(
+      /* @__PURE__ */ w.createElement(Component72, null, /* @__PURE__ */ w.createElement(Component70, null, /* @__PURE__ */ w.createElement(Component67, null, `School admission \u2022 Supabase confirmation required`), /* @__PURE__ */ w.createElement(Component68, { id: `add-student-title` }, r2 ? `Edit Student` : `Add New Student`), /* @__PURE__ */ w.createElement(Component69, null, r2 ? `Update the student's academic and contact record` : `Enter the student's admission and contact information`)), /* @__PURE__ */ w.createElement(
         Component71,
         {
           className: `icon-button`,
@@ -20470,7 +20459,7 @@ function _Component6({
           /* @__PURE__ */ w.createElement(Component80, { value: `` }, `Select Stream`),
           Bn.map((e3) => /* @__PURE__ */ w.createElement(Component81, { key: e3 }, e3))
         )
-      ), /* @__PURE__ */ w.createElement(_Component7, { label: `Section` }, /* @__PURE__ */ w.createElement(
+      ), /* @__PURE__ */ w.createElement(_Component7, { label: `Section`, error: o2.section }, /* @__PURE__ */ w.createElement(
         Component85,
         {
           value: i2.section,
@@ -20635,7 +20624,7 @@ function _Component6({
         {
           className: `section-helper`
         },
-        `These optional images are retained locally and included only in encrypted backups.`
+        `ERP photo preview is separate from private student photo publishing. For the parent/mobile portal, publish the photograph from Staff Portal → Student Profile.`
       ), /* @__PURE__ */ w.createElement(Component125, { className: `identity-upload-grid` }, /* @__PURE__ */ w.createElement(
         _Component8,
         {
@@ -20699,7 +20688,7 @@ function _Component6({
           onChange: (e3) => p2(`aadhaarLastFour`, e3.target.value.replace(/\D/g, ``)),
           placeholder: `Optional`
         }
-      ))), c2 && /* @__PURE__ */ w.createElement(Component128, { className: `form-error` }, c2)), o2.record && /* @__PURE__ */ w.createElement(Component130, { className: `form-error record-form-error` }, o2.record), /* @__PURE__ */ w.createElement(Component135, null, /* @__PURE__ */ w.createElement(Component131, null, `Only completed fields will be stored locally and displayed in the profile.`), /* @__PURE__ */ w.createElement(Component134, null, /* @__PURE__ */ w.createElement(
+      ))), c2 && /* @__PURE__ */ w.createElement(Component128, { className: `form-error` }, c2)), o2.record && /* @__PURE__ */ w.createElement(Component130, { className: `form-error record-form-error` }, o2.record), /* @__PURE__ */ w.createElement(Component135, null, /* @__PURE__ */ w.createElement(Component131, null, `Save starts cloud sync. Check the Supabase status before treating this admission as published.`), /* @__PURE__ */ w.createElement(Component134, null, /* @__PURE__ */ w.createElement(
         Component132,
         {
           type: `button`,
