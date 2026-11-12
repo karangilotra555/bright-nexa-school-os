@@ -124,8 +124,8 @@ test('ID card cloud roster excludes transferred, archived and incomplete student
   w.eval(source('id-card-a4.html'));
   await w.refreshSchoolCloudData();
   assert.match(w.document.getElementById('countBadge').textContent,/1 Student/);
-  const options=[...w.document.getElementById('studentFilter').options].map(o=>o.textContent);
-  assert.ok(options.some(o=>o.includes('Current Child')));
-  assert.ok(!options.some(o=>o.includes('Transferred Child')||o.includes('Archived Child')||o.includes('Incomplete Child')));
+  const options=[...w.document.getElementById('studentFilter').options].map(o=>o.textContent.toLowerCase());
+  assert.ok(options.some(o=>o.includes('current child')));
+  assert.ok(!options.some(o=>o.includes('transferred child')||o.includes('archived child')||o.includes('incomplete child')));
   dom.window.close();
 });
