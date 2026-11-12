@@ -34,7 +34,7 @@ test('Service workers allow Smart Tools navigation rather than redirect to dashb
   for (const prefix of ['', 'docs/', 'app-extracted/dist/']) {
     const worker=read(prefix+'sw.js');
     assert.ok(worker.includes('/smart-tools.*\\.html(?:\\?.*)?$/i'), prefix+'SW must not route embedded iframe query to root');
-    const pattern=/smart-tools.*\\.html(?:\\?.*)?$/i;
+    const pattern=new RegExp('smart-tools.*[.]html(?:[?].*)?$','i');
     assert.ok(pattern.test('/smart-tools.html?embedded=1'));
     assert.ok(pattern.test('/smart-tools.html'));
   }
