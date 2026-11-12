@@ -50,3 +50,9 @@ test('class editing preserves unrelated student entries when class still exists'
   assert.equal(data.students.length, 1);
   assert.equal(data.students[0].classLocalId, 'c1');
 });
+
+test('local-only class teacher selection cannot be falsely published', () => {
+  const selected = { ...classroom('c1'), classTeacherId: 'local-teacher-1' };
+  assert.throws(() => buildProjection(school([selected]), () => []),
+    /not a verified Supabase teacher assignment.*No cloud save was attempted/);
+});
