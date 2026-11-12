@@ -16,14 +16,13 @@ test('Dashboard deep link reopens Dashboard instead of stale Settings on load',(
  assert.equal(new URL(w.location.href).searchParams.get('tab'),'Dashboard');
  dom.window.close();
 });
-test('Settings navigation changes tab URL without reload or changing school records',()=>{
+test('Settings navigation updates route without touching workspace data',async()=>{
  const {dom,w,doc}=fixture();const dashboard=doc.querySelector('button');
  dashboard.classList.add('active');doc.querySelectorAll('button')[1].classList.remove('active');
  w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
  dashboard.classList.remove('active');doc.querySelectorAll('button')[1].classList.add('active');
- // MutationObserver may be asynchronous; deterministic scan is exposed for test.
- w.BNDashboardIntegrity?.scan?.();
- // The script uses no global app-data operations.
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(new URL(w.location.href).searchParams.get('tab'),'Settings');
  assert.equal(source.includes('localStorage.setItem'),false);
  assert.equal(source.includes('/rest/v1/'),false);
  dom.window.close();
@@ -32,7 +31,7 @@ test('conflict warning suppresses green Supabase saved badge',()=>{
  const {dom,w,doc}=fixture();
  const panel=doc.createElement('section');panel.id='bn-cloud-publish-status';panel.setAttribute('role','alert');panel.style.display='block';panel.textContent='School sync conflict — not published';doc.body.append(panel);
  w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
- assert.match(doc.querySelector('.bn-sync-status-badge').textContent,/Sync issue — not published/);
+ assert.match(doc.querySelector('.bn-sync-status-badge').getAttribute('aria-label'),/Sync conflict — not published/);
  assert.equal(doc.querySelector('.bn-sync-status-badge').getAttribute('aria-invalid'),'true');
  panel.style.display='none';
  // Trigger the mutation handler, then scan after the observer's microtask.
@@ -43,8 +42,10 @@ test('dashboard attendance and fee metrics explicitly state limited local-record
  const d=doc.querySelector('button');doc.querySelector('.active').classList.remove('active');d.classList.add('active');
  doc.querySelector('.metric-grid').innerHTML='<article class="metric-card"><div>Today\'s attendance</div><strong>100.0%</strong><small>0 absent recorded</small></article><article class="metric-card"><div>Fees collected this month</div><strong>₹0</strong><small>0 valid receipts</small></article>';
  w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
- assert.match(doc.querySelector('[data-bn-metric-note="attendance"]').textContent,/recorded entries only/i);
- assert.match(doc.querySelectorAll('.metric-card')[1].textContent,/receipts \(all dates\)/);
+ assert.equal(doc.querySelectorAll('.metric-card')[0].dataset.bnAttendanceNote,'true');
+ assert.equal(doc.querySelectorAll('.metric-card')[1].dataset.bnFeesNote,'true');
+ assert.match(doc.getElementById('bn-dashboard-integrity-styles').textContent,/Recorded entries only/);
+ assert.match(doc.getElementById('bn-dashboard-integrity-styles').textContent,/Receipt count includes all dates/);
  dom.window.close();
 });
 test('dashboard guard and ERP entry are identical in root, docs, and distribution files',()=>{
