@@ -95,3 +95,29 @@ test('upload is never declared successful without matching Supabase profile read
  assert.equal(t.uploads,1);
  assert.equal(t.published,null);
 });
+
+test('all ERP release entrypoints load the private photo publisher before ERP entry and precache matching bytes',()=>{
+ const fs=require('node:fs');
+ const path=require('node:path');
+ const crypto=require('node:crypto');
+ const root=path.resolve(__dirname,'..');
+ const files=['school-student-photo-cloud.js','school-student-photo-publisher.js'];
+ const version=['20261112-erp-private-photo-v1','20261112-erp-photo-publish-v1'];
+ const read=pathPart=>fs.readFileSync(path.join(root,pathPart),'utf8');
+ for(const prefix of ['','docs/','app-extracted/dist/']){
+   const html=read(prefix+'index.html');
+   const sw=read(prefix+'sw.js');
+   const entry=html.indexOf('school-erp-entry.js?v=');
+   let prev=-1;
+   for(let i=0;i<files.length;i++){
+     const tag=files[i]+'?v='+version[i];
+     const pos=html.indexOf(tag);
+     assert.ok(pos>prev&&pos<entry,tag+' must load before ERP entry');
+     prev=pos;
+     assert.equal(read(prefix+files[i]),read(files[i]));
+     const digest=crypto.createHash('sha256').update(read(files[i])).digest('hex');
+     assert.ok(sw.includes('"url":"'+tag+'","revision":"'+digest+'"'),tag+' must be precached with exact SHA256');
+   }
+   assert.equal(read(prefix+'index.html'),read('index.html'));
+ }
+});
