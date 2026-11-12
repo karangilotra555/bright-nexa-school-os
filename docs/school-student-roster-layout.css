@@ -1,0 +1,43 @@
+/* Students roster: photo and name are two separate, aligned columns.
+   Existing student data, IDs and photo storage remain unchanged. */
+.students-page .student-cell{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr);
+  gap:12px;
+  align-items:center;
+  min-width:180px;
+}
+.students-page .student-cell>span:first-child{
+  width:44px;
+  height:44px;
+  min-width:44px;
+  min-height:44px;
+  display:grid;
+  overflow:hidden;
+  border-radius:9px;
+  flex:none;
+}
+.students-page .student-cell>span:first-child img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+}
+.students-page .student-cell>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:3px;
+}
+.students-page .student-cell>div strong,
+.students-page .student-cell>div small{
+  display:block;
+  position:static;
+  margin:0;
+  overflow-wrap:anywhere;
+  line-height:1.3;
+}
+.students-page .table-scroll tbody tr{height:auto;min-height:64px}
+.students-page .table-scroll tbody td{vertical-align:middle}
