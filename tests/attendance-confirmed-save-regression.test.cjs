@@ -11,13 +11,14 @@ test('student and staff attendance buttons await actual cloud confirmation',()=>
    const view=region(source,component,next);
    assert.match(view,/onClick:\s*async\s*\(\)\s*=>|onClick=\{async \(\) =>/);
    assert.match(view,/const result\s*=\s*await/);
-   assert.match(view,/result\?\.status\s*!==\s*'synced'/);
+   assert.match(view,/result\?\.status\s*!==\s*['\"]synced['\"]/);
    assert.match(view,/NOT confirmed in Supabase/);
    assert.match(view,/attendanceSaving/);
    assert.match(view,/attendanceSaveMessage/);
    assert.match(view,/setTimeout\(\(\) => [fd]\d?\(false\),\s*1800\)/);
-   assert.ok(view.indexOf('const result=await')<view.indexOf("setTimeout("),'no early saved indication');
-   assert.match(view,/previous=>previous\.(?:studentId|staffId)===/);
+   const saveAt=view.search(/const result\s*=\s*await/),ackAt=view.search(/result\?\.status\s*!==\s*['\"]synced['\"]/),successAt=view.indexOf('setTimeout(');
+   assert.ok(saveAt>=0&&ackAt>saveAt&&successAt>ackAt,'no saved indication before cloud acknowledgment');
+   assert.match(view,/\(?previous\)?\s*=>\s*previous\.(?:studentId|staffId)\s*===/);
   }
   const app=source.slice(source.indexOf('let j = (nextOpsArg'),source.indexOf('const Component2051'));
   for(const label of ['Student attendance','Teaching attendance','Non-Teaching attendance'])
