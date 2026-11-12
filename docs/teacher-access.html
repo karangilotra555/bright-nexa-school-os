@@ -494,9 +494,10 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
       <h3>Existing assignments</h3><div id="assignmentsList"></div>
     </div>
     <div class="panel">
-      <h2>Add test student to an assigned class</h2>
-      <p class="muted">For internal testing only. Do not add real student information until your institution has been securely onboarded.</p>
-      <form id="studentForm" class="formgrid">
+      <h2>Student Admissions — Main School OS</h2>
+      <p class="muted">Student records have one entry point. Use Students → Add Student in the main School OS, then verify the Supabase save before opening the mobile portal. The legacy duplicate test-admission form is disabled.</p>
+      <a href="./index.html?openSchool=true&amp;tab=Students" class="ghost" style="display:inline-flex;text-decoration:none">Open Students in School OS</a>
+      <form id="studentForm" class="formgrid hidden" aria-hidden="true">
         <div><label for="studentClass">Class</label><select id="studentClass" required></select></div>
         <div><label for="studentName">Name</label><input id="studentName" required placeholder="Test Student"></div>
         <div><label for="studentAdm">Admission no.</label><input id="studentAdm" required placeholder="TEST-001"></div>
