@@ -131,7 +131,7 @@
     ].join(' ');
     doc.head.append(style);
   }
-  function scan(){alignRoute();badgeSafety();metricNotes();void readCloudCounts();}
+  function scan(){if(!doc?.defaultView||!doc.body)return;alignRoute();badgeSafety();metricNotes();void readCloudCounts();}
   function schedule(){
     if(scheduled)return;scheduled=true;
     (root.requestAnimationFrame||((fn)=>Promise.resolve().then(fn)))(()=>{scheduled=false;scan();});
