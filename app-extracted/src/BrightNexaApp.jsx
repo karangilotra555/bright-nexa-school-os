@@ -42913,7 +42913,7 @@ function Ds() {
     : null;
   let D = T.slice(0, 7);
   let te = i.feePayments
-    .filter((e) => e.status !== `Reversed` && e.paymentDate.startsWith(D))
+    .filter((e) => e.status !== `Reversed` && String(e.paymentDate || ``).startsWith(D))
     .reduce((e, t) => e + t.amount, 0);
   let ne =
     e.institution.name
@@ -43515,7 +43515,7 @@ function Ds() {
                   <Component2086 className={`eyebrow`}>
                     {_.welcome}
                     {`, `}
-                    {g?.name?.split(` `)[0] ?? `Rajesh`}
+                    {g?.name?.split(` `)[0] ?? `School Admin`}
                     {` •`}
                     {` `}
                     {v}
@@ -43557,7 +43557,7 @@ function Ds() {
                   icon={Oe}
                   label={`Fees collected this month`}
                   value={Es.format(te)}
-                  helper={`${i.feePayments.filter((e) => e.status !== `Reversed`).length} valid receipts`}
+                  helper={`${i.feePayments.filter((e) => e.status !== `Reversed` && String(e.paymentDate || ``).startsWith(D)).length} receipts this month`}
                   tone={`purple`}
                 />
               </Component2093>
