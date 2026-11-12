@@ -66,7 +66,7 @@
     }
   }
   async function readCloudCounts(){
-    if(activeTab()!=='Dashboard'||cloudReading||Date.now()-lastReadAt<60000)return;
+    if(activeTab()!=='Dashboard'||cloudReading)return;
     let school,staff,erp;
     try{
       staff=JSON.parse(root.sessionStorage?.getItem('bn_school_staff_session_v1')||'null');
@@ -75,6 +75,8 @@
     }catch(_){return;}
     if(erp?.cloudVerified!==true||erp?.role!=='OWNER'||!staff?.access_token
       ||!/^[a-f0-9-]{36}$/i.test(school))return;
+    if(cloudCounts?.school===school&&Date.now()-lastReadAt<60000)return;
+    if(cloudCounts?.school!==school)cloudCounts=null;
     cloudReading=true;lastReadAt=Date.now();
     const base='https://mrfvbwmyxndrakskqyas.supabase.co/rest/v1/';
     const headers={'apikey':'sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT',
@@ -103,7 +105,9 @@
     if(activeTab()!=='Dashboard')return;
     for(const card of doc.querySelectorAll('.metric-grid .metric-card')){
       const content=(card.textContent||'').toLowerCase();
-      if(cloudCounts?.school){
+      let currentSchool=null;
+      try{currentSchool=JSON.parse(root.sessionStorage?.getItem('bright-nexa-school-os:session:v2')||'null')?.institutionId;}catch(_){}
+      if(cloudCounts?.school&&cloudCounts.school===currentSchool){
         if(content.includes('total students'))
           card.dataset.bnCloudCount=cloudCounts.error||('Supabase active students: '+cloudCounts.students);
         else if(content.includes('teachers')||content.includes('faculty'))
@@ -125,6 +129,7 @@
     style.textContent=[
       '.bn-sync-status-badge[aria-invalid="true"] span:nth-child(2){font-size:0!important}',
       '.bn-sync-status-badge[aria-invalid="true"] span:nth-child(2)::after{content:"Sync conflict — not published";font-size:12px;font-weight:700}',
+      '.dashboard-grid .panel-title .icon-button{display:none!important}',
       '.metric-grid .metric-card[data-bn-attendance-note="true"]::after{content:"Recorded entries only · verify coverage";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
       '.metric-grid .metric-card[data-bn-fees-note="true"]::after{content:"Current-month receipts · verify cloud";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
       '.metric-grid .metric-card[data-bn-cloud-count]::after{content:attr(data-bn-cloud-count);display:block;font-size:11px;color:#155a83;line-height:1.4;margin-top:5px}'
