@@ -20525,6 +20525,7 @@ function _Component90({
   onDeleteStudent: i,
 }) {
   let [a, o] = (0, w.useState)(``);
+  const [studentPage,setStudentPage]=(0,w.useState)(1);
   let [s, l] = (0, w.useState)(``);
   let u = (0, w.useRef)(null);
   let [d, f] = (0, w.useState)(null);
@@ -20553,6 +20554,12 @@ function _Component90({
       return e;
     }
   }, [a, e]);
+  const studentPageSize=25;
+  const studentPageCount=Math.max(1,Math.ceil(h.length/studentPageSize));
+  const displayedStudentPage=Math.min(studentPage,studentPageCount);
+  const pagedStudents=h.slice((displayedStudentPage-1)*studentPageSize,
+    displayedStudentPage*studentPageSize);
+  (0,w.useEffect)(()=>setStudentPage(1),[a,e.length]);
   let g = async (t) => {
     if (t) {
       l(`Reading workbook…`);
@@ -20981,6 +20988,17 @@ function _Component90({
             {` record`}
             {h.length === 1 ? `` : `s`}
           </Component27>
+          {studentPageCount>1 && (
+            <div className="student-pagination" aria-label="Student list pages">
+              <button type="button" className="secondary-button compact"
+                disabled={displayedStudentPage===1}
+                onClick={()=>setStudentPage(p=>Math.max(1,p-1))}>Previous</button>
+              <span>Page {displayedStudentPage} / {studentPageCount}</span>
+              <button type="button" className="secondary-button compact"
+                disabled={displayedStudentPage===studentPageCount}
+                onClick={()=>setStudentPage(p=>Math.min(studentPageCount,p+1))}>Next</button>
+            </div>
+          )}
         </Component28>
         {h.length ? (
           <Component60 className={`table-scroll`}>
@@ -20997,7 +21015,7 @@ function _Component90({
                 </Component36>
               </Component37>
               <Component58>
-                {h.map((e) => (
+                {pagedStudents.map((e) => (
                   <Component57 key={e.id}>
                     <Component44>
                       <Component43 className={`student-cell`}>
