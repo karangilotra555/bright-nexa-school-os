@@ -330,17 +330,30 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
   return own[0];
  }
  async function gemini(key,prompt){
-  const model=env.GEMINI_MODEL||'gemini-2.5-flash';
-  ensure(/^[a-zA-Z0-9_.-]+$/.test(model),503,'Invalid Gemini model setting.');
+  // Access to Gemini 2.5 generation is restricted for new projects.
+  const configured=env.GEMINI_MODEL||'gemini-3.5-flash-lite';
+  ensure(/^[a-zA-Z0-9_.-]+$/.test(configured),503,'Invalid Gemini model setting.');
   const payload={systemInstruction:{parts:[{text:prompt.system}]},contents:[{role:'user',parts:[{text:prompt.user}]}],generationConfig:{responseMimeType:'application/json',temperature:.5,maxOutputTokens:16000}};
-  const res=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
-   method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(payload),cache:'no-store'
-  });
-  if(!res.ok)throw new SmartToolsError(res.status===429?429:502,'AI provider unavailable or rate-limited ('+res.status+'). Try again later.');
-  const data=await readJson(res,'AI provider returned invalid JSON.');
-  const message=data?.candidates?.[0]?.content?.parts?.map(x=>x.text||'').join('');
-  ensure(message&&message.length<=100000,502,'AI provider returned an empty or oversized response.');
-  try{return JSON.parse(message)}catch{throw new SmartToolsError(502,'AI provider returned malformed structured output.');}
+  async function call(model){
+   const res=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
+    method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(payload),cache:'no-store'
+   });
+   if(!res.ok){
+    if(res.status===404)throw new SmartToolsError(404,'Gemini model '+model+' is unavailable for this API key (HTTP 404). No content was generated.');
+    if(res.status===429)throw new SmartToolsError(429,'AI provider rate limit reached (HTTP 429). Try again later.');
+    throw new SmartToolsError(502,'Gemini provider returned HTTP '+res.status+'. No content was generated.');
+   }
+   const data=await readJson(res,'AI provider returned invalid JSON.');
+   const message=data?.candidates?.[0]?.content?.parts?.map(x=>x.text||'').join('');
+   ensure(message&&message.length<=100000,502,'AI provider returned an empty or oversized response.');
+   try{return JSON.parse(message)}catch{throw new SmartToolsError(502,'AI provider returned malformed structured output.');}
+  }
+  try{return await call(configured)}
+  catch(err){
+   // Exactly one migration attempt for a legacy configured 2.5 model.
+   if(err.status===404 && /^gemini-2\.5-/.test(configured))return call('gemini-3.5-flash-lite');
+   throw err;
+  }
  }
  async function groq(key,prompt){
   const model=env.GROQ_MODEL||'llama-3.3-70b-versatile';
