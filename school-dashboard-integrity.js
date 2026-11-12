@@ -85,7 +85,9 @@
     const alertVisible=cloudErrorActive();
     const alertTitle=doc?.getElementById('bn-cloud-publish-status')
       ?.querySelector?.('[data-role="heading"]')?.textContent||'';
-    const conflict=cloud==='conflict'||(alertVisible&&/conflict/i.test(alertTitle));
+    const conflict=cloud==='conflict'||(alertVisible&&(
+      /conflict/i.test(alertTitle)||(!alertTitle&&/conflict/i.test(
+        doc?.getElementById('bn-cloud-publish-status')?.textContent||''))));
     const issue=conflict||!!state?.problem||alertVisible;
     const saving=!issue&&['pending','syncing','loading'].includes(cloud);
     const warning=conflict?'Sync conflict — not published'
