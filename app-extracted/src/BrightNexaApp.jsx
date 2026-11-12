@@ -42905,7 +42905,8 @@ function Ds() {
   };
   let C = (e) =>
     x ? (S[e] ?? e) : e === `Classes & Batches` ? `Class & Section Setup` : e;
-  let T = new Date().toISOString().slice(0, 10);
+  const localNow = new Date();
+  let T = [localNow.getFullYear(),String(localNow.getMonth()+1).padStart(2,'0'),String(localNow.getDate()).padStart(2,'0')].join('-');
   let E = i.attendance.filter((e) => e.date === T);
   let ee = E.length
     ? (E.filter((e) => e.status === `Present`).length / E.length) * 100
