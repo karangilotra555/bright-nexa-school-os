@@ -41,3 +41,25 @@
 }
 .students-page .table-scroll tbody tr{height:auto;min-height:64px}
 .students-page .table-scroll tbody td{vertical-align:middle}
+
+/* Keep the existing Students table while limiting large rosters to 25 rows. */
+.students-page .student-pagination{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.students-page .student-pagination span{
+  color:#52657c;
+  font-size:12px;
+  font-weight:600;
+  white-space:nowrap;
+}
+.students-page .student-pagination button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+@media(max-width:720px){
+  .students-page .student-pagination{width:100%;justify-content:center}
+}
