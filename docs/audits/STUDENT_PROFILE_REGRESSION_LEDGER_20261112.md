@@ -25,6 +25,9 @@ Updated: 2026-11-12. This file is a durable issue/fix log. Do not mark a feature
 
 - 2026-11-12: User screenshot after Render deployment still showed controls overflowing the A4 marksheet toolbar inside the ERP `ID Cards & Certificates` iframe. Confirmed Render was already at `1b352fd`, so not a missing prior deploy. Applied deterministic 6-column bounded CSS grid with selector span 3, action span 2 and narrow-screen adaptation across both marksheet HTML variants and published mirrors; test `embedded marksheet toolbar uses bounded grid tracks` added. This repair is pending new deployment and live visual verification.
 
+- 2026-11-12 TC audit: `tc-certificate-a4.html` contained four hardcoded demo students, fake affiliation/school contact, fabricated fees clearance, promotion, attendance, issue dates and UUID-to-NaN serial generation. Removed static cert claims and demo student records in root/docs/dist. Unissued or unverified TC printing now blocked. Source remains browser school snapshot/student roster, not proven live Supabase readback; full authenticated certificate issuance workflow remains pending.
+- 2026-11-12 reset-mail audit: Supabase Auth logs showed HTTP 200 on `/recover`, which is request acceptance, not delivery. The screenshot's requested email did not match any existing auth.users account at the time of the read-only check. No mailbox delivery can be assumed; public recovery must remain non-enumerating.
+
 ## Verification still required
 - Live authenticated student edit/create/reopen and Supabase readback; photo once + upload/change; marks entry via exam form + portal published feed; Cloud sync conflict recovery with explicit backed-up local records; native Android.
 - Main ERP profile and student editor live in the large React source/bundle; they were **not modified by the marksheet patch**. Do not say editing or duplicate photo is fixed.
