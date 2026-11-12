@@ -78,25 +78,37 @@
     return (style?.display||panel.style.display)!=='none' && style?.visibility!=='hidden';
   }
   function badgeSafety(){
-    // The workspace controller, not the local status label, owns save truth.
+    // An in-flight save is not a successful save. The workspace controller's
+    // cloud state takes precedence over any local optimistic status text.
     const state=root.BNWorkspaceOnlineGuard?.getStatus?.();
-    const conflict=state?.status==='conflict'||cloudErrorActive();
+    const cloud=String(state?.status||'local');
+    const conflict=cloud==='conflict'||cloudErrorActive();
     const issue=conflict||!!state?.problem;
-    const warning=conflict?'Sync conflict — not published':'Cloud save failed — not published';
+    const saving=!issue&&['pending','syncing','loading'].includes(cloud);
+    const warning=conflict?'Sync conflict — not published'
+      :issue?'Cloud save failed — not published'
+      :saving?'Saving to Supabase — not yet confirmed':'';
     const badge=doc?.querySelector('.bn-sync-status-badge');
     if(!badge)return;
-    if(issue){
-      if(badge.getAttribute('aria-invalid')!=='true'){
-        badge.setAttribute('aria-invalid','true');
-        badge.style.borderColor='#c66a17';
-        badge.style.color='#874200';
-        badge.style.background='#fff4e5';
+    if(warning){
+      if(issue){
+        if(badge.getAttribute('aria-invalid')!=='true')badge.setAttribute('aria-invalid','true');
+        if(badge.hasAttribute('aria-busy'))badge.removeAttribute('aria-busy');
+      }else{
+        if(badge.hasAttribute('aria-invalid'))badge.removeAttribute('aria-invalid');
+        if(badge.getAttribute('aria-busy')!=='true')badge.setAttribute('aria-busy','true');
       }
       if(badge.getAttribute('aria-label')!==warning)badge.setAttribute('aria-label',warning);
-      if(badge.dataset.bnCloudWarning!==warning)badge.dataset.bnCloudWarning=warning;
+      if(badge.dataset.bnCloudWarning!==warning){
+        badge.dataset.bnCloudWarning=warning;
+        badge.style.borderColor=issue?'#c66a17':'#3a7bad';
+        badge.style.color=issue?'#874200':'#194f77';
+        badge.style.background=issue?'#fff4e5':'#e8f4ff';
+      }
       if(badge.title!==warning)badge.title=warning;
-    }else if(badge.getAttribute('aria-invalid')==='true'){
+    }else if(badge.dataset.bnCloudWarning||badge.hasAttribute('aria-invalid')||badge.hasAttribute('aria-busy')){
       badge.removeAttribute('aria-invalid');
+      badge.removeAttribute('aria-busy');
       badge.removeAttribute('aria-label');
       delete badge.dataset.bnCloudWarning;
       badge.style.removeProperty('border-color');
@@ -179,9 +191,9 @@
     if(doc.getElementById('bn-dashboard-integrity-styles'))return;
     const style=doc.createElement('style');style.id='bn-dashboard-integrity-styles';
     style.textContent=[
-      '.bn-sync-status-badge[aria-invalid="true"]{font-size:0!important}',
-      '.bn-sync-status-badge[aria-invalid="true"]>*{display:none!important}',
-      '.bn-sync-status-badge[aria-invalid="true"]::after{content:attr(data-bn-cloud-warning);display:inline-flex;align-items:center;font-size:12px!important;font-weight:700;white-space:normal;line-height:1.3}',
+      '.bn-sync-status-badge[data-bn-cloud-warning]{font-size:0!important}',
+      '.bn-sync-status-badge[data-bn-cloud-warning]>*{display:none!important}',
+      '.bn-sync-status-badge[data-bn-cloud-warning]::after{content:attr(data-bn-cloud-warning);display:inline-flex;align-items:center;font-size:12px!important;font-weight:700;white-space:normal;line-height:1.3}',
       '.dashboard-grid .panel-title .icon-button{display:none!important}',
       '.metric-grid .metric-card[data-bn-attendance-note="true"]::after{content:"Recorded entries only · verify coverage";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
       '.metric-grid .metric-card[data-bn-fees-note="true"]::after{content:"Current-month receipts · verify cloud";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
