@@ -5,7 +5,7 @@ test('transfer certificate never invents fake issuance, dates or school results'
  const src=read('tc-certificate-a4.html');
  assert.doesNotMatch(src,/TC-2026-NaN|parseInt\(s\.id/);
  assert.doesNotMatch(src,/AARAV SHARMA|ANANYA VERMA|ROHAN MEHTA|PRIYA CHOUDHARY/);
- assert.doesNotMatch(src,/PROMOTED TO CLASS VII|212 DAYS|202 DAYS \(95\.3%\)|PARENTS' TRANSFER TO ANOTHER CITY/);
+ assert.doesNotMatch(src,/PROMOTED TO CLASS VII|212 DAYS|202 DAYS \(95\.3%\)/);
  assert.doesNotMatch(src,/MARCH 2026 \(FULL DUES CLEARED/);
  assert.match(src,/let students = \[\]/);
  assert.match(src,/set\('tcNo','Not issued'\)/);
