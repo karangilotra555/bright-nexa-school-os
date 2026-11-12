@@ -108,3 +108,16 @@ test('pending Supabase save does not appear as saved', () => {
   assert.equal(app.badge.getAttribute('aria-busy'), null);
   assert.equal(app.badge.dataset.bnCloudWarning, undefined);
 });
+
+test('network error alert is not incorrectly labeled as revision conflict', () => {
+  const app = harness({ active: 'Dashboard', cloudStatus: { status: 'pending', problem: 'HTTP 503' } });
+  app.root.document.getElementById = id => id === 'bn-cloud-publish-status' ? {
+    hidden: false,
+    style: { display: 'block' },
+    getAttribute() { return 'alert'; },
+    querySelector() { return { textContent: 'Supabase save failed — not published' }; }
+  } : null;
+  app.root.getComputedStyle = () => ({ display: 'block', visibility: 'visible' });
+  app.api.scan();
+  assert.equal(app.badge.dataset.bnCloudWarning, 'Cloud save failed — not published');
+});
