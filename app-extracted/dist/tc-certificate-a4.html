@@ -298,6 +298,9 @@
         margin: 0 !important;
       }
       .no-print-bar { display: none !important; }
+      /* Until a backend-approved TC issuance workflow exists, a browser
+         print shortcut must not bypass the Print Approved TC guard. */
+      body:not(.bn-tc-server-issued) .a4-page{display:none!important}
       .a4-page {
         box-shadow: none !important;
         padding: 10mm 12mm !important;
