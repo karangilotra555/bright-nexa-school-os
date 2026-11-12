@@ -21,7 +21,7 @@ function mount(options={}){
 test('ID card uses verified Supabase roster and stored photo, not stale device-only image',async()=>{
  const x=mount();try{await x.settle();const d=x.w.document;
  assert.match(d.getElementById('bnPrintCloudStatus').textContent,/Supabase confirmed/);
- assert.match(d.getElementById('dataSourcePill').textContent,/Supabase Records \(1\)/);
+ assert.match(d.getElementById('dataSourcePill').textContent,/Supabase confirmed \(1 students\)/);
  assert.equal(d.querySelector('.photo-frame img').getAttribute('src'),photo);
  assert.match(d.getElementById('pagesContainer').textContent,/RIVAN/);
  assert.doesNotMatch(d.getElementById('pagesContainer').textContent,/STALE DEVICE STUDENT/);
@@ -42,7 +42,7 @@ test('search, class/student filters, theme, print side, and print work',async()=
  d.getElementById('colorTheme').value='forest';w.changeTheme();
  assert.equal(d.documentElement.style.getPropertyValue('--primary'),'#064e3b');
  w.setIdPrintSide('back');assert.equal(d.body.dataset.printSide,'back');
- w.handlePrint();assert.equal(x.printed(),1);
+ await new Promise(r=>setTimeout(r,35));w.handlePrint();assert.equal(x.printed(),1);
  assert.ok(d.querySelector('a[href="marksheet-a4.html"]'));
  assert.ok(d.querySelector('a[href="tc-certificate-a4.html"]'));
  assert.equal(d.querySelector('a[href^="https://bright-nexa-school-os-api"]').getAttribute('target'),'_blank');
@@ -51,7 +51,7 @@ test('search, class/student filters, theme, print side, and print work',async()=
 test('cross-school and expired session cannot be falsely labelled as synced',async()=>{
  for(const mode of [{wrong:true},{fail:true}]){const x=mount(mode);try{await x.settle();const d=x.w.document;
  assert.ok(d.getElementById('bnPrintCloudStatus').classList.contains('error'));
- assert.match(d.getElementById('dataSourcePill').textContent,/Device preview/);
+ assert.match(d.getElementById('dataSourcePill').textContent,/cloud not verified.*hidden/i);
  assert.equal(x.pulls(),0);
  }finally{x.dom.window.close();}}
 });
