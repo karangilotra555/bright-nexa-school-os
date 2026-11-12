@@ -54,12 +54,14 @@
     if(issue){
       if(!badge.dataset.bnOriginalText)badge.dataset.bnOriginalText=label.textContent||'';
       if(label.textContent!=='Sync issue — not published')label.textContent='Sync issue — not published';
+      if(badge.getAttribute('aria-invalid')!=='true'){
       badge.setAttribute('aria-invalid','true');
       badge.style.borderColor='#c66a17';
       badge.style.color='#874200';
       badge.style.background='#fff4e5';
       badge.title='The school has an unresolved cloud error. Do not treat browser records as published. Review the sync conflict panel.';
       if(spans[2])spans[2].style.background='#c66a17';
+      }
     }else if(badge.hasAttribute('aria-invalid')){
       badge.removeAttribute('aria-invalid');
       if(label.textContent==='Sync issue — not published')label.textContent=badge.dataset.bnOriginalText||'Check sync status';
