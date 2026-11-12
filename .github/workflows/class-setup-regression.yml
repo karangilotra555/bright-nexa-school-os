@@ -1,0 +1,35 @@
+name: Class setup safety
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'school-workspace-cloud.js'
+      - 'docs/school-workspace-cloud.js'
+      - 'app-extracted/dist/school-workspace-cloud.js'
+      - 'tests/class-clear-safety.test.cjs'
+      - '.github/workflows/class-setup-regression.yml'
+  pull_request:
+    paths:
+      - 'school-workspace-cloud.js'
+      - 'docs/school-workspace-cloud.js'
+      - 'app-extracted/dist/school-workspace-cloud.js'
+      - 'tests/class-clear-safety.test.cjs'
+permissions:
+  contents: read
+jobs:
+  class-setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate class cloud adapter syntax
+        run: node --check school-workspace-cloud.js
+      - name: Verify shipped cloud adapter mirrors
+        run: |
+          cmp -s school-workspace-cloud.js docs/school-workspace-cloud.js
+          cmp -s school-workspace-cloud.js app-extracted/dist/school-workspace-cloud.js
+      - name: Test class setup safety and cloud validation
+        run: node --test tests/class-clear-safety.test.cjs
