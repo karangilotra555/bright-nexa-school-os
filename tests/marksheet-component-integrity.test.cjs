@@ -11,7 +11,7 @@ test('marksheets never fabricate PT, notebook, enrichment or annual marks from a
   assert.doesNotMatch(src,/pt\s*=\s*parseFloat\(\(tot\s*\*\s*0\.1\)/);
   assert.doesNotMatch(src,/nb\s*=\s*parseFloat\(\(tot\s*\*\s*0\.05\)/);
   assert.doesNotMatch(src,/se\s*=\s*parseFloat\(\(tot\s*\*\s*0\.05\)/);
-  assert.match(src,/pt = nb = se = annual = null/);
+  assert.ok(/pt = nb = se = annual = null/.test(src)||/pt:null,nb:null,se:null,annual:null/.test(src));
   assert.match(src,/hasEntry && Number\.isFinite\(sub\.pt\)/);
   assert.match(src,/hasEntry && Number\.isFinite\(sub\.annual\)/);
   assert.equal(read('docs/'+file),src,'docs must mirror live published source');
