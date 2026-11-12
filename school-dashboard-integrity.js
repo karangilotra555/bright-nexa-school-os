@@ -84,7 +84,7 @@
       const response=await root.fetch(base+table+'?'+qs,{method:'HEAD',headers,cache:'no-store'});
       if(!response.ok)throw Error('Supabase count HTTP '+response.status);
       const range=response.headers?.get('content-range')||'';
-      const m=range.match(/\\/(\\d+)$/);
+      const m=range.match(/\/(\d+)$/);
       if(!m)throw Error('Supabase count not confirmed');
       return Number(m[1]);
     }
