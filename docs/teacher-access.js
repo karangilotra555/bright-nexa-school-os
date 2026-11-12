@@ -341,6 +341,44 @@
     tab(openingView);clearNotice();
     if(openingView==='attendance'){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
+  async function renderMobileReadiness(){
+    const target=$('mobileReadinessStatus');
+    if(!target||!isAdmin())return;
+    const schoolId=me.institution_id;
+    target.textContent='Checking Supabase setup…';
+    const activeTeachers=allStaff.filter(s=>s.role==='teacher'&&s.status==='active');
+    const assignedTeachers=new Set(allAssignments.filter(a=>a.active&&a.school_user_id&&allClasses.some(c=>c.id===a.class_id)
+      &&(a.can_take_attendance||a.can_assign_homework)).map(a=>a.school_user_id));
+    const teacherReady=activeTeachers.filter(t=>assignedTeachers.has(t.id)).length;
+    const tasks=[
+      activeTeachers.length?activeTeachers.length+' active teacher account(s)':'No active teacher account: invite one and activate email',
+      teacherReady?teacherReady+' teacher(s) assigned attendance/homework classes':'No active teacher with class attendance/homework rights'
+    ];
+    try{
+      const profiles=await api('school_student_profiles',query({select:'student_id,guardian_phone,guardian_email',institution_id:eq(schoolId),limit:'1000'}));
+      if(me?.institution_id!==schoolId)return;
+      const activeStudentIds=new Set(allStudents.map(s=>s.id));
+      const onboardable=(profiles||[]).filter(p=>activeStudentIds.has(p.student_id)
+        &&/^[0-9]{10}$/.test(String(p.guardian_phone||'').replace(/\D/g,'')));
+      tasks.push(onboardable.length+'/'+activeStudentIds.size+' active student(s) have a valid guardian phone for first mobile login');
+      tasks.push((profiles||[]).filter(p=>activeStudentIds.has(p.student_id)&&String(p.guardian_email||'').trim()).length
+        +' guardian email(s) recorded for email password recovery');
+    }catch(e){
+      tasks.push('Guardian phone/email readiness could not be confirmed from Supabase: '+(e.message||'Access denied'));
+    }
+    try{
+      const links=await api('school_guardian_students',query({select:'student_id',institution_id:eq(schoolId),limit:'1000'}));
+      if(me?.institution_id!==schoolId)return;
+      tasks.push(new Set((links||[]).filter(x=>allStudents.some(s=>s.id===x.student_id)).map(x=>x.student_id)).size
+        +' active student(s) have a linked guardian/student mobile account');
+    }catch(e){
+      tasks.push('Guardian account linkage could not be verified: '+(e.message||'Access denied'));
+    }
+    if(me?.institution_id!==schoolId)return;
+    const ul=dom('ul');ul.style.cssText='margin:10px 0 0;padding-left:22px;font-size:13px;color:#234366;line-height:1.85';
+    for(const task of tasks)ul.append(dom('li',task));
+    target.replaceChildren(ul);
+  }
   async function reload(){
     await loadRolePermissions();
     const institution_id=me.institution_id;
@@ -367,7 +405,7 @@
     }else allStaff=[];
     allHomeworkFiles=await homeworkFiles.list(allHomework.map(h=>h.id));
     put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
-    invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin())renderAdmin();await loadNotices();
+    invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin()){renderAdmin();await renderMobileReadiness();}await loadNotices();
   }
   let readProfile=null,editingStudent=null,profileGeneration=0;
   function clearProfileEditor(){
@@ -1410,13 +1448,14 @@
       can_assign_homework:$('permHomework').checked,
       can_enter_marks:$('permMarks').checked
     };
-    if(!allStaff.some(s=>s.id===rec.school_user_id&&s.role==='teacher'))throw Error('Select an active teacher.');
+    if(!allStaff.some(s=>s.id===rec.school_user_id&&s.role==='teacher'&&s.status==='active'))throw Error('Select an active teacher whose email activation is complete.');
     if(!allClasses.some(c=>c.id===rec.class_id))throw Error('Select an existing class.');
     await api('school_teacher_assignments','','POST',rec);
     await reload();notify('Teacher assignment saved.');
   })});
   $('studentForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
+    throw Error('Add admissions in the main School OS Students module. This old test-student form is disabled to prevent duplicate records.'); 
     await api('school_students','','POST',{institution_id:me.institution_id,
       class_id:$('studentClass').value,name:$('studentName').value.trim(),admission_number:$('studentAdm').value.trim(),status:'active'});
     e.target.reset();await reload();notify('Test student saved.');
