@@ -15,6 +15,13 @@
   const localClasses=unique(rows(ops,'classes'),'class');
   const classes=localClasses.map(c=>({localId:required(c.id,'Class ID'),name:required(c.name,'Class name'),section:str(c.section),academicYear:required(c.academicSession||c.academicYear||institution.session,'Academic year')}));
   unique(classes,'class name / section / year',c=>[norm(c.name),norm(c.section),norm(c.academicYear)].join('|'));
+  // Class Teacher in the legacy class editor is a local teacher identifier.
+  // The school workspace RPC does NOT create school_users or
+  // school_teacher_assignments from this field. Fail clearly rather than
+  // display an assignment as synced across the teacher/student portals.
+  if(localClasses.some(c=>str(c.classTeacherId))){
+    throw Error('Class Teacher selected in Add Class is not a verified Supabase teacher assignment. Clear this field and assign an onboarded teacher through Staff Portal → Class Teacher assignments. No cloud save was attempted.');
+  }
   // The class page currently offers a bulk clear, but existing student and
   // academic records cannot safely lose their class references. Reject the
   // operation *before* any network save and explain what has to be resolved.
