@@ -29,7 +29,9 @@ for(const name of ['id-card-a4.html','docs/id-card-a4.html']){
     const html=read(name);
     assert.doesNotMatch(html,/DEFAULT_INSTITUTION_KEY|computeStudentHMAC|HMAC SIG:|DIGITALLY VERIFIED STUDENT PASS/);
     assert.match(html,/SERVER SIGNATURE PENDING/);
-    assert.match(html,/UNVERIFIED PREVIEW/);
+    assert.match(html,/SERVER SIGNATURE PENDING/);
+    assert.match(html,/lastVerifiedCloudRevision===null/);
+    assert.doesNotMatch(html,/SAMPLE_DEMO_STUDENTS|toggleDemoMode|isDemoMode/);
     assert.match(html,/SERVER VERIFICATION REQUIRED/);
   });
 }
