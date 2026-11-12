@@ -38236,7 +38236,8 @@ function Ds() {
     "School Quality Score": `Institute Quality Score`
   };
   let C2 = (e3) => x2 ? S2[e3] ?? e3 : e3 === `Classes & Batches` ? `Class & Section Setup` : e3;
-  let T2 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  let localNow2 = /* @__PURE__ */ new Date();
+  let T2 = [localNow2.getFullYear(),String(localNow2.getMonth()+1).padStart(2,'0'),String(localNow2.getDate()).padStart(2,'0')].join('-');
   let E2 = i2.attendance.filter((e3) => e3.date === T2);
   let ee2 = E2.length ? E2.filter((e3) => e3.status === `Present`).length / E2.length * 100 : null;
   let D2 = T2.slice(0, 7);
