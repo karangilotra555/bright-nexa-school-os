@@ -75,5 +75,5 @@ test('dashboard guard and ERP entry are identical in root, docs, and distributio
   assert.equal(read(prefix+'school-dashboard-integrity.js'),source);
   assert.equal(read(prefix+'index.html'),read('index.html'));
  }
- assert.equal((read('index.html').match(/school-dashboard-integrity\.js\?v=20261112-dashboard-audit-v1/g)||[]).length,1);
+ assert.equal((read('index.html').match(/school-dashboard-integrity\.js\?v=20261112-dashboard-route-v2/g)||[]).length,1);
 });
