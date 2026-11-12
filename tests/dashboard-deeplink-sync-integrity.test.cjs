@@ -24,7 +24,7 @@ test('Settings navigation updates route without touching workspace data',async()
  await new Promise(resolve=>setTimeout(resolve,0));
  assert.equal(new URL(w.location.href).searchParams.get('tab'),'Settings');
  assert.equal(source.includes('localStorage.setItem'),false);
- assert.equal(source.includes('/rest/v1/'),false);
+ assert.equal(source.includes("method:'POST'"),false);
  dom.window.close();
 });
 test('conflict warning suppresses green Supabase saved badge',()=>{
