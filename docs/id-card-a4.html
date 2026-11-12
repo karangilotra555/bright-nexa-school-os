@@ -47,6 +47,8 @@
     .bn-print-status {font-size:12px;color:#335c78;line-height:1.4;border:1px solid #cbddeb;padding:9px 12px;background:#f1f8ff;border-radius:8px}
     .bn-print-status.error {background:#fff4f4;border-color:#edc6cc;color:#94344a}
     @media print {.bn-print-back,.bn-print-status {display:none!important}}
+    /* Browser Ctrl+P must not bypass authenticated QR/print validation. */
+    @media print {body:not(.bn-id-print-verified) #pagesContainer{display:none!important}}
     /* Top Control Bar */
     .no-print-bar {
       width: 210mm;
@@ -1024,7 +1026,10 @@
         reportCloudState('Temporary photo preview is not published. Save the photo through Staff Portal before printing.',true);
         return false;
       }
-      window.print();
+      document.body.classList.add('bn-id-print-verified');
+      const release=()=>document.body.classList.remove('bn-id-print-verified');
+      window.addEventListener('afterprint',release,{once:true});
+      try{window.print();}catch(error){release();throw error;}
       return true;
     }
 
