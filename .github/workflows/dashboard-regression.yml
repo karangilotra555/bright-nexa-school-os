@@ -1,0 +1,40 @@
+name: Dashboard regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'school-dashboard-integrity.js'
+      - 'school-online-guard.js'
+      - 'school-auth-signout.js'
+      - 'index.html'
+      - 'tests/dashboard-integrity.test.cjs'
+      - '.github/workflows/dashboard-regression.yml'
+  pull_request:
+    paths:
+      - 'school-dashboard-integrity.js'
+      - 'school-online-guard.js'
+      - 'school-auth-signout.js'
+      - 'index.html'
+      - 'tests/dashboard-integrity.test.cjs'
+      - '.github/workflows/dashboard-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check dashboard JavaScript syntax
+        run: |
+          node --check school-dashboard-integrity.js
+          node --check school-online-guard.js
+          node --check school-auth-signout.js
+      - name: Test Dashboard navigation and cloud status
+        run: node --test tests/dashboard-integrity.test.cjs
