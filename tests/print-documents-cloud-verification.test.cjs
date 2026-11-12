@@ -108,6 +108,7 @@ test('A4 print modules are identical in hosted, docs and standalone releases',()
 
 test('ID card cloud roster excludes transferred, archived and incomplete student profiles',async()=>{
   const {dom,w}=await browser('id-card-a4.html');
+  w.fetch=async()=>{throw Error('Unexpected direct fetch in mocked cloud test');};
   w.BNWorkspaceCloud={create:()=>({
     connect:async()=>[{id:SID,name:'Test School'}],
     pull:async()=>({revision:7,snapshot:{
