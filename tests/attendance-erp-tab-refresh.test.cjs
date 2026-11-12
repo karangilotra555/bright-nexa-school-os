@@ -8,7 +8,7 @@ test('Admin Attendance and Owner Reports refresh the same verified workspace on 
   assert.match(app,/\[\s*['\"]Attendance['\"],\s*['\"]Owner Reports['\"]\s*\]\.includes\(/);
   assert.match(app,/cloud\.controller\.sync\(\)\.catch/);
   assert.match(app,/Refresh Supabase attendance/);
-  assert.match(app,/disabled:!cloud\?\.controller|disabled=\{!cloud\?\.controller\}/);
+  assert.match(app,/disabled:\s*!cloud\?\.controller|disabled=\{!cloud\?\.controller\}/);
   assert.doesNotMatch(app,/cloud\.controller\.openSchool\(.*?Attendance/s,'Opening attendance must not import or overwrite any school');
  }
  assert.equal(read('assets/index-brightnexa-v2.js'),read('docs/assets/index-brightnexa-v2.js'));
