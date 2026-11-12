@@ -332,7 +332,7 @@
         <option value="SHIFTING OF RESIDENCE">Shifting of Residence</option>
       </select>
 
-      <button class="btn btn-primary" onclick="window.print()">
+      <button class="btn btn-primary" onclick="printVerifiedTC()">
         🖨️ Print Transfer Certificate
       </button>
 
@@ -358,22 +358,22 @@
       <div class="corner-decor c-bl"></div>
       <div class="corner-decor c-br"></div>
 
-      <div class="watermark" id="tcWatermark">BRIGHT NEXA ACADEMY</div>
+      <div class="watermark" id="tcWatermark">SCHOOL RECORD REQUIRED</div>
 
       <!-- HEADER -->
       <div class="tc-header">
         <img id="tcSchoolLogo" src="app-icon-512.png" class="school-logo" alt="Logo">
-        <div class="school-name" id="tcSchoolName">BRIGHT NEXA INTERNATIONAL ACADEMY</div>
-        <div class="school-sub" id="tcSchoolAffil">AFFILIATED TO CBSE, NEW DELHI • SCHOOL CODE: 20458 • AFFILIATION NO: 1730248</div>
-        <div class="school-contact" id="tcSchoolContact">Shivalik Enclave, Haridwar • Phone: +91 7500058655 • Email: info@brightnexa.edu.in</div>
+        <div class="school-name" id="tcSchoolName">School profile not loaded</div>
+        <div class="school-sub" id="tcSchoolAffil">Affiliation not verified</div>
+        <div class="school-contact" id="tcSchoolContact">—</div>
         <div class="tc-badge-title">TRANSFER CERTIFICATE</div>
       </div>
 
       <!-- META -->
       <div class="tc-meta-row">
-        <div>Book No: <span class="highlight-val" id="bookNo">2026/01</span></div>
-        <div>TC Serial No: <span class="highlight-val" id="tcNo">TC-2026-084</span></div>
-        <div>Admission / Scholar No: <span class="highlight-val" id="admNo">BMS-2026-001</span></div>
+        <div>Book No: <span class="highlight-val" id="bookNo">Not issued</span></div>
+        <div>TC Serial No: <span class="highlight-val" id="tcNo">Not issued</span></div>
+        <div>Admission / Scholar No: <span class="highlight-val" id="admNo">—</span></div>
       </div>
 
       <!-- TC PARTICULARS TABLE -->
@@ -383,121 +383,121 @@
             <td class="col-num">1.</td>
             <td class="col-label">Name of the Pupil</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcStudentName">AARAV SHARMA</td>
+            <td class="col-val" id="tcStudentName">—</td>
           </tr>
           <tr>
             <td class="col-num">2.</td>
             <td class="col-label">Mother's Name</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcMotherName">MRS. SUNITA SHARMA</td>
+            <td class="col-val" id="tcMotherName">—</td>
           </tr>
           <tr>
             <td class="col-num">3.</td>
             <td class="col-label">Father's / Guardian's Name</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcFatherName">MR. RAJESH SHARMA</td>
+            <td class="col-val" id="tcFatherName">—</td>
           </tr>
           <tr>
             <td class="col-num">4.</td>
             <td class="col-label">Nationality & Religion</td>
             <td class="col-colon">:</td>
-            <td class="col-val">INDIAN</td>
+            <td class="col-val" id="tcNationality">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">5.</td>
             <td class="col-label">Whether Pupil Belongs to SC / ST / OBC</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcCategory">GENERAL</td>
+            <td class="col-val" id="tcCategory">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">6.</td>
             <td class="col-label">Date of First Admission in School with Class</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcAdmDate">05-04-2021 (CLASS I)</td>
+            <td class="col-val" id="tcAdmDate">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">7.</td>
             <td class="col-label">Date of Birth (in Christian Era) According to Register</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcDob">12-03-2014 (TWELFTH MARCH TWO THOUSAND FOURTEEN)</td>
+            <td class="col-val" id="tcDob">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">8.</td>
             <td class="col-label">Class in which the Pupil Last Studied</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcClassLast">CLASS VI (SIXTH)</td>
+            <td class="col-val" id="tcClassLast">—</td>
           </tr>
           <tr>
             <td class="col-num">9.</td>
             <td class="col-label">School / Board Annual Examination Last Taken with Result</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcExamResult">ANNUAL EXAMINATION 2026 - PASSED</td>
+            <td class="col-val" id="tcExamResult">Not verified</td>
           </tr>
           <tr>
             <td class="col-num">10.</td>
             <td class="col-label">Whether Failed, If So Once / Twice in the Same Class</td>
             <td class="col-colon">:</td>
-            <td class="col-val">NO</td>
+            <td class="col-val">Not verified</td>
           </tr>
           <tr>
             <td class="col-num">11.</td>
             <td class="col-label">Subjects Studied</td>
             <td class="col-colon">:</td>
-            <td class="col-val">1. ENGLISH &nbsp; 2. HINDI &nbsp; 3. MATHEMATICS &nbsp; 4. SCIENCE &nbsp; 5. SOCIAL SCIENCE &nbsp; 6. COMPUTER/AI</td>
+            <td class="col-val">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">12.</td>
             <td class="col-label">Whether Qualified for Promotion to the Higher Class</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcPromotion">YES, PROMOTED TO CLASS VII (SEVENTH)</td>
+            <td class="col-val" id="tcPromotion">Not verified</td>
           </tr>
           <tr>
             <td class="col-num">13.</td>
             <td class="col-label">Month Upto which the Pupil has Paid School Dues</td>
             <td class="col-colon">:</td>
-            <td class="col-val" style="color: #15803d;" id="tcFeeStatus">MARCH 2026 (FULL DUES CLEARED - NO DUES PENDING)</td>
+            <td class="col-val" style="color: #15803d;" id="tcFeeStatus">Not verified</td>
           </tr>
           <tr>
             <td class="col-num">14.</td>
             <td class="col-label">Any Fee Concession Availed of, Nature of Concession</td>
             <td class="col-colon">:</td>
-            <td class="col-val">NIL</td>
+            <td class="col-val">Not verified</td>
           </tr>
           <tr>
             <td class="col-num">15.</td>
             <td class="col-label">Total Number of Working Days in Academic Session</td>
             <td class="col-colon">:</td>
-            <td class="col-val">212 DAYS</td>
+            <td class="col-val">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">16.</td>
             <td class="col-label">Total Number of Days Pupil was Present</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcDaysPresent">202 DAYS (95.3%)</td>
+            <td class="col-val" id="tcDaysPresent">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">17.</td>
             <td class="col-label">General Conduct and Character</td>
             <td class="col-colon">:</td>
-            <td class="col-val" style="color: #0b2545;">EXEMPLARY & DISCIPLINED</td>
+            <td class="col-val" style="color: #0b2545;">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">18.</td>
             <td class="col-label">Date of Application for Certificate</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcDateApp">20-10-2026</td>
+            <td class="col-val" id="tcDateApp">Not recorded</td>
           </tr>
           <tr>
             <td class="col-num">19.</td>
             <td class="col-label">Date of Issue of Certificate</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcDateIssue">21-10-2026</td>
+            <td class="col-val" id="tcDateIssue">Not issued</td>
           </tr>
           <tr>
             <td class="col-num">20.</td>
             <td class="col-label">Reason for Leaving the School</td>
             <td class="col-colon">:</td>
-            <td class="col-val" id="tcReason" style="color: #991b1b;">PARENTS' TRANSFER TO ANOTHER CITY</td>
+            <td class="col-val" id="tcReason" style="color: #991b1b;">Not recorded</td>
           </tr>
         </tbody>
       </table>
@@ -522,12 +522,9 @@
 
   <script>
     // Live synchronization with Bright Nexa School OS data
-    let students = [
-      { id: "1", name: "AARAV SHARMA", admissionNumber: "BMS-2026-001", rollNumber: "01", className: "Class VI", section: "A", motherName: "SUNITA SHARMA", fatherName: "RAJESH SHARMA", dob: "12-03-2014", category: "GENERAL" },
-      { id: "2", name: "ANANYA VERMA", admissionNumber: "BMS-2026-002", rollNumber: "02", className: "Class VI", section: "A", motherName: "MEENA VERMA", fatherName: "SUNIL VERMA", dob: "24-07-2014", category: "OBC" },
-      { id: "3", name: "ROHAN MEHTA", admissionNumber: "BMS-2026-003", rollNumber: "03", className: "Class VI", section: "B", motherName: "POOJA MEHTA", fatherName: "AMIT MEHTA", dob: "05-11-2013", category: "GENERAL" },
-      { id: "4", name: "PRIYA CHOUDHARY", admissionNumber: "BMS-2026-004", rollNumber: "04", className: "Class VII", section: "A", motherName: "REKHA SINGH", fatherName: "VIKRAM SINGH", dob: "18-01-2013", category: "GENERAL" }
-    ];
+    // Certificates may use only a current, school-specific roster. No demo pupils.
+    let students = [];
+    let rosterReady = false;
 
     function escapeHtml(val) {
       if (val === null || val === undefined) return '';
@@ -570,10 +567,11 @@
         console.warn("Could not read localStorage snapshot", e);
       }
 
-      // Populate dropdown
+      // If no verified/current roster is accessible, refuse to show sample TC data.
+      rosterReady = students.length > 0;
       const sel = document.getElementById('studentSelect');
       sel.innerHTML = students.map((s, idx) => 
-        `<option value="${idx}">${escapeHtml(s.name || 'STUDENT')} (${escapeHtml(s.admissionNumber || s.id)} • ${escapeHtml(s.className || 'Class VI')})</option>`
+        `<option value="${idx}">${escapeHtml(s.name || 'STUDENT')} (${escapeHtml(s.admissionNumber || s.id)} • ${escapeHtml(s.className || 'Class not recorded')})</option>`
       ).join('');
 
       // Auto select from URL if present
@@ -584,22 +582,55 @@
         if (found !== -1) sel.value = found;
       }
 
+      if (!rosterReady) {
+        sel.innerHTML = '<option value="">No school student records found</option>';
+        document.getElementById('tcStudentName').textContent = 'No verified student selected';
+      }
       loadStudentTC();
     }
 
     function loadStudentTC() {
       const idx = document.getElementById('studentSelect').value;
-      const s = students[idx] || students[0];
-      if (!s) return;
+      const s = rosterReady && /^\\d+$/.test(idx) ? students[Number(idx)] : null;
+      const set = (id,value)=>{document.getElementById(id).textContent=String(value||'Not recorded');};
+      // Blank/revalidate all TC fields when changing students. Do not allow
+      // one child's certificate to inherit another child's static sample data.
+      for (const id of ['tcNo','bookNo','tcAdmDate','tcExamResult','tcPromotion','tcFeeStatus','tcDaysPresent','tcDateApp','tcDateIssue','tcReason'])
+        set(id,'Not verified');
+      set('tcNo','Not issued');set('bookNo','Not issued');set('tcDateIssue','Not issued');
+      if(!s) {
+        for(const id of ['admNo','tcStudentName','tcMotherName','tcFatherName','tcClassLast','tcDob','tcCategory'])
+          set(id,'—');
+        return;
+      }
+      set('admNo',s.admissionNumber||'Not recorded');
+      set('tcStudentName',s.name||'Not recorded');
+      set('tcMotherName',s.motherName||'Not recorded');
+      set('tcFatherName',s.fatherName||s.guardianName||'Not recorded');
+      set('tcClassLast',[s.className,s.section&&'('+s.section+')'].filter(Boolean).join(' ')||'Not recorded');
+      set('tcDob',s.dateOfBirth||s.dob||'Not recorded');
+      set('tcCategory',s.category||'Not recorded');
+      set('tcAdmDate',s.admissionDate||'Not recorded');
+      // An admission number or UUID is NOT a TC serial number.
+      // TC serial, fee clearance, promotion and issue date must be issued
+      // through an authorized school workflow before this is an official TC.
+      if(s.tcSerialNumber)set('tcNo',s.tcSerialNumber);
+      if(s.tcBookNumber)set('bookNo',s.tcBookNumber);
+      if(s.tcApplicationDate)set('tcDateApp',s.tcApplicationDate);
+      if(s.tcIssueDate)set('tcDateIssue',s.tcIssueDate);
+      if(s.tcLeavingReason)set('tcReason',s.tcLeavingReason);
+    }
 
-      document.getElementById('admNo').textContent = s.admissionNumber || 'BMS-2026-' + s.id;
-      document.getElementById('tcNo').textContent = 'TC-2026-' + String(parseInt(s.id || idx) + 80).padStart(3, '0');
-      document.getElementById('tcStudentName').textContent = (s.name || 'STUDENT RECORD').toUpperCase();
-      document.getElementById('tcMotherName').textContent = (s.motherName ? 'MRS. ' + s.motherName : 'MRS. GUARDIAN').toUpperCase();
-      document.getElementById('tcFatherName').textContent = (s.fatherName ? 'MR. ' + s.fatherName : (s.guardianName ? 'MR. ' + s.guardianName : 'MR. PARENT')).toUpperCase();
-      document.getElementById('tcClassLast').textContent = (s.className || 'CLASS VI').toUpperCase() + (s.section ? ' (' + s.section + ')' : '');
-      document.getElementById('tcDob').textContent = s.dateOfBirth || s.dob || '12-03-2014';
-      document.getElementById('tcCategory').textContent = (s.category || 'GENERAL').toUpperCase();
+    function printVerifiedTC(){
+      if(!rosterReady) {alert('No student record is available. Cannot print an unverified certificate.');return;}
+      if(document.getElementById('tcNo').textContent==='Not issued'
+        || document.getElementById('tcDateIssue').textContent==='Not issued'
+        || document.getElementById('tcFeeStatus').textContent==='Not verified'
+        || document.getElementById('tcPromotion').textContent==='Not verified'){
+        alert('TC is an unissued draft. Confirm serial number, issue date, school dues and promotion result before printing an official certificate.');
+        return;
+      }
+      window.print();
     }
 
     function updateReason() {
