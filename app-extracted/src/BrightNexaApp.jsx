@@ -20598,6 +20598,13 @@ function _Component90({
             !!a &&
             !!s &&
             c.length === 10 &&
+            window.BNStudentAdmissionRules?.importAllowed({
+              name:i,admissionNumber:a,className:s,section:r(`section`)||`A`,
+              academicStream:l,parentMobile:c,status:`Active`,
+              dateOfBirth:r(`date of birth`),
+              studentMobile:r(`student mobile`).replace(/\D/g,``).slice(-10),
+              alternateMobile:r(`alternate mobile`).replace(/\D/g,``).slice(-10)
+            },[...e,...d],classes)===true &&
             !u.has(a.toLowerCase()) &&
             ((s !== `11` && s !== `12`) || !!l)
           ) {
@@ -20640,7 +20647,7 @@ function _Component90({
           );
         }
         n(d);
-        l(`${d.length} students imported successfully.`);
+        l(`${d.length} student records staged. Confirm Supabase sync before treating them as published.`);
       } catch (e) {
         l(e instanceof Error ? e.message : `Workbook import failed.`);
       } finally {
@@ -21128,7 +21135,7 @@ var ur = {
   previousSchool: ``,
   transport: ``,
   admissionDate: ``,
-  status: ``,
+  status: `Active`,
 };
 function _Component6({
   students: e,
@@ -21173,39 +21180,16 @@ function _Component6({
   let m = (t) => {
     t.preventDefault();
     if (photoProcessing) { l('Photo compression is not finished yet.'); return; }
-    let a = {};
-    if (!N(i)) {
-      a.record = `Enter at least one student detail before saving.`;
-    }
-    if (
-      i.admissionNumber &&
-      e.some(
-        (e) =>
-          e.id !== r?.id &&
-          e.admissionNumber.toLowerCase() ===
-            i.admissionNumber.trim().toLowerCase(),
-      )
-    ) {
-      a.admissionNumber = `Admission number already exists`;
-    }
-    if (i.parentMobile && !/^\d{10}$/.test(i.parentMobile)) {
-      a.parentMobile = `Enter a valid 10-digit mobile number`;
-    }
-    if (i.studentMobile && !/^\d{10}$/.test(i.studentMobile)) {
-      a.studentMobile = `Enter a valid 10-digit mobile number`;
-    }
-    if (i.alternateMobile && !/^\d{10}$/.test(i.alternateMobile)) {
-      a.alternateMobile = `Enter a valid 10-digit mobile number`;
-    }
-    if ((i.className === `11` || i.className === `12`) && !i.academicStream) {
-      a.academicStream = `Select a stream for Class 11 or 12`;
-    }
+    const admissionRules=window.BNStudentAdmissionRules;
+    let a=admissionRules
+      ? admissionRules.validate(i,e,classes,r?.id)
+      : {record:'Student validation could not load. Refresh the page; nothing was saved.'};
     if (Object.keys(a).length) {
       s(a);
       return;
     }
     n({
-      ...i,
+      ...admissionRules.normalize(i),
       studentUniqueId: r?.studentUniqueId || hn(e),
       id: r?.id || crypto.randomUUID(),
       createdAt: r?.createdAt || new Date().toISOString(),
@@ -21309,7 +21293,7 @@ function _Component6({
       >
         <Component72>
           <Component70>
-            <Component67>{`Local Record • Lifetime Free`}</Component67>
+            <Component67>{`School admission • Supabase confirmation required`}</Component67>
             <Component68 id={`add-student-title`}>
               {r ? `Edit Student` : `Add New Student`}
             </Component68>
@@ -21387,7 +21371,7 @@ function _Component6({
                   </Component82>
                 </_Component7>
               )}
-              <_Component7 label={`Section`}>
+              <_Component7 label={`Section`} error={o.section}>
                 <Component85
                   value={i.section}
                   onChange={(e) => p(`section`, e.target.value)}
@@ -21570,7 +21554,7 @@ function _Component6({
             <Component120>{`Photograph and Identity Documents`}</Component120>
             <Component121
               className={`section-helper`}
-            >{`These optional images are retained locally and included only in encrypted backups.`}</Component121>
+            >{`ERP photo preview is separate from private student photo publishing. For the parent/mobile portal, publish the photograph from Staff Portal → Student Profile.`}</Component121>
             <Component125 className={`identity-upload-grid`}>
               <_Component8
                 title={`Student Photograph`}
@@ -21640,7 +21624,7 @@ function _Component6({
             </Component130>
           )}
           <Component135>
-            <Component131>{`Only completed fields will be stored locally and displayed in the profile.`}</Component131>
+            <Component131>{`Save starts cloud sync. Check the Supabase status before treating this admission as published.`}</Component131>
             <Component134>
               <Component132
                 type={`button`}
