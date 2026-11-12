@@ -45,7 +45,7 @@ test('dashboard attendance and fee metrics explicitly state limited local-record
  assert.equal(doc.querySelectorAll('.metric-card')[0].dataset.bnAttendanceNote,'true');
  assert.equal(doc.querySelectorAll('.metric-card')[1].dataset.bnFeesNote,'true');
  assert.match(doc.getElementById('bn-dashboard-integrity-styles').textContent,/Recorded entries only/);
- assert.match(doc.getElementById('bn-dashboard-integrity-styles').textContent,/Receipt count includes all dates/);
+ assert.match(doc.getElementById('bn-dashboard-integrity-styles').textContent,/Current-month receipts/);
  dom.window.close();
 });
 
