@@ -15,6 +15,12 @@
   const localClasses=unique(rows(ops,'classes'),'class');
   const classes=localClasses.map(c=>({localId:required(c.id,'Class ID'),name:required(c.name,'Class name'),section:str(c.section),academicYear:required(c.academicSession||c.academicYear||institution.session,'Academic year')}));
   unique(classes,'class name / section / year',c=>[norm(c.name),norm(c.section),norm(c.academicYear)].join('|'));
+  // The class page currently offers a bulk clear, but existing student and
+  // academic records cannot safely lose their class references. Reject the
+  // operation *before* any network save and explain what has to be resolved.
+  if(!classes.length && (snapshot.students.length || rows(ops,'attendance').length || rows(ops,'homework').length)){
+    throw Error('Cannot remove all classes while student, attendance or homework records still use them. Keep the existing classes or resolve those records first. No Supabase save was attempted.');
+  }
   const classIds=new Set(classes.map(c=>c.localId));
   function classFor(row){if(str(row.classId)){if(!classIds.has(str(row.classId)))throw Error('Unknown class reference: '+row.classId);return str(row.classId);}const found=localClasses.filter(c=>norm(c.name)===norm(row.className)&&norm(c.section)===norm(row.section)&&(!str(row.academicStream)||norm(c.academicStream)===norm(row.academicStream)));if(found.length!==1)throw Error('Unknown or ambiguous class / section / stream for '+(row.name||row.id)+'.');return str(found[0].id);}
   const students=unique(snapshot.students,'student').map(s=>{const status=norm(required(s.status,'Student status'));if(!['active','graduated','transferred','archived'].includes(status))throw Error('Invalid student status: '+s.status);return {localId:str(s.id),admissionNumber:required(s.admissionNumber,'Admission number'),name:required(s.name,'Student name'),classLocalId:classFor(s),dob:date(s.dateOfBirth,'Birth date',true),status,profile:{guardian_name:str(s.guardianName||s.fatherName||s.motherName)||null,guardian_phone:str(s.parentMobile)||null,address_line:str(s.address)||null,details:((row)=>{const details={...row};delete details.photoDataUrl;return details;})(s)}};});
