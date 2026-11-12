@@ -21618,8 +21618,63 @@ function Cr({
     )
   );
 }
+async function bnInviteTeacherAppAccount(teacher) {
+  const email = String(teacher?.email || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw Error("Add a valid teacher email in the faculty profile first.");
+  }
+  const readSession = (key) => {
+    try {
+      return JSON.parse(sessionStorage.getItem(key) || "null");
+    } catch (_2) {
+      return null;
+    }
+  };
+  const schoolSession = readSession("bn_school_staff_session_v1");
+  const erpAccount = readSession("bright-nexa-school-os:session:v2");
+  const selectedSchool = sessionStorage.getItem("bn_school_staff_selected_school_v1");
+  if (!schoolSession?.access_token || !erpAccount?.cloudVerified || !selectedSchool || String(erpAccount.institutionId) !== selectedSchool) {
+    throw Error("Open this school with your verified School Admin login before inviting a teacher.");
+  }
+  if (Number(schoolSession.expires_at || 0) <= Date.now() / 1e3 + 10) {
+    throw Error("School Admin session has expired. Sign in again, then retry the invitation.");
+  }
+  const response = await fetch("https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-invite-staff", {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      apikey: "sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT",
+      Authorization: "Bearer " + schoolSession.access_token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, role: "teacher" })
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.ok || result?.role !== "teacher" || String(result?.email || "").toLowerCase() !== email) {
+    throw Error(result?.error || "Supabase did not confirm teacher account enrollment. No invitation success has been recorded.");
+  }
+  return { email, status: "invited" };
+}
 function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
   let i2 = e2.name || e2.employeeCode || `Faculty Record`;
+  const [inviteBusy, setInviteBusy] = (0, w.useState)(false);
+  const [inviteFeedback, setInviteFeedback] = (0, w.useState)("");
+  const [inviteError, setInviteError] = (0, w.useState)(false);
+  async function inviteTeacher() {
+    if (inviteBusy) return;
+    setInviteBusy(true);
+    setInviteError(false);
+    setInviteFeedback("");
+    try {
+      const response = await bnInviteTeacherAppAccount(e2);
+      setInviteFeedback("Account invitation requested for " + response.email + ". The teacher must accept the email and set a password. Delivery and activation are not yet confirmed.");
+    } catch (error) {
+      setInviteError(true);
+      setInviteFeedback(error?.message || "Teacher account invitation failed. Please retry.");
+    } finally {
+      setInviteBusy(false);
+    }
+  }
   let a2 = [
     [`Designation`, e2.designation],
     [`Qualification`, e2.qualification],
@@ -21718,7 +21773,24 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
           title: `Payroll and Bank Information`
         },
         /* @__PURE__ */ w.createElement(Tr, { entries: o2 })
-      ), (s2.length > 0 || c2.length > 0) && /* @__PURE__ */ w.createElement(Er, { icon: /* @__PURE__ */ w.createElement(M, { size: 17 }), title: `Contact and Identity` }, s2.length > 0 && /* @__PURE__ */ w.createElement(Tr, { entries: s2 }), ` `, c2.length > 0 && /* @__PURE__ */ w.createElement(Component294, { className: `stored-identity-grid` }, c2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component13, { title: e3, value: t3, key: e3 })))), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2 }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), `Delete Profile`), /* @__PURE__ */ w.createElement(
+      ), (s2.length > 0 || c2.length > 0) && /* @__PURE__ */ w.createElement(Er, { icon: /* @__PURE__ */ w.createElement(M, { size: 17 }), title: `Contact and Identity` }, s2.length > 0 && /* @__PURE__ */ w.createElement(Tr, { entries: s2 }), ` `, c2.length > 0 && /* @__PURE__ */ w.createElement(Component294, { className: `stored-identity-grid` }, c2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component13, { title: e3, value: t3, key: e3 })))), /* @__PURE__ */ w.createElement("div", { className: `teacher-app-invite`, style: { marginTop: "16px" } }, /* @__PURE__ */ w.createElement(
+        "button",
+        {
+          type: "button",
+          className: `secondary-button`,
+          disabled: inviteBusy || !e2.email,
+          onClick: inviteTeacher
+        },
+        inviteBusy ? "Requesting account invitation..." : "Create Teacher App Access / Send Invitation"
+      ), /* @__PURE__ */ w.createElement(
+        "p",
+        {
+          role: "status",
+          "aria-live": "polite",
+          style: { fontSize: "12px", marginTop: "8px", color: inviteError ? "#b91c1c" : "#166534" }
+        },
+        inviteFeedback || (!e2.email ? "Add teacher email to enable app access." : "Teacher app login is separate from the faculty record.")
+      )), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2 }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), `Delete Profile`), /* @__PURE__ */ w.createElement(
         Component296,
         {
           className: `secondary-button`,
