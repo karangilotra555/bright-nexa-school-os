@@ -105,3 +105,26 @@ test('A4 print modules are identical in hosted, docs and standalone releases',()
   }
   assert.doesNotMatch(read('marksheet-a4.html'),/sampleStudents|AARAV SHARMA|1730248|20458/);
 });
+
+test('ID card cloud roster excludes transferred, archived and incomplete student profiles',async()=>{
+  const {dom,w}=await browser('id-card-a4.html');
+  w.BNWorkspaceCloud={create:()=>({
+    connect:async()=>[{id:SID,name:'Test School'}],
+    pull:async()=>({revision:7,snapshot:{
+      institution:{institution:{name:'Test School',session:'2026-2027'}},
+      students:[
+        {id:'s1',name:'Current Child',admissionNumber:'ADM-1',status:'Active',className:'LKG',section:'A'},
+        {id:'s2',name:'Transferred Child',admissionNumber:'ADM-2',status:'Transferred',className:'LKG',section:'A'},
+        {id:'s3',name:'Incomplete Child',admissionNumber:'',status:'Active',className:'LKG',section:'A'},
+        {id:'s4',name:'Archived Child',admissionNumber:'ADM-4',status:'Archived',className:'LKG',section:'A'}
+      ],operations:{}
+    }})
+  })};
+  w.eval(source('id-card-a4.html'));
+  await w.refreshSchoolCloudData();
+  assert.match(w.document.getElementById('countBadge').textContent,/1 Student/);
+  const options=[...w.document.getElementById('studentFilter').options].map(o=>o.textContent);
+  assert.ok(options.some(o=>o.includes('Current Child')));
+  assert.ok(!options.some(o=>o.includes('Transferred Child')||o.includes('Archived Child')||o.includes('Incomplete Child')));
+  dom.window.close();
+});
