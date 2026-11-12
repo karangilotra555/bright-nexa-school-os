@@ -38241,7 +38241,7 @@ function Ds() {
   let E2 = i2.attendance.filter((e3) => e3.date === T2);
   let ee2 = E2.length ? E2.filter((e3) => e3.status === `Present`).length / E2.length * 100 : null;
   let D2 = T2.slice(0, 7);
-  let te2 = i2.feePayments.filter((e3) => e3.status !== `Reversed` && e3.paymentDate.startsWith(D2)).reduce((e3, t3) => e3 + t3.amount, 0);
+  let te2 = i2.feePayments.filter((e3) => e3.status !== `Reversed` && String(e3.paymentDate || ``).startsWith(D2)).reduce((e3, t3) => e3 + t3.amount, 0);
   let ne = e2.institution.name.split(` `).filter(Boolean).map((e3) => e3[0]).slice(0, 2).join(``).toUpperCase() || `IN`;
   let re = new Intl.DateTimeFormat(`en-IN`, {
     weekday: `long`,
@@ -38737,7 +38737,7 @@ function Ds() {
       }
     },
     (g2?.name ?? `School User`).split(` `).map((e3) => e3[0]).slice(0, 2).join(``).toUpperCase()
-  ))), /* @__PURE__ */ w.createElement(Component2135, { className: `content` }, c2 === `Dashboard` && (v2 === `PARENT` || v2 === `STUDENT`) ? /* @__PURE__ */ w.createElement(_Component86, { students: y2, data: i2 }) : c2 === `Dashboard` && v2 === `TEACHER` ? /* @__PURE__ */ w.createElement(Aa, { students: y2, data: i2 }) : c2 === `Dashboard` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component2092, { className: `welcome-row` }, /* @__PURE__ */ w.createElement(Component2089, null, /* @__PURE__ */ w.createElement(Component2086, { className: `eyebrow` }, _2.welcome, `, `, g2?.name?.split(` `)[0] ?? `Rajesh`, ` \u2022`, ` `, v2), /* @__PURE__ */ w.createElement(Component2087, null, e2.institution.name), /* @__PURE__ */ w.createElement(Component2088, null, _2.subtitle)), /* @__PURE__ */ w.createElement(Component2091, { className: `date-card` }, /* @__PURE__ */ w.createElement(_Component16, { size: 18 }), /* @__PURE__ */ w.createElement(Component2090, null, re))), /* @__PURE__ */ w.createElement(
+  ))), /* @__PURE__ */ w.createElement(Component2135, { className: `content` }, c2 === `Dashboard` && (v2 === `PARENT` || v2 === `STUDENT`) ? /* @__PURE__ */ w.createElement(_Component86, { students: y2, data: i2 }) : c2 === `Dashboard` && v2 === `TEACHER` ? /* @__PURE__ */ w.createElement(Aa, { students: y2, data: i2 }) : c2 === `Dashboard` ? /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component2092, { className: `welcome-row` }, /* @__PURE__ */ w.createElement(Component2089, null, /* @__PURE__ */ w.createElement(Component2086, { className: `eyebrow` }, _2.welcome, `, `, g2?.name?.split(` `)[0] ?? `School Admin`, ` \u2022`, ` `, v2), /* @__PURE__ */ w.createElement(Component2087, null, e2.institution.name), /* @__PURE__ */ w.createElement(Component2088, null, _2.subtitle)), /* @__PURE__ */ w.createElement(Component2091, { className: `date-card` }, /* @__PURE__ */ w.createElement(_Component16, { size: 18 }), /* @__PURE__ */ w.createElement(Component2090, null, re))), /* @__PURE__ */ w.createElement(
     Component2093,
     {
       className: `metric-grid`,
@@ -38779,7 +38779,7 @@ function Ds() {
         icon: Oe,
         label: `Fees collected this month`,
         value: Es.format(te2),
-        helper: `${i2.feePayments.filter((e3) => e3.status !== `Reversed`).length} valid receipts`,
+        helper: `${i2.feePayments.filter((e3) => e3.status !== `Reversed` && String(e3.paymentDate || ``).startsWith(D2)).length} receipts this month`,
         tone: `purple`
       }
     )
