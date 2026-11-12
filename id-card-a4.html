@@ -908,14 +908,14 @@
       const rawClass = String(s.className || '').trim();
       const cName = rawClass ? (/^class\s/i.test(rawClass) ? rawClass : 'Class ' + rawClass) : 'Unassigned class';
       return {
-        id: s.id || String(idx+1), name: String(s.name || 'Unnamed student').toUpperCase(),
+        id: String(s.id || ''), name: String(s.name || '').toUpperCase(),
         rollNumber: s.rollNumber == null ? '' : String(s.rollNumber).padStart(2,'0'),
         admissionNumber: String(s.admissionNumber || ''), className:cName,section:s.section||'',
         fatherName: String(s.fatherName || s.guardianName || '').toUpperCase(),
         contactNumber:s.parentMobile||s.contactNumber||s.phone||s.alternateMobile||'',
         bloodGroup:s.bloodGroup||'',dob:s.dateOfBirth||s.dob||'',
         address:s.address||'',busStop:s.busStop||s.transportRoute||'',
-        photoUrl:s.photoDataUrl||s.photoUrl||s.avatarUrl||null,isDemo:false
+        photoUrl:s.photoDataUrl||s.photoUrl||s.avatarUrl||null
       };
     }
     function reportCloudState(message,isError) {
@@ -927,6 +927,8 @@
     async function refreshSchoolCloudData() {
       const requestId=++cloudLoadRequest;
       lastVerifiedCloudRevision=null;
+      liveStudents=[];activeStudents=[];idPhotoOverrides.clear();
+      updateSourceUI();populateFilters();
       reportCloudState('Reading your verified school records and student photographs from Supabase…',false);
       const cloud=window.BNWorkspaceCloud;
       if(!cloud?.create) {
@@ -951,7 +953,14 @@
         institution.session=profile.session||'';
         institution.principalName=profile.principalName||'';
         institution.logoUrl=profile.logoDataUrl||'app-icon-512.png';
-        liveStudents=snapshot.students.map(fromSchoolStudent);
+        // ID cards are for students with an active, complete cloud identity.
+        // Archived/transferred pupils and incomplete unsaved admissions are excluded.
+        liveStudents=snapshot.students.filter(student=>{
+          const status=String(student.status||'Active').trim().toLowerCase();
+          return status==='active'&&String(student.id||'').trim()&&
+            String(student.name||'').trim()&&String(student.admissionNumber||'').trim()&&
+            String(student.className||'').trim()&&String(student.section||'').trim();
+        }).map(fromSchoolStudent);
         lastVerifiedCloudRevision=response.revision;
         activeStudents=liveStudents;
         const missing=liveStudents.filter(s=>!s.photoUrl).length;
