@@ -86,13 +86,15 @@
     const badge=doc?.querySelector('.bn-sync-status-badge');
     if(!badge)return;
     if(issue){
-      if(badge.getAttribute('aria-invalid')!=='true')badge.setAttribute('aria-invalid','true');
+      if(badge.getAttribute('aria-invalid')!=='true'){
+        badge.setAttribute('aria-invalid','true');
+        badge.style.borderColor='#c66a17';
+        badge.style.color='#874200';
+        badge.style.background='#fff4e5';
+      }
       if(badge.getAttribute('aria-label')!==warning)badge.setAttribute('aria-label',warning);
-      badge.dataset.bnCloudWarning=warning;
+      if(badge.dataset.bnCloudWarning!==warning)badge.dataset.bnCloudWarning=warning;
       if(badge.title!==warning)badge.title=warning;
-      badge.style.borderColor='#c66a17';
-      badge.style.color='#874200';
-      badge.style.background='#fff4e5';
     }else if(badge.getAttribute('aria-invalid')==='true'){
       badge.removeAttribute('aria-invalid');
       badge.removeAttribute('aria-label');
