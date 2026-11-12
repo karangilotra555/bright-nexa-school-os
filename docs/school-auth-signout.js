@@ -33,7 +33,9 @@ function signOut(opts){
   return Promise.race([Promise.resolve(request),timeout]).then(()=>{redirect();return true;},()=>{redirect();return true;});
 }
 function onClick(event){
-  if(!event.target?.closest?.('.profile-avatar, #logout'))return;
+  // Opening the profile/avatar is not the same as requesting sign-out.
+  // Only the explicit Logout control should revoke the current session.
+  if(!event.target?.closest?.('#logout, [data-bn-action="logout"]'))return;
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation?.();
