@@ -12,12 +12,12 @@
   const tabs=new Set(['Dashboard','School Profile','Class & Section Setup','Students','ID Cards & Certificates','Teachers','Non-Teaching Staff','Attendance','Homework & Notices','Exams & Marks','Report Cards','Fees','Expenses & Budget','Owner Reports','Transport & Routes','Infrastructure & Assets','Parent Messages','AI Teacher Tools','Smart Tools','Opportunity Desk','Growth Passport','School Quality Score','Settings','Contact & Support']);
   function activeTab(){
     const nav=doc?.querySelector('.navigation .nav-item.active');
-    const label=nav?.textContent?.trim().replace(/\\s+/g,' ');
+    const label=nav?.textContent?.trim().replace(/\s+/g,' ');
     return tabs.has(label)?label:null;
   }
   function targetButton(label){
     return [...(doc?.querySelectorAll('.navigation button.nav-item')||[])]
-      .find(b=>b.textContent.trim().replace(/\\s+/g,' ')===label);
+      .find(b=>b.textContent.trim().replace(/\s+/g,' ')===label);
   }
   function alignRoute(){
     const chosen=activeTab();
@@ -87,7 +87,7 @@
         }
       }
       if(text.includes('fees collected this month')){
-        const helper=[...card.querySelectorAll('small,span,div,p')].find(n=>/^\\d+ valid receipts$/.test((n.textContent||'').trim()));
+        const helper=[...card.querySelectorAll('small,span,div,p')].find(n=>/^\d+ valid receipts$/.test((n.textContent||'').trim()));
         if(helper)helper.textContent=helper.textContent.replace('valid receipts','receipts (all dates)');
         card.title='Collected amount is for the current month; the receipt count includes all dates in the browser workspace. Cloud confirmation must be checked separately.';
       }
