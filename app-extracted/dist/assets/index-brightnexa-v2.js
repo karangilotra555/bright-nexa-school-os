@@ -19757,6 +19757,7 @@ function _Component90({
   onDeleteStudent: i2
 }) {
   let [a2, o2] = (0, w.useState)(``);
+  const [studentPage,setStudentPage]=(0,w.useState)(1);
   let [s2, l2] = (0, w.useState)(``);
   let u2 = (0, w.useRef)(null);
   let [d2, f2] = (0, w.useState)(null);
@@ -19785,6 +19786,12 @@ function _Component90({
       return e2;
     }
   }, [a2, e2]);
+  const studentPageSize=25;
+  const studentPageCount=Math.max(1,Math.ceil(h2.length/studentPageSize));
+  const displayedStudentPage=Math.min(studentPage,studentPageCount);
+  const pagedStudents=h2.slice((displayedStudentPage-1)*studentPageSize,
+    displayedStudentPage*studentPageSize);
+  (0,w.useEffect)(()=>setStudentPage(1),[a2,e2.length]);
   let g2 = async (t3) => {
     if (t3) {
       l2(`Reading workbook\u2026`);
@@ -20162,7 +20169,20 @@ function _Component90({
       onChange: (e3) => o2(e3.target.value),
       placeholder: `Search name, admission no., class or mobile`
     }
-  )), /* @__PURE__ */ w.createElement(Component27, null, h2.length, ` record`, h2.length === 1 ? `` : `s`)), h2.length ? /* @__PURE__ */ w.createElement(Component60, { className: `table-scroll` }, /* @__PURE__ */ w.createElement(Component59, null, /* @__PURE__ */ w.createElement(Component37, null, /* @__PURE__ */ w.createElement(Component36, null, /* @__PURE__ */ w.createElement(Component29, null, `Student`), /* @__PURE__ */ w.createElement(Component30, null, `Permanent Student ID`), /* @__PURE__ */ w.createElement(Component31, null, `Admission No.`), /* @__PURE__ */ w.createElement(Component32, null, `Class`), /* @__PURE__ */ w.createElement(Component33, null, `Parent / Guardian`), /* @__PURE__ */ w.createElement(Component34, null, `Status`), /* @__PURE__ */ w.createElement(Component35, { "aria-label": `Actions` }))), /* @__PURE__ */ w.createElement(Component58, null, h2.map((e3) => /* @__PURE__ */ w.createElement(Component57, { key: e3.id }, /* @__PURE__ */ w.createElement(Component44, null, /* @__PURE__ */ w.createElement(Component43, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component39, null, e3.photoDataUrl ? /* @__PURE__ */ w.createElement(Component38, { src: e3.photoDataUrl, alt: `` }) : pr(e3.name || e3.admissionNumber || `Student`)), /* @__PURE__ */ w.createElement(Component42, null, /* @__PURE__ */ w.createElement(Component40, null, e3.name || e3.admissionNumber || `Student Record`), e3.rollNumber && /* @__PURE__ */ w.createElement(Component41, null, `Roll No. `, e3.rollNumber)))), /* @__PURE__ */ w.createElement(Component46, null, /* @__PURE__ */ w.createElement(Component45, null, e3.studentUniqueId || ``)), /* @__PURE__ */ w.createElement(Component47, null, e3.admissionNumber || ``), /* @__PURE__ */ w.createElement(Component49, null, [e3.className, e3.section].filter(Boolean).join(`-`), e3.academicStream && /* @__PURE__ */ w.createElement(Component48, null, e3.academicStream)), /* @__PURE__ */ w.createElement(Component52, null, (e3.fatherName || e3.motherName || e3.guardianName) && /* @__PURE__ */ w.createElement(Component50, { className: `parent-name` }, e3.fatherName || e3.motherName || e3.guardianName), e3.parentMobile && /* @__PURE__ */ w.createElement(Component51, { className: `parent-mobile` }, e3.parentMobile)), /* @__PURE__ */ w.createElement(Component54, null, e3.status && /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(Component27, null, h2.length, ` record`, h2.length === 1 ? `` : `s`),
+  studentPageCount>1 && /* @__PURE__ */ w.createElement("div",{
+    className:"student-pagination","aria-label":"Student list pages"
+  },
+    /* @__PURE__ */ w.createElement("button",{
+      type:"button",className:"secondary-button compact",disabled:displayedStudentPage===1,
+      onClick:()=>setStudentPage(n=>Math.max(1,n-1))
+    },"Previous"),
+    /* @__PURE__ */ w.createElement("span",null,"Page ",displayedStudentPage," / ",studentPageCount),
+    /* @__PURE__ */ w.createElement("button",{
+      type:"button",className:"secondary-button compact",disabled:displayedStudentPage===studentPageCount,
+      onClick:()=>setStudentPage(n=>Math.min(studentPageCount,n+1))
+    },"Next")
+  )), h2.length ? /* @__PURE__ */ w.createElement(Component60, { className: `table-scroll` }, /* @__PURE__ */ w.createElement(Component59, null, /* @__PURE__ */ w.createElement(Component37, null, /* @__PURE__ */ w.createElement(Component36, null, /* @__PURE__ */ w.createElement(Component29, null, `Student`), /* @__PURE__ */ w.createElement(Component30, null, `Permanent Student ID`), /* @__PURE__ */ w.createElement(Component31, null, `Admission No.`), /* @__PURE__ */ w.createElement(Component32, null, `Class`), /* @__PURE__ */ w.createElement(Component33, null, `Parent / Guardian`), /* @__PURE__ */ w.createElement(Component34, null, `Status`), /* @__PURE__ */ w.createElement(Component35, { "aria-label": `Actions` }))), /* @__PURE__ */ w.createElement(Component58, null, pagedStudents.map((e3) => /* @__PURE__ */ w.createElement(Component57, { key: e3.id }, /* @__PURE__ */ w.createElement(Component44, null, /* @__PURE__ */ w.createElement(Component43, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component39, null, e3.photoDataUrl ? /* @__PURE__ */ w.createElement(Component38, { src: e3.photoDataUrl, alt: `` }) : pr(e3.name || e3.admissionNumber || `Student`)), /* @__PURE__ */ w.createElement(Component42, null, /* @__PURE__ */ w.createElement(Component40, null, e3.name || e3.admissionNumber || `Student Record`), e3.rollNumber && /* @__PURE__ */ w.createElement(Component41, null, `Roll No. `, e3.rollNumber)))), /* @__PURE__ */ w.createElement(Component46, null, /* @__PURE__ */ w.createElement(Component45, null, e3.studentUniqueId || ``)), /* @__PURE__ */ w.createElement(Component47, null, e3.admissionNumber || ``), /* @__PURE__ */ w.createElement(Component49, null, [e3.className, e3.section].filter(Boolean).join(`-`), e3.academicStream && /* @__PURE__ */ w.createElement(Component48, null, e3.academicStream)), /* @__PURE__ */ w.createElement(Component52, null, (e3.fatherName || e3.motherName || e3.guardianName) && /* @__PURE__ */ w.createElement(Component50, { className: `parent-name` }, e3.fatherName || e3.motherName || e3.guardianName), e3.parentMobile && /* @__PURE__ */ w.createElement(Component51, { className: `parent-mobile` }, e3.parentMobile)), /* @__PURE__ */ w.createElement(Component54, null, e3.status && /* @__PURE__ */ w.createElement(
     Component53,
     {
       className: `status-badge ${e3.status.toLowerCase()}`
