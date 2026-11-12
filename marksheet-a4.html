@@ -1058,9 +1058,9 @@
       return 'E';
     }
 
-    function switchStudent(index) {
-      const student = activeStudents[index] || activeStudents[0];
-      if (!student) return;
+    function renderPublishedStudent(index) {
+      const student = activeStudents[index];
+      if(!student || !selectedPublished) return;
       document.getElementById('studentName').textContent = student.name;
       document.getElementById('rollNumber').textContent = student.roll;
       document.getElementById('admissionNumber').textContent = student.admission;
@@ -1077,14 +1077,21 @@
       const photoFrame = document.querySelector('.student-photo-frame');
       if (photoFrame) {
         if (student.photoDataUrl) {
-          photoFrame.innerHTML = `<img src="${student.photoDataUrl}" alt="${escapeHtml(student.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
+          const source=String(student.photoDataUrl);
+          if(/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(source)||
+             /^https:\/\/[^\s<>"']+$/i.test(source)){
+            photoFrame.replaceChildren();
+            const img=document.createElement('img');
+            img.src=source;img.alt=student.name;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:4px';
+            photoFrame.append(img);
+          }else{photoFrame.textContent='Photo unavailable';}
         } else {
-          photoFrame.innerHTML = `<div class="photo-inner-text">PASSPORT<br>PHOTO</div><div class="photo-stamp-badge">SEAL<br>OK</div>`;
+          photoFrame.textContent='Photo not uploaded';
         }
       }
 
       let tbodyHtml = '';
-      let sumPt = 0, sumNb = 0, sumSe = 0, sumAnn = 0, sumTot = 0;
+      let sumPt = 0, sumNb = 0, sumSe = 0, sumAnn = 0, sumTot = 0, sumMaximum = 0;
       (student.subjects || []).forEach((sub, i) => {
         const hasEntry = sub.hasEntry !== undefined ? sub.hasEntry : (sub.total > 0 || sub.grade !== '-');
         if (hasEntry) {
@@ -1093,6 +1100,7 @@
           if (Number.isFinite(sub.se)) sumSe += sub.se;
           if (Number.isFinite(sub.annual)) sumAnn += sub.annual;
           sumTot += sub.total;
+          sumMaximum += sub.max;
         }
         tbodyHtml += `
           <tr>
@@ -1109,166 +1117,173 @@
       });
       document.getElementById('subjectTableBody').innerHTML = tbodyHtml;
       const enteredSubs = (student.subjects || []).filter(s => s.hasEntry !== false && (s.total > 0 || s.grade !== '-'));
-      document.getElementById('grandTotal').textContent = enteredSubs.length > 0 ? `${sumTot.toFixed(1)} / ${enteredSubs.length * 100}` : '-';
+      document.getElementById('grandTotal').textContent = enteredSubs.length > 0 ? `${sumTot.toFixed(1)} / ${sumMaximum.toFixed(1)}` : '-';
     }
 
-    function switchExam(val) {
-      // Switches current examination term
+    function printStatus(message,error=false){
+      const note=document.getElementById('bnMarksheetCloudStatus');
+      if(note){note.textContent=message;note.style.color=error?'#8f2438':'#17476e';}
     }
-
-    function loadFromSchoolOS() {
-      // 1. Sync Live School Profile
-      try {
-        const snapshotRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-        if (snapshotRaw) {
-          const snapshot = JSON.parse(snapshotRaw);
-          const inst = snapshot.institution || {};
-          if (inst.name) document.getElementById('schoolName').textContent = inst.name.toUpperCase();
-          if (inst.principalName) document.getElementById('principalName').textContent = inst.principalName.toUpperCase();
-          if (inst.logoDataUrl) document.getElementById('schoolLogo').src = inst.logoDataUrl;
-          if (inst.boardType && document.getElementById('schoolAffil')) {
-            document.getElementById('schoolAffil').innerHTML = `AFFILIATED TO ${inst.boardType.toUpperCase()}<br>SCHOOL CODE: 20458 • AFFILIATION NO: 1730248`;
-          }
-          if (inst.session && document.getElementById('sessionTag')) {
-            document.getElementById('sessionTag').textContent = `• ACADEMIC SESSION: ${inst.session}`;
-          }
-          if (document.getElementById('schoolContact')) {
-            const addrParts = [inst.address, inst.city, inst.state, inst.pinCode ? '-' + inst.pinCode : ''].filter(Boolean).join(', ');
-            const ph = inst.contactNumber ? `Phone: +91 ${inst.contactNumber}` : '';
-            const em = inst.email ? `Email: ${inst.email}` : '';
-            const line = [addrParts, ph, em].filter(Boolean).join(' • ');
-            if (line) document.getElementById('schoolContact').textContent = line;
-          }
-        }
-      } catch (e) {
-        console.warn('Could not read localStorage snapshot', e);
-      }
-
-      // 2. Sync Real Students
-      try {
-        const studentsRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
-        const operationsRaw = localStorage.getItem('bright-nexa-school-os:operations:v1');
-        let realStudents = [];
-        if (studentsRaw) realStudents = JSON.parse(studentsRaw);
-        let operations = {};
-        if (operationsRaw) {
-          try { operations = JSON.parse(operationsRaw); } catch(e){}
-        }
-
-        if (Array.isArray(realStudents) && realStudents.length > 0) {
-          const defaultSubjects = [
-            "English Language & Literature",
-            "Hindi (Course A)",
-            "Mathematics",
-            "Science & Technology",
-            "Social Science",
-            "Computer Science / AI & Coding"
-          ];
-
-          activeStudents = realStudents.map((s, idx) => {
-            const studentMarks = (operations.marks || []).filter(m => m.studentId === s.id);
-            const studentAttendance = (operations.attendance || []).filter(a => a.studentId === s.id);
-            const subjectMarks = [];
-            let totalMarks = 0;
-            let enteredCount = 0;
-            const subs = (operations.subjects && operations.subjects.length > 0) ? operations.subjects : defaultSubjects;
-
-            subs.forEach((subName, sIdx) => {
-              const sTitle = typeof subName === 'string' ? subName : (subName.name || `Subject ${sIdx + 1}`);
-              const enteredMark = studentMarks.find(m => {
-                if (!m || !m.subject) return false;
-                const ms = m.subject.trim().toLowerCase();
-                const st = sTitle.trim().toLowerCase();
-                return ms === st || st.includes(ms) || ms.includes(st);
-              });
-
-              let pt = 0, nb = 0, se = 0, annual = 0, tot = 0, grade = '-';
-              if (enteredMark && typeof enteredMark.obtainedMarks === 'number') {
-                const maxM = (enteredMark.maximumMarks && enteredMark.maximumMarks > 0) ? enteredMark.maximumMarks : 100;
-                tot = Math.min(100, Math.max(0, parseFloat(((enteredMark.obtainedMarks / maxM) * 100).toFixed(1))));
-                // Do not manufacture component scores from a single total.
-                // PT, notebook, enrichment and annual scores require separate source entries.
-                pt = nb = se = annual = null;
-                grade = calculateGrade(tot, 100);
-                totalMarks += tot;
-                enteredCount++;
-              }
-
-              subjectMarks.push({
-                name: sTitle,
-                pt: Math.max(0, pt),
-                nb: Math.max(0, nb),
-                se: Math.max(0, se),
-                annual: Math.max(0, annual),
-                total: tot,
-                grade: grade,
-                hasEntry: !!enteredMark
-              });
-            });
-
-            let pct = 0;
-            let overallGrade = '-';
-            let promotion = 'MARKS AWAITED / PENDING';
-            if (enteredCount > 0) {
-              pct = (totalMarks / (enteredCount * 100)) * 100;
-              overallGrade = calculateGrade(pct);
-              promotion = pct >= 33 ? `PROMOTED TO NEXT HIGHER CLASS WITH ACADEMIC DISTINCTION` : 'NEEDS IMPROVEMENT / COMPARTMENT';
-            }
-
-            let attendanceStr = 'Not Marked';
-            if (studentAttendance.length > 0) {
-              const totalDays = studentAttendance.length;
-              const presentDays = studentAttendance.filter(a => a.status === 'Present' || a.status === 'Late' || a.status === 'Half-Day').length;
-              const pctAtt = ((presentDays / totalDays) * 100).toFixed(1);
-              attendanceStr = `${presentDays} / ${totalDays} Days (${pctAtt}%)`;
-            }
-
-            return {
-              id: s.id,
-              name: (s.name || 'STUDENT RECORD').toUpperCase(),
-              roll: s.rollNumber || '-',
-              admission: s.admissionNumber || ('BMS-2026-' + String(idx + 1).padStart(3, '0')),
-              classSec: `${s.className || 'Class VI'} ${s.section ? '- ' + s.section : '- A'}`.trim(),
-              mother: (s.motherName ? 'MRS. ' + s.motherName : (s.mother ? 'MRS. ' + s.mother : 'MRS. GUARDIAN')).toUpperCase(),
-              father: (s.fatherName ? 'MR. ' + s.fatherName : (s.guardianName ? 'MR. ' + s.guardianName : (s.father ? 'MR. ' + s.father : 'MR. PARENT'))).toUpperCase(),
-              dob: s.dateOfBirth || s.dob || '12-03-2014',
-              attendance: attendanceStr,
-              percentage: enteredCount > 0 ? pct.toFixed(1) + '%' : '-',
-              grade: overallGrade,
-              promotion: promotion,
-              photoDataUrl: s.photoDataUrl || s.photoUrl || null,
-              subjects: subjectMarks
-            };
-          });
-
-          const dropdown = document.getElementById('studentDropdown');
-          if (dropdown) {
-            dropdown.innerHTML = activeStudents.map((st, i) => 
-              `<option value="${i}">${escapeHtml(st.name)} (${escapeHtml(st.admission)} • ${escapeHtml(st.classSec)})</option>`
-            ).join('');
-          }
-        }
-      } catch (e) {
-        console.warn('Could not read real students from localStorage:', e);
-      }
-
-      // 3. Check URL query params for auto-selecting requested student
-      const urlParams = new URLSearchParams(window.location.search);
-      const studentId = urlParams.get('studentId') || urlParams.get('id');
-      const admission = urlParams.get('admission') || urlParams.get('adm');
-      let targetIndex = 0;
-      if (studentId || admission) {
-        const found = activeStudents.findIndex(st => st.id === studentId || st.admission === admission);
-        if (found !== -1) targetIndex = found;
-      }
-      const dd = document.getElementById('studentDropdown');
-      if (dd) dd.value = targetIndex;
-      switchStudent(targetIndex);
+    function hideUnverifiedMarksheet(){
+      document.querySelector('.a4-marksheet').style.display='none';
+      document.getElementById('bnMarksheetPrint').disabled=true;
+      selectedPublished=null;
     }
-
-    // Auto-initialize on DOM load
-    window.addEventListener('DOMContentLoaded', loadFromSchoolOS);
-    loadFromSchoolOS();
+    function setSchoolProfile(inst,school){
+      document.getElementById('schoolName').textContent=String(inst.name||school.name||'School');
+      document.getElementById('principalName').textContent=inst.principalName||'Principal not recorded';
+      document.getElementById('schoolAffil').textContent=inst.boardType
+        ? 'Board: '+inst.boardType+' • Affiliation number not independently verified'
+        : 'Board / affiliation not verified';
+      document.getElementById('sessionTag').textContent=inst.session
+        ? '• ACADEMIC SESSION: '+inst.session : '• ACADEMIC SESSION: Not recorded';
+      const address=[inst.address,inst.city,inst.state,inst.pinCode].filter(Boolean).join(', ');
+      document.getElementById('schoolContact').textContent=[
+        address,inst.contactNumber?'Phone: '+inst.contactNumber:'',
+        inst.email?'Email: '+inst.email:''
+      ].filter(Boolean).join(' • ')||'School contact details not recorded';
+      if(/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(inst.logoDataUrl||''))
+        document.getElementById('schoolLogo').src=inst.logoDataUrl;
+    }
+    function switchExam(val){
+      hideUnverifiedMarksheet();
+      const student=activeStudents[selectedStudentIndex];
+      const exam=publishedExams.find(e=>String(e.examId)===String(val));
+      if(!verifiedSchoolId||!student||!exam)return;
+      const subjectRows=exam.subjects;
+      if(!Array.isArray(subjectRows)||!subjectRows.length){
+        printStatus('No approved subject marks in this published exam.',true);return;
+      }
+      const subjects=[];
+      let obtained=0,maximum=0;
+      for(const row of subjectRows){
+        const name=String(row.subject||'').trim(),score=Number(row.obtained),max=Number(row.maximum);
+        if(!name||!Number.isFinite(score)||!Number.isFinite(max)||max<=0||score<0||score>max){
+          printStatus('Published marks contain invalid subject values; printing blocked.',true);
+          return;
+        }
+        obtained+=score;maximum+=max;
+        subjects.push({name,total:score,max,grade:calculateGrade(score,max),hasEntry:true,
+          pt:null,nb:null,se:null,annual:null});
+      }
+      student.subjects=subjects;
+      student.percentage=(obtained/maximum*100).toFixed(1)+'%';
+      student.grade=calculateGrade(obtained,maximum);
+      student.promotion='Promotion decision not included in published marks';
+      selectedPublished={studentId:student.id,examId:String(exam.examId),publishedAt:exam.publishedAt};
+      document.querySelector('.report-title-ribbon .main-tag').textContent='PUBLISHED RESULT • '+String(exam.examName||'Exam');
+      renderPublishedStudent(selectedStudentIndex);
+      document.querySelector('.a4-marksheet').style.display='';
+      document.getElementById('bnMarksheetPrint').disabled=false;
+      printStatus('Supabase published marks confirmed for '+student.name+' — '+exam.examName+'. This printout is unsigned.');
+    }
+    async function switchStudent(index){
+      const idx=Number(index),student=activeStudents[idx];
+      const requestId=++markLoadId;
+      selectedStudentIndex=idx;
+      publishedExams=[];
+      hideUnverifiedMarksheet();
+      const selector=document.getElementById('examDropdown');
+      selector.replaceChildren(new Option('Checking published exams…',''));
+      if(!verifiedSchoolId||!student){
+        printStatus('Choose a verified school student.',true);return;
+      }
+      printStatus('Checking Supabase for approved, published exams…');
+      try{
+        const session=JSON.parse(sessionStorage.getItem('bn_school_staff_session_v1')||'null');
+        if(!session?.access_token)throw Error('Sign in to your school admin account.');
+        // This RPC exposes published marks only; drafts and local-only scores are excluded.
+        const response=await fetch(SUPABASE_URL+'/rest/v1/rpc/bn_school_published_marksheets',{
+          method:'POST',cache:'no-store',
+          headers:{apikey:SUPABASE_PUBLIC_KEY,Authorization:'Bearer '+session.access_token,
+            'Content-Type':'application/json'},
+          body:JSON.stringify({p_school:verifiedSchoolId,p_student:student.id})
+        });
+        if(!response.ok)throw Error('Published result lookup was rejected ('+response.status+').');
+        const result=await response.json();
+        if(requestId!==markLoadId)return;
+        if(!Array.isArray(result))throw Error('Unexpected marksheet RPC response.');
+        publishedExams=result.filter(x=>x&&x.examId&&Array.isArray(x.subjects)&&x.subjects.length);
+        selector.replaceChildren();
+        if(!publishedExams.length){
+          selector.add(new Option('No published exam available',''));
+          printStatus('No exam has been published for this student. Draft marks cannot be printed.',true);
+          return;
+        }
+        for(const exam of publishedExams)
+          selector.add(new Option(String(exam.examName||exam.examId),String(exam.examId)));
+        selector.value=String(publishedExams[0].examId);
+        switchExam(selector.value);
+      }catch(error){
+        if(requestId!==markLoadId)return;
+        selector.replaceChildren(new Option('Published result unavailable',''));
+        printStatus(error.message||'Could not verify published marks.',true);
+      }
+    }
+    function printPublishedMarksheet(){
+      if(!verifiedSchoolId||!selectedPublished||
+        selectedPublished.studentId!==activeStudents[selectedStudentIndex]?.id||
+        selectedPublished.examId!==document.getElementById('examDropdown').value){
+        printStatus('Official printing needs a verified, published result. Please reload.',true);
+        return false;
+      }
+      window.print();return true;
+    }
+    async function loadFromSchoolOS(){
+      const requestId=++markLoadId;
+      verifiedSchoolId=null;activeStudents=[];selectedStudentIndex=-1;publishedExams=[];
+      hideUnverifiedMarksheet();
+      document.getElementById('studentDropdown').replaceChildren(new Option('Checking school account…',''));
+      document.getElementById('examDropdown').replaceChildren(new Option('No published exam selected',''));
+      printStatus('Verifying school administrator and Supabase roster…');
+      try{
+        if(!window.BNWorkspaceCloud?.create)throw Error('Supabase school adapter is unavailable.');
+        const client=window.BNWorkspaceCloud.create({
+          fetcher:window.fetch.bind(window),sessionStorage:window.sessionStorage
+        });
+        const schools=await client.connect();
+        const schoolId=new URLSearchParams(location.search).get('schoolId')||'';
+        const school=schoolId?schools.find(s=>s.id===schoolId):(schools.length===1?schools[0]:null);
+        if(!school)throw Error('Choose your verified school from Staff Login before opening Marksheets.');
+        const result=await client.pull(school.id);
+        if(requestId!==markLoadId)return;
+        const snapshot=result?.snapshot;
+        if(!snapshot?.institution?.institution||!Array.isArray(snapshot.students))
+          throw Error('Authenticated school roster was incomplete.');
+        setSchoolProfile(snapshot.institution.institution,school);
+        activeStudents=snapshot.students.filter(s=>String(s.status||'Active').toLowerCase()==='active')
+          .map(s=>({
+            id:String(s.id||''),name:String(s.name||''),roll:String(s.rollNumber||'—'),
+            admission:String(s.admissionNumber||'—'),
+            classSec:[s.className,s.section].filter(Boolean).join(' - ')||'Not assigned',
+            mother:s.motherName||'Not recorded',father:s.fatherName||s.guardianName||'Not recorded',
+            dob:s.dateOfBirth||'Not recorded',attendance:'Not verified',percentage:'—',
+            grade:'—',promotion:'Not verified',
+            photoDataUrl:s.photoDataUrl||null,subjects:[]
+          })).filter(s=>/^[a-f0-9-]{36}$/i.test(s.id)&&s.name);
+        const picker=document.getElementById('studentDropdown');
+        picker.replaceChildren();
+        activeStudents.forEach((s,idx)=>picker.add(new Option(
+          s.name+' ('+s.admission+' • '+s.classSec+')',String(idx))));
+        verifiedSchoolId=school.id;
+        if(!activeStudents.length){
+          picker.add(new Option('No active students in this school',''));
+          printStatus('No active students available for published marksheets.',true);
+          return;
+        }
+        const q=new URLSearchParams(location.search);
+        const target=q.get('studentId')||q.get('id')||q.get('adm')||q.get('admission');
+        const selected=Math.max(0,activeStudents.findIndex(s=>s.id===target||s.admission===target));
+        picker.value=String(selected);
+        await switchStudent(selected);
+      }catch(error){
+        if(requestId!==markLoadId)return;
+        verifiedSchoolId=null;hideUnverifiedMarksheet();
+        document.getElementById('studentDropdown').replaceChildren(new Option('School verification failed',''));
+        printStatus('Cannot load official marksheets: '+(error.message||String(error)),true);
+      }
+    }
+    window.addEventListener('DOMContentLoaded',loadFromSchoolOS);
   </script>
 </body>
 </html>
