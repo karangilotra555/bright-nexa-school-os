@@ -427,6 +427,13 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
     </form>
   </div>
   <div data-view="admin" class="hidden">
+    <div class="panel" id="mobileReadinessPanel">
+      <h2>Teacher & Parent mobile readiness</h2>
+      <p class="muted">Cloud account and class readiness, read directly from this school. Never treat local student roster as a working mobile login.</p>
+      <div id="mobileReadinessStatus" role="status" aria-live="polite">Checking Supabase setup…</div>
+      <p class="muted">Teacher: invite staff, confirm email activation, then assign an active teacher to a class with attendance/homework rights. Parent/Student: save the guardian mobile in the student's cloud profile, open the Student & Parent app, sign in with admission number and the registered mobile, and set a new password. Parent link appears only after verified activation; it is never silently created for a different person.</p>
+      <a href="./parent-app-download.html" class="ghost" style="display:inline-flex;text-decoration:none;margin-top:8px">Mobile app instructions</a>
+    </div>
     <div class="panel">
       <h2>Invite school staff</h2>
       <form id="inviteForm" class="formgrid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
