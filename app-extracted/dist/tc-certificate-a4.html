@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Official School Transfer Certificate (TC) — Bright Nexa School OS</title>
+  <title>Transfer Certificate — Unissued Draft — Bright Nexa School OS</title>
+  <script defer src="./school-workspace-cloud.js?v=20261111-attendance-leave-v1"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
 
@@ -311,9 +312,9 @@
   <!-- Controls Bar -->
   <div class="no-print-bar">
     <div>
-      <h2>📜 Official School Transfer Certificate (TC) Generator</h2>
+      <h2>📜 Transfer Certificate — Draft & Issuance Check</h2>
       <p style="font-size: 12px; color: #64748b; margin-top: 2px;">
-        CBSE / State Board Approved Format • Direct Legal Student Migration Document
+        Student details from Supabase; official TC issuance and school approvals required
       </p>
     </div>
 
@@ -333,7 +334,7 @@
       </select>
 
       <button class="btn btn-primary" onclick="printVerifiedTC()">
-        🖨️ Print Transfer Certificate
+        🖨️ Print Approved TC
       </button>
 
       <a href="id-card-a4.html" class="btn btn-secondary" style="text-decoration:none;">
@@ -350,15 +351,16 @@
     </div>
   </div>
 
+  <p id="bnTCCloudStatus" role="status" aria-live="polite" style="width:min(210mm,100%);margin:0 0 15px;padding:11px;background:#eaf3ff;border:1px solid #bfcee0;border-radius:8px;font:13px system-ui;color:#17476e">Verifying the current school roster in Supabase…</p>
   <!-- A4 Printable Sheet -->
-  <div class="a4-page">
+  <div class="a4-page" style="display:none">
     <div class="tc-border-frame">
       <div class="corner-decor c-tl"></div>
       <div class="corner-decor c-tr"></div>
       <div class="corner-decor c-bl"></div>
       <div class="corner-decor c-br"></div>
 
-      <div class="watermark" id="tcWatermark">SCHOOL RECORD REQUIRED</div>
+      <div class="watermark" id="tcWatermark">UNISSUED DRAFT • NOT VALID</div>
 
       <!-- HEADER -->
       <div class="tc-header">
@@ -525,6 +527,8 @@
     // Certificates may use only a current, school-specific roster. No demo pupils.
     let students = [];
     let rosterReady = false;
+    let verifiedSchoolId = null;
+    let loadSequence=0;
 
     function escapeHtml(val) {
       if (val === null || val === undefined) return '';
@@ -536,57 +540,66 @@
         .replace(/'/g, '&#39;');
     }
 
-    function loadData() {
-      try {
-        const snapRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
-        if (snapRaw) {
-          const snap = JSON.parse(snapRaw);
-          const inst = snap.institution || {};
-          if (inst.name) {
-            document.getElementById('tcSchoolName').textContent = inst.name.toUpperCase();
-            document.getElementById('tcWatermark').textContent = inst.name.toUpperCase();
-          }
-          if (inst.principalName) {
-            document.getElementById('tcPrincipal').innerHTML = `${escapeHtml(inst.principalName.toUpperCase())}<br><span style="font-size: 7pt; color: #64748b;">PRINCIPAL</span>`;
-          }
-          if (inst.logoDataUrl) document.getElementById('tcSchoolLogo').src = inst.logoDataUrl;
-          if (inst.address) {
-            const line = [inst.address, inst.city, inst.contactNumber ? 'Phone: +91 ' + inst.contactNumber : '', inst.email].filter(Boolean).join(' • ');
-            document.getElementById('tcSchoolContact').textContent = line;
-          }
-        }
-
-        const stdRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
-        if (stdRaw) {
-          const parsed = JSON.parse(stdRaw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            students = parsed;
-          }
-        }
-      } catch (e) {
-        console.warn("Could not read localStorage snapshot", e);
+    function tcNotice(message,error=false){
+      const status=document.getElementById('bnTCCloudStatus');
+      if(status){status.textContent=message;status.style.color=error?'#913042':'#17476e';}
+    }
+    async function loadData() {
+      const generation=++loadSequence;
+      students=[];rosterReady=false;verifiedSchoolId=null;
+      document.querySelector('.a4-page').style.display='none';
+      const sel=document.getElementById('studentSelect');
+      sel.replaceChildren(new Option('Checking Supabase school account…',''));
+      tcNotice('Verifying authenticated school and current roster…');
+      try{
+        if(!window.BNWorkspaceCloud?.create)throw Error('School cloud adapter is not available.');
+        const client=window.BNWorkspaceCloud.create({
+          fetcher:window.fetch.bind(window),sessionStorage:window.sessionStorage
+        });
+        const schools=await client.connect();
+        const selectedId=new URLSearchParams(location.search).get('schoolId')||'';
+        const school=selectedId?schools.find(s=>s.id===selectedId):(schools.length===1?schools[0]:null);
+        if(!school)throw Error('Choose an authorized school in Staff Login and reopen TC.');
+        const result=await client.pull(school.id);
+        if(generation!==loadSequence)return;
+        const snap=result?.snapshot;
+        if(!snap?.institution?.institution||!Array.isArray(snap.students))
+          throw Error('Supabase did not return a complete school roster.');
+        const inst=snap.institution.institution;
+        document.getElementById('tcSchoolName').textContent=String(inst.name||school.name).toUpperCase();
+        document.getElementById('tcSchoolAffil').textContent=inst.boardType
+          ? 'Board: '+inst.boardType+' • affiliation not independently verified'
+          : 'Board / affiliation not verified';
+        document.getElementById('tcSchoolContact').textContent=[
+          inst.address,inst.city,inst.state,
+          inst.contactNumber?'Phone: '+inst.contactNumber:'',
+          inst.email?'Email: '+inst.email:''
+        ].filter(Boolean).join(' • ')||'School contact not recorded';
+        document.getElementById('tcPrincipal').textContent=inst.principalName||'Principal name not recorded';
+        if(/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(inst.logoDataUrl||''))
+          document.getElementById('tcSchoolLogo').src=inst.logoDataUrl;
+        // A cloud workspace entry proves a student exists, not that a TC was issued.
+        students=snap.students.filter(s=>s&&s.id&&s.name);
+        rosterReady=true;verifiedSchoolId=school.id;
+        sel.replaceChildren();
+        students.forEach((st,idx)=>sel.add(new Option(
+          st.name+' ('+(st.admissionNumber||st.id)+' • '+(st.className||'Class not recorded')+')',String(idx))));
+        if(!students.length)sel.add(new Option('No students in verified school',''));
+        const req=new URLSearchParams(location.search);
+        const target=req.get('adm')||req.get('admission')||req.get('id');
+        const found=students.findIndex(st=>st.admissionNumber===target||st.id===target);
+        if(found>=0)sel.value=String(found);
+        else if(students.length)sel.value='0';
+        document.querySelector('.a4-page').style.display=students.length?'':'none';
+        loadStudentTC();
+        tcNotice('Verified Supabase roster ('+students.length+' students). TC is an unissued draft; official issuance is not yet configured.',!students.length);
+      }catch(error){
+        if(generation!==loadSequence)return;
+        students=[];rosterReady=false;verifiedSchoolId=null;
+        sel.replaceChildren(new Option('Verified roster unavailable',''));
+        document.querySelector('.a4-page').style.display='none';
+        tcNotice('Cannot open TC: '+(error.message||String(error)),true);
       }
-
-      // If no verified/current roster is accessible, refuse to show sample TC data.
-      rosterReady = students.length > 0;
-      const sel = document.getElementById('studentSelect');
-      sel.innerHTML = students.map((s, idx) => 
-        `<option value="${idx}">${escapeHtml(s.name || 'STUDENT')} (${escapeHtml(s.admissionNumber || s.id)} • ${escapeHtml(s.className || 'Class not recorded')})</option>`
-      ).join('');
-
-      // Auto select from URL if present
-      const urlParams = new URLSearchParams(window.location.search);
-      const adm = urlParams.get('adm') || urlParams.get('admission') || urlParams.get('id');
-      if (adm) {
-        const found = students.findIndex(s => s.admissionNumber === adm || s.id === adm);
-        if (found !== -1) sel.value = found;
-      }
-
-      if (!rosterReady) {
-        sel.innerHTML = '<option value="">No school student records found</option>';
-        document.getElementById('tcStudentName').textContent = 'No verified student selected';
-      }
-      loadStudentTC();
     }
 
     function loadStudentTC() {
@@ -614,23 +627,16 @@
       // An admission number or UUID is NOT a TC serial number.
       // TC serial, fee clearance, promotion and issue date must be issued
       // through an authorized school workflow before this is an official TC.
-      if(s.tcSerialNumber)set('tcNo',s.tcSerialNumber);
-      if(s.tcBookNumber)set('bookNo',s.tcBookNumber);
+
+
       if(s.tcApplicationDate)set('tcDateApp',s.tcApplicationDate);
-      if(s.tcIssueDate)set('tcDateIssue',s.tcIssueDate);
+
       if(s.tcLeavingReason)set('tcReason',s.tcLeavingReason);
     }
 
     function printVerifiedTC(){
-      if(!rosterReady) {alert('No student record is available. Cannot print an unverified certificate.');return;}
-      if(document.getElementById('tcNo').textContent==='Not issued'
-        || document.getElementById('tcDateIssue').textContent==='Not issued'
-        || document.getElementById('tcFeeStatus').textContent==='Not verified'
-        || document.getElementById('tcPromotion').textContent==='Not verified'){
-        alert('TC is an unissued draft. Confirm serial number, issue date, school dues and promotion result before printing an official certificate.');
-        return;
-      }
-      window.print();
+      tcNotice('Official TC printing is blocked until a backend-issued certificate, dues clearance and promotion decision are verified. This page is a draft preview.',true);
+      return false;
     }
 
     function updateReason() {
