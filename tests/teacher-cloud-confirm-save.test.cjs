@@ -5,7 +5,7 @@ test('Teacher record is not reported saved or modal closed until cloud acknowled
  const source=read('app-extracted/src/BrightNexaApp.jsx');
  const bundle=read('assets/index-brightnexa-v2.js');
  for(const js of [source,bundle]){
-  assert.ok(js.includes("result?.status !== 'synced' || result.pending"));
+  assert.match(js,/result\?\.status\s*!==\s*['\"]synced['\"]\s*\|\|\s*result\.pending/);
   assert.ok(js.includes("Teacher is pending in this browser"));
   assert.ok(js.includes('cloud.controller.autosave(nextSnapshot)'));
   assert.ok(js.includes('pendingTeacherId.current'),'retries must reuse the same stable teacher ID');
@@ -13,7 +13,8 @@ test('Teacher record is not reported saved or modal closed until cloud acknowled
   assert.ok(js.includes('Saving teacher to Supabase...'));
   const from=js.indexOf('function Sr({ data:'),end=js.indexOf('function Cr({',from);
   const section=js.slice(from,end);
-  assert.ok(section.indexOf("result?.status !== 'synced'")<section.indexOf('r(false)') || section.indexOf("result?.status !== 'synced'")<section.indexOf('r2(false)'), 'modal closes only after confirmation');
+  const ack=section.search(/result\?\.status\s*!==\s*['\"]synced['\"]/),close=section.search(/\br\d?\(false\)/);
+  assert.ok(ack>=0&&close>ack,'modal closes only after confirmation');
  }
  for(const file of ['docs/assets/index-brightnexa-v2.js','app-extracted/dist/assets/index-brightnexa-v2.js'])assert.equal(read(file),bundle);
 });
