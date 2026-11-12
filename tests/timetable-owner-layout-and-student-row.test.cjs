@@ -37,5 +37,5 @@ test('student list photo and name never overlay',()=>{
  assert.equal(css,read('docs/school-student-roster-layout.css'));
  assert.equal(css,read('app-extracted/dist/school-student-roster-layout.css'));
  for(const p of ['index.html','docs/index.html','app-extracted/dist/index.html'])
-  assert.match(read(p),/school-student-roster-layout\.css\?v=20261112-student-photo-row-v1/);
+  assert.match(read(p),/school-student-roster-layout\.css\?v=20261112-student-roster-pages-v2/);
 });
