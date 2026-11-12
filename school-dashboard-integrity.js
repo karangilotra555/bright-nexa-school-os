@@ -9,6 +9,7 @@
   'use strict';
   const doc=root.document;
   let started=false,initialHandled=false,scheduled=false;
+  let dashboardDeepLinkPending=false,routeAttempts=0,lastRouteClick=0;
   let cloudCounts=null,cloudReading=false,lastReadAt=0,cloudRequestId=0,cloudIdentity=null;
   const tabs=new Set(['Dashboard','School Profile','Class & Section Setup','Students','ID Cards & Certificates','Teachers','Non-Teaching Staff','Attendance','Homework & Notices','Exams & Marks','Report Cards','Fees','Expenses & Budget','Owner Reports','Transport & Routes','Infrastructure & Assets','Parent Messages','AI Teacher Tools','Smart Tools','Opportunity Desk','Growth Passport','School Quality Score','Settings','Contact & Support']);
   function activeTab(){
@@ -27,16 +28,47 @@
     const requested=url.searchParams.get('tab');
     if(!initialHandled){
       initialHandled=true;
-      // The URL is authoritative when arriving at a direct dashboard link.
-      // React may hydrate an old tab from the same browser session.
-      if(requested==='Dashboard'&&chosen!=='Dashboard'){
-        const dashboard=targetButton('Dashboard');
-        if(dashboard){dashboard.click();return;}
+      dashboardDeepLinkPending=requested==='Dashboard';
+    }
+    // The hosted ERP may hydrate a previous Settings tab *after* the first
+    // Dashboard click. Keep the original deep-link authoritative through
+    // hydration, but never override a user's actual sidebar click.
+    if(dashboardDeepLinkPending){
+      if(chosen==='Dashboard'){
+        dashboardDeepLinkPending=false;
+      }else{
+        const button=targetButton('Dashboard');
+        const now=Date.now();
+        if(button&&routeAttempts<6&&now-lastRouteClick>=500){
+          routeAttempts++;lastRouteClick=now;
+          button.click();
+          root.setTimeout?.(schedule,650);
+        }
+        // Do not falsely rewrite ?tab=Dashboard to Settings while a
+        // post-login Dashboard route is still being recovered.
+        if(routeAttempts<6||now-lastRouteClick<650)return;
+        dashboardDeepLinkPending=false;
+        const area=doc.querySelector('main')||doc.body;
+        if(area&&!doc.getElementById('bn-dashboard-route-error')){
+          const note=doc.createElement('p');
+          note.id='bn-dashboard-route-error';
+          note.setAttribute('role','alert');
+          note.style.cssText='margin:12px;padding:12px;border:1px solid #f2be7a;border-radius:8px;background:#fff7e9;color:#7e4216;font:13px system-ui';
+          note.textContent='Dashboard could not be opened after login. Your school data was not changed. Use Dashboard in the sidebar or refresh this page.';
+          area.prepend(note);
+        }
       }
     }
+    if(chosen==='Dashboard')doc.getElementById('bn-dashboard-route-error')?.remove();
     if(requested!==chosen){
       url.searchParams.set('tab',chosen);
       root.history.replaceState(root.history.state,'',url.pathname+url.search+url.hash);
+    }
+  }
+  function onNavClick(event){
+    if(event.isTrusted&&event.target?.closest?.('.navigation .nav-item')){
+      dashboardDeepLinkPending=false;
+      doc.getElementById('bn-dashboard-route-error')?.remove();
     }
   }
   function cloudErrorActive(){
@@ -46,19 +78,25 @@
     return (style?.display||panel.style.display)!=='none' && style?.visibility!=='hidden';
   }
   function badgeSafety(){
+    // The workspace controller, not the local status label, owns save truth.
+    const state=root.BNWorkspaceOnlineGuard?.getStatus?.();
+    const conflict=state?.status==='conflict'||cloudErrorActive();
+    const issue=conflict||!!state?.problem;
+    const warning=conflict?'Sync conflict — not published':'Cloud save failed — not published';
     const badge=doc?.querySelector('.bn-sync-status-badge');
     if(!badge)return;
-    const issue=cloudErrorActive();
-    if(issue&&badge.getAttribute('aria-invalid')!=='true'){
-      badge.setAttribute('aria-invalid','true');
-      badge.setAttribute('aria-label','Sync conflict — not published');
+    if(issue){
+      if(badge.getAttribute('aria-invalid')!=='true')badge.setAttribute('aria-invalid','true');
+      if(badge.getAttribute('aria-label')!==warning)badge.setAttribute('aria-label',warning);
+      badge.dataset.bnCloudWarning=warning;
+      if(badge.title!==warning)badge.title=warning;
       badge.style.borderColor='#c66a17';
       badge.style.color='#874200';
       badge.style.background='#fff4e5';
-      badge.title='The school has an unresolved cloud error. Browser records are not confirmed in Supabase. Review the sync conflict panel.';
-    }else if(!issue&&badge.getAttribute('aria-invalid')==='true'){
+    }else if(badge.getAttribute('aria-invalid')==='true'){
       badge.removeAttribute('aria-invalid');
       badge.removeAttribute('aria-label');
+      delete badge.dataset.bnCloudWarning;
       badge.style.removeProperty('border-color');
       badge.style.removeProperty('color');
       badge.style.removeProperty('background');
@@ -139,8 +177,9 @@
     if(doc.getElementById('bn-dashboard-integrity-styles'))return;
     const style=doc.createElement('style');style.id='bn-dashboard-integrity-styles';
     style.textContent=[
-      '.bn-sync-status-badge[aria-invalid="true"] span:nth-child(2){font-size:0!important}',
-      '.bn-sync-status-badge[aria-invalid="true"] span:nth-child(2)::after{content:"Sync conflict — not published";font-size:12px;font-weight:700}',
+      '.bn-sync-status-badge[aria-invalid="true"]{font-size:0!important}',
+      '.bn-sync-status-badge[aria-invalid="true"]>*{display:none!important}',
+      '.bn-sync-status-badge[aria-invalid="true"]::after{content:attr(data-bn-cloud-warning);display:inline-flex;align-items:center;font-size:12px!important;font-weight:700;white-space:normal;line-height:1.3}',
       '.dashboard-grid .panel-title .icon-button{display:none!important}',
       '.metric-grid .metric-card[data-bn-attendance-note="true"]::after{content:"Recorded entries only · verify coverage";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
       '.metric-grid .metric-card[data-bn-fees-note="true"]::after{content:"Current-month receipts · verify cloud";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
@@ -172,7 +211,8 @@
       addStyles();
       scan();
       const obs=new root.MutationObserver(schedule);
-      obs.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','role']});
+      obs.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','role','title','aria-label']});
+      doc.addEventListener('click',onNavClick,true);
       root.addEventListener('popstate',schedule);
     };
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
