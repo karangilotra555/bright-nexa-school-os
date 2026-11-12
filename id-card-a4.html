@@ -737,10 +737,6 @@
           🖨️ Print A4 Sheets
         </button>
 
-        <button class="btn btn-secondary" id="demoToggleBtn" onclick="toggleDemoMode()">
-          👁️ Preview Sample Cards
-        </button>
-
         <a href="marksheet-a4.html" class="btn btn-secondary" style="text-decoration:none;">
           📄 Marksheets
         </a>
@@ -810,16 +806,6 @@
     </div>
   </div>
 
-  <!-- Demo Mode Warning Alert Banner -->
-  <div id="demoWarningBanner" class="demo-warning-banner" style="display: none;">
-    <div>
-      ⚠️ <strong>SAMPLE DEMO PREVIEW:</strong> Currently showing 8 sample demonstration cards. These are <u>NOT</u> official school database records. Each card displays a specimen watermark.
-    </div>
-    <button class="btn btn-secondary" onclick="toggleDemoMode()" style="background:#ffffff; color:#92400e; border:1px solid #fcd34d; font-size:12px; padding:4px 10px;">
-      🟢 Switch to Live School Data
-    </button>
-  </div>
-
   <!-- A4 Multi-Page Container -->
   <div id="pagesContainer">
     <!-- A4 Sheets or Empty State will be injected here dynamically -->
@@ -881,29 +867,20 @@
           },
           errorCorrectionLevel: 'M'
         }, function(err) {
-          if (err) console.error("QRCode render error:", err);
+          canvas.dataset.bnQrStatus=err?'failed':'ready';
+          if (err) {
+            console.error("QRCode render error:", err);
+            reportCloudState('QR generation failed; printing is disabled until corrected.',true);
+          }
         });
       } else if (tries < 10) {
         setTimeout(() => generateRealQRCode(canvas, text, tries + 1), 90);
       } else {
         canvas.dataset.qrFailed = 'true';
+        canvas.dataset.bnQrStatus='failed';
         reportCloudState('QR generator failed to load. Please reload before printing cards with verification codes.',true);
       }
     }
-
-    // ==========================================
-    // 3. SAMPLE DEMO DATA (Completely Separated)
-    // ==========================================
-    const SAMPLE_DEMO_STUDENTS = [
-      { id: "DEMO-1", name: "AARAV SHARMA", rollNumber: "01", admissionNumber: "DEMO-2026-001", className: "Class 6", section: "A", fatherName: "MR. RAJESH SHARMA", contactNumber: "9876543210", bloodGroup: "O+", dob: "12-03-2014", address: "Sector 4, BHEL, Haridwar", busStop: "Route 3 (Gate No 2)", isDemo: true },
-      { id: "DEMO-2", name: "ANANYA VERMA", rollNumber: "02", admissionNumber: "DEMO-2026-002", className: "Class 6", section: "A", fatherName: "MR. SUNIL VERMA", contactNumber: "9812345678", bloodGroup: "B+", dob: "24-07-2014", address: "Shivalik Nagar, Haridwar", busStop: "Route 1 (Main Chowk)", isDemo: true },
-      { id: "DEMO-3", name: "ROHAN MEHTA", rollNumber: "03", admissionNumber: "DEMO-2026-003", className: "Class 6", section: "B", fatherName: "MR. AMIT MEHTA", contactNumber: "9988776655", bloodGroup: "A+", dob: "05-11-2013", address: "Ranipur More, Haridwar", busStop: "Route 2 (Station)", isDemo: true },
-      { id: "DEMO-4", name: "PRIYA CHOUDHARY", rollNumber: "04", admissionNumber: "DEMO-2026-004", className: "Class 7", section: "A", fatherName: "MR. VIKRAM SINGH", contactNumber: "9765432109", bloodGroup: "AB+", dob: "18-01-2013", address: "Jwalapur, Haridwar", busStop: "Route 4 (Post Office)", isDemo: true },
-      { id: "DEMO-5", name: "KAVYA GUPTA", rollNumber: "05", admissionNumber: "DEMO-2026-005", className: "Class 7", section: "A", fatherName: "MR. DEEPAK GUPTA", contactNumber: "9654321098", bloodGroup: "O+", dob: "09-09-2013", address: "Arya Nagar, Haridwar", busStop: "Route 1 (Main Chowk)", isDemo: true },
-      { id: "DEMO-6", name: "ADITYA PATEL", rollNumber: "06", admissionNumber: "DEMO-2026-006", className: "Class 8", section: "A", fatherName: "MR. SURESH PATEL", contactNumber: "9543210987", bloodGroup: "B-", dob: "14-04-2012", address: "Kankhal, Haridwar", busStop: "Route 5 (Temple Road)", isDemo: true },
-      { id: "DEMO-7", name: "SIMRAN KAUR", rollNumber: "07", admissionNumber: "DEMO-2026-007", className: "Class 8", section: "B", fatherName: "MR. HARPREET SINGH", contactNumber: "9432109876", bloodGroup: "A-", dob: "30-10-2012", address: "Roshnabad, Haridwar", busStop: "Route 6 (Court Complex)", isDemo: true },
-      { id: "DEMO-8", name: "YASHVARDHAN JOSHI", rollNumber: "08", admissionNumber: "DEMO-2026-008", className: "Class 9", section: "A", fatherName: "MR. MANOJ JOSHI", contactNumber: "9321098765", bloodGroup: "O-", dob: "02-02-2011", address: "Bahadrabad, Haridwar", busStop: "Route 2 (Toll Plaza)", isDemo: true }
-    ];
 
     // State Variables
     const isEmbedded = new URLSearchParams(location.search).get('embedded') === '1';
@@ -915,16 +892,15 @@
     let cloudLoadRequest = 0;
     let liveStudents = [];
     let activeStudents = [];
-    let isDemoMode = false;
 
     let institution = {
-      name: "BRIGHT NEXA INTERNATIONAL ACADEMY",
-      tagline: "Empowering Future Innovators • Affiliated to CBSE",
-      address: "Shivalik Enclave, Haridwar",
-      phone: "+91 7500058655",
-      email: "info@brightnexa.edu.in",
-      session: "2026-2027",
-      principalName: "DR. K. GILOTRA",
+      name: "School profile not verified",
+      tagline: "",
+      address: "",
+      phone: "",
+      email: "",
+      session: "",
+      principalName: "",
       logoUrl: "app-icon-512.png"
     };
 
@@ -977,7 +953,7 @@
         institution.logoUrl=profile.logoDataUrl||'app-icon-512.png';
         liveStudents=snapshot.students.map(fromSchoolStudent);
         lastVerifiedCloudRevision=response.revision;
-        if(!isDemoMode)activeStudents=liveStudents;
+        activeStudents=liveStudents;
         const missing=liveStudents.filter(s=>!s.photoUrl).length;
         reportCloudState('Supabase confirmed · Revision '+response.revision+' · '+liveStudents.length+' students · '+(liveStudents.length-missing)+' saved photos'+(missing?', '+missing+' without saved photos':'')+'.',false);
         updateSourceUI();populateFilters();
@@ -1011,22 +987,21 @@
           const parsed = JSON.parse(stdRaw);
           if (Array.isArray(parsed) && parsed.length > 0) {
             liveStudents = parsed.map((s, idx) => {
-              const cName = s.className ? (String(s.className).toLowerCase().startsWith('class') ? s.className : `Class ${s.className}`) : 'Class 6';
+              const cName = s.className ? (String(s.className).toLowerCase().startsWith('class') ? s.className : `Class ${s.className}`) : 'Unassigned class';
               return {
                 id: s.id || String(idx + 1),
-                name: (s.name || `STUDENT ${idx + 1}`).toUpperCase(),
-                rollNumber: s.rollNumber ? String(s.rollNumber).padStart(2, '0') : String(idx + 1).padStart(2, '0'),
-                admissionNumber: s.admissionNumber || `BMS-2026-${String(idx + 1).padStart(3, '0')}`,
+                name: (s.name || '').toUpperCase(),
+                rollNumber: s.rollNumber ? String(s.rollNumber).padStart(2, '0') : '',
+                admissionNumber: s.admissionNumber || '',
                 className: cName,
-                section: s.section || "A",
-                fatherName: (s.fatherName || s.guardianName || "MR. GUARDIAN").toUpperCase(),
-                contactNumber: s.parentMobile || s.contactNumber || s.phone || s.alternateMobile || "9876543210",
-                bloodGroup: s.bloodGroup || "B+",
+                section: s.section || '',
+                fatherName: (s.fatherName || s.guardianName || '').toUpperCase(),
+                contactNumber: s.parentMobile || s.contactNumber || s.phone || s.alternateMobile || '',
+                bloodGroup: s.bloodGroup || '',
                 dob: s.dateOfBirth || s.dob || "",
-                address: s.address || "Haridwar, Uttarakhand",
-                busStop: s.busStop || s.transportRoute || "Self / Walker",
-                photoUrl: s.photoDataUrl || s.photoUrl || s.avatarUrl || null,
-                isDemo: false
+                address: s.address || '',
+                busStop: s.busStop || s.transportRoute || '',
+                photoUrl: s.photoDataUrl || s.photoUrl || s.avatarUrl || null
               };
             });
           } else {
@@ -1040,12 +1015,7 @@
         liveStudents = [];
       }
 
-      // If user had not explicitly selected demo mode, default to live mode
-      if (!isDemoMode) {
-        activeStudents = liveStudents;
-      } else {
-        activeStudents = SAMPLE_DEMO_STUDENTS;
-      }
+      activeStudents = liveStudents;
 
       lastVerifiedCloudRevision=null;
       updateSourceUI();
@@ -1054,41 +1024,13 @@
       void refreshSchoolCloudData();
     }
 
-    function toggleDemoMode() {
-      isDemoMode = !isDemoMode;
-      activeStudents = isDemoMode ? SAMPLE_DEMO_STUDENTS : liveStudents;
-      
-      updateSourceUI();
-      populateFilters();
-      renderCards();
-    }
-
     function updateSourceUI() {
-      const pill = document.getElementById('dataSourcePill');
-      const toggleBtn = document.getElementById('demoToggleBtn');
-      const banner = document.getElementById('demoWarningBanner');
-
-      if (isDemoMode) {
-        if (pill) {
-          pill.className = 'data-source-pill source-demo';
-          pill.innerHTML = '🟡 Sample Demo Cards';
-        }
-        if (toggleBtn) {
-          toggleBtn.className = 'btn btn-gold';
-          toggleBtn.innerHTML = '🟢 Switch to Live Records';
-        }
-        if (banner) banner.style.display = 'flex';
-      } else {
-        if (pill) {
-          pill.className = 'data-source-pill source-live';
-          pill.innerHTML = lastVerifiedCloudRevision===null ? `🟠 Device preview (${liveStudents.length})` : `🟢 Supabase Records (${liveStudents.length})`;
-        }
-        if (toggleBtn) {
-          toggleBtn.className = 'btn btn-secondary';
-          toggleBtn.innerHTML = '👁️ Preview Sample Cards';
-        }
-        if (banner) banner.style.display = 'none';
-      }
+      const pill=document.getElementById('dataSourcePill');
+      if(!pill)return;
+      pill.className='data-source-pill source-live';
+      pill.textContent=lastVerifiedCloudRevision===null
+        ? 'Device preview — Supabase not verified'
+        : 'Supabase confirmed ('+liveStudents.length+' students)';
     }
 
     function setIdPrintSide(mode) {
@@ -1096,15 +1038,26 @@
     }
     document.addEventListener('DOMContentLoaded', () => setIdPrintSide(document.getElementById('printSideMode')?.value || 'front'));
     function handlePrint() {
-      if (isDemoMode) {
-        const proceed = window.confirm(
-          "⚠️ NOTICE: You are currently viewing SAMPLE DEMO DATA (not actual school records).\n\n" +
-          "These demonstration cards include a specimen watermark.\n\n" +
-          "Do you wish to proceed with printing sample demonstration sheets?"
-        );
-        if (!proceed) return;
+      if(lastVerifiedCloudRevision===null) {
+        reportCloudState('Cannot print: school records are not verified in Supabase. Sign in and reload.',true);
+        return false;
+      }
+      const cards=[...document.querySelectorAll('#pagesContainer .id-card-vertical')];
+      if(!cards.length){
+        reportCloudState('Cannot print: no students match the selected filters.',true);
+        return false;
+      }
+      if(cards.some(card=>!card.querySelector('.qr-canvas')||
+        card.querySelector('.qr-canvas').dataset.bnQrStatus!=='ready')){
+        reportCloudState('Cannot print: QR verification codes are loading or failed. Reload before printing.',true);
+        return false;
+      }
+      if(idPhotoOverrides.size){
+        reportCloudState('Temporary photo preview is not published. Save the photo through Staff Portal before printing.',true);
+        return false;
       }
       window.print();
+      return true;
     }
 
     function populateFilters() {
@@ -1228,15 +1181,12 @@
             <h3 style="color: #0b2545; font-size: 19px; margin-bottom: 8px;">No Live Student Records Found in School OS</h3>
             <p style="color: #64748b; font-size: 13.5px; line-height: 1.6; margin-bottom: 20px;">
               Your school database currently does not have active student records. 
-              Add student records in the main School OS to generate official ID cards, or preview the A4 layout with sample demonstration data.
+              Add student records in the main School OS to generate official ID cards, after Supabase confirms the school roster.
             </p>
             <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
               <a href="index.html" class="btn btn-primary" style="text-decoration:none;">
                 ➕ Add Students in School OS
               </a>
-              <button class="btn btn-gold" onclick="toggleDemoMode()">
-                👁️ Preview with Sample Demo Data
-              </button>
             </div>
           </div>
         `;
@@ -1268,7 +1218,7 @@
         const metaTag = document.createElement('div');
         metaTag.className = 'sheet-meta-tag';
         metaTag.innerHTML = `
-          <span><strong>${escapeHtml(institution.name)}</strong> • Official Student ID Cards ${isDemoMode ? '(SAMPLE SPECIMEN SHEET)' : ''}</span>
+          <span><strong>${escapeHtml(institution.name)}</strong> • Official Student ID Cards </span>
           <span>A4 Sheet ${p + 1} of ${totalPages} (${list.length} Total)</span>
         `;
         sheetDiv.appendChild(metaTag);
@@ -1283,9 +1233,9 @@
           // No client-side signatures: the school must issue its credential through the server.
 
           // Specimen watermark HTML for demo cards
-          const watermarkHtml = isDemoMode
-            ? `<div class="watermark-specimen">SAMPLE SPECIMEN • NOT OFFICIAL</div>`
-            : `<div class="watermark-specimen">UNVERIFIED PREVIEW • NOT OFFICIAL</div>`;
+          const watermarkHtml = lastVerifiedCloudRevision===null
+            ? '<div class="watermark-specimen">DEVICE PREVIEW • NOT VERIFIED</div>'
+            : '<div class="watermark-specimen">QR SERVER SIGNATURE PENDING • VERIFY WITH SCHOOL</div>';
 
           const cardHtml = `
             <div class="id-card-vertical" id="card-${globalIdx}">
