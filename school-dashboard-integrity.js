@@ -136,7 +136,20 @@
     ].join(' ');
     doc.head.append(style);
   }
-  function scan(){if(!doc?.defaultView||!doc.body)return;alignRoute();badgeSafety();metricNotes();void readCloudCounts();}
+  function neutralizeDecorativePanelControls(){
+    if(activeTab()!=='Dashboard')return;
+    // The panel heading component renders an icon-only button with NO click
+    // handler. Do not leave a keyboard-focusable control that does nothing.
+    for(const button of doc.querySelectorAll('.dashboard-grid .panel-title > button.icon-button')){
+      if(button.disabled)continue;
+      button.disabled=true;
+      button.tabIndex=-1;
+      button.setAttribute('aria-hidden','true');
+      button.title='Section heading decoration';
+      button.style.cursor='default';
+    }
+  }
+  function scan(){if(!doc?.defaultView||!doc.body)return;alignRoute();badgeSafety();metricNotes();neutralizeDecorativePanelControls();void readCloudCounts();}
   function schedule(){
     if(scheduled)return;scheduled=true;
     (root.requestAnimationFrame||((fn)=>Promise.resolve().then(fn)))(()=>{scheduled=false;scan();});
