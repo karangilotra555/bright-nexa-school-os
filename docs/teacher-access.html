@@ -84,6 +84,27 @@ tr td select{padding:7px;min-width:115px}
 @media(max-width:470px){.bar{flex-wrap:wrap}.bar>.flex{width:100%}.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
 
 
+
+/* Owner's timetable deep-link is a single module, not a second ERP shell.
+   Role is verified by Supabase before this class is ever applied. */
+body.bn-owner-timetable main{max-width:1320px;margin:0 auto;padding:22px 24px 46px}
+body.bn-owner-timetable #portalSection>.row,
+body.bn-owner-timetable #portalPermissionNotice,
+body.bn-owner-timetable #portalStats,
+body.bn-owner-timetable #publicAuthIntro{display:none!important}
+body.bn-owner-timetable .portal-layout{display:block;margin:0}
+body.bn-owner-timetable .portal-layout>.portal-nav{display:none!important}
+body.bn-owner-timetable .portal-content{width:100%;min-width:0}
+body.bn-owner-timetable [data-view="timetable"]{padding:24px;border-radius:17px;border:1px solid #dce6ef}
+body.bn-owner-timetable #ownerTimetableNav{display:flex!important;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+body.bn-owner-timetable #ownerTimetableNav strong{font-size:21px;color:#0b2545}
+body.bn-owner-timetable #ownerTimetableNav a{color:#0b315e;font-weight:700;text-decoration:none;background:#eaf4fc;padding:10px 14px;border-radius:10px;border:1px solid #c8e1f3}
+body.bn-owner-timetable #ownerTimetableNav span{font-size:12px;color:#61758f}
+@media(max-width:700px){
+  body.bn-owner-timetable main{padding:14px 12px 30px}
+  body.bn-owner-timetable [data-view="timetable"]{padding:15px}
+}
+
 /* Local school import is optional and never appears on the public login. */
 #localSchoolImportLabel.local-import-option{display:flex;gap:12px;align-items:flex-start;margin:14px 0 8px;padding:13px;border:1px solid #bedbf0;border-radius:12px;background:white;color:#274766;font-size:13px;line-height:1.45;cursor:pointer}
 #localSchoolImportLabel.local-import-option input[type="checkbox"]{appearance:auto;display:block;width:18px;height:18px;min-width:18px;min-height:18px;max-width:18px;max-height:18px;flex:0 0 18px;margin:1px 0 0;padding:0;accent-color:#138ed8;border-radius:4px}
@@ -234,6 +255,10 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
   </div></div>
   <div id="portalPermissionNotice" class="notice">Your school controls your assigned classes and permissions. Saved attendance and homework are available to the linked student / parent account.</div>
 
+  <div id="ownerTimetableNav" class="hidden" style="display:none">
+    <a href="./index.html?openSchool=true&amp;tab=Dashboard">← Back to School OS</a>
+    <strong>School Timetable</strong><span>Bell timings · Class periods · Publish</span>
+  </div>
   <div class="portal-layout">
     <aside class="portal-nav" role="navigation" aria-label="Portal Navigation">
       <div class="portal-nav-brand">
