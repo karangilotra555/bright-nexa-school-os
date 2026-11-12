@@ -8,7 +8,7 @@
  'use strict';
  const SESSION='bright-nexa-school-os:session:v2',ID='bn-cloud-publish-status';
  const entry=()=>{try{return JSON.parse(root.sessionStorage.getItem(SESSION)||'null')}catch(_){return null}};
- let retryHandler=null,recoveryHandler=null;
+ let retryHandler=null,recoveryHandler=null,lastStatus='local',lastProblem='';
  function setRetry(handler){retryHandler=typeof handler==='function'?handler:null;}
  function setRecover(handler){recoveryHandler=typeof handler==='function'?handler:null;}
  function active(){return entry()?.cloudVerified===true;}
@@ -51,9 +51,16 @@
   return el;
  }
  function update(status,error){
-  if(!active())return;
   const current=String(status||'local');
   const problem=String(error?.message||error||'').trim();
+  // Make the real cloud state readable by the Dashboard status indicator.
+  // UI must never infer successful persistence from a separate local-save label.
+  lastStatus=current;lastProblem=problem;
+  if(!active()){
+    const existing=root.document?.getElementById(ID);
+    if(existing)existing.style.display='none';
+    return;
+  }
   // Autosave broadcasts "pending" for EVERY edit (teachers, students, etc).
   // It is expected background work, not a page-level blocking event. Preserve
   // the ERP's existing inline status indicator and show no extra popup.
@@ -91,5 +98,5 @@
   // Real errors are presented by update() as a compact actionable warning.
   if(!root.document)return;
  }
- return {init,update,active,setRetry,setRecover};
+ return {init,update,active,setRetry,setRecover,getStatus:()=>active()?{status:lastStatus,problem:lastProblem}:{status:'local',problem:''}};
 });
