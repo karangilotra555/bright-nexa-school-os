@@ -9,7 +9,7 @@
   'use strict';
   const doc=root.document;
   let started=false,initialHandled=false,scheduled=false;
-  let cloudCounts=null,cloudReading=false,lastReadAt=0;
+  let cloudCounts=null,cloudReading=false,lastReadAt=0,cloudRequestId=0,cloudIdentity=null;
   const tabs=new Set(['Dashboard','School Profile','Class & Section Setup','Students','ID Cards & Certificates','Teachers','Non-Teaching Staff','Attendance','Homework & Notices','Exams & Marks','Report Cards','Fees','Expenses & Budget','Owner Reports','Transport & Routes','Infrastructure & Assets','Parent Messages','AI Teacher Tools','Smart Tools','Opportunity Desk','Growth Passport','School Quality Score','Settings','Contact & Support']);
   function activeTab(){
     const nav=doc?.querySelector('.navigation .nav-item.active');
@@ -41,9 +41,9 @@
   }
   function cloudErrorActive(){
     const panel=doc?.getElementById('bn-cloud-publish-status');
-    if(!panel||panel.getAttribute('role')!=='alert')return false;
+    if(!panel||panel.hidden||panel.getAttribute('aria-hidden')==='true')return false;
     const style=root.getComputedStyle?.(panel);
-    return (style?.display||panel.style.display)!=='none';
+    return (style?.display||panel.style.display)!=='none' && style?.visibility!=='hidden';
   }
   function badgeSafety(){
     const badge=doc?.querySelector('.bn-sync-status-badge');
@@ -66,18 +66,24 @@
     }
   }
   async function readCloudCounts(){
-    if(activeTab()!=='Dashboard'||cloudReading)return;
+    if(activeTab()!=='Dashboard')return;
     let school,staff,erp;
     try{
       staff=JSON.parse(root.sessionStorage?.getItem('bn_school_staff_session_v1')||'null');
       erp=JSON.parse(root.sessionStorage?.getItem('bright-nexa-school-os:session:v2')||'null');
       school=String(erp?.institutionId||'');
-    }catch(_){return;}
-    if(erp?.cloudVerified!==true||erp?.role!=='OWNER'||!staff?.access_token
-      ||!/^[a-f0-9-]{36}$/i.test(school))return;
+    }catch(_){school='';}
+    const valid=erp?.cloudVerified===true&&erp?.role==='OWNER'&&!!staff?.access_token
+      &&/^[a-f0-9-]{36}$/i.test(school);
+    // A different sign-in, school, or logout must not reuse a previous readback.
+    const identity=valid?school+':'+staff.access_token:null;
+    if(identity!==cloudIdentity){
+      cloudIdentity=identity;cloudCounts=null;lastReadAt=0;cloudRequestId++;
+    }
+    if(!valid||cloudReading)return;
     if(cloudCounts?.school===school&&Date.now()-lastReadAt<60000)return;
-    if(cloudCounts?.school!==school)cloudCounts=null;
     cloudReading=true;lastReadAt=Date.now();
+    const requestId=cloudRequestId;
     const base='https://mrfvbwmyxndrakskqyas.supabase.co/rest/v1/';
     const headers={'apikey':'sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT',
       'Authorization':'Bearer '+staff.access_token,'Prefer':'count=exact'};
@@ -97,14 +103,20 @@
       ]);
       // Prevent a late readback from another session changing this school's badge.
       const current=JSON.parse(root.sessionStorage?.getItem('bright-nexa-school-os:session:v2')||'null');
-      if(current?.institutionId===school&&current?.cloudVerified===true)cloudCounts={students,teachers,school};
-    }catch(_){cloudCounts={error:'Cloud count readback unavailable',school};}
-    finally{cloudReading=false;schedule();}
+      if(requestId===cloudRequestId&&current?.institutionId===school&&current?.cloudVerified===true)
+        cloudCounts={students,teachers,school};
+    }catch(_){
+      if(requestId===cloudRequestId)cloudCounts={error:'Supabase count could not be verified',school};
+    }finally{cloudReading=false;schedule();}
   }
   function metricNotes(){
     if(activeTab()!=='Dashboard')return;
     for(const card of doc.querySelectorAll('.metric-grid .metric-card')){
       const content=(card.textContent||'').toLowerCase();
+      // React can reuse metric cards when switching schools or logging out.
+      delete card.dataset.bnCloudCount;
+      delete card.dataset.bnAttendanceNote;
+      delete card.dataset.bnFeesNote;
       let currentSchool=null;
       try{currentSchool=JSON.parse(root.sessionStorage?.getItem('bright-nexa-school-os:session:v2')||'null')?.institutionId;}catch(_){}
       if(cloudCounts?.school&&cloudCounts.school===currentSchool){
