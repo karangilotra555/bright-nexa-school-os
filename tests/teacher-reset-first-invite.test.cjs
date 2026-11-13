@@ -22,7 +22,7 @@ test('public recovery retains non-enumerating response and does not claim a rese
   for(const file of ['teacher-access.js','docs/teacher-access.js']){
     const src=read(file);
     assert.ok(src.includes("BASE+'/auth/v1/recover?redirect_to='"));
-    assert.match(src,/Reset request accepted for eligible existing accounts; this does not confirm an email was sent or delivered/);
+    assert.match(src,/Request accepted. If this email is registered and already activated, check Inbox and Spam. This does not confirm an email was sent or delivered/);
     assert.match(src,/First-time teachers and staff must be invited by their School Admin/);
     assert.match(src,/password recovery can work/);
   }
