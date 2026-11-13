@@ -23,7 +23,7 @@
   const message=root.document.createElement('p');message.dataset.role='message';message.textContent='Verifying cloud workspace before enabling school changes.';
   message.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5;margin:0';
   const controls=root.document.createElement('div');controls.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center';
-  const retry=root.document.createElement('button');retry.type='button';retry.dataset.role='retry';retry.textContent='Retry sync';retry.style.cssText='background:#188bd7;color:white;border:0;border-radius:7px;padding:8px 12px;font-weight:600;cursor:pointer';retry.onclick=async()=>{if(!retryHandler){root.location.reload();return;}update('syncing');try{const result=await retryHandler();if(result)update(result.status,result.error);}catch(error){update('pending',error);}};
+  const retry=root.document.createElement('button');retry.type='button';retry.dataset.role='retry';retry.textContent='Retry sync';retry.style.cssText='background:#188bd7;color:white;border:0;border-radius:7px;padding:8px 12px;font-weight:600;cursor:pointer';retry.onclick=async()=>{if(!retryHandler){root.location.reload();return;}update('syncing');try{const result=await retryHandler();if(result)update(result.status,result.error);}catch(error){update(lastStatus==='conflict'?'conflict':'pending',error);}};
   const recover=root.document.createElement('button');
   recover.type='button';recover.dataset.role='recover';recover.textContent='Open cloud school (back up device first)';
   recover.style.cssText='background:#fff;color:#0a3155;border:1px solid #b6c8dc;border-radius:7px;padding:8px 12px;font-weight:600;cursor:pointer';
@@ -89,14 +89,17 @@
     : current==='pending'?'School changes not yet published'
     : 'School is not connected to Supabase';
   if(message)message.textContent=current==='conflict'
-    ? (problem||'Local and cloud records differ.')+'\nNo data was uploaded. Retry cannot resolve a conflicting local copy. To open verified cloud records, choose the recovery option; current and pending device records will be backed up before any switch.'
+    ? (problem||'Local and cloud records differ.')+'\nNo data was overwritten. Recheck cloud safely compares the current browser copy with verified Supabase data and repairs only matching or clean stale versions. Any actual unsent edits remain protected. The backup-first recovery option keeps separate device backups before opening cloud data.'
     : problem
     ? problem+'\nYour change is NOT confirmed in Supabase. Pending edits on this device are retained. Retry sync without clearing browser/app data.'
     : current==='loading'||current==='syncing'?'Loading your school records from Supabase…'
     : current==='pending'?'School changes have not been confirmed. Use Retry sync after checking your connection.'
     : current==='conflict'?'Another device changed school records. Your local changes were retained; resolve the conflict before uploading.'
     : 'Changes on this device are not published. Sign in to your verified school, then retry sync.';
-  if(retry){retry.textContent=current==='conflict'?'Retry unavailable (conflict)':problem?'Retry sync':'Refresh sync';retry.disabled=current==='conflict';}
+  if(retry){
+    retry.textContent=current==='conflict'?'Recheck cloud safely':problem?'Retry sync':'Refresh sync';
+    retry.disabled=current==='conflict'&&!retryHandler;
+  }
   if(recover)recover.style.display=current==='conflict'&&recoveryHandler?'inline-block':'none';
  }
  function init(){
