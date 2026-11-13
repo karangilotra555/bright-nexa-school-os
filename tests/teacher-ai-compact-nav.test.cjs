@@ -47,3 +47,37 @@ test('unrelated school sidebars remain untouched',async()=>{
   assert.ok([...dom.window.document.querySelectorAll('aside button')].every(b=>b.style.display!=='none'));
  }finally{dom.window.close();}
 });
+
+test('lesson plan shows only essentials by default and keeps advanced values intact',async()=>{
+ const dom=new JSDOM('<!doctype html><html><head></head><body><div class="ai-workbench"><aside id="ai"></aside><section class="ai-builder"><h2>Lesson Plan Generator</h2><div class="ai-input-grid"><label><span>Class / batch</span><select><option>Nursery</option></select></label><label><span>Subject</span><select><option>Science</option></select></label><label class="wide"><span>Suggestions / Chapter (optional)</span><textarea></textarea></label><label><span>Output Language</span><select><option>English</option></select></label><label><span>Plan Duration</span><select><option>45 Minutes</option></select></label><label><span>Difficulty / Depth</span><select><option>Standard</option></select></label></div></section></div></body></html>',{url:'https://example.test',runScripts:'outside-only',pretendToBeVisual:true});
+ try{
+  const aside=dom.window.document.getElementById('ai'),names=toolGroups.flat();
+  names.forEach(name=>{
+   const b=dom.window.document.createElement('button');
+   b.textContent=name;
+   b.addEventListener('click',()=>{dom.window.document.querySelector('.ai-builder h2').textContent=name;});
+   aside.appendChild(b);
+  });
+  dom.window.eval(fs.readFileSync('teacher-ai-form-bridge.js','utf8'));
+  await new Promise(resolve=>setTimeout(resolve,115));
+  const wb=dom.window.document.querySelector('.ai-workbench');
+  assert.ok(wb.classList.contains('bn-ai-compact'),'toolbar layout should replace side rail');
+  assert.equal(wb.getAttribute('data-bn-ai-options'),'collapsed');
+  assert.equal(wb.querySelectorAll('[data-bn-ai-advanced="true"]').length,3,'only three default controls are collapsed');
+  assert.equal(wb.querySelectorAll('.ai-input-grid > label:not([data-bn-ai-advanced])').length,3);
+  const toggle=wb.querySelector('[data-bn-ai-advanced-toggle]');
+  assert.equal(toggle.textContent,'More options');
+  assert.equal(toggle.getAttribute('aria-expanded'),'false');
+  toggle.click();
+  assert.equal(wb.getAttribute('data-bn-ai-options'),'expanded');
+  assert.equal(toggle.getAttribute('aria-expanded'),'true');
+  assert.equal(toggle.textContent,'Fewer options');
+  assert.equal(wb.querySelectorAll('.ai-input-grid select')[3].value,'45 Minutes','no defaults must be reset');
+  const picker=wb.querySelector('[data-bn-ai-tool-picker] select');
+  picker.value='Homework Generator';
+  picker.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+  await new Promise(resolve=>setTimeout(resolve,115));
+  assert.equal(wb.getAttribute('data-bn-lesson'),'false');
+  assert.equal(toggle.style.display,'none','other generators retain their original controls');
+ }finally{dom.window.close();}
+});
