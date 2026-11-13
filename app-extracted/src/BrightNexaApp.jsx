@@ -22971,6 +22971,21 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
                   {[e.employeeCode, e.designation].filter(Boolean).join(` • `)}
                 </Component289>
               )}
+          <div className={`teacher-app-invite teacher-app-invite--header`}
+            style={{marginTop: '12px', maxWidth:'100%'}}>
+            <button type="button" className={`primary-button`}
+              style={{whiteSpace:'normal',textAlign:'center',maxWidth:'100%',lineHeight:1.3}}
+              disabled={inviteBusy || !e.email}
+              onClick={inviteTeacher}
+              aria-label={`Create or sync Teacher App access for ${i}`}>
+              {inviteBusy ? 'Updating Teacher App access...' : 'Create / Sync Teacher App Access'}
+            </button>
+            <p role={inviteError ? 'alert' : 'status'} aria-live="polite"
+              style={{fontSize:'12px',lineHeight:1.4,marginTop:'7px',
+                color: inviteError ? '#b91c1c' : '#166534',maxWidth:'460px'}}>
+              {inviteFeedback || (!e.email ? 'Add teacher email to enable app access.' : 'Teacher App login is separate from the faculty record.')}
+            </p>
+          </div>
             </Component290>
           </Component291>
           <Component292
@@ -23011,17 +23026,7 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
               )}
             </Er>
           )}
-          <div className={`teacher-app-invite`} style={{marginTop: '16px'}}>
-            <button type="button" className={`secondary-button`}
-              disabled={inviteBusy || !e.email}
-              onClick={inviteTeacher}>
-              {inviteBusy ? 'Updating Teacher App access...' : 'Create / Sync Teacher App Access'}
-            </button>
-            <p role="status" aria-live="polite"
-              style={{fontSize:'12px', marginTop:'8px', color: inviteError ? '#b91c1c' : '#166534'}}>
-              {inviteFeedback || (!e.email ? 'Add teacher email to enable app access.' : 'Teacher app login is separate from the faculty record.')}
-            </p>
-          </div>
+
           {deleteError && <p className={`form-error`} role={`alert`}>{deleteError}</p>}
           <Component298 className={`modal-actions`}>
             <Component295 className={`secondary-button danger`} onClick={r} disabled={deleteBusy}>
