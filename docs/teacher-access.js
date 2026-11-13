@@ -1220,7 +1220,7 @@
         throw Error('Reset request was rejected (HTTP '+response.status+'). Please contact the school administrator.');
       }
       // HTTP 200 confirms the request was accepted, NOT inbox delivery.
-      resetFeedback('Request accepted. If this email is registered, check your inbox and Spam folder for the secure reset link. Delivery may take a few minutes. Please wait at least a minute before requesting another.');
+      resetFeedback('Request accepted. If this email is registered and already activated, check Inbox and Spam. This does not confirm an email was sent or delivered. First-time teachers and staff must be invited by their School Admin before password recovery can work. Please wait at least a minute before retrying.');
     }catch(error){
       resetFeedback(error?.message||'Could not request a password reset email. Check your connection and retry.',true);
     }finally{
