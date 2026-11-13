@@ -27,3 +27,26 @@ test('publicly known legacy HMAC cannot verify credentials',async()=>{const cryp
 test('mixed-case protected paths stay blocked',async()=>{for(const route of ['/SERVER.JS','/Data/school.db']){const response=await fetch(base+route);assert.equal(response.status,403);}});
 
 test('snapshot respects local inactive status rather than reactivating students',async()=>{const r=await fetch(base+'/api/sync/snapshot',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Key':'test-only-admin'},body:JSON.stringify({students:[{id:'TEST-INACTIVE',admissionNumber:'TEST-INACTIVE',name:'Fixture',status:'Archived'}]})});assert.equal(r.status,200);const saved=await fetch(base+'/api/sync/snapshot',{headers:{'X-Admin-Key':'test-only-admin'}}).then(r=>r.json());assert.equal(saved.students.find(s=>s.id==='TEST-INACTIVE').enrollmentStatus,'ARCHIVED');});
+
+
+test('missing or invalid QR proof cannot reveal student identity or record existence',async()=>{
+ for(const query of ['adm=TEST-SIGN','adm=TEST-SIGN&sig=invalid','adm=NONEXISTENT-2026&sig=invalid']){
+  const response=await fetch(base+'/api/verify?'+query);
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.equal(result.verified,false);
+  assert.equal(result.status,'SIGNATURE_MISMATCH');
+  assert.equal(result.student,undefined,'Student profile must require valid QR proof');
+  assert.equal(result.admissionNumber,undefined,'Admission existence must not leak');
+  assert.equal(result.certificateId,undefined,'No certificate details for unverified proof');
+ }
+});
+test('guardian password recovery is not intercepted by ERP PWA navigation fallback',()=>{
+ const paths=['sw.js','docs/sw.js','app-extracted/dist/sw.js'];
+ const contents=paths.map(p=>fs.readFileSync(p,'utf8'));
+ for(const content of contents){
+  assert.ok(content.includes('denylist:[/parent-password-recovery'),'Guardian reset must bypass ERP fallback');
+ }
+ assert.equal(contents[0],contents[1]);
+ assert.equal(contents[0],contents[2]);
+});
