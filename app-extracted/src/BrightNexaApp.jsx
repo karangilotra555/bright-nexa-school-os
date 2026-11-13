@@ -23795,6 +23795,18 @@ function bnCreateNoticeMessage({ schoolName = 'Haridwar Public School', title = 
 }
 
 const BN_OFFICIAL_EMPTY_ITEMS = [];
+
+const BN_META_WHATSAPP_FIELD_HELP = {
+  phoneNumberId:{url:'https://developers.facebook.com/apps/',detail:'Meta App Dashboard → WhatsApp → API Setup → Phone number ID.'},
+  wabaId:{url:'https://business.facebook.com/settings/',detail:'Business Settings → Accounts → WhatsApp Accounts → Account ID (numbers only, not email).'},
+  token:{url:'https://business.facebook.com/settings/system-users',detail:'Users → System Users → Generate token; allow whatsapp_business_messaging and whatsapp_business_management.'},
+  appSecret:{url:'https://developers.facebook.com/apps/',detail:'Choose your app → App Settings → Basic → App Secret → Show.'},
+  verifyToken:{url:'https://developers.facebook.com/docs/graph-api/webhooks/getting-started',detail:'Create your own random 24+ character token; paste the same value into Meta → WhatsApp → Configuration → Webhooks.'},
+  language:{url:'https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account/message_templates/',detail:'WhatsApp Manager → approved message template → language code (for example en, en_US or hi).'},
+  fee:{url:'https://business.facebook.com/wa/manage/message-templates/',detail:'WhatsApp Manager → approved fee reminder template → copy its exact name (4 body parameters).'},
+  absent:{url:'https://business.facebook.com/wa/manage/message-templates/',detail:'WhatsApp Manager → approved absence reminder template → copy its exact name (3 body parameters).'},
+  ptm:{url:'https://business.facebook.com/wa/manage/message-templates/',detail:'WhatsApp Manager → approved PTM invitation template → copy its exact name (6 body parameters).'}
+};
 function OfficialWhatsAppPanel({items=BN_OFFICIAL_EMPTY_ITEMS}) {
   const [email,setEmail]=w.useState(''),[password,setPassword]=w.useState(''),[error,setError]=w.useState(''),[busy,setBusy]=w.useState(false),[connection,setConnection]=w.useState(null),[setup,setSetup]=w.useState(false),[preview,setPreview]=w.useState(null),[consent,setConsent]=w.useState(false),[batch,setBatch]=w.useState(null),[requestKey,setRequestKey]=w.useState(()=>crypto.randomUUID());
   const [config,setConfig]=w.useState({phoneNumberId:'',wabaId:'',token:'',appSecret:'',verifyToken:'',fee:'',absent:'',ptm:'',language:'en'});
@@ -23817,7 +23829,16 @@ function OfficialWhatsAppPanel({items=BN_OFFICIAL_EMPTY_ITEMS}) {
       <button type="button" className="secondary-button" onClick={()=>setSetup(!setup)}>Configure school WhatsApp</button>
       {setup&&<form onSubmit={e=>{e.preventDefault();run(async()=>{const templateMap={};for(const k of ['fee','absent','ptm'])if(config[k])templateMap[k]={name:config[k],language:config.language};await api('/connection',{...config,templateMap});setConfig(c=>({...c,token:'',appSecret:'',verifyToken:''}));await load();setPreview(null);});}} style={{display:'grid',gap:'8px'}}>
         <p>Use your school's Meta WhatsApp Business account. Saving checks ownership and template approval. Re-saving requires webhook verification again.</p>
-        {['phoneNumberId','wabaId','token','appSecret','verifyToken','language','fee','absent','ptm'].map(field=><label key={field}>{({phoneNumberId:'Phone number ID',wabaId:'WhatsApp Business account ID',token:'System user access token',appSecret:'Meta app secret',verifyToken:'Webhook verify token (24+ characters; copy into Meta)',language:'Template language code',fee:'Approved fee template (4 parameters)',absent:'Approved absence template (3 parameters)',ptm:'Approved PTM template (6 parameters)'})[field]}<input style={{width:'100%',boxSizing:'border-box'}} type={['token','appSecret','verifyToken'].includes(field)?'password':'text'} autoComplete="off" value={config[field]} required={!['fee','absent','ptm'].includes(field)} onChange={e=>setConfig({...config,[field]:e.target.value})}/></label>)}
+        {['phoneNumberId','wabaId','token','appSecret','verifyToken','language','fee','absent','ptm'].map(field=>{
+          const help=BN_META_WHATSAPP_FIELD_HELP[field];
+          return <label key={field} style={{display:'block',fontSize:'12px',fontWeight:600}}>
+            <span>{({phoneNumberId:'Phone number ID',wabaId:'WhatsApp Business account ID',token:'System user access token',appSecret:'Meta app secret',verifyToken:'Webhook verify token (24+ characters; copy into Meta)',language:'Template language code',fee:'Approved fee template (4 parameters)',absent:'Approved absence template (3 parameters)',ptm:'Approved PTM template (6 parameters)'})[field]}</span>
+            <input name={'bn-meta-'+field} style={{width:'100%',boxSizing:'border-box',marginTop:'4px'}} type={['token','appSecret','verifyToken'].includes(field)?'password':'text'} inputMode={['phoneNumberId','wabaId'].includes(field)?'numeric':undefined} pattern={['phoneNumberId','wabaId'].includes(field)?'[0-9]+':undefined} autoComplete="off" data-lpignore="true" data-1p-ignore="true" value={config[field]} required={!['fee','absent','ptm'].includes(field)} onChange={e=>setConfig({...config,[field]:e.target.value})}/>
+            <small style={{display:'block',fontSize:'11px',fontWeight:400,color:'var(--muted,#64748b)',lineHeight:1.6,marginTop:'4px'}}>
+              {help.detail} <a href={help.url} target="_blank" rel="noopener noreferrer" style={{color:'#1369b6',fontWeight:700}}>Open Meta setup ↗</a>
+            </small>
+          </label>;
+        })}
         <p>Webhook URL: <code style={{overflowWrap:'anywhere'}}>{connection.webhookUrl}</code>. Subscribe to the Meta <strong>messages</strong> webhook field.</p><p>Body parameter order: Fee — student, amount, due date, school. Absence — student, date, school. PTM — student, exam, date, time, venue, school. Use numbered parameters; text-only templates.</p>
         <button className="primary-button" disabled={busy}>Verify and save connection</button><button type="button" className="secondary-button" disabled={busy} onClick={()=>run(load)}>Refresh webhook verification</button>
       </form>}
@@ -23842,7 +23863,7 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
     } catch {}
   };
   return (
-    <L title="School WhatsApp connection" subtitle="Manual drafts or official API • Provider charges apply to automatic sending" onClose={onClose}>
+    <L title="School WhatsApp connection" subtitle="Manual drafts or official API • Provider charges apply to automatic sending" onClose={onClose} dismissOnBackdrop={false}>
       <OfficialWhatsAppPanel />
       <div className="simple-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', background: connected ? '#ecfdf5' : '#fffbeb', border: `1px solid ${connected ? '#a7f3d0' : '#fde68a'}` }}>
