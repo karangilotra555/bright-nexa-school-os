@@ -223,6 +223,7 @@
     // This does not touch school records, sync queues, local drafts or backups.
     sessionStorage.removeItem('bright-nexa-school-os:session:v2');
     invalidateRoster();clearProfileEditor();
+    $('bnTeacherActivationAdmin')?.remove();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
     display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);showAuthView('login');
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
@@ -259,6 +260,68 @@
       me,classes:allClasses,assignments:allAssignments,staff:allStaff,
       api,query,eq,notify,openAssignments:()=>tab('admin')
     });
+  }
+
+  // School-admin assisted activation for accounts never used in Auth. Supabase
+  // generates a one-time recovery URL server-side; no SMTP or admin key in UI.
+  function installTeacherActivationControl(){
+    const old=$('bnTeacherActivationAdmin');
+    if(old)old.remove();
+    if(!isAdmin())return;
+    const host=$('portalSection');
+    if(!host)return;
+    const panel=document.createElement('section');
+    panel.id='bnTeacherActivationAdmin';
+    panel.style.cssText='margin:16px auto;max-width:920px;border:1px solid #bad2e9;background:#f2f8fd;border-radius:13px;padding:17px;color:#122c47';
+    const heading=dom('h3','Teacher App · Activate without email');
+    heading.style.cssText='font-size:18px;margin:0 0 7px';
+    const desc=dom('p','For a school-invited teacher who has never signed in. Generate a secure one-time activation link from this verified School Admin session. No invitation email is required.');
+    desc.style.cssText='font-size:13px;margin:0 0 10px';
+    const input=document.createElement('input');
+    input.type='email';input.placeholder='Teacher email from faculty profile';
+    input.setAttribute('aria-label','Teacher email for activation link');
+    input.autocomplete='off';input.style.cssText='padding:10px;min-width:220px;max-width:340px;width:100%;margin-right:9px';
+    const button=dom('button','Generate one-time activation link');
+    button.type='button';button.style.cssText='border-radius:9px;padding:10px 12px';
+    const details=dom('div');
+    details.setAttribute('role','status');
+    details.style.cssText='font-size:13px;margin-top:10px;overflow-wrap:anywhere';
+    let lastUrl='';
+    button.addEventListener('click',async()=>{
+      const email=input.value.trim().toLowerCase();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        details.textContent='Enter a valid teacher email.';return;
+      }
+      if(!isAdmin())return;
+      button.disabled=true;details.replaceChildren(dom('span','Checking active teacher access...'));
+      try{
+        await ensureToken();
+        const response=await timedCloudFetch(BASE+'/functions/v1/school-invite-staff',{
+          method:'POST',
+          headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+          body:JSON.stringify({action:'activation_link',role:'teacher',email}),
+          cache:'no-store'
+        });
+        const payload=await responseJson(response);
+        if(!payload.ok||!payload.activationUrl)throw Error('Auth activation link was not confirmed.');
+        const url=new URL(payload.activationUrl);
+        if(url.protocol!=='https:'||url.hostname!=='mrfvbwmyxndrakskqyas.supabase.co'
+          ||url.pathname!=='/auth/v1/verify')throw Error('Supabase returned an invalid activation URL.');
+        lastUrl=url.href;
+        const note=dom('p','One-time link created. No email was sent. Open privately and set a password. Do not share publicly.');
+        const open=dom('a','Open secure activation link');
+        open.href=lastUrl;open.target='_blank';open.rel='noopener noreferrer';
+        const copy=dom('button','Copy link');copy.type='button';copy.style.marginLeft='10px';
+        copy.addEventListener('click',async()=>{
+          try{await navigator.clipboard.writeText(lastUrl);copy.textContent='Copied';}
+          catch(_){copy.textContent='Copy blocked — open the link';}
+        });
+        details.replaceChildren(note,open,copy);
+      }catch(err){details.replaceChildren(dom('span',err.message||'Could not generate activation link.'));lastUrl='';}
+      finally{button.disabled=false;}
+    });
+    panel.append(heading,desc,input,button,details);
+    host.prepend(panel);
   }
   async function load(requestedSchoolId){
     const thisLoad=++schoolLoadEpoch;
@@ -331,6 +394,7 @@
     if(next){location.replace(new URL(next,location.href).href);return;}
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
+    installTeacherActivationControl();
     await reload();
     const requested=new URLSearchParams(location.search).get('view');
     const allowedViews=['dashboard','classes','timetable','attendance','homework','notices','profiles','fees','admin','account'];
