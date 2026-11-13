@@ -22167,6 +22167,7 @@ function Cr({
   onClose: r,
   onSave: i,
 }) {
+  const teacherClassOptions = Array.isArray(e) ? e : [];
   let [a, o] = (0, w.useState)(() =>
     n
       ? Ar(n)
@@ -22193,6 +22194,17 @@ function Cr({
   );
   let [s, c] = (0, w.useState)(a.subjects.join(`, `));
   let [l, u] = (0, w.useState)(``);
+  const showTeacherSaveError = (message, field) => {
+    u(message);
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        const target = field ? document.querySelector('[data-teacher-save-field="' + field + '"]') : null;
+        const node = target || document.querySelector('.teacher-save-error-banner');
+        node?.scrollIntoView?.({block:'center',behavior:'smooth'});
+        node?.focus?.({preventScroll:true});
+      });
+    }
+  };
   let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
   const [photoProcessing, setPhotoProcessing] = (0,w.useState)(false);
   let pendingTeacherId = (0, w.useRef)(n?.id || crypto.randomUUID());
@@ -22329,10 +22341,16 @@ function Cr({
           if (t.some(row => row.id !== n?.id && String(row.email || '').trim().toLowerCase() === email)) {
             u('Another teacher already uses this email.');return;
           }
-          if (!a.joiningDate) {u('Date of Joining is required.');return;}
+          if (!a.joiningDate || ((a.assignedClasses || []).length > 0 && !r.length)) {
+            const missing=[];
+            if (!a.joiningDate) missing.push('Date of Joining is required.');
+            if ((a.assignedClasses || []).length > 0 && !r.length) missing.push('Subjects are required for assigned classes.');
+            showTeacherSaveError(missing.join('  •  '), !a.joiningDate ? 'joiningDate' : 'subjects');
+            return;
+          }
           if (!['Active','Inactive'].includes(a.status)) {u('Select the employment status.');return;}
           if (!['Permanent','Contract','Part-time','Visiting'].includes(a.employmentType)) {u('Select the employment type.');return;}
-          const knownClasses = new Set(e.map(row => `${row.name}-${row.section}`));
+          const knownClasses = new Set(teacherClassOptions.map(row => `${row.name}-${row.section}`));
           if ((a.assignedClasses || []).some(value => !knownClasses.has(value))) {
             u('One or more assigned classes no longer exist. Update teacher assignments.');return;
           }
@@ -22389,6 +22407,8 @@ function Cr({
           }
         }}
       >
+        {l && <div className="form-error teacher-save-error-banner" role="alert" aria-live="assertive" tabIndex={-1}
+          style={{position:'sticky',top:0,zIndex:20,padding:'12px 14px',background:'#fff1f2',color:'#9f1239',border:'2px solid #e11d48',borderRadius:10,fontWeight:700,marginBottom:12}}>{l}</div>}
         <Component232 className={`modal-record-section`}>
           <Component210>{`Personal and Contact Information`}</Component210>
           <Component231 className={`teacher-photo-row`}>
@@ -22561,12 +22581,16 @@ function Cr({
             <R label={`Date of Joining`}>
               <Component244
                 type={`date`}
+                data-teacher-save-field="joiningDate"
+                aria-invalid={Boolean(l && !a.joiningDate)}
                 value={a.joiningDate}
                 onChange={(e) => m(`joiningDate`, e.target.value)}
               />
             </R>
             <R label={`Subjects`} wide={true}>
               <Component245
+                data-teacher-save-field="subjects"
+                aria-invalid={Boolean(l && (a.assignedClasses || []).length > 0 && !s.trim())}
                 value={s}
                 onChange={(e) => c(e.target.value)}
                 placeholder={`Science, Mathematics`}
@@ -22786,7 +22810,7 @@ function Cr({
             />
           </Component281>
         </Component282>
-        {l && <Component283 className={`form-error`}>{l}</Component283>}
+
         <Vr onClose={closeTeacherSafely} saveDisabled={savingToCloud || photoProcessing}
           saveLabel={photoProcessing ? `Optimizing photo...` : savingToCloud ? `Saving teacher to Supabase...` : n ? `Update Teacher` : `Save Teacher`} />
       </Component284>
