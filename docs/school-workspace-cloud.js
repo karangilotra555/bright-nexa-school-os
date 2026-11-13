@@ -40,6 +40,47 @@
   for(const student of snapshot.students){const obligations=feeObligations?feeObligations(ops,student,institution):[];if(!Array.isArray(obligations))throw Error('Invalid fee obligations.');unique(obligations,'fee obligation',o=>o.key);for(const obligation of obligations){const key=required(obligation.key,'Fee obligation key'),amount=Number(obligation.amount),credit=Number(obligation.credited);if(!Number.isFinite(amount)||!Number.isFinite(credit)||amount<0||credit<0||credit>amount)throw Error('Invalid fee obligation amount or credit.');const description=[obligation.structure&&obligation.structure.category,obligation.period].filter(Boolean).join(' · ')||key;let occurredOn=null;if(obligation.billingYear!=null&&obligation.billingMonth!=null)occurredOn=date(String(obligation.billingYear)+'-'+String(obligation.billingMonth).padStart(2,'0')+'-01','Fee billing date');for(const [kind,value] of [['charge',amount],['payment',credit]])fees.push({localId:JSON.stringify([str(student.id),key,kind]),studentLocalId:str(student.id),kind,amountRupees:Math.round(value*100)/100,description,occurredOn});}}
   return {classes,students,attendance,homework,notices,fees};
  }
+
+ // Keep UI photos intact while keeping the canonical Supabase snapshot small.
+ // Never discard a photo or replace it with a broken URL: the original remains
+ // untouched if the browser cannot safely decode/encode its image.
+ async function compactPhotosForUpload(snapshot){
+   if(typeof document==='undefined'||typeof Image==='undefined')return snapshot;
+   async function compact(value){
+     if(typeof value!=='string'||value.length<240000||!/^data:image\/(?:jpeg|jpg|png|webp);base64,/i.test(value))return value;
+     try{
+       const image=await new Promise((resolve,reject)=>{
+         const el=new Image(); el.onload=()=>resolve(el); el.onerror=()=>reject(Error('Image decode failed')); el.src=value;
+       });
+       const width=image.naturalWidth,height=image.naturalHeight;
+       if(!width||!height) return value;
+       let scale=Math.min(1,960/Math.max(width,height));
+       let result=value;
+       for(let n=0;n<3;n++){
+         const canvas=document.createElement('canvas');
+         canvas.width=Math.max(1,Math.round(width*scale));
+         canvas.height=Math.max(1,Math.round(height*scale));
+         const ctx=canvas.getContext('2d');
+         if(!ctx)return value;
+         ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+         ctx.drawImage(image,0,0,canvas.width,canvas.height);
+         const candidate=canvas.toDataURL('image/jpeg',n===0?0.82:n===1?0.75:0.68);
+         if(candidate&&candidate.length<result.length)result=candidate;
+         if(result.length<=240000)break;
+         scale*=0.75;
+       }
+       return result;
+     }catch(_){return value;}
+   }
+   const students=Array.isArray(snapshot.students)?await Promise.all(snapshot.students.map(async row=>
+     row&&typeof row==='object'&&typeof row.photoDataUrl==='string'
+       ?{...row,photoDataUrl:await compact(row.photoDataUrl)}:row)):snapshot.students;
+   const ops=snapshot.operations||{};
+   const teachers=Array.isArray(ops.teachers)?await Promise.all(ops.teachers.map(async row=>
+     row&&typeof row==='object'&&typeof row.photoDataUrl==='string'
+       ?{...row,photoDataUrl:await compact(row.photoDataUrl)}:row)):ops.teachers;
+   return {...snapshot,students,operations:{...ops,...(Array.isArray(ops.teachers)?{teachers}:{})}};
+ }
  function create(options){
   options=options||{};const fetcher=options.fetcher||(typeof fetch==='function'?fetch.bind(globalThis):null),sessions=options.sessionStorage||(typeof sessionStorage!=='undefined'?sessionStorage:null);
   // Do not leave a school indefinitely syncing when Supabase stops responding.
@@ -170,7 +211,7 @@
     }
     return data;}
   async function run(id,body){required(id,'School ID');const auth=await authorize();if(!auth.schools.some(s=>s.id===id))throw Error('School admin access is not available for this school.');return result(await request('/rest/v1/rpc/school_workspace_'+(body?'push':'pull'),auth.access,body||{p_institution_id:id}),id);}
-  return {buildProjection,readback,connect:async()=>(await authorize()).schools,pull:id=>run(id),push:async(id,revision,snapshot,projection)=>{shape(snapshot);if(!Number.isSafeInteger(revision)||revision<0)throw Error('Invalid expected revision.');if(!obj(projection)||!['classes','students','attendance','homework','notices','fees'].every(k=>Array.isArray(projection[k])))throw Error('Invalid workspace projection.');const checked=buildProjection(snapshot,()=>[]);for(const k of ['classes','students','attendance','homework','notices'])if(JSON.stringify(checked[k])!==JSON.stringify(projection[k]))throw Error('Workspace projection does not match local '+k+'.');const studentIds=new Set(checked.students.map(s=>s.localId));unique(projection.fees,'fee',f=>f.localId);for(const f of projection.fees){if(!studentIds.has(f.studentLocalId)||!['charge','payment'].includes(f.kind)||typeof f.amountRupees!=='number'||!Number.isFinite(f.amountRupees)||f.amountRupees<0)throw Error('Invalid fee projection.');date(f.occurredOn,'Fee date',true);}const saved=await run(id,{p_institution_id:id,p_expected_revision:revision,p_snapshot:snapshot,p_projection:projection});if(saved.revision<=revision||saved.snapshot===null)throw Error('Cloud did not confirm the workspace save. Local records are unchanged.');return saved;}};
+  return {buildProjection,prepareSnapshot:compactPhotosForUpload,readback,connect:async()=>(await authorize()).schools,pull:id=>run(id),push:async(id,revision,snapshot,projection)=>{shape(snapshot);if(!Number.isSafeInteger(revision)||revision<0)throw Error('Invalid expected revision.');if(!obj(projection)||!['classes','students','attendance','homework','notices','fees'].every(k=>Array.isArray(projection[k])))throw Error('Invalid workspace projection.');const checked=buildProjection(snapshot,()=>[]);for(const k of ['classes','students','attendance','homework','notices'])if(JSON.stringify(checked[k])!==JSON.stringify(projection[k]))throw Error('Workspace projection does not match local '+k+'.');const studentIds=new Set(checked.students.map(s=>s.localId));unique(projection.fees,'fee',f=>f.localId);for(const f of projection.fees){if(!studentIds.has(f.studentLocalId)||!['charge','payment'].includes(f.kind)||typeof f.amountRupees!=='number'||!Number.isFinite(f.amountRupees)||f.amountRupees<0)throw Error('Invalid fee projection.');date(f.occurredOn,'Fee date',true);}const prepared=await compactPhotosForUpload(snapshot);const saved=await run(id,{p_institution_id:id,p_expected_revision:revision,p_snapshot:prepared,p_projection:projection});if(saved.revision<=revision||saved.snapshot===null)throw Error('Cloud did not confirm the workspace save. Local records are unchanged.');return saved;}};
  }
  return {create,buildProjection};
 });
