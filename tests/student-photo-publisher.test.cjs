@@ -102,7 +102,7 @@ test('all ERP release entrypoints load the private photo publisher before ERP en
  const crypto=require('node:crypto');
  const root=path.resolve(__dirname,'..');
  const files=['school-student-photo-cloud.js','school-student-photo-publisher.js'];
- const version=['20261112-erp-private-photo-v1','20261112-erp-photo-publish-v1'];
+ const version=['20261112-erp-private-photo-v1','20261113-photo-auth-refresh-v2'];
  const read=pathPart=>fs.readFileSync(path.join(root,pathPart),'utf8');
  for(const prefix of ['','docs/','app-extracted/dist/']){
    const html=read(prefix+'index.html');
