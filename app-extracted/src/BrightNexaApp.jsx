@@ -22882,6 +22882,7 @@ async function bnDeactivateTeacherAppAccount(teacher) {
 function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBusy = false, deleteError = '' }) {
   let i = e.name || e.employeeCode || `Faculty Record`;
   const [inviteBusy, setInviteBusy] = (0, w.useState)(false);
+  const [maximized, setMaximized] = (0, w.useState)(false);
   const [inviteFeedback, setInviteFeedback] = (0, w.useState)('');
   const [inviteError, setInviteError] = (0, w.useState)(false);
   async function inviteTeacher() {
@@ -22947,8 +22948,8 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
     [`Residential Address`, e.address],
     [`Status`, e.status],
   ].filter((e) => N(e[1]));
+  // The main portrait appears in the header only, matching Student Profile.
   let c = [
-    [`Teacher Photograph`, e.photoDataUrl],
     [`Aadhaar Card — Front`, e.aadhaarFrontDataUrl],
     [`Aadhaar Card — Back`, e.aadhaarBackDataUrl],
   ].filter((e) => N(e[1]));
@@ -22975,7 +22976,8 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
       onMouseDown={(e) => e.target === e.currentTarget && t()}
     >
       <Component300
-        className={`simple-modal teacher-profile-modal`}
+        className={`simple-modal student-profile-modal teacher-profile-modal`}
+        style={maximized ? {width:'96vw',maxWidth:'96vw',height:'92vh',maxHeight:'92vh',display:'flex',flexDirection:'column'} : undefined}
         role={`dialog`}
         aria-modal={`true`}
         aria-label={`${i} profile`}
@@ -23017,43 +23019,29 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
           </div>
             </Component290>
           </Component291>
-          <Component292
-            className={`icon-button`}
-            onClick={t}
-            aria-label={`Close profile`}
-          >
-            <St size={21} />
-          </Component292>
+          <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+            <button type="button" className="icon-button" aria-label={maximized ? 'Restore' : 'Maximize'} title={maximized ? 'Restore size' : 'Maximize dialog'}
+              onClick={() => setMaximized(value => !value)}>{maximized ? '🗗' : '🗖'}</button>
+            <Component292 className={`icon-button`} onClick={t} aria-label={`Close profile`}>
+              <St size={21} />
+            </Component292>
+          </div>
         </Component293>
-        <Component299 className={`simple-modal-body`}>
-          {a.length > 0 && (
-            <Er
-              icon={<_Component11 size={17} />}
-              title={`Professional Information`}
-            >
-              <Tr entries={a} />
-            </Er>
+        <Component299 className={`simple-modal-body`}
+          style={maximized ? {flex:1,minHeight:0,maxHeight:'none',overflow:'auto'} : undefined}>
+          {[...a, ...o, ...s].length > 0 && (
+            <Component294 className={`profile-detail-grid`}>
+              {[...a, ...o, ...s].map(([label,value]) => (
+                <Dr label={label} value={value} key={label} />
+              ))}
+            </Component294>
           )}
-          {o.length > 0 && (
-            <Er
-              icon={<_Component12 size={17} />}
-              title={`Payroll and Bank Information`}
-            >
-              <Tr entries={o} />
-            </Er>
-          )}
-          {(s.length > 0 || c.length > 0) && (
-            <Er icon={<M size={17} />} title={`Contact and Identity`}>
-              {s.length > 0 && <Tr entries={s} />}
-              {` `}
-              {c.length > 0 && (
-                <Component294 className={`stored-identity-grid`}>
-                  {c.map(([e, t]) => (
-                    <_Component13 title={e} value={t} key={e} />
-                  ))}
-                </Component294>
-              )}
-            </Er>
+          {c.length > 0 && (
+            <Component294 className={`stored-identity-grid`}>
+              {c.map(([label,value]) => (
+                <_Component13 title={label} value={value} key={label} />
+              ))}
+            </Component294>
           )}
 
           {deleteError && <p className={`form-error`} role={`alert`}>{deleteError}</p>}
