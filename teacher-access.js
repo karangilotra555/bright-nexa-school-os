@@ -94,18 +94,20 @@
   function display(id,show){$(id).classList.toggle('hidden',!show);}
   // One focused form at a time: sign in, owner registration, recovery, or activation.
   function showAuthView(view){
-    const login=view==='login',signup=view==='signup',forgot=view==='forgot',activation=view==='activation';
+    const login=view==='login',signup=view==='signup',forgot=view==='forgot',activation=view==='activation',teacherFirst=view==='teacher-first-password';
     display('loginForm',login);
     display('ownerSignupForm',signup);
     display('forgotPasswordForm',forgot);
     display('activation',activation);
+    display('teacherFirstPasswordPanel',teacherFirst);
     display('forgotPasswordLink',login);
     display('authFootnote',login);
     if(!login)display('savedSessionPanel',false);
-    put('authHeading',signup?'Create your account':forgot?'Reset your password':activation?'Secure account activation':view==='school'?'Set up your school':'Welcome back');
+    put('authHeading',signup?'Create your account':forgot?'Reset your password':activation?'Secure account activation':teacherFirst?'Secure your Teacher App account':view==='school'?'Set up your school':'Welcome back');
     put('authDescription',signup?'Create your school owner account. You can set up your school after verifying your email.'
       :forgot?'Enter your registered email and we will send you a secure reset link.'
       :activation?'Choose a secure password to finish your account setup.'
+      :teacherFirst?'Your registered mobile number was a one-time initial password. Set a private password now to continue.'
       :view==='school'?'Your email is verified. Complete your school setup below.'
       :'Sign in to access your school\'s workspace.');
   }
@@ -407,62 +409,45 @@
     panel.append(title,info,button,submit,status);
     container.prepend(panel);
   }
-  // School-admin assisted activation for accounts never used in Auth. Supabase
-  // generates a one-time recovery URL server-side; no SMTP or admin key in UI.
+  // Owner-managed initial mobile login: never exposes service keys or mobile
+  // numbers. Already-used teacher passwords are never overwritten.
   function installTeacherActivationControl(){
-    const old=$('bnTeacherActivationAdmin');
-    if(old)old.remove();
+    $('bnTeacherActivationAdmin')?.remove();
     if(!isAdmin())return;
-    const host=$('portalSection');
-    if(!host)return;
+    const host=$('portalSection');if(!host)return;
     const panel=document.createElement('section');
     panel.id='bnTeacherActivationAdmin';
     panel.style.cssText='margin:16px auto;max-width:920px;border:1px solid #bad2e9;background:#f2f8fd;border-radius:13px;padding:17px;color:#122c47';
-    const heading=dom('h3','Teacher App · Activate without email');
+    const heading=dom('h3','Teacher App · First login using mobile number');
     heading.style.cssText='font-size:18px;margin:0 0 7px';
-    const desc=dom('p','For a school-invited teacher who has never signed in. Generate a secure one-time activation link from this verified School Admin session. No invitation email is required.');
+    const desc=dom('p','After Create / Sync Teacher App Access, a new teacher logs in with registered email and the 10-digit mobile number in the saved faculty profile. First login requires a private password. Use this control for a teacher invited before mobile login was enabled.');
     desc.style.cssText='font-size:13px;margin:0 0 10px';
     const input=document.createElement('input');
     input.type='email';input.placeholder='Teacher email from faculty profile';
-    input.setAttribute('aria-label','Teacher email for activation link');
+    input.setAttribute('aria-label','Teacher email to enable first mobile login');
     input.autocomplete='off';input.style.cssText='padding:10px;min-width:220px;max-width:340px;width:100%;margin-right:9px';
-    const button=dom('button','Generate one-time activation link');
+    const button=dom('button','Enable first mobile login');
     button.type='button';button.style.cssText='border-radius:9px;padding:10px 12px';
-    const details=dom('div');
-    details.setAttribute('role','status');
+    const details=dom('div');details.setAttribute('role','status');
     details.style.cssText='font-size:13px;margin-top:10px;overflow-wrap:anywhere';
-    let lastUrl='';
     button.addEventListener('click',async()=>{
       const email=input.value.trim().toLowerCase();
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-        details.textContent='Enter a valid teacher email.';return;
-      }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){details.textContent='Enter a valid teacher email.';return;}
       if(!isAdmin())return;
-      button.disabled=true;details.replaceChildren(dom('span','Checking active teacher access...'));
+      button.disabled=true;details.textContent='Verifying saved faculty and cloud account...';
       try{
         await ensureToken();
         const response=await timedCloudFetch(BASE+'/functions/v1/school-invite-staff',{
           method:'POST',
           headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
-          body:JSON.stringify({action:'activation_link',role:'teacher',email}),
-          cache:'no-store'
+          body:JSON.stringify({action:'initial_mobile_password',role:'teacher',email}),cache:'no-store'
         });
-        const payload=await responseJson(response);
-        if(!payload.ok||!payload.activationUrl)throw Error('Auth activation link was not confirmed.');
-        const url=new URL(payload.activationUrl);
-        if(url.protocol!=='https:'||url.hostname!=='mrfvbwmyxndrakskqyas.supabase.co'
-          ||url.pathname!=='/auth/v1/verify')throw Error('Supabase returned an invalid activation URL.');
-        lastUrl=url.href;
-        const note=dom('p','One-time link created. No email was sent. Open privately and set a password. Do not share publicly.');
-        const open=dom('a','Open secure activation link');
-        open.href=lastUrl;open.target='_blank';open.rel='noopener noreferrer';
-        const copy=dom('button','Copy link');copy.type='button';copy.style.marginLeft='10px';
-        copy.addEventListener('click',async()=>{
-          try{await navigator.clipboard.writeText(lastUrl);copy.textContent='Copied';}
-          catch(_){copy.textContent='Copy blocked — open the link';}
-        });
-        details.replaceChildren(note,open,copy);
-      }catch(err){details.replaceChildren(dom('span',err.message||'Could not generate activation link.'));lastUrl='';}
+        const result=await responseJson(response);
+        if(!result.ok)throw Error('Supabase did not confirm teacher login setup.');
+        details.textContent=result.initialMobilePassword
+          ?'First login is ready. Teacher enters registered email + 10-digit mobile number, then must choose a new private password.'
+          :'This teacher already activated an account. Existing password was preserved; use the usual password or secure reset.';
+      }catch(error){details.textContent=error.message||'Could not set initial teacher login.';}
       finally{button.disabled=false;}
     });
     panel.append(heading,desc,input,button,details);
@@ -473,6 +458,12 @@
     await ensureToken();
     identity=await responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{headers:{
       apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'}));
+    if(identity.app_metadata?.bn_teacher_mobile_pending===true){
+      display('portalSection',false);display('loginSection',true);display('logout',true);
+      showAuthView('teacher-first-password');
+      notify('First Teacher App login: replace your temporary mobile-number password before using school modules.');
+      return;
+    }
     const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status,display_name',auth_user_id:eq(identity.id)}));
     if(thisLoad!==schoolLoadEpoch)return;
     const active=memberships.filter(x=>x.auth_user_id===identity.id&&x.status==='active');
@@ -1455,6 +1446,32 @@
     display('activation',false);notify('Password set. You can now sign in.');
     await load();
   })});
+
+  $('teacherFirstPasswordForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
+    if(!session)throw Error('Session expired. Sign in again with your initial mobile password.');
+    const form=e.currentTarget,button=$('teacherFirstPasswordSubmit');
+    const password=$('teacherFirstNewPassword').value;
+    const confirm=$('teacherFirstConfirmPassword').value;
+    if(password.length<12||password.length>128||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))
+      throw Error('New password must have 12–128 characters, letters and digits.');
+    if(password!==confirm)throw Error('New passwords do not match.');
+    button.disabled=true;
+    try{
+      await ensureToken();
+      const result=await responseJson(await timedCloudFetch(BASE+'/functions/v1/school-invite-staff',{
+        method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({action:'complete_teacher_mobile_password',newPassword:password}),cache:'no-store'
+      }));
+      if(!result.ok||result.status!=='password_changed_sign_in_again')
+        throw Error('Password change was not verified by Supabase.');
+      const accessToken=session.access_token;
+      await timedCloudFetch(BASE+'/auth/v1/logout',{
+        method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+accessToken}
+      }).catch(()=>{});
+      dropSession();
+      notify('Teacher password changed successfully. Sign in again with your email and your new password.');
+    }finally{form.reset();button.disabled=false;}
+  })});
   async function apiAuthUserUpdate(password,currentPassword,accessToken){
     await ensureToken();
     return responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{method:'PUT',headers:{apikey:APIKEY,Authorization:'Bearer '+(accessToken||session.access_token),'Content-Type':'application/json'},body:JSON.stringify(currentPassword?{password,current_password:currentPassword}:{password})}));
@@ -1637,7 +1654,7 @@
     e.target.reset();await reload();
     const invited=allStaff.find(st=>st.email?.toLowerCase()===invEmail.toLowerCase());
     if(invName&&invited)await updateStaffName(invited,invName);
-    notify('Invitation requested for '+(invName?invName+' ('+r.email+')':r.email)+'. Check email activation.');
+    notify(invRole==='teacher'?'Teacher App access synced for '+r.email+'. First password is the registered 10-digit teacher mobile number (new accounts only). First sign-in requires a password change.':'Invitation requested for '+(invName?invName+' ('+r.email+')':r.email)+'. Check email activation.');
   })});
   $('classForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');
@@ -1658,7 +1675,7 @@
       can_assign_homework:$('permHomework').checked,
       can_enter_marks:$('permMarks').checked
     };
-    if(!allStaff.some(s=>s.id===rec.school_user_id&&s.role==='teacher'&&s.status==='active'))throw Error('Select an active teacher whose email activation is complete.');
+    if(!allStaff.some(s=>s.id===rec.school_user_id&&s.role==='teacher'&&s.status==='active'))throw Error('Select an active teacher whose Teacher App account is active.');
     if(!allClasses.some(c=>c.id===rec.class_id))throw Error('Select an existing class.');
     await api('school_teacher_assignments','','POST',rec);
     await reload();notify('Teacher assignment saved.');
