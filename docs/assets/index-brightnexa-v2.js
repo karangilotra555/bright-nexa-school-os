@@ -23408,7 +23408,7 @@ function Wr({
   const Component446 = `div`;
   const Component447 = `div`;
   const Component448 = `div`;
-  return /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component437, { className: `attendance-controls` }, /* @__PURE__ */ w.createElement(R, { label: `Attendance Date` }, /* @__PURE__ */ w.createElement(
+  return /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(Component437, { className: `attendance-controls bn-staff-attendance-controls` }, /* @__PURE__ */ w.createElement(R, { label: `Attendance Date` }, /* @__PURE__ */ w.createElement(
     Component425,
     {
       type: `date`,
@@ -23421,7 +23421,8 @@ function Wr({
   )), /* @__PURE__ */ w.createElement(Component434, { className: `attendance-totals` }, /* @__PURE__ */ w.createElement(Component427, null, `Active Staff `, /* @__PURE__ */ w.createElement(Component426, null, s2.length)), /* @__PURE__ */ w.createElement(Component429, { className: `present` }, `Present `, /* @__PURE__ */ w.createElement(Component428, null, s2.filter((e3) => p2(e3.id) === `Present`).length)), /* @__PURE__ */ w.createElement(Component431, { className: `absent` }, `Absent `, /* @__PURE__ */ w.createElement(Component430, null, s2.filter((e3) => p2(e3.id) === `Absent`).length)), /* @__PURE__ */ w.createElement(Component433, null, `Paid Leave `, /* @__PURE__ */ w.createElement(Component432, null, s2.filter((e3) => p2(e3.id) === `Paid Leave`).length))), /* @__PURE__ */ w.createElement(
     Component435,
     {
-      className: `primary-button`,
+      type: `button`,
+      className: `primary-button bn-staff-attendance-save`,
       disabled: !s2.length || !!a2 || attendanceSaving,
       onClick: async () => {
         if (a2 || attendanceSaving) return;
@@ -23471,10 +23472,12 @@ function Wr({
     },
     /* @__PURE__ */ w.createElement(_Component17, { size: 16 }),
     u2 ? `Saved` : `Save Marked Records`
-  ), attendanceSaveMessage && /* @__PURE__ */ w.createElement("p", { role: "status", "aria-live": "polite", className: "section-helper" }, attendanceSaveMessage), f2.length > 0 && /* @__PURE__ */ w.createElement(
+  ), attendanceSaveMessage && /* @__PURE__ */ w.createElement("p", { role: "status", "aria-live": "polite", className: "section-helper bn-staff-attendance-status" }, attendanceSaveMessage), f2.length > 0 && /* @__PURE__ */ w.createElement(
     Component436,
     {
-      className: `danger-button`,
+      type: `button`,
+      className: `secondary-button danger bn-attendance-delete bn-staff-attendance-delete`,
+      title: `Delete saved ${n2.toLowerCase()} attendance for ${r2}`,
       onClick: () => {
         if (!!f2.length && !!window.confirm(
           `Delete ${n2.toLowerCase()} attendance for ${r2}?`
