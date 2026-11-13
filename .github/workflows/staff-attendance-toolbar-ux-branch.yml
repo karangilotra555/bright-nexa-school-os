@@ -1,0 +1,21 @@
+name: Staff attendance toolbar regression
+on:
+  push:
+    branches:
+      - fix/staff-attendance-toolbar-ux-20261114
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Staff attendance UX and cloud save regression
+        run: node --test tests/staff-attendance-toolbar-ux.test.cjs tests/attendance-confirmed-save-regression.test.cjs tests/attendance-erp-tab-refresh.test.cjs
+      - name: Verify production release
+        run: npm run build
