@@ -24629,7 +24629,9 @@ function Ur({
         )}
         {p.length > 0 && (
           <Component412
-            className={`danger-button`}
+            type={`button`}
+            className={`secondary-button danger bn-attendance-delete`}
+            title={`Delete saved attendance only for the selected class and date`}
             onClick={() => {
               if (
                 !p.length ||
@@ -43407,6 +43409,14 @@ function Ds() {
             <Component2075 className={`search-box`}>
               <$e size={18} />
               <Component2073
+                type={`search`}
+                name={`bn-school-record-lookup`}
+                autoComplete={`off`}
+                autoCorrect={`off`}
+                autoCapitalize={`none`}
+                spellCheck={false}
+                data-lpignore={`true`}
+                aria-label={`Search school records`}
                 ref={searchInputRef}
                 value={globalSearch}
                 onChange={(e) => {
