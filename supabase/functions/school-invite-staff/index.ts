@@ -126,6 +126,34 @@ Deno.serve(async (req:Request)=>{
     const email=norm(body?.email).toLowerCase(),role=norm(body?.role);
     if(!validEmail(email) || !roles.has(role))return reply({error:"Valid staff email and role required"},400);
     const facultyId=norm(body?.facultyId);
+    if (body?.action === "deactivate") {
+      if (role !== "teacher" || !facultyId)
+        return reply({error:"Verified faculty ID and teacher role are required to deactivate App access."},400);
+      const {data:linked,error:linkError}=await admin.from("school_staff_profiles")
+        .select("school_user_id").eq("institution_id",member.institution_id)
+        .eq("notes","ERP faculty ref: "+facultyId).maybeSingle();
+      if(linkError)return reply({error:"Could not verify faculty account linkage"},500);
+      const query=admin.from("school_users").select("id,email,role,status")
+        .eq("institution_id",member.institution_id).eq("role","teacher");
+      const {data:account,error:accountError}=linked?.school_user_id
+        ? await query.eq("id",linked.school_user_id).maybeSingle()
+        : await query.eq("email",email).maybeSingle();
+      if(accountError)return reply({error:"Could not verify Teacher App membership"},500);
+      if(!account)return reply({ok:true,role,email,status:"not-enrolled"},200);
+      if(account.email.toLowerCase() !== email)
+        return reply({error:"ERP faculty email does not match the linked Teacher App account"},409);
+      const {error:disabledError}=await admin.from("school_users").update({status:"disabled"})
+        .eq("id",account.id).eq("institution_id",member.institution_id).eq("role","teacher");
+      if(disabledError)return reply({error:"Could not disable Teacher App membership"},500);
+      const {error:assignmentError}=await admin.from("school_teacher_assignments")
+        .update({active:false}).eq("institution_id",member.institution_id).eq("school_user_id",account.id);
+      if(assignmentError)return reply({error:"Teacher login disabled but assignment revocation needs administrator review."},500);
+      await admin.from("school_audit_events").insert({
+        institution_id:member.institution_id,actor_id:member.id,
+        action:"staff.disabled",entity:"school_users",entity_id:account.id
+      });
+      return reply({ok:true,email,role,status:"disabled"},200);
+    }
     let facultyProfile:Awaited<ReturnType<typeof teacherContext>>|null=null;
     if(role==="teacher"){
       try {facultyProfile=await teacherContext(admin,member.institution_id,facultyId,email);}
