@@ -151,7 +151,7 @@ test('TDD: all served entrypoints load the AI client before the actual React bun
   const verifiedEntry=html.indexOf('school-erp-entry.js?v=');
   assert.ok(client>0&&verifiedEntry>client,'AI client must load before the verified school entry: '+prefix);
   const bootstrap=fs.readFileSync(prefix+'school-erp-entry.js','utf8');
-  assert.ok(bootstrap.includes('assets/index-brightnexa-v2.js?v=20261111-portrait-compact-v1'));
+  assert.match(bootstrap,/assets\/index-brightnexa-v2\.js\?v=[0-9]{8}-[a-z0-9-]+/);
   assert.ok(bootstrap.includes('school_workspace_pull'));
   const js=fs.readFileSync(prefix+'assets/index-brightnexa-v2.js','utf8');
   assert.match(js,/BNSmartToolsAI/);
