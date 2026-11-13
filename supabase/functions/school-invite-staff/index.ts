@@ -120,7 +120,7 @@ Deno.serve(async (req:Request)=>{
     const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:member,error:memberError}=await admin.from("school_users")
       .select("id,institution_id,role,status")
-      .eq("auth_user_id",identity.user.id).eq("role","school_admin").eq("status","active").maybeSingle();
+      .eq("auth_user_id",identity.user.id).eq("role", "school_admin").eq("status","active").maybeSingle();
     if(memberError || !member) return reply({error:"School administrator access required"},403);
     const body=await req.json().catch(()=>null);
     const email=norm(body?.email).toLowerCase(),role=norm(body?.role);
