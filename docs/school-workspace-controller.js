@@ -21,7 +21,7 @@
   function fingerprint(value){return hashCanonical(canonical(value));}
   function institutionId(s){return s&&s.institution&&s.institution.institution&&s.institution.institution.id;}
   function create(options){
-    var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve(), missingPendingRecovery=false, retryTimer=null, retryFailures=0;
+    var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve(), missingPendingRecovery=false, retryTimer=null, retryFailures=0, conflictRecheck=null;
     // Retry only transient errors. Cloud revision conflicts, school identity,
     // invalid projections, RLS and missing recovery backups require intervention.
     function transient(error){
@@ -56,11 +56,27 @@
       return true;
     }
     function resumeOnline(){
-      if(disposed||status==='conflict'||!binding||!record?.pending)return;
+      if(disposed)return;
+      if(status==='conflict'){void recheckConflict();return;}
+      if(!binding||!record?.pending)return;
       clearRetry();
       Promise.resolve(flush()).catch(function(error){failed(error);});
     }
-    if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('online',resumeOnline);
+    // A second School OS tab may commit a newer revision while this one is
+    // idle. Recheck safely on focus or storage notification instead of keeping
+    // the stale conflict banner forever. This never automatically pushes edits.
+    function resumeFocus(){if(!disposed&&status==='conflict')void recheckConflict();}
+    function siblingWorkspaceChange(event){
+      if(disposed||!binding||!event?.key||
+        event.key!==recordKey(binding)&&event.key!==bindingKey(binding.localId))return;
+      if(!consistent())conflict(error('Another School OS tab updated this workspace. Verifying the cloud copy before continuing.'));
+      if(status==='conflict')void recheckConflict();
+    }
+    if(typeof window!=='undefined'&&window.addEventListener){
+      window.addEventListener('online',resumeOnline);
+      window.addEventListener('focus',resumeFocus);
+      window.addEventListener('storage',siblingWorkspaceChange);
+    }
     function bindingKey(id){return PREFIX+'binding.'+encodeURIComponent(id);}
     function recordKey(b){return PREFIX+'school.'+encodeURIComponent(b.localId)+'.'+encodeURIComponent(b.schoolId);}
     function state(){return {status:status,binding:!!binding,schoolId:binding&&binding.schoolId,localId:binding&&binding.localId,revision:record&&record.revision,pending:!!(record&&(record.pending||record.pendingRef)),error:lastError};}
@@ -387,12 +403,71 @@
       binding={schoolId:String(schoolId),localId:String(id)};record={revision:remote.revision,pending:snapshot};
       await persist();storage.setItem(bindingKey(binding.localId),JSON.stringify(binding));notify('pending');return flush();
     }
+    // Diagnose a conflict without overwriting a student, teacher, fee, or
+    // pending edit. Reconcile ONLY when the verified owner has the same school
+    // open, both copies are tenant-matched, and the shared metadata has no
+    // unresolved pending upload.
+    async function recheckConflict(){
+      if(disposed||status!=='conflict'||!binding||!record||
+        missingPendingRecovery||record.pending||record.pendingRef||
+        !verifiedExplicitOpen()||typeof o.client.readback!=='function')
+        return state();
+      if(conflictRecheck)return conflictRecheck;
+      conflictRecheck=(async function(){
+        var b=binding,r=record,start=generation,snapshot=clone(o.getSnapshot());
+        if(String(institutionId(snapshot))!==b.localId)return state();
+        var localFingerprint=fingerprint(snapshot),atStart=storage.getItem(recordKey(b));
+        if(!atStart||storage.getItem(bindingKey(b.localId))!==JSON.stringify(b))return state();
+        var newest;
+        try{newest=JSON.parse(atStart);}catch(_){return state();}
+        if(!newest||newest.pending||newest.pendingRef||
+          !Number.isSafeInteger(newest.revision)||newest.revision<0)return state();
+        try{
+          var remote=await o.client.readback(b.schoolId);
+          if(!remote?.snapshot||!Number.isSafeInteger(remote.revision)||
+            String(institutionId(remote.snapshot))!==b.localId)
+            throw error('Cloud school identity or readback could not be verified. No local records changed.');
+          if(disposed||start!==generation||binding!==b||record!==r||
+            fingerprint(o.getSnapshot())!==localFingerprint||
+            storage.getItem(recordKey(b))!==atStart||
+            storage.getItem(bindingKey(b.localId))!==JSON.stringify(b))
+            return state();
+          if(newest.revision>remote.revision)
+            throw error('Another tab has newer recovery metadata than Supabase. No edits were replaced.');
+          if(fingerprint(remote.snapshot)===localFingerprint){
+            // Byte-for-byte identical local and raw cloud snapshots: stale
+            // checksum/revision metadata was the only problem.
+            if(disk!==atStart){record=newest;disk=atStart;}
+            await persist({...record,revision:remote.revision,fingerprint:localFingerprint,
+              pending:null,pendingRef:null});
+            if(!consistent())throw changed();
+            notify('synced');
+            return state();
+          }
+          if(localFingerprint===r.fingerprint&&
+            !r.pending&&!r.pendingRef){
+            // Clean old tab, newer cloud data: use the existing guarded backup
+            // + cloud hydration path. If another tab writes mid-flight,
+            // watch() aborts, preserving BOTH versions.
+            await openSchool(b.schoolId);
+            return state();
+          }
+          // An actual local-only change cannot be merged safely without a
+          // common base snapshot. Never label it synced or silently discard it.
+          conflict(error('Local edits differ from the verified cloud records. Recheck cannot merge them safely. Use backup-first recovery after reviewing the unsent edits.'));
+        }catch(e){
+          if(status==='conflict')conflict(e);
+        }
+        return state();
+      })();
+      try{return await conflictRecheck;}finally{conflictRecheck=null;}
+    }
     async function sync(){
       if(!binding)return state();
       if(!sameInstitution(o.getSnapshot())){binding=null;record=null;notify('local');return state();}
-      if(status==='conflict')return state();
+      if(status==='conflict')return recheckConflict();
       if(record.pending)return flush();
-      if(!consistent()){conflict();return state();}
+      if(!consistent()){conflict();return recheckConflict();}
       var start=generation,b=binding,r=record;
       try{
         var remote=await o.client.pull(b.schoolId);
@@ -425,7 +500,7 @@
       return state();
     }
     function disconnect(){clearRetry();++generation;if(binding)storage.removeItem(bindingKey(binding.localId));binding=null;record=null;disk=null;notify('local');return state();}
-    function dispose(){disposed=true;clearRetry();if(typeof window!=='undefined'&&window.removeEventListener)window.removeEventListener('online',resumeOnline);++generation;binding=null;record=null;disk=null;if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(null);if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRecover)window.BNWorkspaceOnlineGuard.setRecover(null);}
+    function dispose(){disposed=true;clearRetry();if(typeof window!=='undefined'&&window.removeEventListener){window.removeEventListener('online',resumeOnline);window.removeEventListener('focus',resumeFocus);window.removeEventListener('storage',siblingWorkspaceChange);}++generation;binding=null;record=null;disk=null;if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(null);if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRecover)window.BNWorkspaceOnlineGuard.setRecover(null);}
     if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRetry)window.BNWorkspaceOnlineGuard.setRetry(function(){return sync();});
     if(typeof window!=='undefined'&&window.BNWorkspaceOnlineGuard?.setRecover)window.BNWorkspaceOnlineGuard.setRecover(function(){return recoverCloudSchool();});
     return {dispose:dispose,initialize:initialize,openSchool:openSchool,uploadLocal:uploadLocal,autosave:autosave,sync:sync,recoverCloudSchool:recoverCloudSchool,disconnect:disconnect,state:state,connect:function(){return o.client.connect();}};
