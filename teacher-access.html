@@ -116,7 +116,7 @@ body.bn-owner-timetable #ownerTimetableNav span{font-size:12px;color:#61758f}
 .login #authHeading{font-size:29px;letter-spacing:-.7px;margin:0 0 8px}
 .login #authDescription{font-size:14px;line-height:1.65;margin-bottom:24px}
 .login form label{font-size:13px;margin-bottom:8px}
-.login #loginForm input,.login #ownerSignupForm input,.login #forgotPasswordForm input{min-height:48px;border:1px solid #d6e2ed;border-radius:12px}
+.login #loginForm input,.login #ownerSignupForm input,.login #forgotPasswordForm input,.login #teacherFirstPasswordForm input{min-height:48px;border:1px solid #d6e2ed;border-radius:12px}
 .login form input:focus{border-color:#138ed8;outline:2px solid #138ed827}
 .login .auth-submit{width:100%;min-height:48px;font-size:14px}
 .login .auth-text-link{display:block;margin:14px auto 0;background:none;color:#0b6bac;font-size:13px;border:0;font-weight:750;padding:9px}
@@ -181,7 +181,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
   body:has(#loginSection:not(.hidden)) #publicAuthIntro{padding:12px 16px}
 }
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261112-timetable-fix-v2" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261112-explicit-logout-v2" defer></script><script src="./school-workspace-cloud.js?v=20261113-photo-payload-v2" defer></script><script src="./teacher-access.js?v=20261113-verified-activation-v3" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261112-timetable-fix-v2" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261112-explicit-logout-v2" defer></script><script src="./school-workspace-cloud.js?v=20261113-photo-payload-v2" defer></script><script src="./teacher-access.js?v=20261113-teacher-mobile-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
 <header><div class="bar"><div class="brand"><a id="staffBrandBack" href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> Staff Portal<small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a id="staffBackToErp" href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a id="staffSmartToolsLink" href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
@@ -216,7 +216,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
   <div id="authFootnote" class="auth-signup-cta">
     <p>New school joining Bright Nexa?</p>
     <button id="showOwnerSignup" type="button" class="ghost auth-secondary-button">Create school owner account</button>
-    <small>Teachers and staff sign in with the account provided by their school.</small>
+    <small>Teachers: first password is your registered 10-digit mobile number. Other staff use their school-provided credentials.</small>
   </div>
   <form id="ownerSignupForm" class="hidden" autocomplete="off">
     <div class="inputgroup"><label for="ownerSignupEmail">Owner email address</label><input id="ownerSignupEmail" type="email" required autocomplete="email" placeholder="owner@school.com"></div>
@@ -228,11 +228,22 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
     <div class="inputgroup"><label for="forgotEmail">Registered email address</label><input id="forgotEmail" type="email" autocomplete="email" required placeholder="you@school.com"></div>
     <p class="sub">We'll request a secure reset link for this email. Check your inbox and Spam folder.</p>
     <p id="forgotFeedback" class="bn-reset-feedback hidden" role="status" aria-live="polite"></p>
-    <p class="sub" id="bn-first-time-teacher-help"><strong>First-time Teacher/Staff login?</strong> Password reset cannot create a new account. Your School Admin must first open <a href="./index.html?openSchool=true&amp;tab=Teachers">Teachers</a>, select your faculty profile, and choose <strong>Create / Sync Teacher App Access</strong> to send an invitation. Accept the invitation and set a password before using Forgot Password.</p>
+    <p class="sub" id="bn-first-time-teacher-help"><strong>First-time Teacher/Staff login?</strong> Password reset cannot create a new account. Your School Admin must first open <a href="./index.html?openSchool=true&amp;tab=Teachers">Teachers</a>, select your faculty profile, and choose <strong>Create / Sync Teacher App Access</strong> to enable initial mobile-number login. The teacher then signs in with email + registered mobile and sets a new private password. Other staff follow their invitation email.</p>
     <button id="sendResetEmail" type="submit" class="primary auth-submit">Send reset link</button>
     <button id="returnToLoginFromForgot" type="button" class="auth-text-link auth-back-link">← Back to sign in</button>
   </form>
   <div id="activation" class="hidden"><h3 id="activationTitle">Activate invited account</h3><p id="activationDescription">Set your new password to activate school access.</p><form id="activateForm"><label for="newPassword">New password (minimum 12 characters)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required><button class="primary auth-submit" type="submit" style="margin-top:11px">Activate account</button></form></div>
+  <div id="teacherFirstPasswordPanel" class="hidden">
+    <h3>Change your temporary Teacher App password</h3>
+    <p class="sub">Your registered mobile number was only for first login. Set a new private password now; the mobile number will no longer work.</p>
+    <form id="teacherFirstPasswordForm" autocomplete="off">
+      <label for="teacherFirstNewPassword">New password (12+ characters, letters and numbers)</label>
+      <input id="teacherFirstNewPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+      <label for="teacherFirstConfirmPassword" style="margin-top:13px">Confirm new password</label>
+      <input id="teacherFirstConfirmPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" required>
+      <button id="teacherFirstPasswordSubmit" class="primary auth-submit" type="submit" style="margin-top:15px">Save private password</button>
+    </form>
+  </div>
   <section id="createFirstSchoolPanel" class="hidden" style="margin-top:16px;padding:16px;border:1px solid #c8e2f4;border-radius:12px;background:#f8fafc">
     <h2>Create your school</h2><p class="sub">Set up your school on your verified account. No sample records will be added.</p>
     <div id="localSchoolNotice" class="hidden" style="margin:12px 0;padding:13px;border:1px solid #c8e2f4;border-radius:12px;background:#fff">
