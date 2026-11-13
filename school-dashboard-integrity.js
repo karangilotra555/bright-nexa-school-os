@@ -202,7 +202,14 @@
       '.dashboard-grid .panel-title .icon-button{display:none!important}',
       '.metric-grid .metric-card[data-bn-attendance-note="true"]::after{content:"Recorded entries only · verify coverage";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
       '.metric-grid .metric-card[data-bn-fees-note="true"]::after{content:"Current-month receipts · verify cloud";display:block;font-size:11px;color:#64748b;line-height:1.4;margin-top:5px}',
-      '.metric-grid .metric-card[data-bn-cloud-count]::after{content:attr(data-bn-cloud-count);display:block;font-size:11px;color:#155a83;line-height:1.4;margin-top:5px}'
+      '.metric-grid .metric-card[data-bn-cloud-count]::after{content:attr(data-bn-cloud-count);display:block;font-size:11px;color:#155a83;line-height:1.4;margin-top:5px}',
+      // Metric cloud annotations belong BELOW the primary number, never as
+      // competing flex columns. Keep existing dashboard design and spacing.
+      '.metric-grid .metric-card{flex-wrap:wrap;align-content:flex-start}',
+      '.metric-grid .metric-card>.metric-icon{flex:0 0 43px}',
+      '.metric-grid .metric-card>div:not(.metric-icon){flex:1 1 0;min-width:0}',
+      '.metric-grid .metric-card strong{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word;line-height:1.25}',
+      '.metric-grid .metric-card[data-bn-cloud-count]::after,.metric-grid .metric-card[data-bn-attendance-note]::after,.metric-grid .metric-card[data-bn-fees-note]::after{flex:0 0 calc(100% - 56px);margin:2px 0 0 56px;max-width:calc(100% - 56px);overflow-wrap:break-word;box-sizing:border-box}'
     ].join(' ');
     doc.head.append(style);
   }
