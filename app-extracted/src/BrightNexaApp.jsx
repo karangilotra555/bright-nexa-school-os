@@ -22182,6 +22182,10 @@ function Cr({
           experienceYears: ``,
           salaryFrequency: undefined,
           status: ``,
+          contractEndDate: ``,
+          daysPerWeek: ``,
+          hoursPerDay: ``,
+          visitsPerMonth: ``,
         },
   );
   let [s, c] = (0, w.useState)(a.subjects.join(`, `));
@@ -22315,9 +22319,31 @@ function Cr({
             ...a,
             subjects: r,
           };
-          if (!N(o)) {
-            u(`Enter at least one faculty detail before saving.`);
-            return;
+          if (String(a.name || '').trim().length < 2) {u('Teacher full name (at least 2 characters) is required.');return;}
+          if (!String(a.employeeCode || '').trim()) {u('Employee code is required.');return;}
+          const email = String(a.email || '').trim().toLowerCase();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {u('Enter a valid teacher email address.');return;}
+          if (t.some(row => row.id !== n?.id && String(row.email || '').trim().toLowerCase() === email)) {
+            u('Another teacher already uses this email.');return;
+          }
+          if (!a.joiningDate) {u('Date of Joining is required.');return;}
+          if (!['Active','Inactive'].includes(a.status)) {u('Select the employment status.');return;}
+          if (!['Permanent','Contract','Part-time','Visiting'].includes(a.employmentType)) {u('Select the employment type.');return;}
+          const knownClasses = new Set(e.map(row => `${row.name}-${row.section}`));
+          if ((a.assignedClasses || []).some(value => !knownClasses.has(value))) {
+            u('One or more assigned classes no longer exist. Update teacher assignments.');return;
+          }
+          if (a.employmentType === 'Contract' && (!a.contractEndDate || a.contractEndDate < a.joiningDate)) {
+            u('Contract end date must be on or after joining date.');return;
+          }
+          if (a.employmentType === 'Part-time' &&
+              (!Number.isInteger(Number(a.daysPerWeek)) || Number(a.daysPerWeek) < 1 || Number(a.daysPerWeek) > 7 ||
+              !(Number(a.hoursPerDay) > 0 && Number(a.hoursPerDay) <= 12))) {
+            u('Part-time staff require 1–7 days per week and hours per day up to 12.');return;
+          }
+          if (a.employmentType === 'Visiting' &&
+              (!Number.isInteger(Number(a.visitsPerMonth)) || Number(a.visitsPerMonth) < 1 || Number(a.visitsPerMonth) > 31)) {
+            u('Visiting staff require 1–31 visits per month.');return;
           }
           if (a.mobile && !/^\d{10}$/.test(a.mobile)) {
             u(`Enter a valid 10-digit mobile number.`);
@@ -22337,12 +22363,20 @@ function Cr({
           setSavingToCloud(true);
           u(``);
           try {
+            if (typeof o.photoDataUrl === 'string' && o.photoDataUrl.startsWith('data:image/') &&
+                o.photoDataUrl.length > 300000) {
+              const original = await (await fetch(o.photoDataUrl)).blob();
+              const optimized = await bnOptimizePortrait(new File([original], 'teacher-photo', {type:original.type || 'image/jpeg'}));
+              if (!optimized || optimized.length >= o.photoDataUrl.length)
+                throw Error('Teacher photo is too large. Please re-upload a smaller portrait.');
+              o.photoDataUrl = optimized;
+            }
             await i({
               ...o,
               id: pendingTeacherId.current,
               name: a.name.trim(),
               employeeCode: a.employeeCode.trim(),
-              email: a.email.trim(),
+              email: a.email.trim().toLowerCase(),
               qualification: a.qualification.trim(),
             });
           } catch (error) {
@@ -22471,7 +22505,7 @@ function Cr({
             <R label={`Employment Type`}>
               <Component240
                 value={a.employmentType || ``}
-                onChange={(e) => m(`employmentType`, e.target.value)}
+                onChange={(e) => o(previous => ({...previous,employmentType:e.target.value,contractEndDate:'',daysPerWeek:'',hoursPerDay:'',visitsPerMonth:''}))}
               >
                 <Component235
                   value={``}
@@ -22482,6 +22516,24 @@ function Cr({
                 <Component239>{`Visiting`}</Component239>
               </Component240>
             </R>
+              {a.employmentType === 'Contract' && (
+                <R label={`Contract End Date`}>
+                  <input type="date" value={a.contractEndDate || ''} onChange={e => m('contractEndDate',e.target.value)} />
+                </R>
+              )}
+              {a.employmentType === 'Part-time' && (<>
+                <R label={`Days per Week`}>
+                  <input type="number" min="1" max="7" value={a.daysPerWeek ?? ''} onChange={e => m('daysPerWeek',e.target.value)} />
+                </R>
+                <R label={`Hours per Day`}>
+                  <input type="number" min="0.5" max="12" step="0.5" value={a.hoursPerDay ?? ''} onChange={e => m('hoursPerDay',e.target.value)} />
+                </R>
+              </>)}
+              {a.employmentType === 'Visiting' && (
+                <R label={`Visits per Month`}>
+                  <input type="number" min="1" max="31" value={a.visitsPerMonth ?? ''} onChange={e => m('visitsPerMonth',e.target.value)} />
+                </R>
+              )}
             <R label={`Highest Qualification`}>
               <Component241
                 value={a.qualification}
@@ -22578,7 +22630,7 @@ function Cr({
           <Component258>{`Salary and Bank Information`}</Component258>
           <Component259
             className={`section-helper`}
-          >{`Sensitive payroll information remains on this device and is included only in encrypted backups.`}</Component259>
+          >{`Salary and bank data are part of the authenticated school workspace and may be stored in Supabase. Restrict admin access and protect exports.`}</Component259>
           <Component272 className={`modal-form-grid`}>
             <R label={`Salary Amount`}>
               <Component260
@@ -22800,6 +22852,10 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
     [`Qualification`, e.qualification],
     [`Experience`, e.experienceYears],
     [`Employment Type`, e.employmentType],
+    [`Contract End Date`, e.employmentType === 'Contract' && e.contractEndDate],
+    [`Days / Week`, e.employmentType === 'Part-time' && e.daysPerWeek],
+    [`Hours / Day`, e.employmentType === 'Part-time' && e.hoursPerDay],
+    [`Visits / Month`, e.employmentType === 'Visiting' && e.visitsPerMonth],
     [`Appointment Date`, e.appointmentDate],
     [`Date of Joining`, e.joiningDate],
     [`Subjects`, e.subjects.join(`, `)],
