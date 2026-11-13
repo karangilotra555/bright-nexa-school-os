@@ -2,17 +2,21 @@ name: Page 5 Faculty Build & Regression
 on:
   push:
     branches: [fix/page5-faculty-cloud-20261113]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   page5:
+    if: github.event_name != 'pull_request' || github.head_ref == 'fix/page5-faculty-cloud-20261113'
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: true
+          ref: fix/page5-faculty-cloud-20261113
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
