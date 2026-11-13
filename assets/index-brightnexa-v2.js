@@ -20955,6 +20955,7 @@ function Sr({ data: e2, onUpdate: t2 }) {
     if (!window.confirm(`Delete ${teacher.name || teacher.employeeCode || "this faculty record"}? Teacher App access must be revoked separately.`)) return;
     setTeacherDeleteState({ id: teacher.id, error: "" });
     try {
+      await bnDeactivateTeacherAppAccount(teacher);
       const result = await t2(
         { ...e2, teachers: e2.teachers.filter((row) => row.id !== teacher.id) },
         "DELETE",
@@ -21734,6 +21735,39 @@ async function bnInviteTeacherAppAccount(teacher) {
     throw Error(result?.error || "Supabase did not confirm teacher account enrollment. No invitation success has been recorded.");
   }
   return { email, status: result.status, assignments: Number(result.assignments || 0) };
+}
+async function bnDeactivateTeacherAppAccount(teacher) {
+  const email = String(teacher?.email || "").trim().toLowerCase();
+  if (!teacher?.id || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    throw Error("Teacher must have a saved faculty ID and email to safely revoke App access.");
+  const readSession = (key) => {
+    try {
+      return JSON.parse(sessionStorage.getItem(key) || "null");
+    } catch (_2) {
+      return null;
+    }
+  };
+  const schoolSession = readSession("bn_school_staff_session_v1");
+  const erpAccount = readSession("bright-nexa-school-os:session:v2");
+  const selectedSchool = sessionStorage.getItem("bn_school_staff_selected_school_v1");
+  if (!schoolSession?.access_token || !erpAccount?.cloudVerified || !selectedSchool || String(erpAccount.institutionId) !== selectedSchool)
+    throw Error("Verified school admin session required to revoke Teacher App access.");
+  if (Number(schoolSession.expires_at || 0) <= Date.now() / 1e3 + 10)
+    throw Error("School admin session expired. Sign in again before deleting faculty.");
+  const response = await fetch("https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-invite-staff", {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      apikey: "sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT",
+      Authorization: "Bearer " + schoolSession.access_token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, role: "teacher", facultyId: String(teacher.id), action: "deactivate" })
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.ok || !["disabled", "not-enrolled"].includes(payload?.status))
+    throw Error(payload?.error || "Teacher App access could not be revoked. Faculty deletion stopped for safety.");
+  return payload;
 }
 function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, deleteBusy = false, deleteError = "" }) {
   let i2 = e2.name || e2.employeeCode || `Faculty Record`;
