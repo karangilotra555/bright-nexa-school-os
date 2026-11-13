@@ -236,7 +236,10 @@ function verifySessionToken(token) {
 
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
+    // The legacy DOB-only student login must never produce a usable session.
+    // This Node API is now admin-only; Student/Parent logins use Supabase Auth.
+    if (!['OWNER', 'ADMIN'].includes(data.role)) return null;
+    if (!Number.isFinite(data.exp) || data.exp <= Math.floor(Date.now() / 1000)) return null;
     return data;
   } catch (e) {
     return null;
@@ -410,18 +413,21 @@ const server = http.createServer(async (req, res) => {
     }
 
     const student = db.prepare('SELECT * FROM students WHERE admissionNumber = ? OR id = ?').get(adm, adm);
-    if (!student) {
-      logAudit('VERIFY_NOT_FOUND', clientIp, { adm });
-      return sendJson(res, 404, {
+    const inst = getInstitution();
+    const verResult = student && sig
+      ? ca.verifyStudentSignature(student, inst, sig)
+      : { verified: false, algorithm: 'NONE', certificateId: null };
+    // A valid QR signature is required even to establish that a student
+    // exists. Do not reveal identity, admission number, enrolment status,
+    // or which part of verification failed without that proof.
+    if (!verResult.verified) {
+      logAudit('VERIFY_PROOF_REJECTED', clientIp, { hasSignature: Boolean(sig) });
+      return sendJson(res, 200, {
         verified: false,
-        status: "RECORD_NOT_FOUND",
-        message: `No active student found matching Admission ID "${adm}".`,
-        admissionNumber: adm
+        status: 'SIGNATURE_MISMATCH',
+        message: 'This credential could not be verified.'
       });
     }
-
-    const inst = getInstitution();
-    const verResult = sig ? ca.verifyStudentSignature(student, inst, sig) : { verified: false, algorithm: 'NONE', certificateId: null };
 
     // Check enrollment active status
     const isActive = student.enrollmentStatus === 'ACTIVE';
@@ -467,92 +473,12 @@ const server = http.createServer(async (req, res) => {
   // 3. Parent Portal Authentication API (Constant-Time + Rate Limited)
   // -------------------------------------------------------------
   if (pathname === '/api/auth/login' && req.method === 'POST') {
-    // Artificial jitter to mitigate automated timing & brute force (200ms)
-    await new Promise(r => setTimeout(r, 200));
-
-    try {
-      const { admissionNumber, dob } = await parseJsonBody(req);
-      const cleanAdm = typeof admissionNumber === 'string' ? admissionNumber.trim() : '';
-      const cleanDob = typeof dob === 'string' ? dob.trim() : '';
-
-      if (!cleanAdm || !cleanDob || cleanAdm.length > 80 || cleanDob.length > 40) {
-        return sendJson(res, 400, { error: 'A valid admission number and date of birth are required.' });
-      }
-
-      // All identity and DOB mismatches return one public response. Do not
-      // disclose whether a student exists, is inactive or has a DOB on file.
-      const rejectLogin = (reason, details = {}) => {
-        recordRateLimitFailure(`ip:${clientIp}`);
-        recordRateLimitFailure(`adm:${cleanAdm.toUpperCase()}`);
-        logAudit(reason, clientIp, { adm: cleanAdm, ...details });
-        return sendJson(res, 401, {
-          error: 'Invalid admission number or date of birth, or account unavailable. Contact the school office if needed.'
-        });
-      };
-
-      // Check IP rate limit
-      const ipLim = checkRateLimit(`ip:${clientIp}`, 10, 900);
-      if (!ipLim.allowed) {
-        logAudit('LOGIN_RATE_LIMITED_IP', clientIp, { ip: clientIp });
-        return sendJson(res, 429, {
-          error: "Too many login attempts from this network. Access temporarily suspended for 15 minutes."
-        }, { 'Retry-After': String(ipLim.retryAfter || 900) });
-      }
-
-      // Check Admission ID rate limit
-      const admLim = checkRateLimit(`adm:${cleanAdm.toUpperCase()}`, 5, 900);
-      if (!admLim.allowed) {
-        logAudit('LOGIN_RATE_LIMITED_ADM', clientIp, { adm: cleanAdm });
-        return sendJson(res, 429, {
-          error: `Account temporarily locked due to 5 consecutive failed login attempts. Please retry after ${Math.ceil((admLim.retryAfter || 900) / 60)} minutes.`
-        }, { 'Retry-After': String(admLim.retryAfter || 900) });
-      }
-
-      // Only the actual admission number is a login identifier. Never allow
-      // internal numeric row IDs to bypass the admission-number requirement.
-      const student = db.prepare('SELECT * FROM students WHERE admissionNumber = ?').get(cleanAdm);
-      if (!student) return rejectLogin('LOGIN_FAILED_NOT_FOUND');
-
-      // A withdrawn/inactive student must never obtain a valid portal session.
-      if (String(student.enrollmentStatus || '').toUpperCase() !== 'ACTIVE') {
-        return rejectLogin('LOGIN_BLOCKED_INACTIVE');
-      }
-      const studentDobNorm = ca.normalizeDate(student.dob || '');
-      if (!studentDobNorm) return rejectLogin('LOGIN_BLOCKED_NO_DOB');
-      const enteredDobNorm = ca.normalizeDate(cleanDob);
-      if (!enteredDobNorm || !timingSafeCompare(enteredDobNorm, studentDobNorm)) {
-        return rejectLogin('LOGIN_FAILED_WRONG_DOB');
-      }
-
-      // A correct login clears only that admission number's failures. Retain
-      // network-wide IP throttling to prevent one valid account from resetting
-      // brute-force attempts against other students.
-      resetRateLimit(`adm:${cleanAdm.toUpperCase()}`);
-
-      const token = createSessionToken(student);
-      logAudit('LOGIN_SUCCESS', clientIp, { adm: student.admissionNumber });
-
-      return sendJson(res, 200, {
-        token: token,
-        student: {
-          id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          admissionNumber: student.admissionNumber,
-          className: student.className,
-          section: student.section,
-          fatherName: student.fatherName,
-          contactNumber: student.contactNumber,
-          bloodGroup: student.bloodGroup,
-          dob: student.dob,
-          address: student.address,
-          busStop: student.busStop,
-          enrollmentStatus: student.enrollmentStatus
-        }
-      });
-    } catch (err) {
-      return sendJson(res, 400, { error: err.message });
-    }
+    // Passwordless DOB knowledge cannot authenticate a student or guardian.
+    // Use the existing combined Student & Parent Supabase password login.
+    return sendJson(res, 410, {
+      error: 'Use Student & Parent Login with your password.',
+      loginUrl: '/parents.html'
+    });
   }
 
   // -------------------------------------------------------------
