@@ -123,7 +123,8 @@
     toggle.style.display=lesson?'inline-flex':'none';
     var expanded=workbench.getAttribute('data-bn-ai-options')==='expanded';
     toggle.setAttribute('aria-expanded',expanded?'true':'false');
-    toggle.textContent=expanded?'Fewer options':'More options';
+    var text=expanded?'Fewer options':'More options';
+    if(toggle.textContent!==text)toggle.textContent=text;
     var grid=builder.querySelector('.ai-input-grid');
     if(!grid)return;
     var previous=grid.querySelectorAll('[data-bn-ai-advanced]');
