@@ -148,3 +148,23 @@ test('Timetable produces class/day/period matrix for user readability',()=>{
  assert.match(fn,/Free \/ Study/);
  assert.match(fn,/lesson\.teacher/);
 });
+
+
+test('production Smart Tools starts with no demo school, teachers, or marks and keeps actions available',()=>{
+ const html=source('smart-tools.html'),js=source('smart-tools-ui.js');
+ assert.match(js,/editor\.teachers=\[\];editor\.demands=\[\];/);
+ const end=js.slice(js.lastIndexOf("editor.teachers=[];editor.demands=[];"));
+ assert.doesNotMatch(end,/loadEditorCsv\(DEMO\./,'production bootstrap must not seed sample teachers');
+ assert.match(end,/renderEditor\(\);invalidateTimetable\(\);/);
+ assert.match(end,/No demo data has been loaded/);
+ for(const sample of ['sampleTimetable','sampleMarks','importSample','sampleErrors']){
+  assert.match(html,new RegExp('id="'+sample+'" hidden'),'Demo-only '+sample+' must stay hidden');
+  assert.ok(js.includes("$('"+sample+"').addEventListener"),sample+' action remains safely wired for regression coverage');
+ }
+ for(const id of ['generateTimetable','findSubstitutes','analyzeMarks','runAudit','addTeacher','addDemand']){
+  assert.ok(html.includes('id="'+id+'"'),id+' is still present');
+ }
+ assert.match(html,/smart-tools-ui\.js\?v=20261113-no-demo-v1/);
+ assert.equal(html,source('docs/smart-tools.html'));
+ assert.equal(js,source('docs/smart-tools-ui.js'));
+});

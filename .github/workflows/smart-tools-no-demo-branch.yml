@@ -1,0 +1,21 @@
+name: Smart Tools clean school regression
+on:
+  push:
+    branches:
+      - fix/smart-tools-no-demo-20261113
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Dependencies
+        run: npm ci
+      - name: Smart Tools and navigation regressions
+        run: node --test tests/smart-school-tools.test.cjs tests/smart-tools-sidebar.test.cjs
+      - name: Verify release integrity
+        run: npm run build

@@ -77,11 +77,12 @@ footer{font-size:12px;color:#8090a2;text-align:center;margin-top:25px}
 @media print{.tt-editor,.tt-step,.tt-advanced{display:none!important}#scheduleTable{display:block!important;border:0}.tt-result-class{break-inside:avoid;page-break-inside:avoid}.tt-result-table{min-width:0}}
 @media(max-width:680px){.two,.three{grid-template-columns:1fr}.card{padding:16px}h1{font-size:22px}.head{padding:0 14px}.tabs button{font-size:12px;padding:10px}.intro{display:block}}
 @media print{header,.tabs,.actions,.banner,.hint,footer,input,textarea,select{display:none!important}main{padding:0}.card{box-shadow:none;border:none}.tablewrap{max-height:none;overflow:visible}table{font-size:9pt}}
+button[hidden]{display:none!important}
 html.school-os-embedded header{display:none}
 html.school-os-embedded main{max-width:none;padding:18px 12px 42px}
 </style>
 <script src="./smart-tools-engine.js" defer></script>
-<script src="./smart-tools-ui.js" defer></script>
+<script src="./smart-tools-ui.js?v=20261113-no-demo-v1" defer></script>
 </head><body>
 <header><div class="head"><div class="brand">Bright Nexa <span style="color:#ff9b49">✦</span> Smart Tools<small>School Intelligence · No paid AI API</small></div><a href="./index.html">← School OS</a></div></header>
 <main>
@@ -125,7 +126,7 @@ html.school-os-embedded main{max-width:none;padding:18px 12px 42px}
 <div><label for="periodsSelect">Periods / day</label><select id="periodsSelect"><option value="4">4 periods</option><option value="5">5 periods</option><option selected value="6">6 periods</option><option value="7">7 periods</option><option value="8">8 periods</option></select></div>
 <div><label for="timetableFilter">Display class</label><select id="timetableFilter"><option value="all">All classes</option></select></div>
 </div>
-<div class="actions"><button id="generateTimetable" class="primary" type="button">Generate Timetable</button><button id="sampleTimetable" class="secondary" type="button">Reset Demo</button><button id="exportTimetable" class="light" type="button" disabled>Export CSV</button><button id="printTimetable" class="light" type="button" disabled>Print</button></div>
+<div class="actions"><button id="generateTimetable" class="primary" type="button">Generate Timetable</button><button id="sampleTimetable" hidden class="secondary" type="button">Reset Demo</button><button id="exportTimetable" class="light" type="button" disabled>Export CSV</button><button id="printTimetable" class="light" type="button" disabled>Print</button></div>
 <div id="scheduleSummary" class="small"></div><div id="scheduleTable" class="tablewrap hidden"></div>
 </section>
 <section class="card hidden" data-view="substitute">
@@ -158,7 +159,7 @@ html.school-os-embedded main{max-width:none;padding:18px 12px 42px}
 <div><label for="threshold">Review threshold</label><select id="threshold"><option value="35">Below 35%</option><option value="40" selected>Below 40%</option><option value="50">Below 50%</option><option value="60">Below 60%</option></select></div>
 <div><label>Required columns in Marks file</label><div class="hint">student_id, student_name, subject, marks, max_marks; optional previous_marks, attendance_percent</div></div>
 </div>
-<div class="actions"><button id="analyzeMarks" class="primary" type="button">Analyze Imported Marks</button><button id="sampleMarks" class="secondary" type="button">Load Demo Marks</button><button id="exportAnalysis" class="light" type="button" disabled>Export Analysis</button></div>
+<div class="actions"><button id="analyzeMarks" class="primary" type="button">Analyze Imported Marks</button><button id="sampleMarks" hidden class="secondary" type="button">Load Demo Marks</button><button id="exportAnalysis" class="light" type="button" disabled>Export Analysis</button></div>
 <div id="performanceMetrics" class="three" style="margin-bottom:14px"></div><div id="performanceTable" class="tablewrap hidden"></div>
 </section>
 <section class="card hidden" data-view="import">
@@ -168,13 +169,13 @@ html.school-os-embedded main{max-width:none;padding:18px 12px 42px}
 <div><label for="datasetType">Data type</label><select id="datasetType"><option value="students">Students / Admissions</option><option value="teachers">Teachers</option><option value="fees">Fee Ledger</option><option value="attendance">Attendance</option><option value="marks">Exam Marks</option></select></div>
 <div><label for="importFile">CSV / XLSX file · max 4MB</label><input type="file" id="importFile" accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>
 </div>
-<div class="actions"><button id="importSample" class="secondary" type="button">Load Sample CSV</button><button id="downloadTemplate" class="light" type="button">Download Template</button><button id="exportClean" class="light" type="button" disabled>Export Mapped CSV</button><button id="clearImports" class="danger" type="button">Clear Browser Data</button></div>
+<div class="actions"><button id="importSample" hidden class="secondary" type="button">Load Sample CSV</button><button id="downloadTemplate" class="light" type="button">Download Template</button><button id="exportClean" class="light" type="button" disabled>Export Mapped CSV</button><button id="clearImports" class="danger" type="button">Clear Browser Data</button></div>
 <div id="importStats" class="three"></div>
 <div id="importMapping" class="small" style="margin:12px 0"></div><div id="importPreview" class="tablewrap hidden"></div>
 </section>
 <section class="card hidden" data-view="errors">
 <h2>School Error Detector</h2><p class="sub">Imported datasets par rule-based checks: duplicate admissions/receipts, missing data, fee mismatches, marks out of range, attendance duplicates. Automatic deletion ya correction nahi hoti.</p>
-<div class="actions"><button id="runAudit" class="primary" type="button">Run Data Audit</button><button id="sampleErrors" class="secondary" type="button">Load Sample Errors</button><button id="exportFindings" class="light" type="button" disabled>Export Findings</button></div>
+<div class="actions"><button id="runAudit" class="primary" type="button">Run Data Audit</button><button id="sampleErrors" hidden class="secondary" type="button">Load Sample Errors</button><button id="exportFindings" class="light" type="button" disabled>Export Findings</button></div>
 <div id="auditStats" class="three"></div><div id="auditTable" class="tablewrap hidden"></div>
 </section>
 <footer>Bright Nexa School OS · Smart Tools pilot · Algorithms, not generative AI · No paid API required</footer>

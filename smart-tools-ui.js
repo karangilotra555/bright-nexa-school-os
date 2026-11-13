@@ -564,6 +564,9 @@ $('clearImports').addEventListener('click',()=>{
 $('runAudit').addEventListener('click',()=>task(audit));
 $('sampleErrors').addEventListener('click',()=>task(()=>{for(const kind of ['students','fees','attendance','marks'])loadDataset(kind,DEMO[kind]);audit()}));
 $('exportFindings').addEventListener('click',()=>task(()=>download('bright-nexa-data-audit.csv',E.toCsv(state.findings,['kind','severity','row','message']))));
-loadEditorCsv(DEMO.teachers,DEMO.demands);
-msg('Smart Tools ready. Start with Generate Timetable, or choose Import to analyze your own CSV / XLSX. No external AI API is used.');
+editor.teachers=[];editor.demands=[];
+$('teachersCsv').value='teacher,subjects,classes,maxdaily,unavailable\n';
+$('demandsCsv').value='class,subject,periods\n';
+renderEditor();invalidateTimetable();
+msg('Smart Tools ready. Add class requirements and teachers, or import your own CSV / XLSX. No demo data has been loaded.');
 })();
