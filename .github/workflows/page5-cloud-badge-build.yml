@@ -2,12 +2,7 @@ name: Page 5 Cloud Status Build
 on:
   push:
     branches: [fix/page5-cloud-status-reliability-20261113]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
-concurrency:
-  group: page5-cloud-badge-build
-  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
