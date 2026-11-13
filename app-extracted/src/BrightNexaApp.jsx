@@ -24832,7 +24832,7 @@ function Wr({
   const Component448 = `div`;
   return (
     <P.Fragment>
-      <Component437 className={`attendance-controls`}>
+      <Component437 className={`attendance-controls bn-staff-attendance-controls`}>
         <R label={`Attendance Date`}>
           <Component425
             type={`date`}
@@ -24868,7 +24868,8 @@ function Wr({
           </Component433>
         </Component434>
         <Component435
-          className={`primary-button`}
+          type={`button`}
+          className={`primary-button bn-staff-attendance-save`}>
           disabled={!s.length || !!a || attendanceSaving}
           onClick={async () => {
             if (a || attendanceSaving) return;
@@ -24921,10 +24922,12 @@ function Wr({
           <_Component17 size={16} />
           {u ? `Saved` : `Save Marked Records`}
         </Component435>
-        {attendanceSaveMessage && <p role="status" aria-live="polite" className="section-helper">{attendanceSaveMessage}</p>}
+        {attendanceSaveMessage && <p role="status" aria-live="polite" className="section-helper bn-staff-attendance-status">{attendanceSaveMessage}</p>}
         {f.length > 0 && (
           <Component436
-            className={`danger-button`}
+            type={`button`}
+            className={`secondary-button danger bn-attendance-delete bn-staff-attendance-delete`}
+            title={`Delete saved ${n.toLowerCase()} attendance for ${r}`}
             onClick={() => {
               if (
                 !!f.length &&

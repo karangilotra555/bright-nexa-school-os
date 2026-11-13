@@ -38,6 +38,6 @@ test('PWA bundles and Cloud Leave mapping are identical across root, docs and de
  assert.match(cloud,/rawStatus==='leave'\?'excused'/);
  assert.match(cloud,/norm\(row\.status\)==='excused'\?\{\.\.\.row,status:'Leave'\}/);
  const html=read('index.html');
- assert.match(html,/school-workspace-cloud\.js\?v=20261111-attendance-leave-v1/);
+ assert.match(html,/school-workspace-cloud\.js\?v=[0-9]{8}-[a-z0-9-]+/,'cloud loader must remain versioned without assuming an obsolete release date');
  assert.match(html,/school-owner-reports\.js\?v=20261111-owner-reports-v2/);
 });
