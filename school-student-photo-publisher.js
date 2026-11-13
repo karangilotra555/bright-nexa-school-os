@@ -39,6 +39,9 @@
   function create(options={}){
     const storage=options.storage||root.sessionStorage;
     const fetcher=options.fetcher||root.fetch?.bind(root);
+    // Reuse the verified owner-only school client to refresh an expired staff
+    // token. Never use privileged keys or refresh another account's session.
+    const schoolClient=options.schoolClient||root.BNWorkspaceCloud?.create?.({sessionStorage:storage})||null;
     const photos=options.photos||(()=>root.BNStudentPhotos?.create({
       base:BASE,key:KEY,token:async()=>session()?.jwt
     }));
@@ -53,6 +56,23 @@
     function sameSession(s){
       const current=session();
       return !!current&&current.schoolId===s.schoolId&&current.jwt===s.jwt;
+    }
+    async function ensurePhotoSession(s){
+      const staff=parse(storage?.getItem(STAFF));
+      const expiry=Number(staff?.expires_at);
+      // Older isolated clients may not record an expiry. Let RLS determine
+      // access without guessing a new session or overriding credentials.
+      if(!Number.isFinite(expiry)||expiry<=0||expiry>Date.now()/1000+90)return;
+      if(typeof schoolClient?.connect!=='function')
+        throw Error('Staff session expired. Sign in to the verified school again before checking photos.');
+      // This checks an active Supabase school_admin membership and handles
+      // refresh-token rotation in the existing authenticated cloud client.
+      const allowed=await schoolClient.connect();
+      const current=session();
+      if(!current||current.schoolId!==s.schoolId||
+        !Array.isArray(allowed)||!allowed.some(row=>row.id===s.schoolId))
+        throw Error('Verified school session changed. Sign in again; no photo was uploaded.');
+      s.jwt=current.jwt;
     }
     async function rows(s,table,filters){
       if(typeof fetcher!=='function')throw Error('Photo sync cannot contact Supabase.');
@@ -87,15 +107,23 @@
         panel.append(msg,retry);doc.body.append(panel);
       }
       const node=panel.querySelector('[data-role="message"]');
-      if(node)node.textContent='Student photo is not published to the parent app. '+String(error.message||error).slice(0,220);
+      if(node){
+        const message=String(error.message||error).slice(0,220);
+        const denied=/HTTP (?:401|403)|session expired|login expired|session changed/i.test(message);
+        node.textContent=denied
+          ?'Student photo could not be checked because staff login was rejected or expired. This does not mean the photo is missing. Sign in again and recheck after resolving any school sync conflict. '+message
+          :'Student photo publication could not be verified. The original photo is preserved. '+message;
+      }
     }
     async function run(){
       if(working)return {status:'busy'};
       const s=session();
-      if(!s)return {status:'not-authorized'};
+      if(!s){notice(null);return {status:'not-authorized'};}
       if(Date.now()<attemptAfter)return {status:'retry-later'};
       working=true;
       try{
+        await ensurePhotoSession(s);
+        if(!sameSession(s))return {status:'session-changed'};
         const [active,profiles,links]=await Promise.all([
           rows(s,'school_students',{select:'id,status',extra:{status:'eq.active'}}),
           rows(s,'school_student_profiles',{select:'student_id,details'}),
