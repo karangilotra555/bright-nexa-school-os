@@ -21868,7 +21868,40 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, dele
         "aria-modal": `true`,
         "aria-label": `${i2} profile`
       },
-      /* @__PURE__ */ w.createElement(Component293, null, /* @__PURE__ */ w.createElement(Component291, { className: `record-profile-heading` }, e2.photoDataUrl ? /* @__PURE__ */ w.createElement(Component285, { src: e2.photoDataUrl, alt: `${i2} photograph` }) : /* @__PURE__ */ w.createElement(Component286, { className: `record-avatar` }, jr(i2)), /* @__PURE__ */ w.createElement(Component290, null, /* @__PURE__ */ w.createElement(Component287, null, `Faculty Profile`), /* @__PURE__ */ w.createElement(Component288, null, i2), (e2.employeeCode || e2.designation) && /* @__PURE__ */ w.createElement(Component289, null, [e2.employeeCode, e2.designation].filter(Boolean).join(` \u2022 `)))), /* @__PURE__ */ w.createElement(
+      /* @__PURE__ */ w.createElement(Component293, null, /* @__PURE__ */ w.createElement(Component291, { className: `record-profile-heading` }, e2.photoDataUrl ? /* @__PURE__ */ w.createElement(Component285, { src: e2.photoDataUrl, alt: `${i2} photograph` }) : /* @__PURE__ */ w.createElement(Component286, { className: `record-avatar` }, jr(i2)), /* @__PURE__ */ w.createElement(Component290, null, /* @__PURE__ */ w.createElement(Component287, null, `Faculty Profile`), /* @__PURE__ */ w.createElement(Component288, null, i2), (e2.employeeCode || e2.designation) && /* @__PURE__ */ w.createElement(Component289, null, [e2.employeeCode, e2.designation].filter(Boolean).join(` \u2022 `)), /* @__PURE__ */ w.createElement(
+        "div",
+        {
+          className: `teacher-app-invite teacher-app-invite--header`,
+          style: { marginTop: "12px", maxWidth: "100%" }
+        },
+        /* @__PURE__ */ w.createElement(
+          "button",
+          {
+            type: "button",
+            className: `primary-button`,
+            style: { whiteSpace: "normal", textAlign: "center", maxWidth: "100%", lineHeight: 1.3 },
+            disabled: inviteBusy || !e2.email,
+            onClick: inviteTeacher,
+            "aria-label": `Create or sync Teacher App access for ${i2}`
+          },
+          inviteBusy ? "Updating Teacher App access..." : "Create / Sync Teacher App Access"
+        ),
+        /* @__PURE__ */ w.createElement(
+          "p",
+          {
+            role: inviteError ? "alert" : "status",
+            "aria-live": "polite",
+            style: {
+              fontSize: "12px",
+              lineHeight: 1.4,
+              marginTop: "7px",
+              color: inviteError ? "#b91c1c" : "#166534",
+              maxWidth: "460px"
+            }
+          },
+          inviteFeedback || (!e2.email ? "Add teacher email to enable app access." : "Teacher App login is separate from the faculty record.")
+        )
+      ))), /* @__PURE__ */ w.createElement(
         Component292,
         {
           className: `icon-button`,
@@ -21891,24 +21924,7 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, dele
           title: `Payroll and Bank Information`
         },
         /* @__PURE__ */ w.createElement(Tr, { entries: o2 })
-      ), (s2.length > 0 || c2.length > 0) && /* @__PURE__ */ w.createElement(Er, { icon: /* @__PURE__ */ w.createElement(M, { size: 17 }), title: `Contact and Identity` }, s2.length > 0 && /* @__PURE__ */ w.createElement(Tr, { entries: s2 }), ` `, c2.length > 0 && /* @__PURE__ */ w.createElement(Component294, { className: `stored-identity-grid` }, c2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component13, { title: e3, value: t3, key: e3 })))), /* @__PURE__ */ w.createElement("div", { className: `teacher-app-invite`, style: { marginTop: "16px" } }, /* @__PURE__ */ w.createElement(
-        "button",
-        {
-          type: "button",
-          className: `secondary-button`,
-          disabled: inviteBusy || !e2.email,
-          onClick: inviteTeacher
-        },
-        inviteBusy ? "Updating Teacher App access..." : "Create / Sync Teacher App Access"
-      ), /* @__PURE__ */ w.createElement(
-        "p",
-        {
-          role: "status",
-          "aria-live": "polite",
-          style: { fontSize: "12px", marginTop: "8px", color: inviteError ? "#b91c1c" : "#166534" }
-        },
-        inviteFeedback || (!e2.email ? "Add teacher email to enable app access." : "Teacher app login is separate from the faculty record.")
-      )), deleteError && /* @__PURE__ */ w.createElement("p", { className: `form-error`, role: `alert` }, deleteError), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2, disabled: deleteBusy }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), deleteBusy ? `Deleting from Supabase...` : `Delete Profile`), /* @__PURE__ */ w.createElement(
+      ), (s2.length > 0 || c2.length > 0) && /* @__PURE__ */ w.createElement(Er, { icon: /* @__PURE__ */ w.createElement(M, { size: 17 }), title: `Contact and Identity` }, s2.length > 0 && /* @__PURE__ */ w.createElement(Tr, { entries: s2 }), ` `, c2.length > 0 && /* @__PURE__ */ w.createElement(Component294, { className: `stored-identity-grid` }, c2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component13, { title: e3, value: t3, key: e3 })))), deleteError && /* @__PURE__ */ w.createElement("p", { className: `form-error`, role: `alert` }, deleteError), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2, disabled: deleteBusy }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), deleteBusy ? `Deleting from Supabase...` : `Delete Profile`), /* @__PURE__ */ w.createElement(
         Component296,
         {
           className: `secondary-button`,
