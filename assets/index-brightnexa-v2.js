@@ -21793,6 +21793,7 @@ async function bnDeactivateTeacherAppAccount(teacher) {
 function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, deleteBusy = false, deleteError = "" }) {
   let i2 = e2.name || e2.employeeCode || `Faculty Record`;
   const [inviteBusy, setInviteBusy] = (0, w.useState)(false);
+  const [maximized, setMaximized] = (0, w.useState)(false);
   const [inviteFeedback, setInviteFeedback] = (0, w.useState)("");
   const [inviteError, setInviteError] = (0, w.useState)(false);
   async function inviteTeacher() {
@@ -21854,7 +21855,6 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, dele
     [`Status`, e2.status]
   ].filter((e3) => N(e3[1]));
   let c2 = [
-    [`Teacher Photograph`, e2.photoDataUrl],
     [`Aadhaar Card \u2014 Front`, e2.aadhaarFrontDataUrl],
     [`Aadhaar Card \u2014 Back`, e2.aadhaarBackDataUrl]
   ].filter((e3) => N(e3[1]));
@@ -21884,7 +21884,8 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, dele
     /* @__PURE__ */ w.createElement(
       Component300,
       {
-        className: `simple-modal teacher-profile-modal`,
+        className: `simple-modal student-profile-modal teacher-profile-modal`,
+        style: maximized ? {width:"96vw",maxWidth:"96vw",height:"92vh",maxHeight:"92vh",display:"flex",flexDirection:"column"} : void 0,
         role: `dialog`,
         "aria-modal": `true`,
         "aria-label": `${i2} profile`
@@ -21934,29 +21935,31 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, dele
           inviteFeedback || (!e2.email ? "Add teacher email to enable app access." : "Teacher App login is separate from the faculty record.")
         )
       ))), /* @__PURE__ */ w.createElement(
-        Component292,
-        {
-          className: `icon-button`,
-          onClick: t2,
-          "aria-label": `Close profile`
-        },
-        /* @__PURE__ */ w.createElement(St, { size: 21 })
+        "div", {style:{display:"flex",gap:"4px",flexShrink:0}},
+        /* @__PURE__ */ w.createElement("button",{
+          type:"button",className:"icon-button",title:maximized?"Restore size":"Maximize dialog",
+          "aria-label":maximized?"Restore":"Maximize",
+          onClick:()=>setMaximized(value=>!value)
+        },maximized?"🗗":"🗖"),
+        /* @__PURE__ */ w.createElement(Component292,{
+          className:`icon-button`,onClick:t2,"aria-label":`Close profile`
+        },/* @__PURE__ */ w.createElement(St,{size:21}))
       )),
-      /* @__PURE__ */ w.createElement(Component299, { className: `simple-modal-body` }, a2.length > 0 && /* @__PURE__ */ w.createElement(
-        Er,
-        {
-          icon: /* @__PURE__ */ w.createElement(_Component11, { size: 17 }),
-          title: `Professional Information`
-        },
-        /* @__PURE__ */ w.createElement(Tr, { entries: a2 })
-      ), o2.length > 0 && /* @__PURE__ */ w.createElement(
-        Er,
-        {
-          icon: /* @__PURE__ */ w.createElement(_Component12, { size: 17 }),
-          title: `Payroll and Bank Information`
-        },
-        /* @__PURE__ */ w.createElement(Tr, { entries: o2 })
-      ), (s2.length > 0 || c2.length > 0) && /* @__PURE__ */ w.createElement(Er, { icon: /* @__PURE__ */ w.createElement(M, { size: 17 }), title: `Contact and Identity` }, s2.length > 0 && /* @__PURE__ */ w.createElement(Tr, { entries: s2 }), ` `, c2.length > 0 && /* @__PURE__ */ w.createElement(Component294, { className: `stored-identity-grid` }, c2.map(([e3, t3]) => /* @__PURE__ */ w.createElement(_Component13, { title: e3, value: t3, key: e3 })))), deleteError && /* @__PURE__ */ w.createElement("p", { className: `form-error`, role: `alert` }, deleteError), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2, disabled: deleteBusy }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), deleteBusy ? `Deleting from Supabase...` : `Delete Profile`), /* @__PURE__ */ w.createElement(
+      /* @__PURE__ */ w.createElement(Component299, {
+        className:`simple-modal-body`,
+        style:maximized?{flex:1,minHeight:0,maxHeight:"none",overflow:"auto"}:void 0
+      },
+      a2.concat(o2,s2).length > 0 && /* @__PURE__ */ w.createElement(
+        Component294,{className:`profile-detail-grid`},
+        a2.concat(o2,s2).map(([label,value])=>
+          /* @__PURE__ */ w.createElement(Dr,{label,value,key:label}))
+      ),
+      c2.length > 0 && /* @__PURE__ */ w.createElement(
+        Component294,{className:`stored-identity-grid`},
+        c2.map(([title,value])=>
+          /* @__PURE__ */ w.createElement(_Component13,{title,value,key:title}))
+      ),
+      deleteError && /* @__PURE__ */ w.createElement("p", { className: `form-error`, role: `alert` }, deleteError), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2, disabled: deleteBusy }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), deleteBusy ? `Deleting from Supabase...` : `Delete Profile`), /* @__PURE__ */ w.createElement(
         Component296,
         {
           className: `secondary-button`,
