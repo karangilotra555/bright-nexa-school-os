@@ -23229,7 +23229,9 @@ function Ur({
   ), p2.length > 0 && /* @__PURE__ */ w.createElement(
     Component412,
     {
-      className: `danger-button`,
+      type: `button`,
+      className: `secondary-button danger bn-attendance-delete`,
+      title: `Delete saved attendance only for the selected class and date`,
       onClick: () => {
         if (!p2.length || !window.confirm(`Delete saved attendance for ${r2}?`)) {
           return;
@@ -38739,6 +38741,14 @@ function Ds() {
   ), /* @__PURE__ */ w.createElement("div", { style: { position: "relative" } }, /* @__PURE__ */ w.createElement(Component2075, { className: `search-box` }, /* @__PURE__ */ w.createElement($e, { size: 18 }), /* @__PURE__ */ w.createElement(
     Component2073,
     {
+      type: `search`,
+      name: `bn-school-record-lookup`,
+      autoComplete: `off`,
+      autoCorrect: `off`,
+      autoCapitalize: `none`,
+      spellCheck: false,
+      "data-lpignore": `true`,
+      "aria-label": `Search school records`,
       ref: searchInputRef,
       value: globalSearch,
       onChange: (e3) => {
