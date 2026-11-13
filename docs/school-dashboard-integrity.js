@@ -154,14 +154,16 @@
       return Number(m[1]);
     }
     try{
-      const [students,teachers]=await Promise.all([
+      // ERP teacher employment status is NOT the same as Teacher App login status.
+      const [students,teachers,disabledTeacherAccounts]=await Promise.all([
         count('school_students',{status:'eq.active'}),
-        count('school_users',{role:'eq.teacher',status:'eq.active'})
+        count('school_users',{role:'eq.teacher',status:'eq.active'}),
+        count('school_users',{role:'eq.teacher',status:'eq.disabled'})
       ]);
       // Prevent a late readback from another session changing this school's badge.
       const current=JSON.parse(root.sessionStorage?.getItem('bright-nexa-school-os:session:v2')||'null');
       if(requestId===cloudRequestId&&current?.institutionId===school&&current?.cloudVerified===true)
-        cloudCounts={students,teachers,school};
+        cloudCounts={students,teachers,disabledTeacherAccounts,school};
     }catch(_){
       if(requestId===cloudRequestId)cloudCounts={error:'Supabase count could not be verified',school};
     }finally{cloudReading=false;schedule();}
@@ -179,8 +181,10 @@
       if(cloudCounts?.school&&cloudCounts.school===currentSchool){
         if(content.includes('total students'))
           card.dataset.bnCloudCount=cloudCounts.error||('Supabase active students: '+cloudCounts.students);
-        else if(content.includes('teachers')||content.includes('faculty'))
-          card.dataset.bnCloudCount=cloudCounts.error||('Supabase active teachers: '+cloudCounts.teachers);
+        else if(content.includes('teachers')||content.includes('faculty')){
+          card.dataset.bnCloudCount=cloudCounts.error||('Teacher App access: '+cloudCounts.teachers+' active · '+cloudCounts.disabledTeacherAccounts+' disabled');
+          card.title='Main count is teachers employed in the School OS. Teacher App access is a separate login status in Supabase; disabled accounts do not mean unsaved faculty records.';
+        }
       }
       if(content.includes("today's attendance")){
         card.dataset.bnAttendanceNote='true';
