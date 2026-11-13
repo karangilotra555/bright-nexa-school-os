@@ -1695,11 +1695,24 @@
   // are immediately removed from address bar after parsing.
   let confirmedByEmailLink=false;
   let authLinkExpired=false;
+  let adminActivationHash=null;
   try {
     const hash=new URLSearchParams(location.hash.replace(/^#/,''));
     authLinkExpired=!!hash.get('error')&&/expired|invalid|denied|access_denied/i.test((hash.get('error_code')||'')+' '+hash.get('error'));
     if(authLinkExpired)history.replaceState(null,'',location.pathname+location.search);
-    if(hash.has('access_token')&&hash.has('refresh_token')){
+    // The one-time admin-issued link opens the official Bright Nexa origin
+    // directly, avoiding a stale localhost Site URL in Supabase Auth.
+    // The token is never sent to a third-party origin or logged, and the
+    // fragment is removed before calling Supabase's OTP verification API.
+    if(hash.has('token_hash')){
+      const rawHash=hash.get('token_hash')||'';
+      history.replaceState(null,'',location.pathname+location.search);
+      if(hash.get('type')==='recovery'&&/^[A-Za-z0-9_-]{24,256}$/.test(rawHash)){
+        adminActivationHash=rawHash;
+      }else{
+        authLinkExpired=true;
+      }
+    }else if(hash.has('access_token')&&hash.has('refresh_token')){
       saveSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_in:parseInt(hash.get('expires_in')||'3600',10)});
       recoveryMode=hash.get('type')==='recovery';
       confirmedByEmailLink=['signup','email'].includes(hash.get('type'));
@@ -1716,6 +1729,20 @@
       if(saved)session=JSON.parse(saved);
     }
   }catch{dropSession()}
+  if(adminActivationHash){
+    const oneTimeHash=adminActivationHash;adminActivationHash=null;
+    run(async()=>{
+      const verified=await authRequest('verify',{token_hash:oneTimeHash,type:'recovery'});
+      if(!verified?.access_token||!verified?.refresh_token)
+        throw Error('The activation link has expired or was already used. Generate a fresh one-time link from School Admin.');
+      saveSession(verified);
+      recoveryMode=false;
+      showAuthView('activation');
+      put('activationTitle','Activate your Teacher App account');
+      put('activationDescription','Your one-time link was verified by Supabase. Set a strong password (12+ characters) to finish activation.');
+      notify('Secure teacher activation verified. Set your new password to continue.');
+    });
+  }
   if(authLinkExpired)emailDialog('expired');
   if(confirmedByEmailLink&&session){
     fetch(BASE+'/auth/v1/user',{headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'})
