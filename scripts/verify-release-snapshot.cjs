@@ -43,6 +43,15 @@ for(const body of [source,bundle]){
  assert.ok(!body.includes('BN_STORE_SYNC'),'Unverified cross-tab state broadcast is unsafe');
  assert.ok(body.includes('bn-cloud-recheck'),'A confirmed write must refresh other tabs');
  assert.ok(body.includes("Teacher is pending in this browser"),'Teacher cloud confirmation guard missing');
+ const start=body.indexOf('function Cr('),end=body.indexOf('async function bnInviteTeacherAppAccount',start);
+ assert.ok(start>=0&&end>start,'Teacher form component missing in release');
+ const teacherForm=body.slice(start,end);
+ assert.ok(/const teacherClassOptions = Array\.isArray\(/.test(teacherForm),'Save Teacher class options must come from class list');
+ assert.ok(/new Set\(teacherClassOptions\.map\(/.test(teacherForm),'Teacher submit still uses form event as an array');
+ assert.ok(!/new Set\(e\d*\.map\(/.test(teacherForm),'Teacher submit contains event.map runtime crash');
+ assert.ok(teacherForm.includes('teacher-save-error-banner'),'Teacher errors must be visible without losing draft');
+ assert.ok(teacherForm.includes('data-teacher-save-field'),'Required fields must be focused');
+ assert.ok(teacherForm.includes('Subjects are required for assigned classes.'),'Teacher subjects check missing');
 }
 const pkg=JSON.parse(utf('package.json'));
 assert.equal(pkg.scripts.build,'node scripts/verify-release-snapshot.cjs','The build script cannot claim success without release checks');
