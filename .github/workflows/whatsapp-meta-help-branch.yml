@@ -1,0 +1,21 @@
+name: WhatsApp Meta setup regression
+on:
+  push:
+    branches:
+      - fix/whatsapp-meta-field-help-and-modal-draft-20261113
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: WhatsApp setup and security regression
+        run: node --test tests/whatsapp-meta-field-help.test.cjs tests/official-whatsapp-service.test.cjs tests/whatsapp-truthful-status.test.cjs
+      - name: Verify release integrity
+        run: npm run build
