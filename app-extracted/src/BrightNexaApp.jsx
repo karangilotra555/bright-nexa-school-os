@@ -21934,6 +21934,7 @@ function Sr({ data: e, onUpdate: t }) {
   let [n, r] = (0, w.useState)(false);
   let [i, a] = (0, w.useState)(null);
   let [o, s] = (0, w.useState)(null);
+  const [teacherDeleteState,setTeacherDeleteState] = (0, w.useState)({id:null,error:''});
   let [c, l] = (0, w.useState)(``);
   const [photoPreview, setPhotoPreview] = (0, w.useState)(null);
   let u = e.teachers.filter((e) =>
@@ -21963,22 +21964,20 @@ function Sr({ data: e, onUpdate: t }) {
     r(false);
     s(null);
   };
-  let f = (n) => {
-    if (
-      window.confirm(
-        `Delete ${n.name || n.employeeCode || `this faculty record`}?`,
-      )
-    ) {
-      t(
-        {
-          ...e,
-          teachers: e.teachers.filter((e) => e.id !== n.id),
-        },
-        `DELETE`,
-        `Teacher`,
-        n.name || n.employeeCode || `Faculty record`,
-      );
+  let f = async (teacher) => {
+    if (teacherDeleteState.id) return;
+    if (!window.confirm(`Delete ${teacher.name || teacher.employeeCode || 'this faculty record'}? Teacher App access must be revoked separately.`)) return;
+    setTeacherDeleteState({id:teacher.id,error:''});
+    try {
+      const result = await t({...e,teachers:e.teachers.filter(row => row.id !== teacher.id)},
+        'DELETE','Teacher',teacher.name || teacher.employeeCode || 'Faculty record');
+      if (result?.status !== 'synced' || result.pending)
+        throw Error(result?.error?.message || 'Teacher deletion is not confirmed in Supabase. Resolve sync conflict and retry.');
       a(null);
+    } catch(error) {
+      setTeacherDeleteState({id:null,error:error?.message || 'Teacher was not deleted in Supabase.'});
+    } finally {
+      setTeacherDeleteState(prev => ({...prev,id:null}));
     }
   };
   const Component176 = `button`;
@@ -22143,6 +22142,8 @@ function Sr({ data: e, onUpdate: t }) {
             a(null);
           }}
           onDelete={() => f(i)}
+          deleteBusy={teacherDeleteState.id === i.id}
+          deleteError={teacherDeleteState.error}
         />
       )}
       {photoPreview && (
@@ -22773,7 +22774,7 @@ async function bnInviteTeacherAppAccount(teacher) {
   // Accepted by Supabase Auth != delivered to inbox or activated by teacher.
   return { email, status: 'invited' };
 }
-function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r }) {
+function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBusy = false, deleteError = '' }) {
   let i = e.name || e.employeeCode || `Faculty Record`;
   const [inviteBusy, setInviteBusy] = (0, w.useState)(false);
   const [inviteFeedback, setInviteFeedback] = (0, w.useState)('');
@@ -22936,10 +22937,11 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r }) {
               {inviteFeedback || (!e.email ? 'Add teacher email to enable app access.' : 'Teacher app login is separate from the faculty record.')}
             </p>
           </div>
+          {deleteError && <p className={`form-error`} role={`alert`}>{deleteError}</p>}
           <Component298 className={`modal-actions`}>
-            <Component295 className={`secondary-button danger`} onClick={r}>
+            <Component295 className={`secondary-button danger`} onClick={r} disabled={deleteBusy}>
               <_Component1 size={16} />
-              {`Delete Profile`}
+              {deleteBusy ? `Deleting from Supabase...` : `Delete Profile`}
             </Component295>
             <Component296
               className={`secondary-button`}
