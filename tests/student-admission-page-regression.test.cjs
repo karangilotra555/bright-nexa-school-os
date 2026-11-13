@@ -26,7 +26,7 @@ test('Students table pages filtered results at 25 rows with next previous and se
   for(const content of [source(),bundled()]){
     assert.match(content,/studentPageSize\s*=\s*25/);
     assert.match(content,/pagedStudents\.map\(/);
-    assert.match(content,/studentPageCount>1/);
+    assert.match(content,/studentPageCount\s*>\s*1/);
     assert.match(content,/setStudentPage\(1\)/);
     assert.match(content,/student-pagination/);
   }
