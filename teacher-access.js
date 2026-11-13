@@ -224,6 +224,7 @@
     sessionStorage.removeItem('bright-nexa-school-os:session:v2');
     invalidateRoster();clearProfileEditor();
     $('bnTeacherActivationAdmin')?.remove();
+    $('bnSchoolPendingRecovery')?.remove();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
     display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);showAuthView('login');
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
@@ -262,6 +263,150 @@
     });
   }
 
+
+  // Read-only recovery preflight and revision-checked upload for a pending
+  // school snapshot in the SAME browser profile as the full ERP.
+  // No local edit is deleted until Supabase read-back proves an exact save.
+  function canonicalForRecovery(value){
+    if(Array.isArray(value))return '['+value.map(canonicalForRecovery).join(',')+']';
+    if(value&&typeof value==='object')return '{'+Object.keys(value).sort()
+      .filter(k=>value[k]!==undefined).map(k=>JSON.stringify(k)+':'+canonicalForRecovery(value[k])).join(',')+'}';
+    return JSON.stringify(value);
+  }
+  function recoveryFingerprint(value){
+    const valueString=canonicalForRecovery(value);
+    let a=0x811c9dc5,b=0x9e3779b9,c=0x85ebca6b,d=0xc2b2ae35;
+    for(let i=0;i<valueString.length;i++){
+      const x=valueString.charCodeAt(i);
+      a=Math.imul(a^x,0x01000193)>>>0;
+      b=Math.imul(b^(x+i),0x27d4eb2d)>>>0;
+      c=Math.imul(c+x,0x85ebca77)>>>0;
+      d=Math.imul(d^(x<<16|x),0xc2b2ae3d)>>>0;
+    }
+    return 'v2:'+valueString.length+':'+[a,b,c,d].map(x=>x.toString(16).padStart(8,'0')).join('');
+  }
+  function readRecoveryDb(key){
+    return new Promise((resolve,reject)=>{
+      if(!window.indexedDB)return reject(Error('IndexedDB recovery is not available.'));
+      const req=window.indexedDB.open('bn-workspace-recovery-v1',1);
+      req.onerror=()=>reject(req.error||Error('Cannot open saved pending records.'));
+      req.onupgradeneeded=()=>{
+        if(!req.result.objectStoreNames.contains('backups'))req.result.createObjectStore('backups');
+      };
+      req.onsuccess=()=>{
+        const db=req.result;
+        try{
+          const get=db.transaction('backups','readonly').objectStore('backups').get(key);
+          get.onsuccess=()=>{const value=get.result;db.close();resolve(value);};
+          get.onerror=()=>{db.close();reject(get.error||Error('Pending browser copy unavailable.'));};
+        }catch(error){db.close();reject(error);}
+      };
+    });
+  }
+  async function findOneSchoolPending(){
+    if(!isAdmin()||!me?.institution_id)throw Error('School administrator access required.');
+    const pending=[],prefix='bn.workspace.v1.school.';
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(!key||!key.startsWith(prefix))continue;
+      const raw=localStorage.getItem(key);if(!raw)continue;
+      let record;try{record=JSON.parse(raw)}catch(_){continue;}
+      if(!record?.pending&&!record?.pendingRef)continue;
+      let snapshot=record.pending;
+      if(!snapshot&&record.pendingRef){
+        const bytes=await readRecoveryDb(record.pendingRef);
+        if(typeof bytes!=='string')throw Error('Pending edit exists but its IndexedDB backup is missing. Nothing was changed.');
+        snapshot=JSON.parse(bytes);
+      }
+      const localId=String(snapshot?.institution?.institution?.id||'');
+      if(!localId)throw Error('Pending school has no verified identity. Nothing was uploaded.');
+      const bindingKey='bn.workspace.v1.binding.'+encodeURIComponent(localId);
+      let binding;try{binding=JSON.parse(localStorage.getItem(bindingKey)||'null')}catch(_){}
+      if(!binding||binding.localId!==localId||binding.schoolId!==me.institution_id)continue;
+      if(!Array.isArray(snapshot.students)||!snapshot.operations||!Number.isSafeInteger(record.revision))
+        throw Error('Pending school record is incomplete. Nothing was uploaded.');
+      pending.push({key,raw,record,snapshot,binding});
+    }
+    if(pending.length!==1)throw Error(pending.length===0?
+      'No pending copy for this school in this browser. Open this portal in the SAME browser profile as the ERP.':
+      'Multiple pending school copies found. They need manual reconciliation before uploading.');
+    return pending[0];
+  }
+  function installOwnerRecoveryControl(){
+    $('bnSchoolPendingRecovery')?.remove();
+    if(!isAdmin())return;
+    const container=$('portalSection');
+    if(!container)return;
+    const panel=document.createElement('section');
+    panel.id='bnSchoolPendingRecovery';
+    panel.style.cssText='margin:16px auto;max-width:920px;border:1px solid #e6ce9e;background:#fffaf1;border-radius:13px;padding:17px;color:#18334b';
+    const title=dom('h3','Recover pending School OS cloud save');
+    title.style.cssText='font-size:18px;margin:0 0 7px';
+    const info=dom('p','If the full ERP shows "Cloud save failed", recover its browser-held pending copy here without erasing local records. Original ERP tab must stay open until verified.');
+    info.style.cssText='font-size:13px;margin:0 0 10px';
+    const button=dom('button','Inspect and verify pending copy');
+    button.type='button';button.className='primary';
+    const submit=dom('button','Publish verified pending copy');
+    submit.type='button';submit.className='ghost';submit.disabled=true;
+    submit.style.marginLeft='9px';
+    const status=dom('div','No pending school has been inspected.');
+    status.setAttribute('role','status');status.style.cssText='font-size:13px;margin-top:12px;white-space:pre-wrap;overflow-wrap:anywhere';
+    let pending=null;
+    button.addEventListener('click',async()=>{
+      if(!isAdmin())return;
+      button.disabled=true;submit.disabled=true;pending=null;
+      try{
+        const row=await findOneSchoolPending();
+        pending=row;submit.disabled=false;
+        status.textContent='Found school '+(row.snapshot.institution?.institution?.name||'')+
+          ' · device revision '+row.record.revision+
+          ' · '+row.snapshot.students.length+' student(s). No data has been uploaded yet.';
+      }catch(error){status.textContent=error.message||String(error);}
+      finally{button.disabled=false;}
+    });
+    submit.addEventListener('click',async()=>{
+      if(!pending||!isAdmin())return;
+      const {key,raw,record,snapshot,binding}=pending;
+      submit.disabled=true;
+      try{
+        if(localStorage.getItem(key)!==raw)throw Error('Another tab modified the pending copy. Inspect again; nothing was uploaded.');
+        const client=window.BNWorkspaceCloud?.create({});
+        if(!client?.push||!client.readback||!client.prepareSnapshot||!window.BNWorkspaceCloud?.buildProjection)
+          throw Error('Cloud recovery client is unavailable. Reload this staff portal only.');
+        const prepared=await client.prepareSnapshot(snapshot);
+        const expected=JSON.parse(JSON.stringify(prepared));
+        if(expected.operations)delete expected.operations.externalFeeLedger;
+        const preparedFingerprint=recoveryFingerprint(expected);
+        const before=await client.readback(binding.schoolId);
+        let confirmedRevision;
+        if(before.revision!==record.revision){
+          if(!before.snapshot||recoveryFingerprint(before.snapshot)!==preparedFingerprint)
+            throw Error('Cloud revision changed to '+before.revision+'. Pending copy was preserved; do not overwrite.');
+          confirmedRevision=before.revision;
+        }else{
+          const ops=snapshot.operations||{};
+          if(['feeStructures','feePayments','studentFeeDues','classFeeCharges'].some(k=>Array.isArray(ops[k])&&ops[k].length))
+            throw Error('Pending fee entries require native ERP sync. Recovery will not risk fee ledger differences.');
+          const projection=window.BNWorkspaceCloud.buildProjection(snapshot,()=>[]);
+          const saved=await client.push(binding.schoolId,record.revision,snapshot,projection);
+          confirmedRevision=saved.revision;
+        }
+        const readback=await client.readback(binding.schoolId);
+        if(readback.revision!==confirmedRevision||!readback.snapshot||
+           recoveryFingerprint(readback.snapshot)!==preparedFingerprint)
+          throw Error('Cloud response not verified by exact readback. Pending copy was kept.');
+        if(localStorage.getItem(key)!==raw)
+          throw Error('Cloud is verified at revision '+confirmedRevision+
+            ', but original tab changed its browser record. Inspect again before reloading.');
+        localStorage.setItem(key,JSON.stringify({...record,revision:confirmedRevision,
+          fingerprint:recoveryFingerprint(snapshot),pending:null,pendingRef:null}));
+        pending=null;status.textContent='Cloud save VERIFIED at revision '+confirmedRevision+
+          '. Pending backup remains in browser recovery storage. Now reload the original ERP tab to resume.';
+      }catch(error){status.textContent=error.message||String(error);}
+    });
+    panel.append(title,info,button,submit,status);
+    container.prepend(panel);
+  }
   // School-admin assisted activation for accounts never used in Auth. Supabase
   // generates a one-time recovery URL server-side; no SMTP or admin key in UI.
   function installTeacherActivationControl(){
@@ -395,6 +540,7 @@
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
     installTeacherActivationControl();
+    installOwnerRecoveryControl();
     await reload();
     const requested=new URLSearchParams(location.search).get('view');
     const allowedViews=['dashboard','classes','timetable','attendance','homework','notices','profiles','fees','admin','account'];
