@@ -43,7 +43,7 @@ for(const body of [source,bundle]){
  assert.ok(!body.includes('BN_STORE_SYNC'),'Unverified cross-tab state broadcast is unsafe');
  assert.ok(body.includes('bn-cloud-recheck'),'A confirmed write must refresh other tabs');
  assert.ok(body.includes("Teacher is pending in this browser"),'Teacher cloud confirmation guard missing');
- const start=body.indexOf('function Cr('),end=body.indexOf('async function bnInviteTeacherAppAccount',start);
+ const end=body.indexOf('async function bnInviteTeacherAppAccount'),start=body.lastIndexOf('function Cr(',end);
  assert.ok(start>=0&&end>start,'Teacher form component missing in release');
  const teacherForm=body.slice(start,end);
  assert.ok(/const teacherClassOptions = Array\.isArray\(/.test(teacherForm),'Save Teacher class options must come from class list');
