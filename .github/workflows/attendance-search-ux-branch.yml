@@ -1,0 +1,21 @@
+name: Attendance and header UX regression
+on:
+  push:
+    branches:
+      - fix/attendance-search-autofill-and-delete-ui-20261113
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Attendance/search UI regression tests
+        run: node --test tests/attendance-search-ux.test.cjs tests/attendance-erp-tab-refresh.test.cjs tests/school-attendance-calendar.test.cjs
+      - name: Verify PWA release integrity
+        run: npm run build
