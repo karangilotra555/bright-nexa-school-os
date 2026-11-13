@@ -21106,6 +21106,7 @@ function Cr({
   onClose: r2,
   onSave: i2
 }) {
+  const teacherClassOptions = Array.isArray(e2) ? e2 : [];
   let [a2, o2] = (0, w.useState)(
     () => n2 ? Ar(n2) : {
       employeeCode: ``,
@@ -21130,6 +21131,17 @@ function Cr({
   );
   let [s2, c2] = (0, w.useState)(a2.subjects.join(`, `));
   let [l2, u2] = (0, w.useState)(``);
+  const showTeacherSaveError = (message, field) => {
+    u2(message);
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => {
+        const target = field ? document.querySelector('[data-teacher-save-field="' + field + '"]') : null;
+        const node = target || document.querySelector('.teacher-save-error-banner');
+        node?.scrollIntoView?.({block:"center",behavior:"smooth"});
+        node?.focus?.({preventScroll:true});
+      });
+    }
+  };
   let [savingToCloud, setSavingToCloud] = (0, w.useState)(false);
   const [photoProcessing, setPhotoProcessing] = (0, w.useState)(false);
   let pendingTeacherId = (0, w.useRef)(n2?.id || crypto.randomUUID());
@@ -21279,8 +21291,11 @@ function Cr({
             u2("Another teacher already uses this email.");
             return;
           }
-          if (!a2.joiningDate) {
-            u2("Date of Joining is required.");
+          if (!a2.joiningDate || ((a2.assignedClasses || []).length > 0 && !r3.length)) {
+            const missing = [];
+            if (!a2.joiningDate) missing.push("Date of Joining is required.");
+            if ((a2.assignedClasses || []).length > 0 && !r3.length) missing.push("Subjects are required for assigned classes.");
+            showTeacherSaveError(missing.join("  •  "), !a2.joiningDate ? "joiningDate" : "subjects");
             return;
           }
           if (!["Active", "Inactive"].includes(a2.status)) {
@@ -21291,7 +21306,7 @@ function Cr({
             u2("Select the employment type.");
             return;
           }
-          const knownClasses = new Set(e3.map((row) => `${row.name}-${row.section}`));
+          const knownClasses = new Set(teacherClassOptions.map((row) => `${row.name}-${row.section}`));
           if ((a2.assignedClasses || []).some((value) => !knownClasses.has(value))) {
             u2("One or more assigned classes no longer exist. Update teacher assignments.");
             return;
@@ -21343,6 +21358,8 @@ function Cr({
           }
         }
       },
+      l2 && /* @__PURE__ */ w.createElement("div", {className:"form-error teacher-save-error-banner",role:"alert","aria-live":"assertive",tabIndex:-1,
+        style:{position:"sticky",top:0,zIndex:20,padding:"12px 14px",background:"#fff1f2",color:"#9f1239",border:"2px solid #e11d48",borderRadius:10,fontWeight:700,marginBottom:12}}, l2),
       /* @__PURE__ */ w.createElement(Component232, { className: `modal-record-section` }, /* @__PURE__ */ w.createElement(Component210, null, `Personal and Contact Information`), /* @__PURE__ */ w.createElement(Component231, { className: `teacher-photo-row` }, /* @__PURE__ */ w.createElement(
         Or,
         {
@@ -21489,12 +21506,16 @@ function Cr({
         Component244,
         {
           type: `date`,
+          "data-teacher-save-field":"joiningDate",
+          "aria-invalid":Boolean(l2 && !a2.joiningDate),
           value: a2.joiningDate,
           onChange: (e3) => m2(`joiningDate`, e3.target.value)
         }
       )), /* @__PURE__ */ w.createElement(R, { label: `Subjects`, wide: true }, /* @__PURE__ */ w.createElement(
         Component245,
         {
+          "data-teacher-save-field":"subjects",
+          "aria-invalid":Boolean(l2 && (a2.assignedClasses || []).length > 0 && !s2.trim()),
           value: s2,
           onChange: (e3) => c2(e3.target.value),
           placeholder: `Science, Mathematics`
@@ -21686,7 +21707,7 @@ function Cr({
           onChange: (e3) => void h2(`aadhaarBackDataUrl`, e3.target.files?.[0])
         }
       ))),
-      l2 && /* @__PURE__ */ w.createElement(Component283, { className: `form-error` }, l2),
+
       /* @__PURE__ */ w.createElement(
         Vr,
         {
