@@ -1,0 +1,21 @@
+name: AI teacher provider regression
+on:
+  push:
+    branches:
+      - fix/ai-teacher-retired-groq-20261113
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: AI provider regression tests
+        run: node --test tests/smart-tools-ai.test.cjs tests/teacher-ai-audit.test.cjs tests/teacher-ai-compact-nav.test.cjs tests/teacher-ai-form.test.cjs
+      - name: Release asset integrity
+        run: npm run build

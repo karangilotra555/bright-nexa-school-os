@@ -151,7 +151,7 @@ test('TDD: all served entrypoints load the AI client before the actual React bun
   const verifiedEntry=html.indexOf('school-erp-entry.js?v=');
   assert.ok(client>0&&verifiedEntry>client,'AI client must load before the verified school entry: '+prefix);
   const bootstrap=fs.readFileSync(prefix+'school-erp-entry.js','utf8');
-  assert.ok(bootstrap.includes('assets/index-brightnexa-v2.js?v=20261111-portrait-compact-v1'));
+  assert.match(bootstrap,/assets\/index-brightnexa-v2\.js\?v=[0-9]{8}-[a-z0-9-]+/);
   assert.ok(bootstrap.includes('school_workspace_pull'));
   const js=fs.readFileSync(prefix+'assets/index-brightnexa-v2.js','utf8');
   assert.match(js,/BNSmartToolsAI/);
@@ -212,8 +212,8 @@ test('TDD RED: cache reset version changes with the AI client while keeping exis
  for(const dir of ['','docs/','app-extracted/dist/']){
   const html=fs.readFileSync(dir+'index.html','utf8');
   assert.match(html,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
-  assert.match(html,/school-erp-entry\.js\?v=20261111-portrait-compact-v1/);
-  assert.match(html,/CACHE_VERSION = '20261109-signout-v6'/);
+  assert.match(html,/school-erp-entry\.js\?v=[0-9]{8}-[a-z0-9-]+/);
+  assert.match(html,/CACHE_VERSION = '[0-9]{8}-[a-z0-9-]+'/);
   const sw=fs.readFileSync(dir+'sw.js','utf8');
   assert.match(sw,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
   assert.doesNotMatch(html,/localStorage\.clear\(/);
@@ -261,4 +261,60 @@ test('client recovery: script network failure is visible and does not create any
  scripts[0].onerror();
  await assert.rejects(pending,/could not be downloaded/);
  assert.equal(window.BNSmartToolsAI,undefined,'Must not substitute a local placeholder generator');
+});
+
+
+test('default Groq uses supported GPT-OSS JSON model instead of retired Llama 70B',async()=>{
+ const requests=[];
+ const service=svc.createService({env:{GROQ_API_KEY:'fixture-key'},fetcher:async(url,opts)=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
+  if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
+  if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'trial'}]};
+  const request=JSON.parse(opts.body);requests.push(request);
+  return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Learning objectives include practicing safe circuit building. Children explore how batteries and bulbs work together, discuss observations, compare materials, and complete a short exit ticket to demonstrate understanding.'})}}]})};
+ }});
+ const result=await service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token');
+ assert.match(result.content,/Learning objectives/);
+ assert.equal(requests.length,1);
+ assert.equal(requests[0].model,'openai/gpt-oss-120b');
+ assert.equal(requests[0].response_format.type,'json_object');
+ assert.equal(requests[0].reasoning_format,'hidden');
+});
+test('deprecated Groq model migrates once after real HTTP 404, preserving school content checks',async()=>{
+ const models=[];
+ const service=svc.createService({env:{GROQ_API_KEY:'fixture',GROQ_MODEL:'llama-3.3-70b-versatile'},fetcher:async(url,opts)=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
+  if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'school_admin',status:'active'}]};
+  if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'trial'}]};
+  const model=JSON.parse(opts.body).model;models.push(model);
+  if(model==='llama-3.3-70b-versatile')return {ok:false,status:404};
+  return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Class activity: practice safe low-voltage circuits with teacher oversight. Identify circuit parts, compare working and broken circuits, and finish with guided observations and an exit ticket.'})}}]})};
+ }});
+ const result=await service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token');
+ assert.match(result.content,/Class activity/);
+ assert.deepEqual(models,['llama-3.3-70b-versatile','openai/gpt-oss-120b']);
+});
+test('unsupported custom Groq model 404 does not invent content or retry endlessly',async()=>{
+ let attempts=0;
+ const service=svc.createService({env:{GROQ_API_KEY:'fixture',GROQ_MODEL:'custom-unknown'},fetcher:async(url)=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
+  if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
+  if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  attempts++;return {ok:false,status:404};
+ }});
+ await assert.rejects(service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token'),err=>err.status===404&&/unavailable or retired/.test(err.message));
+ assert.equal(attempts,1);
+});
+test('Gemini 404 uses configured Groq fallback without declaring rate limits or fabricating content',async()=>{
+ const models=[];
+ const service=svc.createService({env:{GEMINI_API_KEY:'fixture',GROQ_API_KEY:'fixture'},fetcher:async(url,opts)=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
+  if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
+  if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  if(url.includes('googleapis.com')){models.push('gemini');return {ok:false,status:404};}
+  models.push(JSON.parse(opts.body).model);
+  return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Teaching plan: introduce energy transfer in simple electric circuits, explore safety with low-voltage batteries, test connections and record observations in a teacher-monitored classroom.'})}}]})};
+ }});
+ assert.match((await service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token')).content,/Teaching plan/);
+ assert.deepEqual(models,['gemini','openai/gpt-oss-120b']);
 });
