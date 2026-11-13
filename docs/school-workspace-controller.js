@@ -298,7 +298,8 @@
                 // even when the original upload committed successfully.
                 var raw=typeof o.client.readback==='function';
                 var remote=await (raw?o.client.readback(b.schoolId):o.client.pull(b.schoolId));
-                var expected=clone(snapshot);
+                var expected=typeof o.client.prepareSnapshot==='function'
+                  ? await o.client.prepareSnapshot(clone(snapshot)) : clone(snapshot);
                 // The server intentionally excludes this derived ledger field.
                 if(raw&&expected.operations)delete expected.operations.externalFeeLedger;
                 if(remote&&remote.snapshot&&remote.revision>r.revision
