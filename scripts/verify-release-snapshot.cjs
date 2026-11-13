@@ -53,6 +53,21 @@ for(const body of [source,bundle]){
  assert.ok(teacherForm.includes('data-teacher-save-field'),'Required fields must be focused');
  assert.ok(teacherForm.includes('Subjects are required for assigned classes.'),'Teacher subjects check missing');
 }
+// Regression guard: previously delivered teacher actions must not disappear
+// when fixing sync, photos or access. Both editable source and hosted bundle
+// must expose the header edit shortcut and the existing footer Edit Profile.
+for (const body of [source,bundle]) {
+ const start=body.indexOf('function _Component10('),end=body.indexOf('function Tr(',start);
+ assert.ok(start>=0&&end>start,'Faculty Profile component missing');
+ const profile=body.slice(start,end);
+ assert.ok(profile.includes('teacher-profile-edit-top'),'Teacher header edit button missing');
+ assert.ok(profile.includes('Edit Teacher'),'Teacher header action text missing');
+ assert.ok(profile.includes('Edit Profile'),'Existing footer edit action was removed');
+ assert.ok(profile.includes('Create / Sync Teacher App Access'),'Teacher App activation action removed');
+ assert.ok(profile.includes('Delete Profile'),'Delete action was removed');
+ assert.ok(/onClick:\s*n2/.test(profile)||/onClick=\{n\}/.test(profile),'Teacher edit action not wired to handler');
+ assert.ok(profile.includes('teacher-profile-modal'),'Profile modal missing');
+}
 const pkg=JSON.parse(utf('package.json'));
 assert.equal(pkg.scripts.build,'node scripts/verify-release-snapshot.cjs','The build script cannot claim success without release checks');
 console.log('Release-integrity checks passed: '+verified+' mirrored/precache artifacts, verified cloud-only cross-tab and teacher-save guards.');
