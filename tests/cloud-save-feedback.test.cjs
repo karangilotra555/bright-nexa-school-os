@@ -52,9 +52,12 @@ test('source and served copies show pending cloud acknowledgment instead of prem
   assert.match(index,/CACHE_VERSION = '20261109-signout-v6'/);
   const sha=file=>crypto.createHash('sha256').update(Buffer.from(read(file),'utf8')).digest('hex');
   for(const asset of ['school-online-guard.js','school-workspace-controller.js']){
-   const ref=index.match(new RegExp(asset.replace(/\\./g,'\\\\.')+'\\\\?v=([A-Za-z0-9_-]+)'));
-   assert.ok(ref,'PWA must use a versioned '+asset+' script');
-   assert.ok(sw.includes('"url":"'+asset+'?v='+ref[1]+'","revision":"'+sha(base+asset)+'"'),'Workbox revision must match served '+asset);
+   const prefix=asset+'?v=';
+   const pos=index.indexOf(prefix);
+   assert.ok(pos>=0,'PWA must use a versioned '+asset+' script');
+   const version=index.slice(pos+prefix.length).match(/^[A-Za-z0-9_-]+/);
+   assert.ok(version,'Missing PWA version for '+asset);
+   assert.ok(sw.includes('"url":"'+asset+'?v='+version[0]+'","revision":"'+sha(base+asset)+'"'),'Workbox revision must match served '+asset);
   }
   assert.ok(sw.includes('url:"assets/index-brightnexa-v2.js",revision:"'+sha(base+'assets/index-brightnexa-v2.js')+'"'));
   assert.equal(read(base+'school-online-guard.js'),read('school-online-guard.js'));
