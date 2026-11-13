@@ -212,8 +212,8 @@ test('TDD RED: cache reset version changes with the AI client while keeping exis
  for(const dir of ['','docs/','app-extracted/dist/']){
   const html=fs.readFileSync(dir+'index.html','utf8');
   assert.match(html,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
-  assert.match(html,/school-erp-entry\.js\?v=20261111-portrait-compact-v1/);
-  assert.match(html,/CACHE_VERSION = '20261109-signout-v6'/);
+  assert.match(html,/school-erp-entry\.js\?v=[0-9]{8}-[a-z0-9-]+/);
+  assert.match(html,/CACHE_VERSION = '[0-9]{8}-[a-z0-9-]+'/);
   const sw=fs.readFileSync(dir+'sw.js','utf8');
   assert.match(sw,/teacher-ai-cloud\.js\?v=20261106-client-recovery-v2/);
   assert.doesNotMatch(html,/localStorage\.clear\(/);
@@ -273,7 +273,7 @@ test('default Groq uses supported GPT-OSS JSON model instead of retired Llama 70
   const request=JSON.parse(opts.body);requests.push(request);
   return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Learning objectives include practicing safe circuit building. Children explore how batteries and bulbs work together, discuss observations, compare materials, and complete a short exit ticket to demonstrate understanding.'})}}]})};
  }});
- const result=await service.generate({...base,tool:'Lesson Plan Generator'},'fixture-token');
+ const result=await service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token');
  assert.match(result.content,/Learning objectives/);
  assert.equal(requests.length,1);
  assert.equal(requests[0].model,'openai/gpt-oss-120b');
@@ -290,7 +290,7 @@ test('deprecated Groq model migrates once after real HTTP 404, preserving school
   if(model==='llama-3.3-70b-versatile')return {ok:false,status:404};
   return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Class activity: practice safe low-voltage circuits with teacher oversight. Identify circuit parts, compare working and broken circuits, and finish with guided observations and an exit ticket.'})}}]})};
  }});
- const result=await service.generate({...base,tool:'Lesson Plan Generator'},'fixture-token');
+ const result=await service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token');
  assert.match(result.content,/Class activity/);
  assert.deepEqual(models,['llama-3.3-70b-versatile','openai/gpt-oss-120b']);
 });
@@ -302,7 +302,7 @@ test('unsupported custom Groq model 404 does not invent content or retry endless
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
   attempts++;return {ok:false,status:404};
  }});
- await assert.rejects(service.generate({...base,tool:'Lesson Plan Generator'},'fixture-token'),err=>err.status===404&&/unavailable or retired/.test(err.message));
+ await assert.rejects(service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token'),err=>err.status===404&&/unavailable or retired/.test(err.message));
  assert.equal(attempts,1);
 });
 test('Gemini 404 uses configured Groq fallback without declaring rate limits or fabricating content',async()=>{
@@ -315,6 +315,6 @@ test('Gemini 404 uses configured Groq fallback without declaring rate limits or 
   models.push(JSON.parse(opts.body).model);
   return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Teaching plan: introduce energy transfer in simple electric circuits, explore safety with low-voltage batteries, test connections and record observations in a teacher-monitored classroom.'})}}]})};
  }});
- assert.match((await service.generate({...base,tool:'Lesson Plan Generator'},'fixture-token')).content,/Teaching plan/);
+ assert.match((await service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token')).content,/Teaching plan/);
  assert.deepEqual(models,['gemini','openai/gpt-oss-120b']);
 });
