@@ -17,7 +17,7 @@ test('faculty delete does not close profile unless cloud confirms',()=>{
 });
 test('faculty profiles cannot save incomplete status, joining date, email or code',()=>{
   for(const term of [
-    'Full teacher name (at least 2 characters) is required.',
+    'Teacher full name (at least 2 characters) is required.',
     'Employee code is required.','Enter a valid teacher email address.',
     'Date of Joining is required.','Select the employment status.',
     'Select the employment type.','Another teacher already uses this email.'
