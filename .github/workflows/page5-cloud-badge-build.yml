@@ -2,6 +2,8 @@ name: Page 5 Cloud Status Build
 on:
   push:
     branches: [fix/page5-cloud-status-reliability-20261113]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: write
