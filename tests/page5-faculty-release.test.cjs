@@ -11,6 +11,8 @@ test('faculty delete does not close profile unless cloud confirms',()=>{
   assert.ok(faculty.includes("result?.status !== 'synced' || result.pending"));
   const f=faculty.slice(faculty.indexOf('let f = async'),faculty.indexOf('const Component176'));
   assert.ok(f.indexOf("result?.status !== 'synced'") < f.indexOf('a(null)'));
+  assert.ok(f.includes('await bnDeactivateTeacherAppAccount(teacher)'));
+  assert.ok(f.indexOf('await bnDeactivateTeacherAppAccount(teacher)') < f.indexOf('const result = await t('));
   assert.ok(f.includes('setTeacherDeleteState({id:null,error:'));
   assert.ok(source.includes('disabled={deleteBusy}'));
   assert.ok(source.includes('{deleteError &&'));
@@ -36,6 +38,8 @@ test('faculty invitations verify persisted profile and fail closed on assignment
   assert.ok(edge.includes('school_teacher_assignments'));
   assert.ok(edge.includes('onConflict:"school_user_id,class_id,subject"'));
   assert.ok(edge.includes('status:"updated"'));
+  assert.ok(edge.includes('body?.action === "deactivate"'));
+  assert.ok(edge.includes('.update({status:"disabled"})'));
 });
 test('oversize faculty photo gets optimized before cloud save',()=>{
   assert.ok(faculty.includes("o.photoDataUrl.length > 300000"));
