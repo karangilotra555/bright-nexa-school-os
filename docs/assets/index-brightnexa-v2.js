@@ -21899,6 +21899,17 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, dele
           "button",
           {
             type: "button",
+            className: `secondary-button teacher-profile-edit-top`,
+            onClick: n2,
+            "aria-label": `Edit teacher details for ${i2}`,
+            style: { marginRight: 10, marginBottom: 8, borderRadius: 9, fontWeight: 750, padding: "10px 14px" }
+          },
+          "Edit Teacher"
+        ),
+        /* @__PURE__ */ w.createElement(
+          "button",
+          {
+            type: "button",
             className: `primary-button`,
             style: { whiteSpace: "normal", textAlign: "center", maxWidth: "100%", lineHeight: 1.3 },
             disabled: inviteBusy || !e2.email,
