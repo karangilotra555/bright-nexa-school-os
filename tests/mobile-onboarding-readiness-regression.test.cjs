@@ -17,7 +17,7 @@ test('admin can see verified teacher and parent onboarding readiness rather than
 test('unactivated teacher cannot be assigned, and duplicate test admissions are blocked',()=>{
  const html=read('teacher-access.html'),s=read('teacher-access.js');
  assert.match(s,/s\.role==='teacher'&&s\.status==='active'/);
- assert.match(s,/whose email activation is complete/);
+ assert.match(s,/whose Teacher App account is active/);
  assert.match(html,/id="studentForm" class="formgrid hidden" aria-hidden="true"/);
  assert.match(html,/Student records have one entry point/);
  assert.match(s,/This old test-student form is disabled to prevent duplicate records/);
