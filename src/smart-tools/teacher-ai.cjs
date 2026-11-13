@@ -356,14 +356,35 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
   }
  }
  async function groq(key,prompt){
-  const model=env.GROQ_MODEL||'llama-3.3-70b-versatile';
-  const res=await fetcher('https://api.groq.com/openai/v1/chat/completions',{
-   method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},
-   body:JSON.stringify({model,temperature:.5,max_completion_tokens:16000,response_format:{type:'json_object'},messages:[{role:'system',content:prompt.system},{role:'user',content:prompt.user}]}),cache:'no-store'
-  });
-  if(!res.ok)throw new SmartToolsError(res.status===429?429:502,'AI provider unavailable or rate-limited ('+res.status+').');
-  const data=await readJson(res);
-  try{return JSON.parse(data.choices[0].message.content)}catch{throw new SmartToolsError(502,'AI provider returned malformed structured output.');}
+  // Groq retired Llama 3.3 70B on free/developer plans in August 2026.
+  // Default to a production-supported model; permit one bounded recovery
+  // for an explicitly configured legacy model. Never create fake AI content.
+  const configured=env.GROQ_MODEL||'openai/gpt-oss-120b';
+  ensure(/^[a-zA-Z0-9_./-]+$/.test(configured),503,'Invalid Groq model setting.');
+  const retired=new Set(['llama-3.3-70b-versatile','llama-3.1-8b-instant']);
+  async function call(model){
+   const payload={model,temperature:.5,max_completion_tokens:16000,
+    response_format:{type:'json_object'},
+    ...(model.startsWith('openai/gpt-oss-')?{reasoning_format:'hidden'}:{}),
+    messages:[{role:'system',content:prompt.system},{role:'user',content:prompt.user}]};
+   const res=await fetcher('https://api.groq.com/openai/v1/chat/completions',{
+    method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},
+    body:JSON.stringify(payload),cache:'no-store'
+   });
+   if(!res.ok){
+    if(res.status===404)throw new SmartToolsError(404,'Groq model '+model+' is unavailable or retired (HTTP 404).');
+    if(res.status===429)throw new SmartToolsError(429,'AI provider rate limit reached (HTTP 429). Try again later.');
+    if(res.status===401||res.status===403)throw new SmartToolsError(503,'AI provider credentials or model access rejected (HTTP '+res.status+').');
+    throw new SmartToolsError(502,'AI provider request failed (HTTP '+res.status+'). No content was generated.');
+   }
+   const data=await readJson(res);
+   try{return JSON.parse(data.choices[0].message.content)}catch{throw new SmartToolsError(502,'AI provider returned malformed structured output.');}
+  }
+  try{return await call(configured);}
+  catch(err){
+   if(err.status===404&&retired.has(configured))return call('openai/gpt-oss-120b');
+   throw err;
+  }
  }
  async function generate(input,token){
   const req=validateInput(input);
@@ -380,7 +401,7 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
   let result;
   if(geminiKey){
    try{result=await gemini(geminiKey,prompt);validateOutput(req,result,blueprint)}catch(err){
-    if(!groqKey||![429,502,504].includes(err.status))throw err;
+    if(!groqKey||![404,429,502,504].includes(err.status))throw err;
     result=await groq(groqKey,prompt);
    }
   }else result=await groq(groqKey,prompt);
