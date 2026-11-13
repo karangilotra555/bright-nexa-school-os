@@ -8075,3 +8075,83 @@ button:disabled {
   color: #ffffff !important;
 }
 
+/* Staff attendance (Teaching + Non-Teaching): compact accessible actions.
+   Keep status on a full line; never let long messages force destructive
+   actions to move below the date picker or stretch the Save button. */
+.attendance-controls.bn-staff-attendance-controls {
+  grid-template-columns: minmax(145px, 190px) minmax(185px, 1fr) max-content max-content;
+  align-items: end;
+  gap: 12px;
+}
+.bn-staff-attendance-controls > .bn-staff-attendance-save {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  width: auto;
+  max-width: 220px;
+  min-width: 166px;
+  white-space: nowrap;
+}
+.bn-staff-attendance-controls > .bn-staff-attendance-delete {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+  width: auto;
+  max-width: 210px;
+  min-height: 38px;
+  margin: 0;
+  white-space: nowrap;
+}
+.bn-staff-attendance-controls > .bn-staff-attendance-status {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  .attendance-controls.bn-staff-attendance-controls {
+    grid-template-columns: minmax(150px, 1fr) minmax(160px, 1fr);
+  }
+  .bn-staff-attendance-controls > .bn-staff-attendance-save {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
+  .bn-staff-attendance-controls > .bn-staff-attendance-delete {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
+  .bn-staff-attendance-controls > .bn-staff-attendance-status {
+    grid-row: 3;
+  }
+}
+@media (max-width: 520px) {
+  .attendance-controls.bn-staff-attendance-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bn-staff-attendance-controls > .attendance-totals {
+    grid-column: 1;
+    grid-row: 2;
+    flex-wrap: wrap;
+  }
+  .bn-staff-attendance-controls > .bn-staff-attendance-save {
+    grid-column: 1;
+    grid-row: 3;
+    min-width: 0;
+  }
+  .bn-staff-attendance-controls > .bn-staff-attendance-delete {
+    grid-column: 1;
+    grid-row: 4;
+  }
+  .bn-staff-attendance-controls > .bn-staff-attendance-status {
+    grid-column: 1;
+    grid-row: 5;
+  }
+}
