@@ -21934,6 +21934,7 @@ function Sr({ data: e, onUpdate: t }) {
   let [n, r] = (0, w.useState)(false);
   let [i, a] = (0, w.useState)(null);
   let [o, s] = (0, w.useState)(null);
+  const [teacherDeleteState,setTeacherDeleteState] = (0, w.useState)({id:null,error:''});
   let [c, l] = (0, w.useState)(``);
   const [photoPreview, setPhotoPreview] = (0, w.useState)(null);
   let u = e.teachers.filter((e) =>
@@ -21963,22 +21964,23 @@ function Sr({ data: e, onUpdate: t }) {
     r(false);
     s(null);
   };
-  let f = (n) => {
-    if (
-      window.confirm(
-        `Delete ${n.name || n.employeeCode || `this faculty record`}?`,
-      )
-    ) {
-      t(
-        {
-          ...e,
-          teachers: e.teachers.filter((e) => e.id !== n.id),
-        },
-        `DELETE`,
-        `Teacher`,
-        n.name || n.employeeCode || `Faculty record`,
-      );
+  let f = async (teacher) => {
+    if (teacherDeleteState.id) return;
+    if (!window.confirm(`Delete ${teacher.name || teacher.employeeCode || 'this faculty record'}? Teacher App access must be revoked separately.`)) return;
+    setTeacherDeleteState({id:teacher.id,error:''});
+    try {
+      // Revoke class-scoped App access before deleting the cloud faculty profile.
+      // If the subsequent ERP save fails, an existing App account remains safely disabled.
+      await bnDeactivateTeacherAppAccount(teacher);
+      const result = await t({...e,teachers:e.teachers.filter(row => row.id !== teacher.id)},
+        'DELETE','Teacher',teacher.name || teacher.employeeCode || 'Faculty record');
+      if (result?.status !== 'synced' || result.pending)
+        throw Error(result?.error?.message || 'Teacher deletion is not confirmed in Supabase. Resolve sync conflict and retry.');
       a(null);
+    } catch(error) {
+      setTeacherDeleteState({id:null,error:error?.message || 'Teacher was not deleted in Supabase.'});
+    } finally {
+      setTeacherDeleteState(prev => ({...prev,id:null}));
     }
   };
   const Component176 = `button`;
@@ -22143,6 +22145,8 @@ function Sr({ data: e, onUpdate: t }) {
             a(null);
           }}
           onDelete={() => f(i)}
+          deleteBusy={teacherDeleteState.id === i.id}
+          deleteError={teacherDeleteState.error}
         />
       )}
       {photoPreview && (
@@ -22181,6 +22185,10 @@ function Cr({
           experienceYears: ``,
           salaryFrequency: undefined,
           status: ``,
+          contractEndDate: ``,
+          daysPerWeek: ``,
+          hoursPerDay: ``,
+          visitsPerMonth: ``,
         },
   );
   let [s, c] = (0, w.useState)(a.subjects.join(`, `));
@@ -22314,9 +22322,31 @@ function Cr({
             ...a,
             subjects: r,
           };
-          if (!N(o)) {
-            u(`Enter at least one faculty detail before saving.`);
-            return;
+          if (String(a.name || '').trim().length < 2) {u('Teacher full name (at least 2 characters) is required.');return;}
+          if (!String(a.employeeCode || '').trim()) {u('Employee code is required.');return;}
+          const email = String(a.email || '').trim().toLowerCase();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {u('Enter a valid teacher email address.');return;}
+          if (t.some(row => row.id !== n?.id && String(row.email || '').trim().toLowerCase() === email)) {
+            u('Another teacher already uses this email.');return;
+          }
+          if (!a.joiningDate) {u('Date of Joining is required.');return;}
+          if (!['Active','Inactive'].includes(a.status)) {u('Select the employment status.');return;}
+          if (!['Permanent','Contract','Part-time','Visiting'].includes(a.employmentType)) {u('Select the employment type.');return;}
+          const knownClasses = new Set(e.map(row => `${row.name}-${row.section}`));
+          if ((a.assignedClasses || []).some(value => !knownClasses.has(value))) {
+            u('One or more assigned classes no longer exist. Update teacher assignments.');return;
+          }
+          if (a.employmentType === 'Contract' && (!a.contractEndDate || a.contractEndDate < a.joiningDate)) {
+            u('Contract end date must be on or after joining date.');return;
+          }
+          if (a.employmentType === 'Part-time' &&
+              (!Number.isInteger(Number(a.daysPerWeek)) || Number(a.daysPerWeek) < 1 || Number(a.daysPerWeek) > 7 ||
+              !(Number(a.hoursPerDay) > 0 && Number(a.hoursPerDay) <= 12))) {
+            u('Part-time staff require 1–7 days per week and hours per day up to 12.');return;
+          }
+          if (a.employmentType === 'Visiting' &&
+              (!Number.isInteger(Number(a.visitsPerMonth)) || Number(a.visitsPerMonth) < 1 || Number(a.visitsPerMonth) > 31)) {
+            u('Visiting staff require 1–31 visits per month.');return;
           }
           if (a.mobile && !/^\d{10}$/.test(a.mobile)) {
             u(`Enter a valid 10-digit mobile number.`);
@@ -22336,12 +22366,20 @@ function Cr({
           setSavingToCloud(true);
           u(``);
           try {
+            if (typeof o.photoDataUrl === 'string' && o.photoDataUrl.startsWith('data:image/') &&
+                o.photoDataUrl.length > 300000) {
+              const original = await (await fetch(o.photoDataUrl)).blob();
+              const optimized = await bnOptimizePortrait(new File([original], 'teacher-photo', {type:original.type || 'image/jpeg'}));
+              if (!optimized || optimized.length >= o.photoDataUrl.length)
+                throw Error('Teacher photo is too large. Please re-upload a smaller portrait.');
+              o.photoDataUrl = optimized;
+            }
             await i({
               ...o,
               id: pendingTeacherId.current,
               name: a.name.trim(),
               employeeCode: a.employeeCode.trim(),
-              email: a.email.trim(),
+              email: a.email.trim().toLowerCase(),
               qualification: a.qualification.trim(),
             });
           } catch (error) {
@@ -22470,7 +22508,7 @@ function Cr({
             <R label={`Employment Type`}>
               <Component240
                 value={a.employmentType || ``}
-                onChange={(e) => m(`employmentType`, e.target.value)}
+                onChange={(e) => o(previous => ({...previous,employmentType:e.target.value,contractEndDate:'',daysPerWeek:'',hoursPerDay:'',visitsPerMonth:''}))}
               >
                 <Component235
                   value={``}
@@ -22481,6 +22519,24 @@ function Cr({
                 <Component239>{`Visiting`}</Component239>
               </Component240>
             </R>
+              {a.employmentType === 'Contract' && (
+                <R label={`Contract End Date`}>
+                  <input type="date" value={a.contractEndDate || ''} onChange={e => m('contractEndDate',e.target.value)} />
+                </R>
+              )}
+              {a.employmentType === 'Part-time' && (<>
+                <R label={`Days per Week`}>
+                  <input type="number" min="1" max="7" value={a.daysPerWeek ?? ''} onChange={e => m('daysPerWeek',e.target.value)} />
+                </R>
+                <R label={`Hours per Day`}>
+                  <input type="number" min="0.5" max="12" step="0.5" value={a.hoursPerDay ?? ''} onChange={e => m('hoursPerDay',e.target.value)} />
+                </R>
+              </>)}
+              {a.employmentType === 'Visiting' && (
+                <R label={`Visits per Month`}>
+                  <input type="number" min="1" max="31" value={a.visitsPerMonth ?? ''} onChange={e => m('visitsPerMonth',e.target.value)} />
+                </R>
+              )}
             <R label={`Highest Qualification`}>
               <Component241
                 value={a.qualification}
@@ -22577,7 +22633,7 @@ function Cr({
           <Component258>{`Salary and Bank Information`}</Component258>
           <Component259
             className={`section-helper`}
-          >{`Sensitive payroll information remains on this device and is included only in encrypted backups.`}</Component259>
+          >{`Salary and bank data are part of the authenticated school workspace and may be stored in Supabase. Restrict admin access and protect exports.`}</Component259>
           <Component272 className={`modal-form-grid`}>
             <R label={`Salary Amount`}>
               <Component260
@@ -22741,6 +22797,7 @@ async function bnInviteTeacherAppAccount(teacher) {
   // A faculty profile is NOT an Auth user. This action runs only on an explicit
   // admin click, against the existing admin-only Supabase Edge Function.
   const email = String(teacher?.email || '').trim().toLowerCase();
+  if (!teacher?.id || teacher.status !== 'Active') throw Error('Save an Active faculty profile before creating Teacher App access.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw Error('Add a valid teacher email in the faculty profile first.');
   }
@@ -22763,17 +22820,42 @@ async function bnInviteTeacherAppAccount(teacher) {
       Authorization: 'Bearer ' + schoolSession.access_token,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ email, role: 'teacher' })
+    body: JSON.stringify({ email, role: 'teacher', facultyId:String(teacher.id) })
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result?.ok || result?.role !== 'teacher' ||
+      !['invited','updated'].includes(result?.status) ||
       String(result?.email || '').toLowerCase() !== email) {
     throw Error(result?.error || 'Supabase did not confirm teacher account enrollment. No invitation success has been recorded.');
   }
   // Accepted by Supabase Auth != delivered to inbox or activated by teacher.
-  return { email, status: 'invited' };
+  return { email, status: result.status, assignments: Number(result.assignments || 0) };
 }
-function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r }) {
+async function bnDeactivateTeacherAppAccount(teacher) {
+  const email = String(teacher?.email || '').trim().toLowerCase();
+  if (!teacher?.id || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    throw Error('Teacher must have a saved faculty ID and email to safely revoke App access.');
+  const readSession = key => { try { return JSON.parse(sessionStorage.getItem(key) || 'null'); } catch (_) { return null; } };
+  const schoolSession = readSession('bn_school_staff_session_v1');
+  const erpAccount = readSession('bright-nexa-school-os:session:v2');
+  const selectedSchool = sessionStorage.getItem('bn_school_staff_selected_school_v1');
+  if (!schoolSession?.access_token || !erpAccount?.cloudVerified ||
+      !selectedSchool || String(erpAccount.institutionId) !== selectedSchool)
+    throw Error('Verified school admin session required to revoke Teacher App access.');
+  if (Number(schoolSession.expires_at || 0) <= Date.now()/1000 + 10)
+    throw Error('School admin session expired. Sign in again before deleting faculty.');
+  const response = await fetch('https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-invite-staff',{
+    method:'POST', cache:'no-store',
+    headers:{apikey:'sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT',
+      Authorization:'Bearer '+schoolSession.access_token,'Content-Type':'application/json'},
+    body:JSON.stringify({email,role:'teacher',facultyId:String(teacher.id),action:'deactivate'})
+  });
+  const payload = await response.json().catch(()=>null);
+  if (!response.ok || !payload?.ok || !['disabled','not-enrolled'].includes(payload?.status))
+    throw Error(payload?.error || 'Teacher App access could not be revoked. Faculty deletion stopped for safety.');
+  return payload;
+}
+function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBusy = false, deleteError = '' }) {
   let i = e.name || e.employeeCode || `Faculty Record`;
   const [inviteBusy, setInviteBusy] = (0, w.useState)(false);
   const [inviteFeedback, setInviteFeedback] = (0, w.useState)('');
@@ -22785,7 +22867,7 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r }) {
     setInviteFeedback('');
     try {
       const response = await bnInviteTeacherAppAccount(e);
-      setInviteFeedback('Account invitation requested for ' + response.email + '. The teacher must accept the email and set a password. Delivery and activation are not yet confirmed.');
+      setInviteFeedback(response.status === 'updated' ? 'Teacher App membership and ' + response.assignments + ' subject assignments synced from this faculty profile.' : 'Invitation requested for ' + response.email + '. ' + response.assignments + ' subject assignments prepared. Email delivery and activation are not yet confirmed.');
     } catch (error) {
       setInviteError(true);
       setInviteFeedback(error?.message || 'Teacher account invitation failed. Please retry.');
@@ -22799,6 +22881,10 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r }) {
     [`Qualification`, e.qualification],
     [`Experience`, e.experienceYears],
     [`Employment Type`, e.employmentType],
+    [`Contract End Date`, e.employmentType === 'Contract' && e.contractEndDate],
+    [`Days / Week`, e.employmentType === 'Part-time' && e.daysPerWeek],
+    [`Hours / Day`, e.employmentType === 'Part-time' && e.hoursPerDay],
+    [`Visits / Month`, e.employmentType === 'Visiting' && e.visitsPerMonth],
     [`Appointment Date`, e.appointmentDate],
     [`Date of Joining`, e.joiningDate],
     [`Subjects`, e.subjects.join(`, `)],
@@ -22929,17 +23015,18 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r }) {
             <button type="button" className={`secondary-button`}
               disabled={inviteBusy || !e.email}
               onClick={inviteTeacher}>
-              {inviteBusy ? 'Requesting account invitation...' : 'Create Teacher App Access / Send Invitation'}
+              {inviteBusy ? 'Updating Teacher App access...' : 'Create / Sync Teacher App Access'}
             </button>
             <p role="status" aria-live="polite"
               style={{fontSize:'12px', marginTop:'8px', color: inviteError ? '#b91c1c' : '#166534'}}>
               {inviteFeedback || (!e.email ? 'Add teacher email to enable app access.' : 'Teacher app login is separate from the faculty record.')}
             </p>
           </div>
+          {deleteError && <p className={`form-error`} role={`alert`}>{deleteError}</p>}
           <Component298 className={`modal-actions`}>
-            <Component295 className={`secondary-button danger`} onClick={r}>
+            <Component295 className={`secondary-button danger`} onClick={r} disabled={deleteBusy}>
               <_Component1 size={16} />
-              {`Delete Profile`}
+              {deleteBusy ? `Deleting from Supabase...` : `Delete Profile`}
             </Component295>
             <Component296
               className={`secondary-button`}

@@ -19757,7 +19757,7 @@ function _Component90({
   onDeleteStudent: i2
 }) {
   let [a2, o2] = (0, w.useState)(``);
-  const [studentPage,setStudentPage]=(0,w.useState)(1);
+  const [studentPage, setStudentPage] = (0, w.useState)(1);
   let [s2, l2] = (0, w.useState)(``);
   let u2 = (0, w.useRef)(null);
   let [d2, f2] = (0, w.useState)(null);
@@ -19786,12 +19786,14 @@ function _Component90({
       return e2;
     }
   }, [a2, e2]);
-  const studentPageSize=25;
-  const studentPageCount=Math.max(1,Math.ceil(h2.length/studentPageSize));
-  const displayedStudentPage=Math.min(studentPage,studentPageCount);
-  const pagedStudents=h2.slice((displayedStudentPage-1)*studentPageSize,
-    displayedStudentPage*studentPageSize);
-  (0,w.useEffect)(()=>setStudentPage(1),[a2,e2.length]);
+  const studentPageSize = 25;
+  const studentPageCount = Math.max(1, Math.ceil(h2.length / studentPageSize));
+  const displayedStudentPage = Math.min(studentPage, studentPageCount);
+  const pagedStudents = h2.slice(
+    (displayedStudentPage - 1) * studentPageSize,
+    displayedStudentPage * studentPageSize
+  );
+  (0, w.useEffect)(() => setStudentPage(1), [a2, e2.length]);
   let g2 = async (t3) => {
     if (t3) {
       l2(`Reading workbook\u2026`);
@@ -19833,12 +19835,17 @@ function _Component90({
           let c2 = r4(`parent mobile`).replace(/\D/g, ``).slice(-10);
           let l3 = gr(r4(`academic stream`));
           if (!!i4 && !!a4 && !!s4 && c2.length === 10 && window.BNStudentAdmissionRules?.importAllowed({
-            name:i4,admissionNumber:a4,className:s4,section:r4(`section`)||`A`,
-            academicStream:l3,parentMobile:c2,status:`Active`,
-            dateOfBirth:r4(`date of birth`),
-            studentMobile:r4(`student mobile`).replace(/\D/g,``).slice(-10),
-            alternateMobile:r4(`alternate mobile`).replace(/\D/g,``).slice(-10)
-          },[...e2,...d3],classes)===true && !u3.has(a4.toLowerCase()) && (s4 !== `11` && s4 !== `12` || !!l3)) {
+            name: i4,
+            admissionNumber: a4,
+            className: s4,
+            section: r4(`section`) || `A`,
+            academicStream: l3,
+            parentMobile: c2,
+            status: `Active`,
+            dateOfBirth: r4(`date of birth`),
+            studentMobile: r4(`student mobile`).replace(/\D/g, ``).slice(-10),
+            alternateMobile: r4(`alternate mobile`).replace(/\D/g, ``).slice(-10)
+          }, [...e2, ...d3], classes) === true && !u3.has(a4.toLowerCase()) && (s4 !== `11` && s4 !== `12` || !!l3)) {
             u3.add(a4.toLowerCase());
             d3.push({
               id: crypto.randomUUID(),
@@ -20169,20 +20176,25 @@ function _Component90({
       onChange: (e3) => o2(e3.target.value),
       placeholder: `Search name, admission no., class or mobile`
     }
-  )), /* @__PURE__ */ w.createElement(Component27, null, h2.length, ` record`, h2.length === 1 ? `` : `s`),
-  studentPageCount>1 && /* @__PURE__ */ w.createElement("div",{
-    className:"student-pagination","aria-label":"Student list pages"
-  },
-    /* @__PURE__ */ w.createElement("button",{
-      type:"button",className:"secondary-button compact",disabled:displayedStudentPage===1,
-      onClick:()=>setStudentPage(n=>Math.max(1,n-1))
-    },"Previous"),
-    /* @__PURE__ */ w.createElement("span",null,"Page ",displayedStudentPage," / ",studentPageCount),
-    /* @__PURE__ */ w.createElement("button",{
-      type:"button",className:"secondary-button compact",disabled:displayedStudentPage===studentPageCount,
-      onClick:()=>setStudentPage(n=>Math.min(studentPageCount,n+1))
-    },"Next")
-  )), h2.length ? /* @__PURE__ */ w.createElement(Component60, { className: `table-scroll` }, /* @__PURE__ */ w.createElement(Component59, null, /* @__PURE__ */ w.createElement(Component37, null, /* @__PURE__ */ w.createElement(Component36, null, /* @__PURE__ */ w.createElement(Component29, null, `Student`), /* @__PURE__ */ w.createElement(Component30, null, `Permanent Student ID`), /* @__PURE__ */ w.createElement(Component31, null, `Admission No.`), /* @__PURE__ */ w.createElement(Component32, null, `Class`), /* @__PURE__ */ w.createElement(Component33, null, `Parent / Guardian`), /* @__PURE__ */ w.createElement(Component34, null, `Status`), /* @__PURE__ */ w.createElement(Component35, { "aria-label": `Actions` }))), /* @__PURE__ */ w.createElement(Component58, null, pagedStudents.map((e3) => /* @__PURE__ */ w.createElement(Component57, { key: e3.id }, /* @__PURE__ */ w.createElement(Component44, null, /* @__PURE__ */ w.createElement(Component43, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component39, null, e3.photoDataUrl ? /* @__PURE__ */ w.createElement(Component38, { src: e3.photoDataUrl, alt: `` }) : pr(e3.name || e3.admissionNumber || `Student`)), /* @__PURE__ */ w.createElement(Component42, null, /* @__PURE__ */ w.createElement(Component40, null, e3.name || e3.admissionNumber || `Student Record`), e3.rollNumber && /* @__PURE__ */ w.createElement(Component41, null, `Roll No. `, e3.rollNumber)))), /* @__PURE__ */ w.createElement(Component46, null, /* @__PURE__ */ w.createElement(Component45, null, e3.studentUniqueId || ``)), /* @__PURE__ */ w.createElement(Component47, null, e3.admissionNumber || ``), /* @__PURE__ */ w.createElement(Component49, null, [e3.className, e3.section].filter(Boolean).join(`-`), e3.academicStream && /* @__PURE__ */ w.createElement(Component48, null, e3.academicStream)), /* @__PURE__ */ w.createElement(Component52, null, (e3.fatherName || e3.motherName || e3.guardianName) && /* @__PURE__ */ w.createElement(Component50, { className: `parent-name` }, e3.fatherName || e3.motherName || e3.guardianName), e3.parentMobile && /* @__PURE__ */ w.createElement(Component51, { className: `parent-mobile` }, e3.parentMobile)), /* @__PURE__ */ w.createElement(Component54, null, e3.status && /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(Component27, null, h2.length, ` record`, h2.length === 1 ? `` : `s`), studentPageCount > 1 && /* @__PURE__ */ w.createElement("div", { className: "student-pagination", "aria-label": "Student list pages" }, /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button compact",
+      disabled: displayedStudentPage === 1,
+      onClick: () => setStudentPage((p3) => Math.max(1, p3 - 1))
+    },
+    "Previous"
+  ), /* @__PURE__ */ w.createElement("span", null, "Page ", displayedStudentPage, " / ", studentPageCount), /* @__PURE__ */ w.createElement(
+    "button",
+    {
+      type: "button",
+      className: "secondary-button compact",
+      disabled: displayedStudentPage === studentPageCount,
+      onClick: () => setStudentPage((p3) => Math.min(studentPageCount, p3 + 1))
+    },
+    "Next"
+  ))), h2.length ? /* @__PURE__ */ w.createElement(Component60, { className: `table-scroll` }, /* @__PURE__ */ w.createElement(Component59, null, /* @__PURE__ */ w.createElement(Component37, null, /* @__PURE__ */ w.createElement(Component36, null, /* @__PURE__ */ w.createElement(Component29, null, `Student`), /* @__PURE__ */ w.createElement(Component30, null, `Permanent Student ID`), /* @__PURE__ */ w.createElement(Component31, null, `Admission No.`), /* @__PURE__ */ w.createElement(Component32, null, `Class`), /* @__PURE__ */ w.createElement(Component33, null, `Parent / Guardian`), /* @__PURE__ */ w.createElement(Component34, null, `Status`), /* @__PURE__ */ w.createElement(Component35, { "aria-label": `Actions` }))), /* @__PURE__ */ w.createElement(Component58, null, pagedStudents.map((e3) => /* @__PURE__ */ w.createElement(Component57, { key: e3.id }, /* @__PURE__ */ w.createElement(Component44, null, /* @__PURE__ */ w.createElement(Component43, { className: `student-cell` }, /* @__PURE__ */ w.createElement(Component39, null, e3.photoDataUrl ? /* @__PURE__ */ w.createElement(Component38, { src: e3.photoDataUrl, alt: `` }) : pr(e3.name || e3.admissionNumber || `Student`)), /* @__PURE__ */ w.createElement(Component42, null, /* @__PURE__ */ w.createElement(Component40, null, e3.name || e3.admissionNumber || `Student Record`), e3.rollNumber && /* @__PURE__ */ w.createElement(Component41, null, `Roll No. `, e3.rollNumber)))), /* @__PURE__ */ w.createElement(Component46, null, /* @__PURE__ */ w.createElement(Component45, null, e3.studentUniqueId || ``)), /* @__PURE__ */ w.createElement(Component47, null, e3.admissionNumber || ``), /* @__PURE__ */ w.createElement(Component49, null, [e3.className, e3.section].filter(Boolean).join(`-`), e3.academicStream && /* @__PURE__ */ w.createElement(Component48, null, e3.academicStream)), /* @__PURE__ */ w.createElement(Component52, null, (e3.fatherName || e3.motherName || e3.guardianName) && /* @__PURE__ */ w.createElement(Component50, { className: `parent-name` }, e3.fatherName || e3.motherName || e3.guardianName), e3.parentMobile && /* @__PURE__ */ w.createElement(Component51, { className: `parent-mobile` }, e3.parentMobile)), /* @__PURE__ */ w.createElement(Component54, null, e3.status && /* @__PURE__ */ w.createElement(
     Component53,
     {
       className: `status-badge ${e3.status.toLowerCase()}`
@@ -20306,10 +20318,8 @@ function _Component6({
       l2("Photo compression is not finished yet.");
       return;
     }
-    const admissionRules=window.BNStudentAdmissionRules;
-    let a3=admissionRules
-      ? admissionRules.validate(i2,e2,classes,r2?.id)
-      : {record:'Student validation could not load. Refresh the page; nothing was saved.'};
+    const admissionRules = window.BNStudentAdmissionRules;
+    let a3 = admissionRules ? admissionRules.validate(i2, e2, classes, r2?.id) : { record: "Student validation could not load. Refresh the page; nothing was saved." };
     if (Object.keys(a3).length) {
       s2(a3);
       return;
@@ -20644,7 +20654,7 @@ function _Component6({
         {
           className: `section-helper`
         },
-        `ERP photo preview is separate from private student photo publishing. For the parent/mobile portal, publish the photograph from Staff Portal → Student Profile.`
+        `ERP photo preview is separate from private student photo publishing. For the parent/mobile portal, publish the photograph from Staff Portal \u2192 Student Profile.`
       ), /* @__PURE__ */ w.createElement(Component125, { className: `identity-upload-grid` }, /* @__PURE__ */ w.createElement(
         _Component8,
         {
@@ -20917,6 +20927,7 @@ function Sr({ data: e2, onUpdate: t2 }) {
   let [n2, r2] = (0, w.useState)(false);
   let [i2, a2] = (0, w.useState)(null);
   let [o2, s2] = (0, w.useState)(null);
+  const [teacherDeleteState, setTeacherDeleteState] = (0, w.useState)({ id: null, error: "" });
   let [c2, l2] = (0, w.useState)(``);
   const [photoPreview, setPhotoPreview] = (0, w.useState)(null);
   let u2 = e2.teachers.filter(
@@ -20939,20 +20950,25 @@ function Sr({ data: e2, onUpdate: t2 }) {
     r2(false);
     s2(null);
   };
-  let f2 = (n3) => {
-    if (window.confirm(
-      `Delete ${n3.name || n3.employeeCode || `this faculty record`}?`
-    )) {
-      t2(
-        {
-          ...e2,
-          teachers: e2.teachers.filter((e3) => e3.id !== n3.id)
-        },
-        `DELETE`,
-        `Teacher`,
-        n3.name || n3.employeeCode || `Faculty record`
+  let f2 = async (teacher) => {
+    if (teacherDeleteState.id) return;
+    if (!window.confirm(`Delete ${teacher.name || teacher.employeeCode || "this faculty record"}? Teacher App access must be revoked separately.`)) return;
+    setTeacherDeleteState({ id: teacher.id, error: "" });
+    try {
+      await bnDeactivateTeacherAppAccount(teacher);
+      const result = await t2(
+        { ...e2, teachers: e2.teachers.filter((row) => row.id !== teacher.id) },
+        "DELETE",
+        "Teacher",
+        teacher.name || teacher.employeeCode || "Faculty record"
       );
+      if (result?.status !== "synced" || result.pending)
+        throw Error(result?.error?.message || "Teacher deletion is not confirmed in Supabase. Resolve sync conflict and retry.");
       a2(null);
+    } catch (error) {
+      setTeacherDeleteState({ id: null, error: error?.message || "Teacher was not deleted in Supabase." });
+    } finally {
+      setTeacherDeleteState((prev) => ({ ...prev, id: null }));
     }
   };
   const Component176 = `button`;
@@ -21070,7 +21086,9 @@ function Sr({ data: e2, onUpdate: t2 }) {
         s2(i2);
         a2(null);
       },
-      onDelete: () => f2(i2)
+      onDelete: () => f2(i2),
+      deleteBusy: teacherDeleteState.id === i2.id,
+      deleteError: teacherDeleteState.error
     }
   ), photoPreview && /* @__PURE__ */ w.createElement(L, { title: `Teacher Photograph`, subtitle: photoPreview.name, onClose: () => setPhotoPreview(null) }, /* @__PURE__ */ w.createElement("div", { style: { textAlign: "center", padding: "12px" } }, /* @__PURE__ */ w.createElement(
     "img",
@@ -21103,7 +21121,11 @@ function Cr({
       employmentType: void 0,
       experienceYears: ``,
       salaryFrequency: void 0,
-      status: ``
+      status: ``,
+      contractEndDate: ``,
+      daysPerWeek: ``,
+      hoursPerDay: ``,
+      visitsPerMonth: ``
     }
   );
   let [s2, c2] = (0, w.useState)(a2.subjects.join(`, `));
@@ -21240,8 +21262,50 @@ function Cr({
             ...a2,
             subjects: r3
           };
-          if (!N(o3)) {
-            u2(`Enter at least one faculty detail before saving.`);
+          if (String(a2.name || "").trim().length < 2) {
+            u2("Teacher full name (at least 2 characters) is required.");
+            return;
+          }
+          if (!String(a2.employeeCode || "").trim()) {
+            u2("Employee code is required.");
+            return;
+          }
+          const email = String(a2.email || "").trim().toLowerCase();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            u2("Enter a valid teacher email address.");
+            return;
+          }
+          if (t2.some((row) => row.id !== n2?.id && String(row.email || "").trim().toLowerCase() === email)) {
+            u2("Another teacher already uses this email.");
+            return;
+          }
+          if (!a2.joiningDate) {
+            u2("Date of Joining is required.");
+            return;
+          }
+          if (!["Active", "Inactive"].includes(a2.status)) {
+            u2("Select the employment status.");
+            return;
+          }
+          if (!["Permanent", "Contract", "Part-time", "Visiting"].includes(a2.employmentType)) {
+            u2("Select the employment type.");
+            return;
+          }
+          const knownClasses = new Set(e3.map((row) => `${row.name}-${row.section}`));
+          if ((a2.assignedClasses || []).some((value) => !knownClasses.has(value))) {
+            u2("One or more assigned classes no longer exist. Update teacher assignments.");
+            return;
+          }
+          if (a2.employmentType === "Contract" && (!a2.contractEndDate || a2.contractEndDate < a2.joiningDate)) {
+            u2("Contract end date must be on or after joining date.");
+            return;
+          }
+          if (a2.employmentType === "Part-time" && (!Number.isInteger(Number(a2.daysPerWeek)) || Number(a2.daysPerWeek) < 1 || Number(a2.daysPerWeek) > 7 || !(Number(a2.hoursPerDay) > 0 && Number(a2.hoursPerDay) <= 12))) {
+            u2("Part-time staff require 1\u20137 days per week and hours per day up to 12.");
+            return;
+          }
+          if (a2.employmentType === "Visiting" && (!Number.isInteger(Number(a2.visitsPerMonth)) || Number(a2.visitsPerMonth) < 1 || Number(a2.visitsPerMonth) > 31)) {
+            u2("Visiting staff require 1\u201331 visits per month.");
             return;
           }
           if (a2.mobile && !/^\d{10}$/.test(a2.mobile)) {
@@ -21257,12 +21321,19 @@ function Cr({
           setSavingToCloud(true);
           u2(``);
           try {
+            if (typeof o3.photoDataUrl === "string" && o3.photoDataUrl.startsWith("data:image/") && o3.photoDataUrl.length > 3e5) {
+              const original = await (await fetch(o3.photoDataUrl)).blob();
+              const optimized = await bnOptimizePortrait(new File([original], "teacher-photo", { type: original.type || "image/jpeg" }));
+              if (!optimized || optimized.length >= o3.photoDataUrl.length)
+                throw Error("Teacher photo is too large. Please re-upload a smaller portrait.");
+              o3.photoDataUrl = optimized;
+            }
             await i2({
               ...o3,
               id: pendingTeacherId.current,
               name: a2.name.trim(),
               employeeCode: a2.employeeCode.trim(),
-              email: a2.email.trim(),
+              email: a2.email.trim().toLowerCase(),
               qualification: a2.qualification.trim()
             });
           } catch (error) {
@@ -21380,7 +21451,7 @@ function Cr({
         Component240,
         {
           value: a2.employmentType || ``,
-          onChange: (e3) => m2(`employmentType`, e3.target.value)
+          onChange: (e3) => o2((previous) => ({ ...previous, employmentType: e3.target.value, contractEndDate: "", daysPerWeek: "", hoursPerDay: "", visitsPerMonth: "" }))
         },
         /* @__PURE__ */ w.createElement(
           Component235,
@@ -21393,7 +21464,7 @@ function Cr({
         /* @__PURE__ */ w.createElement(Component237, null, `Contract`),
         /* @__PURE__ */ w.createElement(Component238, null, `Part-time`),
         /* @__PURE__ */ w.createElement(Component239, null, `Visiting`)
-      )), /* @__PURE__ */ w.createElement(R, { label: `Highest Qualification` }, /* @__PURE__ */ w.createElement(
+      )), a2.employmentType === "Contract" && /* @__PURE__ */ w.createElement(R, { label: `Contract End Date` }, /* @__PURE__ */ w.createElement("input", { type: "date", value: a2.contractEndDate || "", onChange: (e3) => m2("contractEndDate", e3.target.value) })), a2.employmentType === "Part-time" && /* @__PURE__ */ w.createElement(w.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Days per Week` }, /* @__PURE__ */ w.createElement("input", { type: "number", min: "1", max: "7", value: a2.daysPerWeek ?? "", onChange: (e3) => m2("daysPerWeek", e3.target.value) })), /* @__PURE__ */ w.createElement(R, { label: `Hours per Day` }, /* @__PURE__ */ w.createElement("input", { type: "number", min: "0.5", max: "12", step: "0.5", value: a2.hoursPerDay ?? "", onChange: (e3) => m2("hoursPerDay", e3.target.value) }))), a2.employmentType === "Visiting" && /* @__PURE__ */ w.createElement(R, { label: `Visits per Month` }, /* @__PURE__ */ w.createElement("input", { type: "number", min: "1", max: "31", value: a2.visitsPerMonth ?? "", onChange: (e3) => m2("visitsPerMonth", e3.target.value) })), /* @__PURE__ */ w.createElement(R, { label: `Highest Qualification` }, /* @__PURE__ */ w.createElement(
         Component241,
         {
           value: a2.qualification,
@@ -21481,7 +21552,7 @@ function Cr({
         {
           className: `section-helper`
         },
-        `Sensitive payroll information remains on this device and is included only in encrypted backups.`
+        `Salary and bank data are part of the authenticated school workspace and may be stored in Supabase. Restrict admin access and protect exports.`
       ), /* @__PURE__ */ w.createElement(Component272, { className: `modal-form-grid` }, /* @__PURE__ */ w.createElement(R, { label: `Salary Amount` }, /* @__PURE__ */ w.createElement(
         Component260,
         {
@@ -21629,6 +21700,7 @@ function Cr({
 }
 async function bnInviteTeacherAppAccount(teacher) {
   const email = String(teacher?.email || "").trim().toLowerCase();
+  if (!teacher?.id || teacher.status !== "Active") throw Error("Save an Active faculty profile before creating Teacher App access.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw Error("Add a valid teacher email in the faculty profile first.");
   }
@@ -21656,15 +21728,48 @@ async function bnInviteTeacherAppAccount(teacher) {
       Authorization: "Bearer " + schoolSession.access_token,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ email, role: "teacher" })
+    body: JSON.stringify({ email, role: "teacher", facultyId: String(teacher.id) })
   });
   const result = await response.json().catch(() => null);
-  if (!response.ok || !result?.ok || result?.role !== "teacher" || String(result?.email || "").toLowerCase() !== email) {
+  if (!response.ok || !result?.ok || result?.role !== "teacher" || !["invited", "updated"].includes(result?.status) || String(result?.email || "").toLowerCase() !== email) {
     throw Error(result?.error || "Supabase did not confirm teacher account enrollment. No invitation success has been recorded.");
   }
-  return { email, status: "invited" };
+  return { email, status: result.status, assignments: Number(result.assignments || 0) };
 }
-function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
+async function bnDeactivateTeacherAppAccount(teacher) {
+  const email = String(teacher?.email || "").trim().toLowerCase();
+  if (!teacher?.id || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    throw Error("Teacher must have a saved faculty ID and email to safely revoke App access.");
+  const readSession = (key) => {
+    try {
+      return JSON.parse(sessionStorage.getItem(key) || "null");
+    } catch (_2) {
+      return null;
+    }
+  };
+  const schoolSession = readSession("bn_school_staff_session_v1");
+  const erpAccount = readSession("bright-nexa-school-os:session:v2");
+  const selectedSchool = sessionStorage.getItem("bn_school_staff_selected_school_v1");
+  if (!schoolSession?.access_token || !erpAccount?.cloudVerified || !selectedSchool || String(erpAccount.institutionId) !== selectedSchool)
+    throw Error("Verified school admin session required to revoke Teacher App access.");
+  if (Number(schoolSession.expires_at || 0) <= Date.now() / 1e3 + 10)
+    throw Error("School admin session expired. Sign in again before deleting faculty.");
+  const response = await fetch("https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-invite-staff", {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      apikey: "sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT",
+      Authorization: "Bearer " + schoolSession.access_token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, role: "teacher", facultyId: String(teacher.id), action: "deactivate" })
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.ok || !["disabled", "not-enrolled"].includes(payload?.status))
+    throw Error(payload?.error || "Teacher App access could not be revoked. Faculty deletion stopped for safety.");
+  return payload;
+}
+function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, deleteBusy = false, deleteError = "" }) {
   let i2 = e2.name || e2.employeeCode || `Faculty Record`;
   const [inviteBusy, setInviteBusy] = (0, w.useState)(false);
   const [inviteFeedback, setInviteFeedback] = (0, w.useState)("");
@@ -21676,7 +21781,7 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
     setInviteFeedback("");
     try {
       const response = await bnInviteTeacherAppAccount(e2);
-      setInviteFeedback("Account invitation requested for " + response.email + ". The teacher must accept the email and set a password. Delivery and activation are not yet confirmed.");
+      setInviteFeedback(response.status === "updated" ? "Teacher App membership and " + response.assignments + " subject assignments synced from this faculty profile." : "Invitation requested for " + response.email + ". " + response.assignments + " subject assignments prepared. Email delivery and activation are not yet confirmed.");
     } catch (error) {
       setInviteError(true);
       setInviteFeedback(error?.message || "Teacher account invitation failed. Please retry.");
@@ -21689,6 +21794,10 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
     [`Qualification`, e2.qualification],
     [`Experience`, e2.experienceYears],
     [`Employment Type`, e2.employmentType],
+    [`Contract End Date`, e2.employmentType === "Contract" && e2.contractEndDate],
+    [`Days / Week`, e2.employmentType === "Part-time" && e2.daysPerWeek],
+    [`Hours / Day`, e2.employmentType === "Part-time" && e2.hoursPerDay],
+    [`Visits / Month`, e2.employmentType === "Visiting" && e2.visitsPerMonth],
     [`Appointment Date`, e2.appointmentDate],
     [`Date of Joining`, e2.joiningDate],
     [`Subjects`, e2.subjects.join(`, `)],
@@ -21790,7 +21899,7 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
           disabled: inviteBusy || !e2.email,
           onClick: inviteTeacher
         },
-        inviteBusy ? "Requesting account invitation..." : "Create Teacher App Access / Send Invitation"
+        inviteBusy ? "Updating Teacher App access..." : "Create / Sync Teacher App Access"
       ), /* @__PURE__ */ w.createElement(
         "p",
         {
@@ -21799,7 +21908,7 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2 }) {
           style: { fontSize: "12px", marginTop: "8px", color: inviteError ? "#b91c1c" : "#166534" }
         },
         inviteFeedback || (!e2.email ? "Add teacher email to enable app access." : "Teacher app login is separate from the faculty record.")
-      )), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2 }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), `Delete Profile`), /* @__PURE__ */ w.createElement(
+      )), deleteError && /* @__PURE__ */ w.createElement("p", { className: `form-error`, role: `alert` }, deleteError), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2, disabled: deleteBusy }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), deleteBusy ? `Deleting from Supabase...` : `Delete Profile`), /* @__PURE__ */ w.createElement(
         Component296,
         {
           className: `secondary-button`,
@@ -38245,8 +38354,8 @@ function Ds() {
     "School Quality Score": `Institute Quality Score`
   };
   let C2 = (e3) => x2 ? S2[e3] ?? e3 : e3 === `Classes & Batches` ? `Class & Section Setup` : e3;
-  let localNow2 = /* @__PURE__ */ new Date();
-  let T2 = [localNow2.getFullYear(),String(localNow2.getMonth()+1).padStart(2,'0'),String(localNow2.getDate()).padStart(2,'0')].join('-');
+  const localNow = /* @__PURE__ */ new Date();
+  let T2 = [localNow.getFullYear(), String(localNow.getMonth() + 1).padStart(2, "0"), String(localNow.getDate()).padStart(2, "0")].join("-");
   let E2 = i2.attendance.filter((e3) => e3.date === T2);
   let ee2 = E2.length ? E2.filter((e3) => e3.status === `Present`).length / E2.length * 100 : null;
   let D2 = T2.slice(0, 7);

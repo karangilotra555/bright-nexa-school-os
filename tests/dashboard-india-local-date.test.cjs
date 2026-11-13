@@ -7,7 +7,7 @@ test('school Dashboard uses local calendar date, never UTC, for today attendance
  assert.doesNotMatch(source,/let T = new Date\(\)\.toISOString\(\)\.slice\(0, 10\)/);
  assert.doesNotMatch(bundle,/let T2 = \(\/\* @__PURE__ \*\/ new Date\(\)\)\.toISOString\(\)\.slice\(0, 10\)/);
  assert.match(source,/localNow\.getFullYear\(\)/);
- assert.match(bundle,/localNow2\.getMonth\(\)\+1/);
+ assert.match(bundle,/localNow\d*\.getMonth\(\)\s*\+\s*1/);
  assert.equal(bundle,read('docs/assets/index-brightnexa-v2.js'));
  assert.equal(bundle,read('app-extracted/dist/assets/index-brightnexa-v2.js'));
 });
