@@ -27,7 +27,7 @@ for(const mirror of ['','docs','app-extracted/dist']){
   let after=before.replace(/(url:"assets\/index-brightnexa-v2\.js",revision:)(?:null|"[^"]*")/,'$1"'+revision+'"');
   if(after===before&&!before.includes('revision:"'+revision+'"'))throw Error('Missing precache entry: '+file);
   const html=fs.readFileSync(path.join(root,mirror,'index.html'),'utf8');
-  const assets=['index.html',...Array.from(html.matchAll(/src="\.\/((?:school-workspace-|teacher-)[^"/]+\.js\?v=[^"]+)"/g),m=>m[1])];
+  const assets=['index.html',...Array.from(html.matchAll(/src="\.\/((?:school-workspace-|school-online-guard|teacher-)[^"/]+\.js\?v=[^"]+)"/g),m=>m[1])];
   for(const url of assets){
     const assetPath=path.join(root,mirror,url.split('?')[0]);
     // Git stores these text assets with LF; hash the bytes deployed by CI too.
