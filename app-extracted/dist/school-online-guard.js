@@ -55,7 +55,13 @@
   const problem=String(error?.message||error||'').trim();
   // Make the real cloud state readable by the Dashboard status indicator.
   // UI must never infer successful persistence from a separate local-save label.
+  const changed=lastStatus!==current||lastProblem!==problem;
   lastStatus=current;lastProblem=problem;
+  // Keep React's top-bar status in lockstep with actual cloud errors.
+  // This event never contains a school record or authentication token.
+  if(changed&&typeof root.dispatchEvent==='function'&&typeof root.CustomEvent==='function'){
+    root.dispatchEvent(new root.CustomEvent('bn-cloud-guard-state',{detail:{status:current,problem}}));
+  }
   if(!active()){
     const existing=root.document?.getElementById(ID);
     if(existing)existing.style.display='none';
