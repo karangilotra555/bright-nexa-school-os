@@ -22997,6 +22997,11 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
               )}
           <div className={`teacher-app-invite teacher-app-invite--header`}
             style={{marginTop: '12px', maxWidth:'100%'}}>
+            <button type="button" className={`secondary-button teacher-profile-edit-top`}
+              onClick={n} aria-label={`Edit teacher details for ${i}`}
+              style={{marginRight:10,marginBottom:8,borderRadius:9,fontWeight:750,padding:'10px 14px'}}>
+              Edit Teacher
+            </button>
             <button type="button" className={`primary-button`}
               style={{whiteSpace:'normal',textAlign:'center',maxWidth:'100%',lineHeight:1.3}}
               disabled={inviteBusy || !e.email}
