@@ -38133,6 +38133,21 @@ function Ds() {
   const [cloudDialog, setCloudDialog] = w.useState(false);
   const [cloudError, setCloudError] = w.useState("");
   const [cloud, setCloud] = w.useState(null);
+  const [cloudGuardState, setCloudGuardState] = w.useState({ status: "local", problem: "" });
+  w.useEffect(() => {
+    const apply = (event) => {
+      const next = event?.detail || window.BNWorkspaceOnlineGuard?.getStatus?.() || { status: "local", problem: "" };
+      setCloudGuardState((previous) => previous.status === next.status && previous.problem === next.problem ? previous : { status: next.status || "local", problem: next.problem || "" });
+    };
+    window.addEventListener("bn-cloud-guard-state", apply);
+    apply();
+    return () => window.removeEventListener("bn-cloud-guard-state", apply);
+  }, []);
+  const cloudBadgeConflict = syncStatus === "conflict" || cloudGuardState.status === "conflict";
+  const cloudBadgeFailed = !cloudBadgeConflict && Boolean(cloudGuardState.problem || cloudError);
+  const cloudBadgeSaving = !cloudBadgeConflict && !cloudBadgeFailed && (["pending", "loading", "syncing"].includes(cloudGuardState.status) || ["pending", "syncing"].includes(syncStatus));
+  const cloudBadgeConfirmed = !cloudBadgeConflict && !cloudBadgeFailed && !cloudBadgeSaving && syncStatus === "synced" && cloudGuardState.status === "synced";
+  const cloudBadgeLabel = cloudBadgeConflict ? "Sync conflict \u2014 not published" : cloudBadgeFailed ? "Cloud save failed \u2014 not published" : cloudBadgeSaving ? "Saving to Supabase \u2014 not yet confirmed" : cloudBadgeConfirmed ? "ERP saved to Supabase" : "School not synced";
   w.useEffect(() => {
     if (!workspaceReady || !cloud?.controller || !["Attendance", "Owner Reports"].includes(c2)) return;
     cloud.controller.sync().catch((error) => setCloudError(error?.message || "Cloud attendance refresh failed."));
@@ -38772,9 +38787,9 @@ function Ds() {
         display: `inline-flex`,
         alignItems: `center`,
         gap: `6px`,
-        borderColor: syncStatus === "synced" ? `#10b981` : syncStatus === "syncing" ? `#f59e0b` : `var(--line, #cbd5e1)`,
-        background: syncStatus === "synced" ? `rgba(16, 185, 129, 0.1)` : syncStatus === "syncing" ? `rgba(245, 158, 11, 0.1)` : `transparent`,
-        color: syncStatus === "synced" ? `#065f46` : syncStatus === "syncing" ? `#92400e` : `inherit`,
+        borderColor: cloudBadgeFailed || cloudBadgeConflict ? `#c66a17` : cloudBadgeConfirmed ? `#10b981` : cloudBadgeSaving ? `#f59e0b` : `var(--line, #cbd5e1)`,
+        background: cloudBadgeFailed || cloudBadgeConflict ? `#fff4e5` : cloudBadgeConfirmed ? `rgba(16, 185, 129, 0.1)` : cloudBadgeSaving ? `rgba(245, 158, 11, 0.1)` : `transparent`,
+        color: cloudBadgeFailed || cloudBadgeConflict ? `#874200` : cloudBadgeConfirmed ? `#065f46` : cloudBadgeSaving ? `#92400e` : `inherit`,
         fontWeight: 600,
         fontSize: `12px`,
         padding: `4px 10px`,
@@ -38782,11 +38797,11 @@ function Ds() {
         cursor: `pointer`,
         height: `34px`
       },
-      title: "School cloud status. Click to connect, refresh, or recover a conflict.",
+      title: cloudBadgeFailed || cloudBadgeConflict ? cloudGuardState.problem || cloudError || cloudBadgeLabel : "School cloud status. Click to connect, refresh, or recover a conflict.",
       onClick: () => triggerManualSync()
     },
-    /* @__PURE__ */ w.createElement("span", { style: { fontSize: `13px` } }, syncStatus === "syncing" ? "\u{1F504}" : "\u2601\uFE0F"),
-    /* @__PURE__ */ w.createElement("span", null, syncStatus === "syncing" ? "Syncing..." : syncStatus === "synced" ? "ERP saved to Supabase" : syncStatus === "conflict" ? "Sync conflict" : syncStatus === "pending" ? "Upload pending" : "Local Mode"),
+    /* @__PURE__ */ w.createElement("span", { style: { fontSize: `13px` } }, cloudBadgeSaving ? "\u{1F504}" : "\u2601\uFE0F"),
+    /* @__PURE__ */ w.createElement("span", null, cloudBadgeLabel),
     /* @__PURE__ */ w.createElement(
       "span",
       {
@@ -38795,7 +38810,7 @@ function Ds() {
           width: `8px`,
           height: `8px`,
           borderRadius: `50%`,
-          background: syncStatus === "synced" ? `#10b981` : syncStatus === "syncing" ? `#f59e0b` : `#3b82f6`
+          background: cloudBadgeFailed || cloudBadgeConflict ? `#c66a17` : cloudBadgeConfirmed ? `#10b981` : cloudBadgeSaving ? `#f59e0b` : `#3b82f6`
         }
       }
     )
