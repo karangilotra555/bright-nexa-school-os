@@ -22794,6 +22794,7 @@ async function bnInviteTeacherAppAccount(teacher) {
   // A faculty profile is NOT an Auth user. This action runs only on an explicit
   // admin click, against the existing admin-only Supabase Edge Function.
   const email = String(teacher?.email || '').trim().toLowerCase();
+  if (!teacher?.id || teacher.status !== 'Active') throw Error('Save an Active faculty profile before creating Teacher App access.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw Error('Add a valid teacher email in the faculty profile first.');
   }
@@ -22816,15 +22817,16 @@ async function bnInviteTeacherAppAccount(teacher) {
       Authorization: 'Bearer ' + schoolSession.access_token,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ email, role: 'teacher' })
+    body: JSON.stringify({ email, role: 'teacher', facultyId:String(teacher.id) })
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result?.ok || result?.role !== 'teacher' ||
+      !['invited','updated'].includes(result?.status) ||
       String(result?.email || '').toLowerCase() !== email) {
     throw Error(result?.error || 'Supabase did not confirm teacher account enrollment. No invitation success has been recorded.');
   }
   // Accepted by Supabase Auth != delivered to inbox or activated by teacher.
-  return { email, status: 'invited' };
+  return { email, status: result.status, assignments: Number(result.assignments || 0) };
 }
 function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBusy = false, deleteError = '' }) {
   let i = e.name || e.employeeCode || `Faculty Record`;
@@ -22838,7 +22840,7 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
     setInviteFeedback('');
     try {
       const response = await bnInviteTeacherAppAccount(e);
-      setInviteFeedback('Account invitation requested for ' + response.email + '. The teacher must accept the email and set a password. Delivery and activation are not yet confirmed.');
+      setInviteFeedback(response.status === 'updated' ? 'Teacher App membership and ' + response.assignments + ' subject assignments synced from this faculty profile.' : 'Invitation requested for ' + response.email + '. ' + response.assignments + ' subject assignments prepared. Email delivery and activation are not yet confirmed.');
     } catch (error) {
       setInviteError(true);
       setInviteFeedback(error?.message || 'Teacher account invitation failed. Please retry.');
@@ -22986,7 +22988,7 @@ function _Component10({ teacher: e, onClose: t, onEdit: n, onDelete: r, deleteBu
             <button type="button" className={`secondary-button`}
               disabled={inviteBusy || !e.email}
               onClick={inviteTeacher}>
-              {inviteBusy ? 'Requesting account invitation...' : 'Create Teacher App Access / Send Invitation'}
+              {inviteBusy ? 'Updating Teacher App access...' : 'Create / Sync Teacher App Access'}
             </button>
             <p role="status" aria-live="polite"
               style={{fontSize:'12px', marginTop:'8px', color: inviteError ? '#b91c1c' : '#166534'}}>
