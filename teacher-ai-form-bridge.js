@@ -66,10 +66,72 @@
     if (textarea.placeholder !== help) textarea.placeholder = help;
     textarea.setAttribute('aria-label', 'Optional suggestions or chapter topic');
   }
+  // A compact native picker replaces ten always-visible tool buttons.
+  // Original React buttons remain in the DOM and receive their own onClick,
+  // keeping every existing generator, permission, form, and save workflow.
+  var groups = [
+    ['Teaching & Homework', ['Lesson Plan Generator','Homework Generator','Worksheet Generator','Activity Ideas Generator']],
+    ['Exams & Assessments', ['Question Paper Generator','Class Test Generator']],
+    ['Student Support & Communication', ['Student Remark Generator','Weak Student Remedial Plan','Parent Message Generator','School Notice Generator']]
+  ];
+  var names = groups.reduce(function(all,g){return all.concat(g[1]);},[]);
+  function compactToolNav(){
+    var menus=document.querySelectorAll('aside');
+    for(var i=0;i<menus.length;i++){
+      var aside=menus[i],buttons=Array.prototype.slice.call(aside.querySelectorAll('button'));
+      var toolButtons=buttons.filter(function(button){return names.indexOf((button.textContent||'').trim())>=0;});
+      if(toolButtons.length!==names.length)continue;
+      var panel=aside.querySelector('[data-bn-ai-tool-picker]');
+      if(!panel){
+        panel=document.createElement('div');
+        panel.setAttribute('data-bn-ai-tool-picker','1');
+        panel.style.cssText='padding:12px 10px 14px;box-sizing:border-box;width:100%';
+        var label=document.createElement('label');
+        label.textContent='Choose AI generator';
+        label.setAttribute('for','bn-ai-tool-selection');
+        label.style.cssText='font-size:13px;font-weight:700;display:block;margin-bottom:7px;color:#102640';
+        var select=document.createElement('select');
+        select.id='bn-ai-tool-selection';
+        select.setAttribute('aria-label','Choose AI generator');
+        select.style.cssText='width:100%;max-width:100%;box-sizing:border-box;padding:10px 8px;border:1px solid #ccdbe9;border-radius:9px;background:#fff;color:#102640;font-size:13px';
+        groups.forEach(function(group){
+          var optgroup=document.createElement('optgroup');
+          optgroup.label=group[0];
+          group[1].forEach(function(name){
+            var opt=document.createElement('option');opt.value=name;opt.textContent=name;optgroup.appendChild(opt);
+          });
+          select.appendChild(optgroup);
+        });
+        select.addEventListener('change',function(){
+          var buttonsNow=Array.prototype.slice.call(aside.querySelectorAll('button'));
+          var selected=buttonsNow.find(function(b){return (b.textContent||'').trim()===select.value;});
+          if(selected)selected.click(); // preserve React's original tool switch
+        });
+        panel.appendChild(label);panel.appendChild(select);
+        aside.insertBefore(panel,aside.firstChild);
+      }
+      toolButtons.forEach(function(button){
+        if(button.style.display!=='none')button.style.setProperty('display','none','important');
+        if(button.getAttribute('aria-hidden')!=='true')button.setAttribute('aria-hidden','true');
+        if(button.tabIndex!==-1)button.tabIndex=-1;
+      });
+      var select=panel.querySelector('select');
+      var headings=Array.prototype.slice.call(document.querySelectorAll('h1,h2,h3,h4'));
+      var visible=headings.find(function(h){return names.indexOf((h.textContent||'').trim())>=0;});
+      var active=visible&&(visible.textContent||'').trim();
+      if(!active){
+        var chosen=toolButtons.find(function(b){return b.classList.contains('active')||b.getAttribute('aria-pressed')==='true';});
+        active=chosen&&(chosen.textContent||'').trim();
+      }
+      if(active&&select.value!==active)select.value=active;
+      return;
+    }
+  }
   function apply() {
     bridgeAI();
     hideTopicField();
     updateSuggestions();
+    compactToolNav();
   }
   var scheduled = false;
   function schedule() {
