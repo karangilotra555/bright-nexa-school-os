@@ -15,7 +15,7 @@ const goodSession={
   'bright-nexa-school-os:session:v2':JSON.stringify({cloudVerified:true,institutionId:'school-id'}),
   'bn_school_staff_selected_school_v1':'school-id'
 };
-function harness({storage=goodSession,response={ok:true,role:'teacher',email:'mkbmony@gmail.com'},status=201}={}){
+function harness({storage=goodSession,response={ok:true,role:'teacher',status:'invited',assignments:0,email:'mkbmony@gmail.com'},status=201}={}){
   const calls=[];
   const context={
     sessionStorage:{getItem:(key)=>storage[key]??null},
@@ -26,12 +26,12 @@ function harness({storage=goodSession,response={ok:true,role:'teacher',email:'mk
   return {invite:context.invite,calls};
 }
 test('faculty profile shows explicit invitation button; no automatic sending',()=>{
- assert.ok(source.includes('Create Teacher App Access / Send Invitation'));
+ assert.ok(source.includes('Create / Sync Teacher App Access'));
  assert.ok(source.includes('onClick={inviteTeacher}'));
  assert.ok(!source.includes('await bnInviteTeacherAppAccount(e);\n    }'), 'invitation must be triggered from click handler with feedback');
 });
 test('invitation only uses authenticated school admin and teacher role',async()=>{
- const h=harness();const r=await h.invite({email:'MKBMONY@GMAIL.COM'});
+ const h=harness();const r=await h.invite({id:'faculty-1',status:'Active',email:'MKBMONY@GMAIL.COM'});
  assert.equal(r.email,'mkbmony@gmail.com');
  assert.equal(r.status,'invited');
  assert.equal(h.calls.length,1);
@@ -39,19 +39,19 @@ test('invitation only uses authenticated school admin and teacher role',async()=
  assert.ok(url.endsWith('/functions/v1/school-invite-staff'));
  assert.equal(request.method,'POST');
  assert.equal(request.headers.Authorization,'Bearer owner-token');
- assert.deepEqual(JSON.parse(request.body),{email:'mkbmony@gmail.com',role:'teacher'});
+ assert.deepEqual(JSON.parse(request.body),{email:'mkbmony@gmail.com',role:'teacher',facultyId:'faculty-1'});
 });
 test('does not invite when not in cloud-verified school or missing email',async()=>{
  const h=harness({storage:{}});
- await assert.rejects(h.invite({email:'mkbmony@gmail.com'}),/verified School Admin/);
+ await assert.rejects(h.invite({id:'faculty-1',status:'Active',email:'mkbmony@gmail.com'}),/verified School Admin/);
  assert.equal(h.calls.length,0);
- await assert.rejects(h.invite({email:''}),/valid teacher email/);
+ await assert.rejects(h.invite({id:'faculty-1',status:'Active',email:''}),/valid teacher email/);
  assert.equal(h.calls.length,0);
 });
 test('does not report success on edge function or membership failure',async()=>{
  const h=harness({status:422,response:{error:'Invitation not sent. Verify email settings.'}});
- await assert.rejects(h.invite({email:'mkbmony@gmail.com'}),/Invitation not sent/);
+ await assert.rejects(h.invite({id:'faculty-1',status:'Active',email:'mkbmony@gmail.com'}),/Invitation not sent/);
 });
 test('does not confuse request acceptance with email delivery',()=>{
- assert.ok(source.includes('Delivery and activation are not yet confirmed.'));
+ assert.ok(source.includes('delivery and activation are not yet confirmed.'));
 });
