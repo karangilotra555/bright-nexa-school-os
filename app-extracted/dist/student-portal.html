@@ -1134,13 +1134,13 @@
       target.search=window.location.search;target.hash=window.location.hash;
       window.location.replace(target.href);
     }
-    
+
     async function showPublicVerification(adm, sig) {
       const target=new URL('https://bright-nexa-school-os-api.onrender.com/student-portal.html');
       target.searchParams.set('action','verify');target.searchParams.set('adm',adm||'');target.searchParams.set('sig',sig||'');
       window.location.replace(target.href);
     }
-    
+
     function showLoginFromVerification(adm) {
       showLoginScreen();
       const admInput = document.getElementById('admInput');
@@ -1171,7 +1171,7 @@
       document.getElementById('dobInput').value='';
       window.location.assign('https://bright-nexa-school-os-api.onrender.com/parents.html');
     }
-    
+
     function showLoginError(msg) {
       const alertBox = document.getElementById('loginAlert');
       if (alertBox) {
