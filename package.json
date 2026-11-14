@@ -11,6 +11,7 @@
   "author": "Karan Gilotra",
   "license": "ISC",
   "dependencies": {
+    "@noble/ciphers": "2.4.0",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

@@ -84,14 +84,14 @@ test('Live, published and PWA files use matching logout code and cache fingerpri
  const script=read('school-auth-signout.js');
  for(const prefix of ['','docs/','app-extracted/dist/']){
   assert.equal(read(prefix+'school-auth-signout.js'),script);
-  assert.match(read(prefix+'index.html'),/school-auth-signout\.js\?v=20261112-explicit-logout-v2/);
-  assert.match(read(prefix+'index.html'),/CACHE_VERSION = '20261109-signout-v6'/);
+  assert.match(read(prefix+'index.html'),/school-auth-signout\.js\?v=20261113-private-device-v1/);
+  assert.match(read(prefix+'index.html'),/CACHE_VERSION = '20261113-private-device-v1'/);
   assert.equal(read(prefix+'school-online-guard.js'),read('school-online-guard.js'));
   const sw=read(prefix+'sw.js');
   assert.doesNotThrow(()=>new vm.Script(sw));
   const sha=c=>crypto.createHash('sha256').update(c).digest('hex');
-  assert.ok(sw.includes('"url":"school-auth-signout.js?v=20261112-explicit-logout-v2","revision":"'+sha(script)+'"'));
+  assert.ok(sw.includes('"url":"school-auth-signout.js?v=20261113-private-device-v1","revision":"'+sha(script)+'"'));
   assert.ok(sw.includes('"url":"index.html","revision":"'+sha(read(prefix+'index.html'))+'"'));
  }
- for(const prefix of ['', 'docs/'])assert.match(read(prefix+'teacher-access.html'),/school-auth-signout\.js\?v=20261112-explicit-logout-v2/);
+ for(const prefix of ['', 'docs/'])assert.match(read(prefix+'teacher-access.html'),/school-auth-signout\.js\?v=20261113-private-device-v1/);
 });

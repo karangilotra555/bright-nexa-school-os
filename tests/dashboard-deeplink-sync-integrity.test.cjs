@@ -63,8 +63,8 @@ test('Dashboard compares local KPI cards with authenticated Supabase counts with
  doc.dispatchEvent(new w.Event('DOMContentLoaded'));
  await new Promise(resolve=>setTimeout(resolve,5));
  assert.equal(doc.querySelectorAll('.metric-card')[0].dataset.bnCloudCount,'Supabase active students: 1');
- assert.equal(doc.querySelectorAll('.metric-card')[1].dataset.bnCloudCount,'Supabase active teachers: 0');
- assert.equal(requests.length,2);
+ assert.equal(doc.querySelectorAll('.metric-card')[1].dataset.bnCloudCount,'Teacher App access: 0 active · 0 disabled');
+ assert.equal(requests.length,3);
  assert.ok(requests.every(x=>x.opts.method==='HEAD'&&x.opts.headers.Authorization==='Bearer fixture-token'));
  assert.ok(requests.every(x=>x.url.includes('institution_id=eq.11111111-1111-4111-8111-111111111111')));
  assert.ok(requests.every(x=>x.opts.cache==='no-store'));
@@ -75,5 +75,5 @@ test('dashboard guard and ERP entry are identical in root, docs, and distributio
   assert.equal(read(prefix+'school-dashboard-integrity.js'),source);
   assert.equal(read(prefix+'index.html'),read('index.html'));
  }
- assert.equal((read('index.html').match(/school-dashboard-integrity\.js\?v=20261112-dashboard-route-v2/g)||[]).length,1);
+ assert.equal((read('index.html').match(/school-dashboard-integrity\.js\?v=20261113-teacher-app-counts-v3/g)||[]).length,1);
 });

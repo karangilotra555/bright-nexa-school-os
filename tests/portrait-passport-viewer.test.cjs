@@ -19,7 +19,7 @@ test('passport viewer is mirrored, loaded by ERP, and revisioned for offline PWA
   }
   assert.match(entry,/school-portrait-preview\.js\?v=20261111-passport-v1/);
   assert.ok(sw.includes('"url":"school-portrait-preview.js?v=20261111-passport-v1","revision":"'+sha(script)+'"'));
-  assert.ok(sw.includes('"url":"school-erp-entry.js?v=20261111-portrait-compact-v1","revision":"'+sha(entry)+'"'));
+  assert.ok(sw.includes('"url":"school-erp-entry.js?v=20261113-private-device-v1","revision":"'+sha(entry)+'"'));
   assert.match(script,/width:120px!important;height:160px!important/);
   assert.match(script,/Preview only\. Save the form to confirm in Supabase\./);
 });

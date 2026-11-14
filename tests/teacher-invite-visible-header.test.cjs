@@ -8,7 +8,7 @@ const profile=src.slice(src.indexOf('function _Component10({ teacher:'),src.inde
 test('teacher invite button is in modal header before the scrollable long profile body',()=>{
   assert.ok(profile.length>3000);
   const header=profile.indexOf('<Component293>');
-  const body=profile.indexOf('<Component299 className={`simple-modal-body`}>');
+  const body=profile.indexOf('<Component299 className={`simple-modal-body`}');
   const invite=profile.indexOf('onClick={inviteTeacher}');
   const primary=profile.indexOf('Create / Sync Teacher App Access');
   assert.ok(header>=0&&invite>header&&invite<body,'invitation action must be above profile scroll area');
@@ -20,7 +20,7 @@ test('teacher invite button is in modal header before the scrollable long profil
 test('teacher profile still shows feedback errors in its visible header',()=>{
   assert.match(profile,/role=\{inviteError \? 'alert' : 'status'\}/);
   assert.match(profile,/aria-live="polite"/);
-  assert.ok(profile.indexOf('{inviteFeedback ||') < profile.indexOf('<Component299 className={`simple-modal-body`}>'));
+  assert.ok(profile.indexOf('{inviteFeedback ||') < profile.indexOf('<Component299 className={`simple-modal-body`}'));
   assert.ok(profile.includes('onClick={n}'));
   assert.ok(profile.includes('onClick={r}'));
   assert.ok(src.includes('async function bnInviteTeacherAppAccount(teacher)'));

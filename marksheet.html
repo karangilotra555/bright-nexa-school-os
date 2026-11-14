@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="./school-private-cache.js?v=20261113-private-device-v1"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Modern CBSE A4 Academic Marksheet — Bright Nexa School OS</title>
@@ -1178,10 +1179,11 @@
       // Switches current examination term
     }
 
-    function loadFromSchoolOS() {
+    async function loadFromSchoolOS() {
+      await window.BNPrivateCache.ensureUnlocked();
       // 1. Sync Live School Profile
       try {
-        const snapshotRaw = localStorage.getItem('bright-nexa-school-os:snapshot:v1');
+        const snapshotRaw = window.BNPrivateCache.storage.getItem('bright-nexa-school-os:snapshot:v1');
         if (snapshotRaw) {
           const snapshot = JSON.parse(snapshotRaw);
           const inst = snapshot.institution || {};
@@ -1208,8 +1210,8 @@
 
       // 2. Sync Real Students
       try {
-        const studentsRaw = localStorage.getItem('bright-nexa-school-os:students:v1');
-        const operationsRaw = localStorage.getItem('bright-nexa-school-os:operations:v1');
+        const studentsRaw = window.BNPrivateCache.storage.getItem('bright-nexa-school-os:students:v1');
+        const operationsRaw = window.BNPrivateCache.storage.getItem('bright-nexa-school-os:operations:v1');
         let realStudents = [];
         if (studentsRaw) realStudents = JSON.parse(studentsRaw);
         let operations = {};

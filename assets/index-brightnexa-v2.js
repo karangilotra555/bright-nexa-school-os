@@ -18218,7 +18218,7 @@ async function Ot(e2, t2) {
   let n2 = await Dt();
   await new Promise((r2, i2) => {
     let a2 = n2.transaction(Tt, `readwrite`);
-    a2.objectStore(Tt).put(structuredClone(t2), e2);
+    a2.objectStore(Tt).put(window.BNPrivateCache.seal(structuredClone(t2), "records:" + e2), e2);
     a2.oncomplete = () => r2();
     a2.onerror = () => i2(a2.error);
   });
@@ -18232,7 +18232,7 @@ async function kt(e2) {
     i2.onerror = () => r2(i2.error);
   });
   t2.close();
-  return n2 ?? null;
+  return n2 == null ? null : window.BNPrivateCache.open(n2, "records:" + e2);
 }
 async function At() {
   try {
@@ -18256,11 +18256,11 @@ var Ft = 5;
 var It = `bright-nexa-school-os:session:v2`;
 function Lt() {
   try {
-    let e2 = localStorage.getItem(jt);
+    let e2 = window.BNPrivateCache.storage.getItem(jt);
     if (e2) {
       return JSON.parse(e2);
     }
-    let t2 = localStorage.getItem(Mt);
+    let t2 = window.BNPrivateCache.storage.getItem(Mt);
     if (!t2) {
       return [];
     }
@@ -18289,7 +18289,7 @@ function Rt() {
 }
 function zt(e2) {
   try {
-    localStorage.setItem(jt, JSON.stringify(e2));
+    window.BNPrivateCache.storage.setItem(jt, JSON.stringify(e2));
   } catch {
   }
   Ot(`accounts`, e2).catch(() => void 0);
@@ -18497,14 +18497,14 @@ async function on(e2, t2) {
 }
 function sn() {
   try {
-    return JSON.parse(localStorage.getItem(Nt) || `{}`);
+    return JSON.parse(window.BNPrivateCache.storage.getItem(Nt) || `{}`);
   } catch {
     return {};
   }
 }
 function cn(e2) {
   try {
-    localStorage.setItem(Nt, JSON.stringify(e2));
+    window.BNPrivateCache.storage.setItem(Nt, JSON.stringify(e2));
   } catch {
   }
 }
@@ -18759,7 +18759,7 @@ function Cn(e2) {
 }
 function wn() {
   try {
-    let e2 = window.localStorage.getItem(_n);
+    let e2 = window.BNPrivateCache.storage.getItem(_n);
     if (!e2) {
       return yn;
     }
@@ -18796,7 +18796,7 @@ function bnReportBrowserSaveError(area, cause) {
 function Tn(e2) {
   let t2 = pn(e2);
   try {
-    window.localStorage.setItem(_n, JSON.stringify(t2));
+    window.BNPrivateCache.storage.setItem(_n, JSON.stringify(t2));
   } catch (e3) {
     bnReportBrowserSaveError("School profile", e3);
   }
@@ -18805,7 +18805,7 @@ function Tn(e2) {
 var En = [];
 function Dn() {
   try {
-    let e2 = window.localStorage.getItem(vn);
+    let e2 = window.BNPrivateCache.storage.getItem(vn);
     if (e2) {
       return JSON.parse(e2).map(Sn);
     } else {
@@ -18818,7 +18818,7 @@ function Dn() {
 function On(e2) {
   let t2 = pn(e2);
   try {
-    window.localStorage.setItem(vn, JSON.stringify(t2 ?? []));
+    window.BNPrivateCache.storage.setItem(vn, JSON.stringify(t2 ?? []));
   } catch (e3) {
     bnReportBrowserSaveError("Student records", e3);
   }
@@ -19695,7 +19695,7 @@ function bnScheduleCloudSync(snapshot, students, operations, setStatus) {
   if (bnSyncTimer) clearTimeout(bnSyncTimer);
   let token;
   try {
-    token = localStorage.getItem("school_admin_token");
+    token = window.BNPrivateCache.storage.getItem("school_admin_token");
   } catch (_2) {
   }
   if (!token) {
@@ -21136,9 +21136,9 @@ function Cr({
     if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
       window.requestAnimationFrame(() => {
         const target = field ? document.querySelector('[data-teacher-save-field="' + field + '"]') : null;
-        const node = target || document.querySelector('.teacher-save-error-banner');
-        node?.scrollIntoView?.({block:"center",behavior:"smooth"});
-        node?.focus?.({preventScroll:true});
+        const node = target || document.querySelector(".teacher-save-error-banner");
+        node?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+        node?.focus?.({ preventScroll: true });
       });
     }
   };
@@ -21291,11 +21291,11 @@ function Cr({
             u2("Another teacher already uses this email.");
             return;
           }
-          if (!a2.joiningDate || ((a2.assignedClasses || []).length > 0 && !r3.length)) {
+          if (!a2.joiningDate || (a2.assignedClasses || []).length > 0 && !r3.length) {
             const missing = [];
             if (!a2.joiningDate) missing.push("Date of Joining is required.");
             if ((a2.assignedClasses || []).length > 0 && !r3.length) missing.push("Subjects are required for assigned classes.");
-            showTeacherSaveError(missing.join("  •  "), !a2.joiningDate ? "joiningDate" : "subjects");
+            showTeacherSaveError(missing.join("  \u2022  "), !a2.joiningDate ? "joiningDate" : "subjects");
             return;
           }
           if (!["Active", "Inactive"].includes(a2.status)) {
@@ -21358,8 +21358,17 @@ function Cr({
           }
         }
       },
-      l2 && /* @__PURE__ */ w.createElement("div", {className:"form-error teacher-save-error-banner",role:"alert","aria-live":"assertive",tabIndex:-1,
-        style:{position:"sticky",top:0,zIndex:20,padding:"12px 14px",background:"#fff1f2",color:"#9f1239",border:"2px solid #e11d48",borderRadius:10,fontWeight:700,marginBottom:12}}, l2),
+      l2 && /* @__PURE__ */ w.createElement(
+        "div",
+        {
+          className: "form-error teacher-save-error-banner",
+          role: "alert",
+          "aria-live": "assertive",
+          tabIndex: -1,
+          style: { position: "sticky", top: 0, zIndex: 20, padding: "12px 14px", background: "#fff1f2", color: "#9f1239", border: "2px solid #e11d48", borderRadius: 10, fontWeight: 700, marginBottom: 12 }
+        },
+        l2
+      ),
       /* @__PURE__ */ w.createElement(Component232, { className: `modal-record-section` }, /* @__PURE__ */ w.createElement(Component210, null, `Personal and Contact Information`), /* @__PURE__ */ w.createElement(Component231, { className: `teacher-photo-row` }, /* @__PURE__ */ w.createElement(
         Or,
         {
@@ -21506,16 +21515,16 @@ function Cr({
         Component244,
         {
           type: `date`,
-          "data-teacher-save-field":"joiningDate",
-          "aria-invalid":Boolean(l2 && !a2.joiningDate),
+          "data-teacher-save-field": "joiningDate",
+          "aria-invalid": Boolean(l2 && !a2.joiningDate),
           value: a2.joiningDate,
           onChange: (e3) => m2(`joiningDate`, e3.target.value)
         }
       )), /* @__PURE__ */ w.createElement(R, { label: `Subjects`, wide: true }, /* @__PURE__ */ w.createElement(
         Component245,
         {
-          "data-teacher-save-field":"subjects",
-          "aria-invalid":Boolean(l2 && (a2.assignedClasses || []).length > 0 && !s2.trim()),
+          "data-teacher-save-field": "subjects",
+          "aria-invalid": Boolean(l2 && (a2.assignedClasses || []).length > 0 && !s2.trim()),
           value: s2,
           onChange: (e3) => c2(e3.target.value),
           placeholder: `Science, Mathematics`
@@ -21707,7 +21716,6 @@ function Cr({
           onChange: (e3) => void h2(`aadhaarBackDataUrl`, e3.target.files?.[0])
         }
       ))),
-
       /* @__PURE__ */ w.createElement(
         Vr,
         {
@@ -21885,7 +21893,7 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, dele
       Component300,
       {
         className: `simple-modal student-profile-modal teacher-profile-modal`,
-        style: maximized ? {width:"96vw",maxWidth:"96vw",height:"92vh",maxHeight:"92vh",display:"flex",flexDirection:"column"} : void 0,
+        style: maximized ? { width: "96vw", maxWidth: "96vw", height: "92vh", maxHeight: "92vh", display: "flex", flexDirection: "column" } : void 0,
         role: `dialog`,
         "aria-modal": `true`,
         "aria-label": `${i2} profile`
@@ -21934,46 +21942,42 @@ function _Component10({ teacher: e2, onClose: t2, onEdit: n2, onDelete: r2, dele
           },
           inviteFeedback || (!e2.email ? "Add teacher email to enable app access." : "Teacher App login is separate from the faculty record.")
         )
-      ))), /* @__PURE__ */ w.createElement(
-        "div", {style:{display:"flex",gap:"4px",flexShrink:0}},
-        /* @__PURE__ */ w.createElement("button",{
-          type:"button",className:"icon-button",title:maximized?"Restore size":"Maximize dialog",
-          "aria-label":maximized?"Restore":"Maximize",
-          onClick:()=>setMaximized(value=>!value)
-        },maximized?"🗗":"🗖"),
-        /* @__PURE__ */ w.createElement(Component292,{
-          className:`icon-button`,onClick:t2,"aria-label":`Close profile`
-        },/* @__PURE__ */ w.createElement(St,{size:21}))
-      )),
-      /* @__PURE__ */ w.createElement(Component299, {
-        className:`simple-modal-body`,
-        style:maximized?{flex:1,minHeight:0,maxHeight:"none",overflow:"auto"}:void 0
-      },
-      a2.concat(o2,s2).length > 0 && /* @__PURE__ */ w.createElement(
-        Component294,{className:`profile-detail-grid`},
-        a2.concat(o2,s2).map(([label,value])=>
-          /* @__PURE__ */ w.createElement(Dr,{label,value,key:label}))
-      ),
-      c2.length > 0 && /* @__PURE__ */ w.createElement(
-        Component294,{className:`stored-identity-grid`},
-        c2.map(([title,value])=>
-          /* @__PURE__ */ w.createElement(_Component13,{title,value,key:title}))
-      ),
-      deleteError && /* @__PURE__ */ w.createElement("p", { className: `form-error`, role: `alert` }, deleteError), /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2, disabled: deleteBusy }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), deleteBusy ? `Deleting from Supabase...` : `Delete Profile`), /* @__PURE__ */ w.createElement(
-        Component296,
+      ))), /* @__PURE__ */ w.createElement("div", { style: { display: "flex", gap: "4px", flexShrink: 0 } }, /* @__PURE__ */ w.createElement(
+        "button",
         {
-          className: `secondary-button`,
-          onClick: t2
+          type: "button",
+          className: "icon-button",
+          "aria-label": maximized ? "Restore" : "Maximize",
+          title: maximized ? "Restore size" : "Maximize dialog",
+          onClick: () => setMaximized((value) => !value)
         },
-        `Close`
-      ), /* @__PURE__ */ w.createElement(
-        Component297,
+        maximized ? "\u{1F5D7}" : "\u{1F5D6}"
+      ), /* @__PURE__ */ w.createElement(Component292, { className: `icon-button`, onClick: t2, "aria-label": `Close profile` }, /* @__PURE__ */ w.createElement(St, { size: 21 })))),
+      /* @__PURE__ */ w.createElement(
+        Component299,
         {
-          className: `primary-button`,
-          onClick: n2
+          className: `simple-modal-body`,
+          style: maximized ? { flex: 1, minHeight: 0, maxHeight: "none", overflow: "auto" } : void 0
         },
-        `Edit Profile`
-      )))
+        [...a2, ...o2, ...s2].length > 0 && /* @__PURE__ */ w.createElement(Component294, { className: `profile-detail-grid` }, [...a2, ...o2, ...s2].map(([label, value]) => /* @__PURE__ */ w.createElement(Dr, { label, value, key: label }))),
+        c2.length > 0 && /* @__PURE__ */ w.createElement(Component294, { className: `stored-identity-grid` }, c2.map(([label, value]) => /* @__PURE__ */ w.createElement(_Component13, { title: label, value, key: label }))),
+        deleteError && /* @__PURE__ */ w.createElement("p", { className: `form-error`, role: `alert` }, deleteError),
+        /* @__PURE__ */ w.createElement(Component298, { className: `modal-actions` }, /* @__PURE__ */ w.createElement(Component295, { className: `secondary-button danger`, onClick: r2, disabled: deleteBusy }, /* @__PURE__ */ w.createElement(_Component1, { size: 16 }), deleteBusy ? `Deleting from Supabase...` : `Delete Profile`), /* @__PURE__ */ w.createElement(
+          Component296,
+          {
+            className: `secondary-button`,
+            onClick: t2
+          },
+          `Close`
+        ), /* @__PURE__ */ w.createElement(
+          Component297,
+          {
+            className: `primary-button`,
+            onClick: n2
+          },
+          `Edit Profile`
+        ))
+      )
     )
   );
 }
@@ -22510,15 +22514,15 @@ _Issued by: Administration \u2022 ${schoolName}_`;
 }
 const BN_OFFICIAL_EMPTY_ITEMS = [];
 const BN_META_WHATSAPP_FIELD_HELP = {
-  phoneNumberId:{url:'https://developers.facebook.com/apps/',detail:'Meta App Dashboard → WhatsApp → API Setup → Phone number ID.'},
-  wabaId:{url:'https://business.facebook.com/settings/',detail:'Business Settings → Accounts → WhatsApp Accounts → Account ID (numbers only, not email).'},
-  token:{url:'https://business.facebook.com/settings/system-users',detail:'Users → System Users → Generate token; allow whatsapp_business_messaging and whatsapp_business_management.'},
-  appSecret:{url:'https://developers.facebook.com/apps/',detail:'Choose your app → App Settings → Basic → App Secret → Show.'},
-  verifyToken:{url:'https://developers.facebook.com/docs/graph-api/webhooks/getting-started',detail:'Create your own random 24+ character token; paste the same value into Meta → WhatsApp → Configuration → Webhooks.'},
-  language:{url:'https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account/message_templates/',detail:'WhatsApp Manager → approved message template → language code (for example en, en_US or hi).'},
-  fee:{url:'https://business.facebook.com/wa/manage/message-templates/',detail:'WhatsApp Manager → approved fee reminder template → copy its exact name (4 body parameters).'},
-  absent:{url:'https://business.facebook.com/wa/manage/message-templates/',detail:'WhatsApp Manager → approved absence reminder template → copy its exact name (3 body parameters).'},
-  ptm:{url:'https://business.facebook.com/wa/manage/message-templates/',detail:'WhatsApp Manager → approved PTM invitation template → copy its exact name (6 body parameters).'}
+  phoneNumberId: { url: "https://developers.facebook.com/apps/", detail: "Meta App Dashboard \u2192 WhatsApp \u2192 API Setup \u2192 Phone number ID." },
+  wabaId: { url: "https://business.facebook.com/settings/", detail: "Business Settings \u2192 Accounts \u2192 WhatsApp Accounts \u2192 Account ID (numbers only, not email)." },
+  token: { url: "https://business.facebook.com/settings/system-users", detail: "Users \u2192 System Users \u2192 Generate token; allow whatsapp_business_messaging and whatsapp_business_management." },
+  appSecret: { url: "https://developers.facebook.com/apps/", detail: "Choose your app \u2192 App Settings \u2192 Basic \u2192 App Secret \u2192 Show." },
+  verifyToken: { url: "https://developers.facebook.com/docs/graph-api/webhooks/getting-started", detail: "Create your own random 24+ character token; paste the same value into Meta \u2192 WhatsApp \u2192 Configuration \u2192 Webhooks." },
+  language: { url: "https://developers.facebook.com/docs/graph-api/reference/whats-app-business-account/message_templates/", detail: "WhatsApp Manager \u2192 approved message template \u2192 language code (for example en, en_US or hi)." },
+  fee: { url: "https://business.facebook.com/wa/manage/message-templates/", detail: "WhatsApp Manager \u2192 approved fee reminder template \u2192 copy its exact name (4 body parameters)." },
+  absent: { url: "https://business.facebook.com/wa/manage/message-templates/", detail: "WhatsApp Manager \u2192 approved absence reminder template \u2192 copy its exact name (3 body parameters)." },
+  ptm: { url: "https://business.facebook.com/wa/manage/message-templates/", detail: "WhatsApp Manager \u2192 approved PTM invitation template \u2192 copy its exact name (6 body parameters)." }
 };
 function OfficialWhatsAppPanel({ items = BN_OFFICIAL_EMPTY_ITEMS }) {
   const [email, setEmail] = w.useState(""), [password, setPassword] = w.useState(""), [error, setError] = w.useState(""), [busy, setBusy] = w.useState(false), [connection, setConnection] = w.useState(null), [setup, setSetup] = w.useState(false), [preview, setPreview] = w.useState(null), [consent, setConsent] = w.useState(false), [batch, setBatch] = w.useState(null), [requestKey, setRequestKey] = w.useState(() => crypto.randomUUID());
@@ -22585,25 +22589,9 @@ function OfficialWhatsAppPanel({ items = BN_OFFICIAL_EMPTY_ITEMS }) {
       setPreview(null);
     });
   }, style: { display: "grid", gap: "8px" } }, /* @__PURE__ */ w.createElement("p", null, "Use your school's Meta WhatsApp Business account. Saving checks ownership and template approval. Re-saving requires webhook verification again."), ["phoneNumberId", "wabaId", "token", "appSecret", "verifyToken", "language", "fee", "absent", "ptm"].map((field) => {
-  const help = BN_META_WHATSAPP_FIELD_HELP[field];
-  return /* @__PURE__ */ w.createElement("label", { key: field, style: { display: "block", fontSize: "12px", fontWeight: 600 } },
-    /* @__PURE__ */ w.createElement("span", null, { phoneNumberId: "Phone number ID", wabaId: "WhatsApp Business account ID", token: "System user access token", appSecret: "Meta app secret", verifyToken: "Webhook verify token (24+ characters; copy into Meta)", language: "Template language code", fee: "Approved fee template (4 parameters)", absent: "Approved absence template (3 parameters)", ptm: "Approved PTM template (6 parameters)" }[field]),
-    /* @__PURE__ */ w.createElement("input", {
-      name: "bn-meta-" + field, style: { width: "100%", boxSizing: "border-box", marginTop: "4px" },
-      type: ["token", "appSecret", "verifyToken"].includes(field) ? "password" : "text",
-      inputMode: ["phoneNumberId", "wabaId"].includes(field) ? "numeric" : void 0,
-      pattern: ["phoneNumberId", "wabaId"].includes(field) ? "[0-9]+" : void 0,
-      autoComplete: "off", "data-lpignore": "true", "data-1p-ignore": "true",
-      value: config[field], required: !["fee", "absent", "ptm"].includes(field),
-      onChange: (e2) => setConfig({ ...config, [field]: e2.target.value })
-    }),
-    /* @__PURE__ */ w.createElement("small", {
-      style: { display: "block", fontSize: "11px", fontWeight: 400, color: "var(--muted,#64748b)", lineHeight: 1.6, marginTop: "4px" }
-    }, help.detail, " ", /* @__PURE__ */ w.createElement("a", {
-      href: help.url, target: "_blank", rel: "noopener noreferrer", style: { color: "#1369b6", fontWeight: 700 }
-    }, "Open Meta setup ↗"))
-  );
-}), /* @__PURE__ */ w.createElement("p", null, "Webhook URL: ", /* @__PURE__ */ w.createElement("code", { style: { overflowWrap: "anywhere" } }, connection.webhookUrl), ". Subscribe to the Meta ", /* @__PURE__ */ w.createElement("strong", null, "messages"), " webhook field."), /* @__PURE__ */ w.createElement("p", null, "Body parameter order: Fee \u2014 student, amount, due date, school. Absence \u2014 student, date, school. PTM \u2014 student, exam, date, time, venue, school. Use numbered parameters; text-only templates."), /* @__PURE__ */ w.createElement("button", { className: "primary-button", disabled: busy }, "Verify and save connection"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", disabled: busy, onClick: () => run(load) }, "Refresh webhook verification")), items.length > 0 && /* @__PURE__ */ w.createElement(w.Fragment, null, /* @__PURE__ */ w.createElement("p", null, "The approved template below is the actual message. Manual draft edits apply only to manual sending. Maximum 50 students per batch."), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", disabled: busy || !connection.webhookVerified || !kind, onClick: () => run(async () => {
+    const help = BN_META_WHATSAPP_FIELD_HELP[field];
+    return /* @__PURE__ */ w.createElement("label", { key: field, style: { display: "block", fontSize: "12px", fontWeight: 600 } }, /* @__PURE__ */ w.createElement("span", null, { phoneNumberId: "Phone number ID", wabaId: "WhatsApp Business account ID", token: "System user access token", appSecret: "Meta app secret", verifyToken: "Webhook verify token (24+ characters; copy into Meta)", language: "Template language code", fee: "Approved fee template (4 parameters)", absent: "Approved absence template (3 parameters)", ptm: "Approved PTM template (6 parameters)" }[field]), /* @__PURE__ */ w.createElement("input", { name: "bn-meta-" + field, style: { width: "100%", boxSizing: "border-box", marginTop: "4px" }, type: ["token", "appSecret", "verifyToken"].includes(field) ? "password" : "text", inputMode: ["phoneNumberId", "wabaId"].includes(field) ? "numeric" : void 0, pattern: ["phoneNumberId", "wabaId"].includes(field) ? "[0-9]+" : void 0, autoComplete: "off", "data-lpignore": "true", "data-1p-ignore": "true", value: config[field], required: !["fee", "absent", "ptm"].includes(field), onChange: (e2) => setConfig({ ...config, [field]: e2.target.value }) }), /* @__PURE__ */ w.createElement("small", { style: { display: "block", fontSize: "11px", fontWeight: 400, color: "var(--muted,#64748b)", lineHeight: 1.6, marginTop: "4px" } }, help.detail, " ", /* @__PURE__ */ w.createElement("a", { href: help.url, target: "_blank", rel: "noopener noreferrer", style: { color: "#1369b6", fontWeight: 700 } }, "Open Meta setup \u2197")));
+  }), /* @__PURE__ */ w.createElement("p", null, "Webhook URL: ", /* @__PURE__ */ w.createElement("code", { style: { overflowWrap: "anywhere" } }, connection.webhookUrl), ". Subscribe to the Meta ", /* @__PURE__ */ w.createElement("strong", null, "messages"), " webhook field."), /* @__PURE__ */ w.createElement("p", null, "Body parameter order: Fee \u2014 student, amount, due date, school. Absence \u2014 student, date, school. PTM \u2014 student, exam, date, time, venue, school. Use numbered parameters; text-only templates."), /* @__PURE__ */ w.createElement("button", { className: "primary-button", disabled: busy }, "Verify and save connection"), /* @__PURE__ */ w.createElement("button", { type: "button", className: "secondary-button", disabled: busy, onClick: () => run(load) }, "Refresh webhook verification")), items.length > 0 && /* @__PURE__ */ w.createElement(w.Fragment, null, /* @__PURE__ */ w.createElement("p", null, "The approved template below is the actual message. Manual draft edits apply only to manual sending. Maximum 50 students per batch."), /* @__PURE__ */ w.createElement("button", { type: "button", className: "primary-button", disabled: busy || !connection.webhookVerified || !kind, onClick: () => run(async () => {
     setPreview(await api("/preview", payload()));
     setConsent(false);
     setRequestKey(crypto.randomUUID());
@@ -22630,7 +22618,7 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
     const next = !connected;
     setConnected(next);
     try {
-      window.localStorage.setItem("bn_whatsapp_connected", String(next));
+      window.BNPrivateCache.storage.setItem("bn_whatsapp_connected", String(next));
     } catch {
     }
   };
@@ -25429,7 +25417,7 @@ function Oi() {
 var ki = Oi();
 function Ai() {
   try {
-    let e2 = window.localStorage.getItem(Di);
+    let e2 = window.BNPrivateCache.storage.getItem(Di);
     if (e2) {
       return Ni(JSON.parse(e2));
     } else {
@@ -25442,7 +25430,7 @@ function Ai() {
 function ji(e2) {
   let t2 = pn(e2);
   try {
-    window.localStorage.setItem(Di, JSON.stringify(t2));
+    window.BNPrivateCache.storage.setItem(Di, JSON.stringify(t2));
   } catch (e3) {
     bnReportBrowserSaveError("ERP operations", e3);
   }
@@ -27365,7 +27353,7 @@ var ra = `bright-nexa-school-os:theme:v1`;
 var ia = `bright-nexa-school-os:theme-change`;
 function aa() {
   try {
-    if (window.localStorage.getItem(ra) === `dark`) {
+    if (window.BNPrivateCache.storage.getItem(ra) === `dark`) {
       return `dark`;
     } else {
       return `bright`;
@@ -27383,7 +27371,7 @@ function sa() {
 }
 function ca(e2) {
   try {
-    window.localStorage.setItem(ra, e2);
+    window.BNPrivateCache.storage.setItem(ra, e2);
   } catch {
   }
   oa(e2);
@@ -38245,12 +38233,12 @@ function Ds() {
   w.useEffect(() => {
     if (!workspaceReady || !window.BNWorkspaceCloud || !window.BNWorkspaceController || !window.BNWorkspacePersistence) return;
     let active = true;
-    const client = window.BNWorkspaceCloud.create({ fetcher: window.fetch.bind(window), sessionStorage: window.sessionStorage, storage: window.localStorage });
-    const durableVersion = () => JSON.stringify([_n, vn, Di].map((key) => window.localStorage.getItem(key)));
-    const persistence = window.BNWorkspacePersistence.create({ open: Dt, getVersion: durableVersion, getLatest: () => ({ institution: wn(), students: Dn(), operations: Ai() }) });
+    const client = window.BNWorkspaceCloud.create({ fetcher: window.fetch.bind(window), sessionStorage: window.sessionStorage, storage: window.BNPrivateCache.storage });
+    const durableVersion = () => JSON.stringify([_n, vn, Di].map((key) => window.BNPrivateCache.storage.getItem(key)));
+    const persistence = window.BNWorkspacePersistence.create({ open: Dt, encode: (value, key) => window.BNPrivateCache.seal(value, "records:" + key), getVersion: durableVersion, getLatest: () => ({ institution: wn(), students: Dn(), operations: Ai() }) });
     const controller = window.BNWorkspaceController.create({
       client,
-      storage: window.localStorage,
+      storage: window.BNPrivateCache.storage,
       getSnapshot: () => latestWorkspace.current,
       buildProjection: (snapshot) => window.BNWorkspaceCloud.buildProjection(snapshot, Xn),
       applySnapshot: async (snapshot, canApply = () => true) => {
@@ -38346,7 +38334,7 @@ function Ds() {
   let [whatsAppModalOpen, setWhatsAppModalOpen] = (0, w.useState)(false);
   let [whatsAppConnected, setWhatsAppConnected] = (0, w.useState)(() => {
     try {
-      return localStorage.getItem("bn_whatsapp_connected") === "true";
+      return window.BNPrivateCache.storage.getItem("bn_whatsapp_connected") === "true";
     } catch {
       return false;
     }

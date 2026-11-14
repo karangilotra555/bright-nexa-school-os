@@ -94,6 +94,7 @@
     // Large immutable snapshots belong in IndexedDB, never in the tiny
     // localStorage quota used for the active sync binding and pending edit.
     function backupToDb(key,value){
+      const stored=window.BNPrivateCache.seal(value,'backups:'+key);
       return new Promise(function(resolve,reject){
         var request=window.indexedDB.open('bn-workspace-recovery-v1',1),db,settled=false;
         function fail(e){if(settled)return;settled=true;try{db&&db.close();}catch(_){}reject(e||error('Browser recovery storage is unavailable. No school records were replaced.'));}
@@ -104,7 +105,7 @@
           if(settled){request.result.close();return;}db=request.result;
           try{
             var tx=db.transaction('backups','readwrite');
-            tx.objectStore('backups').put(value,key);
+            tx.objectStore('backups').put(stored,key);
             tx.onerror=function(){fail(tx.error);};
             tx.onabort=function(){fail(tx.error);};
             tx.oncomplete=function(){
@@ -112,7 +113,7 @@
                 var check=db.transaction('backups','readonly').objectStore('backups').get(key);
                 check.onerror=function(){fail(check.error);};
                 check.onsuccess=function(){
-                  if(check.result!==value){fail(error('Browser backup read-back failed. Local records were preserved.'));return;}
+                  if(JSON.stringify(check.result)!==JSON.stringify(stored)){fail(error('Browser backup read-back failed. Local records were preserved.'));return;}
                   if(!settled){settled=true;db.close();resolve();}
                 };
               }catch(e){fail(e);}
@@ -132,7 +133,7 @@
           try{
             var tx=db.transaction('backups','readonly'),get=tx.objectStore('backups').get(key);
             get.onerror=function(){db.close();reject(get.error||error('Pending edit cannot be read.'));};
-            get.onsuccess=function(){var value=get.result;db.close();resolve(value);};
+            get.onsuccess=function(){try{var value=get.result;db.close();resolve(value==null?value:window.BNPrivateCache.open(value,'backups:'+key));}catch(e){db.close();reject(e);}};
           }catch(e){db.close();reject(e);}
         };
       });

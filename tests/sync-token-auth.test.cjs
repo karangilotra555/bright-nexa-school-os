@@ -62,7 +62,7 @@ test('privileged sync token issuance requires verified administrator credentials
     assert.equal(renewed.status, 200, 'Existing verified admin session may renew');
     assert.equal((await post({ role: 'STUDENT' }, { 'X-Admin-Key': key })).status, 403);
   } finally {
-    if (child && child.exitCode === null) child.kill();
+    if (child && child.exitCode === null) { const exited=new Promise(resolve=>child.once('exit',resolve));child.kill();await exited; }
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });

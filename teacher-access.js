@@ -1,7 +1,7 @@
 /* Bright Nexa cloud teacher portal. Publishable key only; no admin secrets.
  * Supabase RLS is the actual authority; UI hiding alone grants no access.
  */
-(() => {
+(async () => {
   'use strict';
   const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
@@ -13,7 +13,8 @@
     if(fromLink&&store)store.setItem('bn_school_cloud_handoff_intent_v1','1');
     return fromLink||store?.getItem('bn_school_cloud_handoff_intent_v1')==='1';
   })();
-  const LOCAL_DRAFT=FROM_LOCAL?window.BNSchoolLocalHandoff?.read(localStorage):null;
+  if(FROM_LOCAL&&window.BNPrivateCache)await window.BNPrivateCache.ensureUnlocked();
+  const LOCAL_DRAFT=FROM_LOCAL?window.BNSchoolLocalHandoff?.read(window.BNPrivateCache?.storage):null;
   const ROLES=['school_admin','principal','teacher','accountant','librarian','receptionist','transport_staff'];
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
@@ -299,7 +300,7 @@
         const db=req.result;
         try{
           const get=db.transaction('backups','readonly').objectStore('backups').get(key);
-          get.onsuccess=()=>{const value=get.result;db.close();resolve(value);};
+          get.onsuccess=()=>{const value=get.result;db.close();try{resolve(value==null?value:window.BNPrivateCache.open(value,'backups:'+key));}catch(error){reject(error);}};
           get.onerror=()=>{db.close();reject(get.error||Error('Pending browser copy unavailable.'));};
         }catch(error){db.close();reject(error);}
       };
@@ -307,11 +308,12 @@
   }
   async function findOneSchoolPending(){
     if(!isAdmin()||!me?.institution_id)throw Error('School administrator access required.');
+    await window.BNPrivateCache.ensureUnlocked();
     const pending=[],prefix='bn.workspace.v1.school.';
-    for(let i=0;i<localStorage.length;i++){
-      const key=localStorage.key(i);
+    for(let i=0;i<window.BNPrivateCache.storage.length;i++){
+      const key=window.BNPrivateCache.storage.key(i);
       if(!key||!key.startsWith(prefix))continue;
-      const raw=localStorage.getItem(key);if(!raw)continue;
+      const raw=window.BNPrivateCache.storage.getItem(key);if(!raw)continue;
       let record;try{record=JSON.parse(raw)}catch(_){continue;}
       if(!record?.pending&&!record?.pendingRef)continue;
       let snapshot=record.pending;
@@ -323,7 +325,7 @@
       const localId=String(snapshot?.institution?.institution?.id||'');
       if(!localId)throw Error('Pending school has no verified identity. Nothing was uploaded.');
       const bindingKey='bn.workspace.v1.binding.'+encodeURIComponent(localId);
-      let binding;try{binding=JSON.parse(localStorage.getItem(bindingKey)||'null')}catch(_){}
+      let binding;try{binding=JSON.parse(window.BNPrivateCache.storage.getItem(bindingKey)||'null')}catch(_){}
       if(!binding||binding.localId!==localId||binding.schoolId!==me.institution_id)continue;
       if(!Array.isArray(snapshot.students)||!snapshot.operations||!Number.isSafeInteger(record.revision))
         throw Error('Pending school record is incomplete. Nothing was uploaded.');
@@ -371,7 +373,7 @@
       const {key,raw,record,snapshot,binding}=pending;
       submit.disabled=true;
       try{
-        if(localStorage.getItem(key)!==raw)throw Error('Another tab modified the pending copy. Inspect again; nothing was uploaded.');
+        if(window.BNPrivateCache.storage.getItem(key)!==raw)throw Error('Another tab modified the pending copy. Inspect again; nothing was uploaded.');
         const client=window.BNWorkspaceCloud?.create({});
         if(!client?.push||!client.readback||!client.prepareSnapshot||!window.BNWorkspaceCloud?.buildProjection)
           throw Error('Cloud recovery client is unavailable. Reload this staff portal only.');
@@ -397,10 +399,10 @@
         if(readback.revision!==confirmedRevision||!readback.snapshot||
            recoveryFingerprint(readback.snapshot)!==preparedFingerprint)
           throw Error('Cloud response not verified by exact readback. Pending copy was kept.');
-        if(localStorage.getItem(key)!==raw)
+        if(window.BNPrivateCache.storage.getItem(key)!==raw)
           throw Error('Cloud is verified at revision '+confirmedRevision+
             ', but original tab changed its browser record. Inspect again before reloading.');
-        localStorage.setItem(key,JSON.stringify({...record,revision:confirmedRevision,
+        window.BNPrivateCache.storage.setItem(key,JSON.stringify({...record,revision:confirmedRevision,
           fingerprint:recoveryFingerprint(snapshot),pending:null,pendingRef:null}));
         pending=null;status.textContent='Cloud save VERIFIED at revision '+confirmedRevision+
           '. Pending backup remains in browser recovery storage. Now reload the original ERP tab to resume.';
@@ -1322,7 +1324,7 @@
     try{
       // The authenticated, SECURITY DEFINER RPC enforces one school per account.
       // It creates a fresh institution and a verified school_admin membership.
-      if(FROM_LOCAL&&!LOCAL_DRAFT&&localStorage.getItem('bright-nexa-school-os:snapshot:v1'))
+      if(FROM_LOCAL&&!LOCAL_DRAFT&&window.BNPrivateCache.storage.getItem('bright-nexa-school-os:snapshot:v1'))
         throw Error('Your existing local school could not be read. Device data was preserved; do not create a different school.');
       const importing=!!LOCAL_DRAFT;
       if(importing){
