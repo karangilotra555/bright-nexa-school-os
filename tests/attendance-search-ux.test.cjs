@@ -39,10 +39,10 @@ test('hosted, docs and desktop mirrors and service-worker revisions are synchron
   for(const prefix of ['docs/','app-extracted/dist/'])assert.equal(read(prefix+file),src,prefix+file+' has stale copy');
  }
  const index=read('index.html'),entry=read('school-erp-entry.js'),sw=read('sw.js');
- assert.match(index,/school-erp-entry\.js\?v=20261113-attendance-autofill-delete-v1/);
- assert.match(entry,/index-brightnexa-v2\.js\?v=20261113-attendance-autofill-delete-v1/);
+ assert.match(index,/school-erp-entry\.js\?v=20261113-private-device-v1/);
+ assert.match(entry,/index-brightnexa-v2\.js\?v=20261113-private-device-v1/);
  const crypto=require('node:crypto'),hash=filename=>crypto.createHash('sha256').update(fs.readFileSync(path.join(root,filename))).digest('hex');
  assert.ok(sw.includes('"url":"index.html","revision":"'+hash('index.html')+'"'));
- assert.ok(sw.includes('"url":"school-erp-entry.js?v=20261113-attendance-autofill-delete-v1","revision":"'+hash('school-erp-entry.js')+'"'));
+ assert.ok(sw.includes('"url":"school-erp-entry.js?v=20261113-private-device-v1","revision":"'+hash('school-erp-entry.js')+'"'));
  assert.ok(sw.includes('url:"assets/index-brightnexa-v2.js",revision:"'+hash('assets/index-brightnexa-v2.js')+'"'));
 });

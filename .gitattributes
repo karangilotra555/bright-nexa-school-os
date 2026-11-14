@@ -4,3 +4,10 @@
 /docs/index.html text eol=lf
 /app-extracted/dist/index.html text eol=lf
 school-workspace-*.js text eol=lf
+
+# Every hashed frontend asset must use the same bytes in Windows and CI.
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.webmanifest text eol=lf
+*.svg text eol=lf
