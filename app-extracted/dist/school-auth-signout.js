@@ -11,6 +11,7 @@ function currentToken(){
   try{return JSON.parse(root.sessionStorage.getItem(STAFF)||'null')?.access_token||null}catch(_){return null;}
 }
 function clearSessions(){
+  root.BNPrivateCache?.lock();
   // No localStorage/IndexedDB clearing: school records and pending sync are retained.
   [STAFF,SELECTED,ERP].forEach(key=>root.sessionStorage.removeItem(key));
   root.document?.getElementById('bn-cloud-publish-status')?.remove();

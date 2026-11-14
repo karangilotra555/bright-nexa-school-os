@@ -1,5 +1,15 @@
 const test=require('node:test'),assert=require('node:assert/strict');const {indexedDB}=require('fake-indexeddb');const {create}=require('../school-workspace-persistence.js');
 const snap=n=>({institution:{institution:{id:'school',name:String(n)}},students:[{id:String(n)}],operations:{marks:[n]}});
+
+test('cloud hydration encodes records before the atomic database transaction',async()=>{
+ const {createPrivateCache}=await import('../src/security/private-cache.mjs');
+ const {IDBFactory}=require('fake-indexeddb');const data=new Map();
+ const raw={get length(){return data.size},key:i=>[...data.keys()][i],getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
+ const vault=createPrivateCache({storage:raw,indexedDB:new IDBFactory(),crypto:globalThis.crypto});await vault.unlock('fixture private phrase 1234');
+ const f=await fixture();const p=create({open:async()=>f.db,getLatest:()=>snap(1),encode:(value,key)=>vault.seal(value,'records:'+key)});
+ await p.apply(snap(2));const rows=await f.read();
+ assert.equal(rows.students.bnEncrypted,1);assert.deepEqual(vault.open(rows.students,'records:students'),[{id:'2'}]);f.db.close();
+});
 async function fixture(){const req=indexedDB.open('fixture-'+Math.random(),1);req.onupgradeneeded=()=>req.result.createObjectStore('records');const db=await new Promise((r,j)=>{req.onsuccess=()=>r(req.result);req.onerror=()=>j(req.error)});return {db,read:()=>new Promise((r,j)=>{const tx=db.transaction('records'),keys=['snapshot','students','operations'],rows={};for(const key of keys){const q=tx.objectStore('records').get(key);q.onsuccess=()=>rows[key]=q.result;}tx.oncomplete=()=>r(rows);tx.onerror=()=>j(tx.error);})};}
 test('cloud persistence writes all workspace records atomically',async()=>{const f=await fixture();const p=create({open:async()=>f.db,getLatest:()=>snap(1)});assert.equal(await p.apply(snap(2),()=>true),true);const r=await f.read();assert.equal(r.snapshot.institution.name,'2');assert.equal(r.students[0].id,'2');assert.deepEqual(r.operations.marks,[2]);f.db.close();});
 test('edit while opening database prevents stale cloud write',async()=>{const f=await fixture();let valid=true;const p=create({open:async()=>{valid=false;return f.db},getLatest:()=>snap(3)});assert.equal(await p.apply(snap(2),()=>valid),false);assert.equal((await f.read()).students,undefined);f.db.close();});

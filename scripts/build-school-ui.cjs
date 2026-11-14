@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..');
+require('./build-private-cache.cjs');
 const target='assets/index-brightnexa-v2.js';
 const result=spawnSync(process.platform==='win32'?'npm.cmd':'npm',[
   'exec','--yes','--package=esbuild@0.25.12','--','esbuild',
@@ -27,7 +28,7 @@ for(const mirror of ['','docs','app-extracted/dist']){
   let after=before.replace(/(url:"assets\/index-brightnexa-v2\.js",revision:)(?:null|"[^"]*")/,'$1"'+revision+'"');
   if(after===before&&!before.includes('revision:"'+revision+'"'))throw Error('Missing precache entry: '+file);
   const html=fs.readFileSync(path.join(root,mirror,'index.html'),'utf8');
-  const assets=['index.html',...Array.from(html.matchAll(/src="\.\/((?:school-workspace-|school-online-guard|school-dashboard-integrity|teacher-)[^"/]*\.js\?v=[^"]+)"/g),m=>m[1])];
+  const assets=['index.html',...Array.from(html.matchAll(/src="\.\/((?:school-workspace-|school-private-cache|school-auth-signout|school-erp-entry|school-online-guard|school-dashboard-integrity|teacher-)[^"/]*\.js\?v=[^"]+)"/g),m=>m[1])];
   for(const url of assets){
     const assetPath=path.join(root,mirror,url.split('?')[0]);
     // Git stores these text assets with LF; hash the bytes deployed by CI too.

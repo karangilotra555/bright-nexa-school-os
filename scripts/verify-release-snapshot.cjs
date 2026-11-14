@@ -11,7 +11,8 @@ const mirrors=[
  'index.html','sw.js','school-erp-entry.js','school-dashboard-integrity.js','school-workspace-controller.js',
  'school-workspace-cloud.js','school-online-guard.js','school-role-entry.js',
  'teacher-access.html','teacher-access.js','parents.html','parents-cloud.js',
- 'assets/index-brightnexa-v2.js'
+ 'assets/index-brightnexa-v2.js','school-private-cache.js','school-workspace-persistence.js',
+ 'school-auth-signout.js','portal.js','marksheet.html'
 ];
 let verified=0;
 for(const file of mirrors){
@@ -84,4 +85,14 @@ assert.ok(dash.includes("status:'eq.disabled'"),'Dashboard should count disabled
 assert.ok(!dash.includes('Supabase active teachers:'),'Misleading teacher count label must not return');
 const pkg=JSON.parse(utf('package.json'));
 assert.equal(pkg.scripts.build,'node scripts/verify-release-snapshot.cjs','The build script cannot claim success without release checks');
+const cacheVersion=index.match(/school-private-cache\.js\?v=([A-Za-z0-9_-]+)/);
+assert.ok(cacheVersion,'Encrypted device cache must load before ERP entry');
+precache('school-private-cache.js?v='+cacheVersion[1],'school-private-cache.js');
+// Executable regressions: no disclosure without a valid QR signature, no DOB
+// sessions, recovery navigation, encrypted storage/migration/queue and hydration.
+const security=require('node:child_process').spawnSync(process.execPath,['--test',
+ 'tests/server.test.cjs','tests/recovery-navigation.test.cjs','tests/private-cache.test.cjs','tests/workspace-persistence.test.cjs'],
+ {cwd:root,stdio:'inherit'});
+if(security.error)throw security.error;
+assert.equal(security.status,0,'Security release regressions failed');
 console.log('Release-integrity checks passed: '+verified+' mirrored/precache artifacts, verified cloud-only cross-tab and teacher-save guards.');

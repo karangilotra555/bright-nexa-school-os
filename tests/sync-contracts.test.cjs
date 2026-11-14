@@ -2,6 +2,7 @@ const test=require('node:test');const assert=require('node:assert/strict');const
 function fixture({snapshotOK=true,publishOK=true,token='fixture'}={}){
  const src=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8');const calls=[],states=[];
  const ctx={window:{location:{hostname:'bright-nexa-school-os.onrender.com'}},localStorage:{getItem:()=>token},setTimeout:f=>{ctx.pending=f;return 1},clearTimeout:()=>{},Xn:()=>[{balance:1250}],fetch:async(url,o)=>{calls.push({url,body:JSON.parse(o.body)});return {ok:url.includes('/parent/')?publishOK:snapshotOK,json:async()=>({success:true})};}};
+ ctx.window.BNPrivateCache={storage:ctx.localStorage};
  vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('function bnGetApiBase()'),src.indexOf('function bnBroadcastStoreSync')),ctx);
  const student={id:'s1',admissionNumber:'ADM1',name:'Fixture',status:'Active',className:'6',section:'A'};
  const ops={attendance:[{studentId:'s1',date:'2026-11-06',status:'Present'}],feeStructures:[],feePayments:[],homework:[{id:'h1',className:'6',section:'A',subject:'Math',title:'Practice',dueDate:'2026-11-07'}],notices:[{id:'n1',title:'Notice',message:'School notice',audience:'All'}]};

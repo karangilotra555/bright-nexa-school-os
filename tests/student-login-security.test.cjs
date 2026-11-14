@@ -10,7 +10,7 @@ const {DatabaseSync}=require('node:sqlite');
 
 // Deliberately isolates the API and its SQLite database from every real school.
 // No production login, student record or cloud API is ever used.
-test('legacy student login rejects inactive accounts and hides identity existence',async()=>{
+test('retired DOB login never authenticates active, inactive or unknown students',async()=>{
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'bn-student-auth-'));
  let child;
  try{
@@ -47,26 +47,24 @@ test('legacy student login rejects inactive accounts and hides identity existenc
   }
   const unknown=await login('UNKNOWN-2026-X','12-03-2014');
   const wrongDob=await login('TEST-LOGIN-001','01-01-2010');
-  assert.equal(unknown.status,401);
-  assert.equal(wrongDob.status,401);
+  assert.equal(unknown.status,410);
+  assert.equal(wrongDob.status,410);
   assert.equal(unknown.body.error,wrongDob.body.error,'Student existence or DOB registration must not be disclosed');
   const internalId=await login('1','12-03-2014');
-  assert.equal(internalId.status,401,'Internal student ID must not be a valid login identifier');
+  assert.equal(internalId.status,410,'Internal student ID must not be a valid login identifier');
   const valid=await login('TEST-LOGIN-001','12-03-2014');
-  assert.equal(valid.status,200,'Active student must still be able to log in');
-  assert.ok(typeof valid.body.token==='string');
-  async function me(token){return fetch(base+'/api/portal/me',{headers:{Authorization:'Bearer '+token}})}
-  assert.equal((await me(valid.body.token)).status,200);
+  assert.equal(valid.status,410,'DOB knowledge must never authenticate');
+  assert.equal(valid.body.token,undefined);assert.equal(valid.body.loginUrl,'/parents.html');
   // Only mutate the fresh *temporary test database*. Existing school records
   // and production SQLite are not touched.
   const db=new DatabaseSync(path.join(tmp,'data','school.db'));
   try{db.prepare("UPDATE students SET enrollmentStatus = 'INACTIVE' WHERE admissionNumber = ?").run('TEST-LOGIN-001')}finally{db.close()}
   const inactive=await login('TEST-LOGIN-001','12-03-2014');
-  assert.equal(inactive.status,401);
+  assert.equal(inactive.status,410);
   assert.equal(inactive.body.error,wrongDob.body.error);
-  assert.equal((await me(valid.body.token)).status,403,'Previously signed-in inactive student must lose portal access');
+  assert.equal(inactive.body.token,undefined);
  }finally{
-  if(child && child.exitCode===null)child.kill();
+  if(child && child.exitCode===null){const exited=new Promise(resolve=>child.once('exit',resolve));child.kill();await exited;}
   fs.rmSync(tmp,{recursive:true,force:true});
  }
 });

@@ -1,15 +1,16 @@
 /* Atomic cloud hydration; stale remote results must never survive in the offline store. */
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.BNWorkspacePersistence=factory();})(typeof globalThis!=='undefined'?globalThis:this,function(){
-  function create({open,getLatest,getVersion=()=>JSON.stringify(getLatest())}) {
+  function create({open,getLatest,getVersion=()=>JSON.stringify(getLatest()),encode=(value)=>value}) {
     async function write(read) {
       const db=await open();
       const snapshot=read();
       if(!snapshot)return false;
+      const encoded={snapshot:encode(snapshot.institution,'snapshot'),students:encode(snapshot.students,'students'),operations:encode(snapshot.operations,'operations')};
       await new Promise((resolve,reject)=>{
         const tx=db.transaction('records','readwrite');
         tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error('Workspace storage failed'));tx.onabort=()=>reject(tx.error||Error('Workspace storage aborted'));
         const store=tx.objectStore('records');
-        store.put(snapshot.institution,'snapshot');store.put(snapshot.students,'students');store.put(snapshot.operations,'operations');
+        store.put(encoded.snapshot,'snapshot');store.put(encoded.students,'students');store.put(encoded.operations,'operations');
       });
       return true;
     }

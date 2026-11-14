@@ -51,3 +51,12 @@ test('deployed bundle copies, CSS revisions and Workbox precache match release',
  assert.ok(sw.includes('"url":"index.html","revision":"'+hash('index.html')+'"'));
  assert.ok(sw.includes('url:"assets/index-brightnexa-v2.js",revision:"'+hash('assets/index-brightnexa-v2.js')+'"'));
 });
+
+test('staff Save retains disabled and click handler as button props',()=>{
+ const bundle=get('assets/index-brightnexa-v2.js');
+ const start=bundle.indexOf('className: `primary-button bn-staff-attendance-save`');
+ assert.ok(start>0);
+ const button=bundle.slice(start,bundle.indexOf('children:',start));
+ assert.match(button,/disabled:/);
+ assert.match(button,/onClick: async/);
+});

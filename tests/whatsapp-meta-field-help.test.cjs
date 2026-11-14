@@ -23,7 +23,7 @@ test('all nine Meta WhatsApp setup fields expose official portal links and clear
   const begin=src.indexOf('const BN_META_WHATSAPP_FIELD_HELP = {'),end=src.indexOf('function OfficialWhatsAppPanel',begin);
   assert.ok(begin>0&&end>begin,file+' missing help records');
   const help=src.slice(begin,end);
-  for(const field of fields)assert.ok(help.includes(field+':{url:'),file+' lacks Meta source for '+field);
+  for(const field of fields)assert.ok(new RegExp(field+':\\s*\\{\\s*url:').test(help),file+' lacks Meta source for '+field);
   assert.match(help,/Business Settings.*WhatsApp Accounts.*not email/,'WABA field must distinguish a numeric ID from saved email autofill');
   assert.match(help,/Create your own random 24\+ character token/,'Meta never issues an automatic webhook verify token');
   assert.match(src,/target=["']?_blank|target:\s*["']_blank/);

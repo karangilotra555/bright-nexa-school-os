@@ -12,7 +12,7 @@
   const STAFF_KEY='bn_school_staff_session_v1';
   const CHOSEN_KEY='bn_school_staff_selected_school_v1';
   const ERP_KEY='bright-nexa-school-os:session:v2';
-  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261113-whatsapp-meta-help-v1';
+  const BUNDLE='./assets/index-brightnexa-v2.js?v=20261113-private-device-v1';
   const ROOT='./teacher-access.html';
   const errorText='Unable to open this school. Your records have not been changed.';
 
@@ -192,6 +192,7 @@
       showStatus('Verifying School Admin and opening your existing school…');
       try{
         const verified=await verify({store});
+        await window.BNPrivateCache.ensureUnlocked();
         await clearImportedDeviceDraft(verified);
         window.BNWorkspaceOnlineGuard?.update('loading');
         const url=new URL(window.location.href);
@@ -203,6 +204,7 @@
         showError(error);return false;
       }
     }
+    await window.BNPrivateCache.ensureUnlocked();
     // Load the accessible student/teacher photograph viewer after verified ERP entry.
     // It never writes school records; React's own save remains authoritative.
     const portraitViewer=document.createElement('script');

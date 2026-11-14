@@ -79,34 +79,12 @@ function showLoginError(message) {
 }
 async function handleLogin(event) {
   event.preventDefault();
-  if (loginPending) return;
-  clearToken();
-  activeStudent = null;
-  const admissionNumber = $('admInput').value.trim();
-  const dob = $('dobInput').value.trim();
-  $('loginAlert').style.display = 'none';
-  if (!admissionNumber || !dob) { showLoginError('Enter your admission number and date of birth.'); return; }
-  const generation = ++authGeneration;
-  loginPending = true;
-  $('loginButton').disabled = true;
-  $('loginButton').textContent = 'Signing in…';
-  try {
-    const data = await api('/api/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admissionNumber,dob})});
-    if (generation !== authGeneration) return;
-    if (!data.token || !data.student || !data.student.admissionNumber) throw new Error('Service unavailable. Please contact the school office.');
-    sessionStorage.setItem('bn_portal_token', data.token);
-    loginStudent(data.student);
-  } catch (error) {
-    if (generation === authGeneration) {
-      clearToken();
-      showLoginError(error.message === 'Failed to fetch' || error.message === 'offline' || error.name === 'TimeoutError' ? 'Login service unavailable. Please try again later.' : error.message);
-    }
-  } finally {
-    loginPending = false;
-    $('loginButton').disabled = false;
-    $('loginButton').textContent = 'View student portal';
-  }
+  clearToken();activeStudent=null;
+  $('dobInput').value='';
+  // Public credential previews never issue a legacy DOB-only session.
+  window.location.assign('./parents.html');
 }
+
 function demoLogin() {
   authGeneration++;
   clearToken();

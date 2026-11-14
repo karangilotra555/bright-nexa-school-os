@@ -18951,7 +18951,7 @@ async function Ot(e, t) {
   let n = await Dt();
   await new Promise((r, i) => {
     let a = n.transaction(Tt, `readwrite`);
-    a.objectStore(Tt).put(structuredClone(t), e);
+    a.objectStore(Tt).put(window.BNPrivateCache.seal(structuredClone(t), 'records:'+e), e);
     a.oncomplete = () => r();
     a.onerror = () => i(a.error);
   });
@@ -18965,7 +18965,7 @@ async function kt(e) {
     i.onerror = () => r(i.error);
   });
   t.close();
-  return n ?? null;
+  return n == null ? null : window.BNPrivateCache.open(n, 'records:'+e);
 }
 async function At() {
   try {
@@ -18989,11 +18989,11 @@ var Ft = 5;
 var It = `bright-nexa-school-os:session:v2`;
 function Lt() {
   try {
-    let e = localStorage.getItem(jt);
+    let e = window.BNPrivateCache.storage.getItem(jt);
     if (e) {
       return JSON.parse(e);
     }
-    let t = localStorage.getItem(Mt);
+    let t = window.BNPrivateCache.storage.getItem(Mt);
     if (!t) {
       return [];
     }
@@ -19022,7 +19022,7 @@ function Rt() {
 }
 function zt(e) {
   try {
-    localStorage.setItem(jt, JSON.stringify(e));
+    window.BNPrivateCache.storage.setItem(jt, JSON.stringify(e));
   } catch {}
   Ot(`accounts`, e).catch(() => undefined);
 }
@@ -19250,14 +19250,14 @@ async function on(e, t) {
 }
 function sn() {
   try {
-    return JSON.parse(localStorage.getItem(Nt) || `{}`);
+    return JSON.parse(window.BNPrivateCache.storage.getItem(Nt) || `{}`);
   } catch {
     return {};
   }
 }
 function cn(e) {
   try {
-    localStorage.setItem(Nt, JSON.stringify(e));
+    window.BNPrivateCache.storage.setItem(Nt, JSON.stringify(e));
   } catch {}
 }
 function ln(e) {
@@ -19497,7 +19497,7 @@ function Cn(e) {
 }
 function wn() {
   try {
-    let e = window.localStorage.getItem(_n);
+    let e = window.BNPrivateCache.storage.getItem(_n);
     if (!e) {
       return yn;
     }
@@ -19537,14 +19537,14 @@ function bnReportBrowserSaveError(area, cause) {
 function Tn(e) {
   let t = pn(e);
   try {
-    window.localStorage.setItem(_n, JSON.stringify(t));
+    window.BNPrivateCache.storage.setItem(_n, JSON.stringify(t));
   } catch(e) { bnReportBrowserSaveError('School profile',e); }
   Ot(`snapshot`, t).catch(e => bnReportBrowserSaveError('School profile local cache',e));
 }
 var En = [];
 function Dn() {
   try {
-    let e = window.localStorage.getItem(vn);
+    let e = window.BNPrivateCache.storage.getItem(vn);
     if (e) {
       return JSON.parse(e).map(Sn);
     } else {
@@ -19557,7 +19557,7 @@ function Dn() {
 function On(e) {
   let t = pn(e);
   try {
-    window.localStorage.setItem(vn, JSON.stringify(t ?? []));
+    window.BNPrivateCache.storage.setItem(vn, JSON.stringify(t ?? []));
   } catch(e) { bnReportBrowserSaveError('Student records',e); }
   Ot(`students`, t ?? []).catch(e => bnReportBrowserSaveError('Student records local cache',e));
 }
@@ -20470,7 +20470,7 @@ function bnScheduleCloudSync(snapshot, students, operations, setStatus) {
   const status = value => { if (generation === bnSyncGeneration && setStatus) setStatus(value); };
   if (bnSyncTimer) clearTimeout(bnSyncTimer);
   let token;
-  try { token = localStorage.getItem('school_admin_token'); } catch (_) {}
+  try { token = window.BNPrivateCache.storage.getItem('school_admin_token'); } catch (_) {}
   if (!token) { status('local'); return; }
   status('syncing');
   bnSyncTimer = setTimeout(() => {
@@ -23859,7 +23859,7 @@ function WhatsAppConnectModal({ isOpen, onClose, connected, setConnected }) {
     const next = !connected;
     setConnected(next);
     try {
-      window.localStorage.setItem('bn_whatsapp_connected', String(next));
+      window.BNPrivateCache.storage.setItem('bn_whatsapp_connected', String(next));
     } catch {}
   };
   return (
@@ -24869,7 +24869,7 @@ function Wr({
         </Component434>
         <Component435
           type={`button`}
-          className={`primary-button bn-staff-attendance-save`}>
+          className={`primary-button bn-staff-attendance-save`}
           disabled={!s.length || !!a || attendanceSaving}
           onClick={async () => {
             if (a || attendanceSaving) return;
@@ -27582,7 +27582,7 @@ function Oi() {
 var ki = Oi();
 function Ai() {
   try {
-    let e = window.localStorage.getItem(Di);
+    let e = window.BNPrivateCache.storage.getItem(Di);
     if (e) {
       return Ni(JSON.parse(e));
     } else {
@@ -27595,7 +27595,7 @@ function Ai() {
 function ji(e) {
   let t = pn(e);
   try {
-    window.localStorage.setItem(Di, JSON.stringify(t));
+    window.BNPrivateCache.storage.setItem(Di, JSON.stringify(t));
   } catch(e) { bnReportBrowserSaveError('ERP operations',e); }
   Ot(`operations`, t).catch(e => bnReportBrowserSaveError('ERP operations local cache',e));
 }
@@ -30217,7 +30217,7 @@ var ra = `bright-nexa-school-os:theme:v1`;
 var ia = `bright-nexa-school-os:theme-change`;
 function aa() {
   try {
-    if (window.localStorage.getItem(ra) === `dark`) {
+    if (window.BNPrivateCache.storage.getItem(ra) === `dark`) {
       return `dark`;
     } else {
       return `bright`;
@@ -30235,7 +30235,7 @@ function sa() {
 }
 function ca(e) {
   try {
-    window.localStorage.setItem(ra, e);
+    window.BNPrivateCache.storage.setItem(ra, e);
   } catch {}
   oa(e);
   window.dispatchEvent(
@@ -42884,10 +42884,10 @@ function Ds() {
   w.useEffect(() => {
     if (!workspaceReady || !window.BNWorkspaceCloud || !window.BNWorkspaceController || !window.BNWorkspacePersistence) return;
     let active = true;
-    const client = window.BNWorkspaceCloud.create({fetcher:window.fetch.bind(window),sessionStorage:window.sessionStorage,storage:window.localStorage});
-    const durableVersion=()=>JSON.stringify([_n,vn,Di].map(key=>window.localStorage.getItem(key)));
-    const persistence = window.BNWorkspacePersistence.create({open:Dt,getVersion:durableVersion,getLatest:()=>({institution:wn(),students:Dn(),operations:Ai()})});
-    const controller = window.BNWorkspaceController.create({client,storage:window.localStorage,
+    const client = window.BNWorkspaceCloud.create({fetcher:window.fetch.bind(window),sessionStorage:window.sessionStorage,storage:window.BNPrivateCache.storage});
+    const durableVersion=()=>JSON.stringify([_n,vn,Di].map(key=>window.BNPrivateCache.storage.getItem(key)));
+    const persistence = window.BNWorkspacePersistence.create({open:Dt,encode:(value,key)=>window.BNPrivateCache.seal(value,'records:'+key),getVersion:durableVersion,getLatest:()=>({institution:wn(),students:Dn(),operations:Ai()})});
+    const controller = window.BNWorkspaceController.create({client,storage:window.BNPrivateCache.storage,
       getSnapshot:()=>latestWorkspace.current,
       buildProjection:snapshot=>window.BNWorkspaceCloud.buildProjection(snapshot,Xn),
       applySnapshot:async (snapshot, canApply=()=>true)=>{
@@ -42953,7 +42953,7 @@ function Ds() {
   let [whatsAppModalOpen, setWhatsAppModalOpen] = (0, w.useState)(false);
   let [whatsAppConnected, setWhatsAppConnected] = (0, w.useState)(() => {
     try {
-      return localStorage.getItem('bn_whatsapp_connected') === 'true';
+      return window.BNPrivateCache.storage.getItem('bn_whatsapp_connected') === 'true';
     } catch {
       return false;
     }

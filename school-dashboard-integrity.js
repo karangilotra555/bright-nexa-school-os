@@ -183,16 +183,16 @@
           card.dataset.bnCloudCount=cloudCounts.error||('Supabase active students: '+cloudCounts.students);
         else if(content.includes('teachers')||content.includes('faculty')){
           card.dataset.bnCloudCount=cloudCounts.error||('Teacher App access: '+cloudCounts.teachers+' active · '+cloudCounts.disabledTeacherAccounts+' disabled');
-          card.title='Main count is teachers employed in the School OS. Teacher App access is a separate login status in Supabase; disabled accounts do not mean unsaved faculty records.';
+          if(card.title!=='Main count is teachers employed in the School OS. Teacher App access is a separate login status in Supabase; disabled accounts do not mean unsaved faculty records.')card.title='Main count is teachers employed in the School OS. Teacher App access is a separate login status in Supabase; disabled accounts do not mean unsaved faculty records.';
         }
       }
       if(content.includes("today's attendance")){
         card.dataset.bnAttendanceNote='true';
-        card.title='Percentage is based on attendance entries recorded today, not proof every enrolled student was marked or synced.';
+        if(card.title!=='Percentage is based on attendance entries recorded today, not proof every enrolled student was marked or synced.')card.title='Percentage is based on attendance entries recorded today, not proof every enrolled student was marked or synced.';
       }
       if(content.includes('fees collected this month')){
         card.dataset.bnFeesNote='true';
-        card.title='Amount and receipt count cover this month only. They come from the current ERP workspace; verify cloud status before treating them as published.';
+        if(card.title!=='Amount and receipt count cover this month only. They come from the current ERP workspace; verify cloud status before treating them as published.')card.title='Amount and receipt count cover this month only. They come from the current ERP workspace; verify cloud status before treating them as published.';
       }
     }
   }

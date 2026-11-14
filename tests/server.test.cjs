@@ -26,4 +26,25 @@ test('publicly known legacy HMAC cannot verify credentials',async()=>{const cryp
 
 test('mixed-case protected paths stay blocked',async()=>{for(const route of ['/SERVER.JS','/Data/school.db']){const response=await fetch(base+route);assert.equal(response.status,403);}});
 
+test('public verification never discloses identity for missing, invalid or unknown signatures',async()=>{
+ for(const query of ['adm=TEST-SIGN','adm=TEST-SIGN&sig=invalid','adm=UNKNOWN&sig=invalid']){
+  const r=await fetch(base+'/api/verify?'+query),body=await r.json();
+  assert.equal(body.verified,false);
+  assert.equal(body.student,undefined,'Unverified callers must not receive student records');
+  assert.equal(body.status,'SIGNATURE_MISMATCH','Invalid proof must not reveal whether an admission exists');
+ }
+});
+
+test('DOB knowledge cannot obtain a session and previously issued legacy tokens are revoked',async()=>{
+ const r=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({admissionNumber:'TEST-SIGN',dob:'01-01-2010'})});
+ const body=await r.json();assert.equal(r.status,410);assert.equal(body.token,undefined);assert.equal(body.loginUrl,'/parents.html');
+ const crypto=require('node:crypto'),header=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+ const payload=Buffer.from(JSON.stringify({sub:'TEST-SIGN',role:'STUDENT',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url');
+ const sig=crypto.createHmac('sha256','test-only-session').update(header+'.'+payload).digest('base64url');
+ for(const route of ['/api/portal/me','/api/parent/dashboard']){
+  const response=await fetch(base+route,{headers:{Authorization:'Bearer '+header+'.'+payload+'.'+sig}});
+  assert.equal(response.status,401,'DOB-issued tokens must stop granting access');
+ }
+});
+
 test('snapshot respects local inactive status rather than reactivating students',async()=>{const r=await fetch(base+'/api/sync/snapshot',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Key':'test-only-admin'},body:JSON.stringify({students:[{id:'TEST-INACTIVE',admissionNumber:'TEST-INACTIVE',name:'Fixture',status:'Archived'}]})});assert.equal(r.status,200);const saved=await fetch(base+'/api/sync/snapshot',{headers:{'X-Admin-Key':'test-only-admin'}}).then(r=>r.json());assert.equal(saved.students.find(s=>s.id==='TEST-INACTIVE').enrollmentStatus,'ARCHIVED');});

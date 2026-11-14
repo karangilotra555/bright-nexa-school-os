@@ -1,6 +1,7 @@
 /* Bright Nexa Smart Tools UI — no external service calls; file inputs remain in memory. */
-(() => {
+(async () => {
 'use strict';
+if(window.BNPrivateCache&&(window.BNPrivateCache.isConfigured()||localStorage.getItem('bright-nexa-school-os:operations:v1')))await window.BNPrivateCache.ensureUnlocked();
 if(new URLSearchParams(window.location.search).get('embedded')==='1')document.documentElement.classList.add('school-os-embedded');
 const E=window.BrightNexaSmart;
 if(!E)throw Error('Smart Tools engine missing.');
@@ -104,7 +105,7 @@ function demandChoices(field){
 }
 function loadSchoolOsContext(){
  try{
-  const raw=localStorage.getItem('bright-nexa-school-os:operations:v1');
+  const raw=window.BNPrivateCache?.storage.getItem('bright-nexa-school-os:operations:v1');
   if(raw){
    const ops=JSON.parse(raw);
    const classes=(ops.classes||[]).map(c=>`${c.name}${c.section?'-'+c.section:''}`.trim()).filter(Boolean);
