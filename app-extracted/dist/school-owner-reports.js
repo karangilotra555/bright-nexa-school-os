@@ -51,7 +51,28 @@
         admission:students.get(p.studentId)?.admissionNumber||'',
         category:p.category||'',method:p.method||'',
         amount:amount(p.amount)||0,status:p.status||'Posted'
-      })).sort((a,b)=>b.date.localeCompare(a.date));
+      }));
+    const external=list(data.externalFeeLedger);
+    const byId=new Map(external.map(entry=>[entry.id,entry]));
+    const reversals=new Set();
+    for(const entry of external){
+      const reversed=String(entry.reference||'').match(/^REV-([a-f0-9-]{36})$/i)?.[1];
+      const original=byId.get(reversed);
+      if(original && entry.description==='Correction reversal of '+reversed &&
+        entry.studentId===original.studentId && entry.kind!==original.kind &&
+        amount(entry.amountRupees)===amount(original.amountRupees))reversals.add(reversed);
+    }
+    for(const entry of external){
+      const reversalOf=String(entry.reference||'').slice(4);
+      if(entry.kind!=='payment'||monthDate(entry.date)!==month||
+        (entry.reference==='REV-'+reversalOf&&entry.description==='Correction reversal of '+reversalOf&&reversals.has(reversalOf)))continue;
+      const student=students.get(entry.studentId);
+      fees.push({id:entry.id,date:entry.date,receipt:entry.reference||'',
+        student:student?.name||'Student not in roster',admission:student?.admissionNumber||'',
+        category:entry.description||'Staff Portal payment',method:'',amount:amount(entry.amountRupees)||0,
+        status:reversals.has(entry.id)?'Reversed':'Posted'});
+    }
+    fees.sort((a,b)=>b.date.localeCompare(a.date));
     const validFees = fees.filter(p=>p.status!=='Reversed');
     const expenses = list(data.expenses).filter(p=> {
       if (monthDate(p.expenseDate)) return monthDate(p.expenseDate)===month;
