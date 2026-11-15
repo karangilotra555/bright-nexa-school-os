@@ -225,7 +225,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
   body:has(#loginSection:not(.hidden)) #publicAuthIntro{padding:12px 16px}
 }
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261112-timetable-fix-v2" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261115-logout-v1" defer></script><script src="./school-workspace-cloud.js?v=20261113-photo-payload-v2" defer></script><script src="./teacher-access.js?v=20261115-attendance-saved-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261112-timetable-fix-v2" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261115-logout-v1" defer></script><script src="./school-workspace-cloud.js?v=20261113-photo-payload-v2" defer></script><script src="./teacher-access.js?v=20261115-teacher-marks-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
 <header><div class="bar"><div class="brand"><a id="staffBrandBack" href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> <span id="staffPortalTitle">Staff Portal</span><small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a id="staffBackToErp" href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a id="staffSmartToolsLink" href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
@@ -332,6 +332,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
       <button id="timetableTab" class="nav-btn hidden" data-tab="timetable" type="button"><span class="nav-icon">🗓️</span> School Timetable</button>
       <button class="nav-btn" data-tab="attendance" type="button"><span class="nav-icon">📋</span> Attendance</button>
       <button class="nav-btn" data-tab="homework" type="button"><span class="nav-icon">📝</span> Homework</button>
+      <button class="nav-btn hidden" data-tab="marks" type="button"><span class="nav-icon">📊</span> Marks</button>
       <button class="nav-btn" data-tab="notices" type="button"><span class="nav-icon">📢</span> School notices</button>
       <button id="profilesTab" data-tab="profiles" class="nav-btn hidden" type="button"><span class="nav-icon">👥</span> Student Profiles</button>
       <button id="adminTab" data-tab="admin" class="nav-btn hidden" type="button"><span class="nav-icon">🛡️</span> Roles & Permissions</button>
@@ -428,6 +429,24 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
       <div class="inputgroup"><label for="homeworkTitle">Task</label><input id="homeworkTitle" required maxlength="150" placeholder="Complete pages 12–14"></div>
       <div class="inputgroup" style="margin:11px 0"><label for="homeworkInstructions">Instructions</label><textarea id="homeworkInstructions" maxlength="2000"></textarea></div>
       <div class="inputgroup"><label for="homeworkFiles">Photos / PDF (optional)</label><input id="homeworkFiles" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple><p class="muted">Up to 5 files at a time · 10 MB per file · Students open files inside the app.</p></div><button class="primary" id="publishHomework" type="submit">Publish homework</button>
+    </form>
+  </div>
+  <div data-view="marks" class="panel hidden">
+    <h2>Enter exam marks</h2>
+    <p class="muted">The school reviews and publishes saved marksheets.</p>
+    <form id="teacherMarksForm">
+      <div class="formgrid two">
+        <div><label for="teacherMarksClass">Class</label><select id="teacherMarksClass" required></select></div>
+        <div><label for="teacherMarksExam">Exam</label><select id="teacherMarksExam" required></select></div>
+        <div><label for="teacherMarksStudent">Student</label><select id="teacherMarksStudent" required></select></div>
+        <div><label for="teacherMarksSubject">Subject</label><select id="teacherMarksSubject" required></select></div>
+        <div><label for="teacherMarksScore">Marks obtained</label><input id="teacherMarksScore" type="number" min="0" step="any" inputmode="decimal" required></div>
+      </div>
+      <div class="row">
+        <button class="primary" id="teacherMarksSave" type="submit" disabled>Save marks</button>
+        <button class="ghost" id="teacherMarksReload" type="button">Refresh</button>
+      </div>
+      <p id="teacherMarksStatus" role="status" aria-live="polite"></p>
     </form>
   </div>
   <div data-view="notices" class="panel hidden"><h2>School notices</h2><button class="ghost" id="refreshNotices" type="button">↻ Refresh notices</button><div id="noticesList"></div></div>
@@ -542,7 +561,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
           <label><input id="permRoster" type="checkbox" checked> View roster</label>
           <label><input id="permAttendance" type="checkbox" checked> Mark attendance</label>
           <label><input id="permHomework" type="checkbox" checked> Assign homework</label>
-          <label><input id="permMarks" type="checkbox"> Enter marks (future module)</label>
+          <label><input id="permMarks" type="checkbox"> Enter marks</label>
         </div>
         <button class="primary" type="submit">Save assignment</button>
       </form>
