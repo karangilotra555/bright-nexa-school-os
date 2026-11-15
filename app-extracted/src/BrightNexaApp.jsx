@@ -43656,6 +43656,10 @@ function Ds() {
               className={`profile-avatar`}
               title={`${g?.name ?? `School user`} • ${v}`}
               onClick={() => {
+                if (g?.cloudVerified && window.BNSchoolLogout?.requestSignOut) {
+                  window.BNSchoolLogout.requestSignOut();
+                  return;
+                }
                 if (window.confirm(`Sign out from this device?`)) {
                   $t();
                   window.location.reload();

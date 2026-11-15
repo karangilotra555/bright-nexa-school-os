@@ -7,7 +7,7 @@ const vm=require('node:vm');
 const crypto=require('node:crypto');
 const {JSDOM}=require('jsdom');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
-function make(){
+function make({revoke=async()=>({ok:true,status:204})}={}){
  const data=new Map([
   ['bn_school_staff_session_v1',JSON.stringify({access_token:'test-jwt'})],
   ['bn_school_staff_selected_school_v1','school-id'],
@@ -23,7 +23,7 @@ function make(){
   sessionStorage:{getItem:key=>data.get(key)||null,removeItem:key=>data.delete(key)},
   location:{href:'https://bright-nexa-school-os.onrender.com/index.html?tab=Dashboard',
    replace:url=>redirects.push(url)},
-  fetch:async(url,opts)=>{requests.push({url,opts});return {ok:true,status:204};},
+  fetch:(url,opts)=>{requests.push({url,opts});return revoke();},
   setTimeout:()=>0,confirm:()=>allow
  };
  vm.runInNewContext(read('school-auth-signout.js'),{window:root,URL,Promise});
@@ -50,7 +50,7 @@ test('ERP logout clears BOTH cloud auth bridges but retains every local school b
  assert.equal(f.requests.length,1);
  assert.equal(f.requests[0].opts.method,'POST');
  assert.equal(f.requests[0].opts.headers.Authorization,'Bearer test-jwt');
- assert.match(f.requests[0].url,/\/auth\/v1\/logout$/);
+ assert.match(f.requests[0].url,/\/auth\/v1\/logout\?scope=local$/);
  assert.equal(f.requests[0].opts.keepalive,true);
 });
 test('Profile avatar is non-destructive, explicit Logout signs out before React reload',async()=>{
@@ -69,6 +69,46 @@ test('Cancelled explicit logout does not change sessions',()=>{
  assert.equal(f.data.has('bn_school_staff_session_v1'),true);
  assert.equal(f.redirects.length,0);
 });
+test('Staff Portal Log out works even when browser prompts are disabled',async()=>{
+ const dom=new JSDOM('<button id="logout">Log out</button>',{url:'https://bright-nexa-school-os.onrender.com/teacher-access.html',runScripts:'outside-only'});
+ const w=dom.window;
+ try{
+  w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+  w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'));};
+  w.confirm=()=>false;
+  const redirects=[];
+  const root={document:w.document,sessionStorage:w.sessionStorage,confirm:w.confirm,
+   location:{href:w.location.href,replace:url=>redirects.push(url)}};
+  w.sessionStorage.setItem('bn_school_staff_session_v1',JSON.stringify({access_token:'test-jwt'}));
+  w.localStorage.setItem('bn.workspace.v1.backup.1','pending device copy');
+  vm.runInNewContext(read('school-auth-signout.js'),{window:root,URL,Promise});
+  w.document.getElementById('logout').click();
+  const dialog=w.document.querySelector('dialog[open]');
+  assert.ok(dialog,'Log out must show a visible in-page confirmation');
+  dialog.querySelector('[value="cancel"]').click();
+  assert.equal(dialog.open,false);
+  assert.ok(w.sessionStorage.getItem('bn_school_staff_session_v1'));
+  w.document.getElementById('logout').click();
+  w.document.querySelector('dialog[open] button[type="submit"]').click();
+  assert.equal(w.sessionStorage.getItem('bn_school_staff_session_v1'),null);
+  assert.equal(w.localStorage.getItem('bn.workspace.v1.backup.1'),'pending device copy');
+  assert.deepEqual(redirects,['https://bright-nexa-school-os.onrender.com/teacher-access.html?loggedOut=1']);
+ }finally{w.close();}
+});
+test('ERP avatar delegates to the shared session sign-out flow',()=>{
+ for(const file of ['app-extracted/src/BrightNexaApp.jsx','assets/index-brightnexa-v2.js']){
+  const source=read(file),fallback=source.indexOf('Sign out from this device?');
+  const avatar=source.slice(source.lastIndexOf('`profile-avatar`',fallback),fallback);
+  assert.match(avatar,/BNSchoolLogout\.requestSignOut/);
+ }
+});
+test('A hung revoke cannot delay navigation or leave the local session alive',async()=>{
+ const f=make({revoke:()=>new Promise(()=>{})});
+ const result=f.root.BNSchoolLogout.signOut();
+ assert.equal(f.data.has('bn_school_staff_session_v1'),false);
+ assert.equal(f.redirects.length,1);
+ assert.equal(await result,true);
+});
 test('Sync conflict offers a working sign out action without deleting drafts',()=>{
  const dom=new JSDOM('<!doctype html><html><body></body></html>',{url:'https://bright-nexa-school-os.onrender.com',runScripts:'outside-only'});
  dom.window.sessionStorage.setItem('bright-nexa-school-os:session:v2',JSON.stringify({cloudVerified:true}));
@@ -84,14 +124,14 @@ test('Live, published and PWA files use matching logout code and cache fingerpri
  const script=read('school-auth-signout.js');
  for(const prefix of ['','docs/','app-extracted/dist/']){
   assert.equal(read(prefix+'school-auth-signout.js'),script);
-  assert.match(read(prefix+'index.html'),/school-auth-signout\.js\?v=20261113-private-device-v1/);
+  assert.match(read(prefix+'index.html'),/school-auth-signout\.js\?v=20261115-logout-v1/);
   assert.match(read(prefix+'index.html'),/CACHE_VERSION = '20261113-private-device-v1'/);
   assert.equal(read(prefix+'school-online-guard.js'),read('school-online-guard.js'));
   const sw=read(prefix+'sw.js');
   assert.doesNotThrow(()=>new vm.Script(sw));
   const sha=c=>crypto.createHash('sha256').update(c).digest('hex');
-  assert.ok(sw.includes('"url":"school-auth-signout.js?v=20261113-private-device-v1","revision":"'+sha(script)+'"'));
+  assert.ok(sw.includes('"url":"school-auth-signout.js?v=20261115-logout-v1","revision":"'+sha(script)+'"'));
   assert.ok(sw.includes('"url":"index.html","revision":"'+sha(read(prefix+'index.html'))+'"'));
  }
- for(const prefix of ['', 'docs/'])assert.match(read(prefix+'teacher-access.html'),/school-auth-signout\.js\?v=20261113-private-device-v1/);
+ for(const prefix of ['', 'docs/'])assert.match(read(prefix+'teacher-access.html'),/school-auth-signout\.js\?v=20261115-logout-v1/);
 });
