@@ -227,7 +227,7 @@
     // Logging out of staff access must also revoke the local ERP UI bridge.
     // This does not touch school records, sync queues, local drafts or backups.
     sessionStorage.removeItem('bright-nexa-school-os:session:v2');
-    invalidateRoster();clearProfileEditor();
+    invalidateRoster();clearProfileEditor();resetTeacherMarks();
     $('bnTeacherActivationAdmin')?.remove();
     $('bnSchoolPendingRecovery')?.remove();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
@@ -264,6 +264,7 @@
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
     if($('portalStats'))$('portalStats').classList.toggle('hidden',isAdmin());
     document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
+    if(name==='marks')run(loadTeacherMarks);
     if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
     if(name==='timetable'&&window.BNTimetable)window.BNTimetable.activate({
       me,classes:allClasses,assignments:allAssignments,staff:allStaff,
@@ -511,7 +512,7 @@
     // Invalidate the previous school's visible cached rows before loading the
     // selected school's roster and role permissions.
     allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];allHomeworkFiles=[];
-    rolePermissions=null;feeStudentRoster=[];invalidateRoster();clearProfileEditor();
+    rolePermissions=null;feeStudentRoster=[];invalidateRoster();clearProfileEditor();resetTeacherMarks();
     sessionStorage.setItem(SELECTED_SCHOOL_KEY,school.id);
     const selector=$('schoolPicker');
     selector.replaceChildren();
@@ -547,7 +548,7 @@
     installOwnerRecoveryControl();
     await reload();
     const requested=new URLSearchParams(location.search).get('view');
-    const allowedViews=['dashboard','classes','timetable','attendance','homework','notices','profiles','fees','admin','account'];
+    const allowedViews=['dashboard','classes','timetable','attendance','homework','marks','notices','profiles','fees','admin','account'];
     const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
     const deepLink=allowedViews.includes(requested)&&isTabVisibleForRole(requested,me.role)?requested:null;
     const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
@@ -617,6 +618,7 @@
         }
       }catch(_){}
     }else allStaff=[];
+    applyNavigationVisibility();
     allHomeworkFiles=await homeworkFiles.list(allHomework.map(h=>h.id));
     put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
     invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin()){renderAdmin();await renderMobileReadiness();}await loadNotices();
@@ -987,6 +989,7 @@
     if(tabName==='dashboard')return role==='school_admin';
     if(tabName==='admin')return role==='school_admin';
     if(tabName==='fees')return role==='school_admin'||role==='accountant';
+    if(tabName==='marks')return role==='teacher'&&allAssignments.some(a=>a.school_user_id===me?.id&&a.active&&a.can_enter_marks);
     if(role==='school_admin'||role==='principal')return true;
     if(tabName==='timetable')return role==='teacher';
     if(tabName==='account')return true;
@@ -1561,6 +1564,94 @@
   })});
   $('reload').addEventListener('click',()=>run(async()=>{await reload();notify('Updated from cloud.')}));
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+  let teacherMarksRows=[],teacherMarksRequest=0;
+  const marksStatus=message=>put('teacherMarksStatus',message);
+  function resetTeacherMarks(){
+    teacherMarksRequest++;
+    teacherMarksRows=[];
+    $('teacherMarksForm')?.reset?.();
+    for(const field of ['Class','Exam','Student','Subject'])$('teacherMarks'+field)?.replaceChildren();
+    $('teacherMarksSave').disabled=true;
+    marksStatus('');
+  }
+  function renderMarksChoices(start){
+    const fields=[['Exam','exam_id',r=>r.exam_name],['Student','student_id',r=>r.student_name+' · '+r.admission_number],['Subject','subject',r=>r.subject]];
+    let matches=teacherMarksRows;
+    for(const [index,[field,key,label]] of fields.entries()){
+      const id='teacherMarks'+field;
+      if(index>=start){
+        const last=$(id).value;
+        const choices=new Map(matches.map(row=>[row[key],{id:row[key],label:label(row)}]));
+        options(id,[...choices.values()],row=>row.label);
+        if(choices.has(last))$(id).value=last;
+      }
+      matches=matches.filter(row=>row[key]===$(id).value);
+    }
+    const row=matches[0],input=$('teacherMarksScore');
+    input.value=row?.obtained??'';
+    input.max=row?.maximum??'';
+    input.disabled=!row;
+    $('teacherMarksSave').disabled=!row;
+    if(row)marksStatus(row.obtained===null?'Maximum '+row.maximum+' marks':'Draft saved · '+row.obtained+' / '+row.maximum);
+  }
+  async function loadTeacherMarks(){
+    const request=++teacherMarksRequest,school=me?.institution_id;
+    const select=$('teacherMarksClass'),previous=select.value;
+    $('teacherMarksSave').disabled=true;
+    $('teacherMarksScore').disabled=true;
+    teacherMarksRows=[];
+    marksStatus('Loading assigned exams…');
+    try{
+      const classes=await api('rpc/bn_teacher_marks_classes','','POST',{p_school:school});
+      if(request!==teacherMarksRequest)return;
+      options('teacherMarksClass',classes,className);
+      if(classes.some(row=>row.id===previous))select.value=previous;
+      if(!classes.length){renderMarksChoices(0);marksStatus('No classes are assigned for marks entry.');return;}
+      const scope={p_school:school,p_class:select.value},rows=[],batchSize=500;
+      for(let offset=0;;offset+=batchSize){
+        const batch=await api('rpc/bn_teacher_exam_marks',query({limit:batchSize,offset}),'POST',scope);
+        if(request!==teacherMarksRequest)return;
+        rows.push(...batch);
+        if(batch.length<batchSize)break;
+      }
+      teacherMarksRows=rows;
+      renderMarksChoices(0);
+      if(!rows.length)marksStatus('No exams with assigned subjects in this class. Ask the school office to set up the exam.');
+    }catch(error){
+      if(request!==teacherMarksRequest)return;
+      renderMarksChoices(0);
+      marksStatus(error.message||'Could not load marks. Use Refresh to retry.');
+    }
+  }
+  $('teacherMarksClass').addEventListener('change',()=>loadTeacherMarks());
+  $('teacherMarksReload').addEventListener('click',()=>loadTeacherMarks());
+  for(const [id,start] of [['Exam',1],['Student',2],['Subject',3]])$('teacherMarks'+id).addEventListener('change',()=>renderMarksChoices(start));
+  $('teacherMarksForm').addEventListener('submit',async event=>{
+    event.preventDefault();
+    const button=$('teacherMarksSave'),input=$('teacherMarksScore'),request=teacherMarksRequest;
+    const row=teacherMarksRows.find(row=>row.exam_id===$('teacherMarksExam').value
+      &&row.student_id===$('teacherMarksStudent').value&&row.subject===$('teacherMarksSubject').value);
+    if(button.disabled||!row)return;
+    const value=Number(input.value);
+    if(!input.value||!Number.isFinite(value)||value<0||value>row.maximum){marksStatus('Enter a number between 0 and '+row.maximum+'.');return;}
+    const fields=['Class','Exam','Student','Subject','Score','Reload'].map(key=>$('teacherMarks'+key));
+    button.disabled=true;fields.forEach(field=>field.disabled=true);marksStatus('Saving marks…');
+    try{
+      const result=await api('rpc/bn_teacher_save_exam_mark','','POST',{
+        p_school:me.institution_id,p_class:$('teacherMarksClass').value,p_exam:row.exam_id,
+        p_student:row.student_id,p_subject:row.subject,p_obtained:value,p_expected:row.obtained
+      });
+      if(request!==teacherMarksRequest)return;
+      if(result?.obtained!==value)throw Error('Supabase did not confirm the mark. Refresh and try again.');
+      row.obtained=result.obtained;
+      marksStatus((result.changed?'Draft saved':'Draft already saved')+' · '+result.obtained+' / '+result.maximum);
+    }catch(error){
+      if(request===teacherMarksRequest)marksStatus(error.message||'Could not save marks. Try again.');
+    }finally{
+      fields.forEach(field=>field.disabled=false);
+      if(request===teacherMarksRequest)button.disabled=false;
+    }
+  });
   $('homeworkClass').addEventListener('change',()=>fillSubject($('homeworkClass').value));
   $('loadAttendance').addEventListener('click',()=>run(loadAttendance));
   let currentRoster=[],rosterScope=null,rosterGeneration=0;
