@@ -1009,9 +1009,10 @@
     display('staffDesktopShortcut',isAdm);
     display('staffBackToErp',isAdm);
     display('staffBrandBack',isAdm);
-    display('staffSmartToolsLink',canAcademic()&&!document.body.classList.contains('bn-teacher-app'));
-    display('parentApp',!document.body.classList.contains('bn-teacher-app'));
-    display('staffSmartToolsQuickLink',canAcademic());
+    display('staffSmartToolsLink',canAcademic()&&!teacher());
+    display('parentApp',!teacher());
+    display('staffSmartToolsQuickLink',canAcademic()&&!teacher());
+    display('staffParentPortalLink',!teacher());
     display('feesTab',isAdm||role==='accountant');
     document.querySelectorAll('[data-tab]').forEach(btn=>{
       const t=btn.dataset.tab;
@@ -1577,7 +1578,7 @@
     const root=$('rosterList');clearChildren(root);
     for(const student of currentRoster){
       const line=dom('div',undefined,'rowlist');
-      const left=dom('div');left.append(dom('strong',student.name));
+      const left=dom('div',undefined,'attendance-student');left.append(dom('strong',student.name));
       left.append(dom('small',student.admission_number,'muted'));
       const status=records.find(r=>r.student_id===student.id)?.status||'';
       const select=newSelect(['','present','absent','late','excused'],status);

@@ -9,6 +9,12 @@ function setup(){
  return {api:context.testAPI,node,calls,state,defer(){deferred=new Promise(resolve=>this.resolve=resolve);return deferred;}};
 }
 test('teacher app saves only the loaded assigned class, day and students',async()=>{const f=setup();await f.api.loadAttendance();const select=f.node('rosterList').querySelectorAll()[0];select.value='absent';await f.node('saveAttendance').listeners.click();const writes=f.calls.filter(c=>c.opt.method==='POST');assert.equal(writes.length,1);assert.deepEqual(JSON.parse(writes[0].opt.body),[{student_id:'child',class_id:'assigned',institution_id:'school',day:'2026-11-05',status:'absent',recorded_by:'teacher'}]);});
+test('the roster renders student name and admission number in a dedicated identity block',async()=>{
+ const f=setup();f.state.students[0].admission_number='HPS0002';await f.api.loadAttendance();
+ const identity=f.node('rosterList').children[0].children[0];
+ assert.equal(identity.className,'attendance-student');
+ assert.deepEqual(identity.children.map(node=>node.textContent),['Student','HPS0002']);
+});
 test('changing date or class blocks stale roster saves',async()=>{for(const id of ['attendanceClass','attendanceDate']){const f=setup();await f.api.loadAttendance();f.node(id).value=id==='attendanceClass'?'other':'2026-11-06';await f.node('saveAttendance').listeners.click();assert.equal(f.calls.filter(c=>c.opt.method==='POST').length,0);assert.match(f.node('status').textContent,/assigned|changed/);}});
 test('unassigned class cannot load; late requests cannot restore a changed roster',async()=>{const f=setup();f.node('attendanceClass').value='other';await assert.rejects(f.api.loadAttendance(),/assigned/);assert.equal(f.calls.length,0);f.node('attendanceClass').value='assigned';f.defer();const loading=f.api.loadAttendance();await Promise.resolve();f.node('attendanceDate').value='2026-11-06';f.api.invalidateRoster();f.resolve();await loading;assert.equal(f.node('rosterList').children.length,0);});
 test('unmarked students cannot silently be submitted as present',async()=>{const f=setup();await f.api.loadAttendance();assert.equal(f.node('rosterList').querySelectorAll()[0].value,'');await f.node('saveAttendance').listeners.click();assert.equal(f.calls.filter(c=>c.opt.method==='POST').length,0);assert.match(f.node('status').textContent,/Mark every student/);});
