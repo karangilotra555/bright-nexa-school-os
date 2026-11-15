@@ -31,6 +31,10 @@ button.danger{color:#a82b3f;background:#fff2f3;border:1px solid #f6c8d0;border-r
 .formgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:end;margin-bottom:15px}
 .formgrid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .inputgroup{min-width:0}
+.account-identity{display:flex;flex-wrap:wrap;gap:12px 28px;margin:0 0 16px;padding:12px;border-radius:10px;background:#f3f7fb}
+.account-identity div{min-width:0}
+.account-identity dt{font-size:12px;font-weight:700;color:#526681}
+.account-identity dd{margin:3px 0 0;color:#0b315e;font-weight:650;overflow-wrap:anywhere}
 #status{padding:11px 13px;border-radius:10px;background:#e9f5ff;color:#0b315e;margin:12px 0;font-size:13px;white-space:pre-wrap}
 #status.error{background:#ffeff0;color:#8d2434}
 #status.ok{background:#e8f6ef;color:#156348}
@@ -439,25 +443,19 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
     </div></div><div data-view="account" class="panel hidden">
     <div id="teacherSchoolAccount"></div>
     <div style="border-bottom:1px solid #e6edf5;padding-bottom:19px;margin-bottom:21px">
-      <h2>Staff Account Profile</h2>
-      <p class="sub">Your verified school staff identity. Update your name to appear across rosters, assignments, and school documents.</p>
+      <h2>My profile</h2>
+      <dl class="account-identity">
+        <div><dt>School email</dt><dd id="accountEmailDisplay"></dd></div>
+        <div><dt>Role assigned by school</dt><dd id="accountRoleDisplay"></dd></div>
+      </dl>
       <div class="formgrid">
         <div class="inputgroup">
-          <label for="accountNameInput">Teacher / Staff display name</label>
+          <label for="accountNameInput">Display name</label>
           <input id="accountNameInput" placeholder="e.g. Karan Gilotra" maxlength="80">
-        </div>
-        <div class="inputgroup">
-          <label>School staff email</label>
-          <input id="accountEmailDisplay" readonly style="background:#f8fafc;color:#475569">
-        </div>
-        <div class="inputgroup">
-          <label>Assigned role</label>
-          <input id="accountRoleDisplay" readonly style="background:#f8fafc;color:#475569">
         </div>
       </div>
       <div class="row" style="margin-top:13px">
-        <button class="primary" id="saveAccountNameButton" type="button">Save Account Name</button>
-        <span class="muted">Display name appears in all teacher selectors, rosters, and assignments.</span>
+        <button class="primary" id="saveAccountNameButton" type="button">Save display name</button>
       </div>
     </div>
     <h2>Change Password</h2>
