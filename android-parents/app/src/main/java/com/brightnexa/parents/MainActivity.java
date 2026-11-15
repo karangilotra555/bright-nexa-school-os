@@ -2,7 +2,6 @@ package com.brightnexa.parents;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.webkit.ValueCallback;
@@ -20,7 +19,7 @@ import android.webkit.WebSettings;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Button;
+import android.widget.PopupMenu;
 import android.widget.Toast;
 import java.net.URI;
 
@@ -30,7 +29,7 @@ public final class MainActivity extends Activity {
     private static final int FILE_REQUEST = 407;
     private ValueCallback<Uri[]> fileCallback;
     private WebView web;
-    private TextView status;
+    private LinearLayout toolbar;
     private String liveHost = "";
     private String configuredUrl = "";
 
@@ -48,7 +47,7 @@ public final class MainActivity extends Activity {
         bg.setCornerRadius(dp(11));
         bg.setStroke(dp(1),Color.rgb(43,125,190));
         v.setBackground(bg);
-        v.setContentDescription(label.equals("Home") ? "Open school app" : "Connect to school");
+        v.setContentDescription(label.equals("Home") ? "Open school app" : "School app settings");
         return v;
     }
 
@@ -64,7 +63,7 @@ public final class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.WHITE);
 
-        LinearLayout toolbar = new LinearLayout(this);
+        toolbar = new LinearLayout(this);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setPadding(dp(14), dp(7), dp(13), dp(7));
@@ -85,17 +84,12 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(dp(61),dp(36));
         previewParams.leftMargin=dp(6);
         toolbar.addView(preview,previewParams);
-        TextView settings = makeToolbarChip("Connect");
-        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(dp(84),dp(36));
+        TextView settings = makeToolbarChip("⋮");
+        settings.setTextSize(20);
+        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(dp(44),dp(44));
         settingsParams.leftMargin=dp(7);
         toolbar.addView(settings,settingsParams);
         root.addView(toolbar);
-
-        status = new TextView(this);
-        status.setTextSize(12);
-        status.setTextColor(Color.rgb(80,91,82));
-        status.setPadding(dp(15),dp(6),dp(15),dp(6));
-        root.addView(status);
 
         web = new WebView(this);
         WebSettings opts = web.getSettings();
@@ -110,6 +104,10 @@ public final class MainActivity extends Activity {
         opts.setGeolocationEnabled(false);
         opts.setSafeBrowsingEnabled(true);
         web.setWebChromeClient(new WebChromeClient() {
+            @Override public void onReceivedTitle(WebView view, String title) {
+                updateToolbar(view.getUrl(), title);
+            }
+
             @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 URI current = parse(view.getUrl());
                 if (current == null || !"https".equalsIgnoreCase(current.getScheme()) || !liveHost.equalsIgnoreCase(current.getHost())) return false;
@@ -127,6 +125,14 @@ public final class MainActivity extends Activity {
             }
         });
         web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                updateToolbar(url, "");
+            }
+
+            @Override public void onPageFinished(WebView view, String url) {
+                if (url.equals(view.getUrl())) updateToolbar(url, view.getTitle());
+            }
+
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
                 URI uri = parse(request.getUrl().toString());
                 if (uri == null || !"https".equalsIgnoreCase(uri.getScheme())) return true;
@@ -138,13 +144,27 @@ public final class MainActivity extends Activity {
         setContentView(root);
 
         preview.setOnClickListener(v -> openSchool(configuredUrl));
-        settings.setOnClickListener(v -> configureSchool());
+        settings.setOnClickListener(v -> {
+            PopupMenu menu = new PopupMenu(this, v);
+            menu.getMenu().add("Connect to school").setOnMenuItemClickListener(item -> {
+                configureSchool();
+                return true;
+            });
+            menu.show();
+        });
         // Open the configured school; all records still require role-specific authentication.
         openSchool(configuredUrl);
     }
 
     private URI parse(String input) {
         try { return new URI(input); } catch (Exception ex) { return null; }
+    }
+    private void updateToolbar(String url, String title) {
+        URI page = parse(url);
+        boolean teacherWorkspace = page != null && "https".equalsIgnoreCase(page.getScheme())
+            && liveHost.equalsIgnoreCase(page.getHost()) && "/teacher-access.html".equals(page.getPath())
+            && "Bright Nexa | Teacher Workspace".equals(title);
+        toolbar.setVisibility(teacherWorkspace ? View.GONE : View.VISIBLE);
     }
     private void openSchool(String hostUrl) {
         String url = hostUrl.trim();
@@ -164,8 +184,7 @@ public final class MainActivity extends Activity {
         else path += "parents.html";
         configuredUrl = "https://" + liveHost;
         getSharedPreferences(STORAGE, MODE_PRIVATE).edit().putString(KEY_URL, configuredUrl).apply();
-        status.setVisibility(View.VISIBLE);
-        status.setText("SCHOOL PORTAL • " + liveHost);
+        updateToolbar(path, "");
         web.clearCache(true);
         web.loadUrl(path);
     }

@@ -7,6 +7,7 @@
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
   const TOKEN_KEY='bn_school_staff_session_v1';
   const SELECTED_SCHOOL_KEY='bn_school_staff_selected_school_v1';
+  const staffPageTitle=document.title;
   const FROM_LOCAL=(()=>{
     const fromLink=new URLSearchParams(typeof location==='undefined'?'':location.search).get('fromLocal')==='1';
     const store=typeof localStorage==='undefined'?null:localStorage;
@@ -196,6 +197,7 @@
     const androidApp=/Android/i.test(agent)&&/(; wv\)|\bwv\b)/i.test(agent);
     return mobile&&(installed||androidApp);
   }
+  display('mobileParentLogin',isMobileAppContext());
   function showMobileOnlyNotice(){
     const section=$('portalSection');
     if(!section)return;
@@ -230,6 +232,9 @@
     $('bnSchoolPendingRecovery')?.remove();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
     display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);showAuthView('login');
+    document.body.classList.remove('bn-teacher-app');
+    document.title=staffPageTitle;
+    put('staffPortalTitle','Staff Portal');
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
   }
   async function switchToDifferentAccount(){
@@ -497,6 +502,12 @@
     const chosen=permitted.find(x=>x.school.id===preferred)||permitted[0];
     me=chosen.member;
     const school=chosen.school;
+    const teacherApp=me.role==='teacher'&&isMobileAppContext();
+    document.body.classList.toggle('bn-teacher-app',teacherApp);
+    document.title=teacherApp?'Bright Nexa | Teacher Workspace':staffPageTitle;
+    put('staffPortalTitle',teacherApp?'Teacher App':'Staff Portal');
+    const accountActions=$(teacherApp?'teacherSchoolAccount':'workspaceAccountActions');
+    accountActions.prepend($('schoolPickerWrap'),$('switchSchoolAccount'));
     // Invalidate the previous school's visible cached rows before loading the
     // selected school's roster and role permissions.
     allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];allHomeworkFiles=[];
@@ -513,7 +524,7 @@
     display('schoolPickerWrap',permitted.length>1);
     put('schoolLabel',school.name);
     const myName=staffName(me);
-    put('membership',school.name+' · '+(myName||me.email)+' · '+me.role.replaceAll('_',' '));
+    put('membership',teacherApp?(myName||me.email):school.name+' · '+(myName||me.email)+' · '+me.role.replaceAll('_',' '));
     if($('accountEmailDisplay'))put('accountEmailDisplay',me.email);
     if($('accountRoleDisplay'))put('accountRoleDisplay',me.role.replaceAll('_',' ').toUpperCase());
     if($('accountNameInput'))$('accountNameInput').value=(myName&&myName!==me.email)?myName:'';
@@ -952,7 +963,7 @@
     if(staff.id===me?.id){
       me.display_name=newName;
       const schoolLabel=$('schoolLabel')?.textContent||'School';
-      put('membership',schoolLabel+' · '+newName+' · '+me.role.replaceAll('_',' '));
+      put('membership',document.body.classList.contains('bn-teacher-app')?newName:schoolLabel+' · '+newName+' · '+me.role.replaceAll('_',' '));
     }
   }
   const DEFAULT_ROLE_PERMS={
@@ -998,7 +1009,8 @@
     display('staffDesktopShortcut',isAdm);
     display('staffBackToErp',isAdm);
     display('staffBrandBack',isAdm);
-    display('staffSmartToolsLink',canAcademic());
+    display('staffSmartToolsLink',canAcademic()&&!document.body.classList.contains('bn-teacher-app'));
+    display('parentApp',!document.body.classList.contains('bn-teacher-app'));
     display('staffSmartToolsQuickLink',canAcademic());
     display('feesTab',isAdm||role==='accountant');
     document.querySelectorAll('[data-tab]').forEach(btn=>{
@@ -1607,7 +1619,10 @@
         }catch(_) {}
       }
       if(!confirmed)throw writeFailure||Error('Attendance write was not confirmed for the full class. Please refresh the roster before retrying.');
-      notify('Attendance verified in Supabase for '+records.length+' students on '+day+'. Linked parents can refresh attendance in their app.');
+      const count=records.length+' '+(records.length===1?'student':'students');
+      notify(me?.role==='teacher'&&isMobileAppContext()
+        ?'Attendance saved for '+count+'.'
+        :'Attendance verified in Supabase for '+count+' on '+day+'. Linked parents can refresh attendance in their app.');
     }finally{button.disabled=false;}
   }));
   $('homeworkForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
