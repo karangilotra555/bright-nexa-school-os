@@ -12,7 +12,7 @@ function mount(options={}){
  w.print=()=>printed++;
  w.fetch=async()=>{throw Error('Unit test must not make network requests');};
  w.QRCode={toCanvas(_canvas,_value,_settings,done){done?.(null);}};
- w.BNWorkspaceCloud={create:()=>({connect:async()=>options.fail?Promise.reject(Error('Session expired')):[{id:schoolId,name:'HPS'}],pull:async id=>{assert.equal(id,schoolId);pulls++;return{revision:42,snapshot};}})};
+ w.BNWorkspaceCloud={create:()=>({connect:async()=>options.fail?Promise.reject(Error('Session expired')):[{id:schoolId,name:'HPS'}],pull:async id=>{assert.equal(id,schoolId);pulls++;return{revision:42,snapshot};},issueStudentCardSignatures:async()=>options.signed?[{admission_number:'HPS001',signature:'a'.repeat(64)}]:[]})};
  w.localStorage.setItem('bright-nexa-school-os:students:v1',JSON.stringify([{id:'old',name:'STALE DEVICE STUDENT',admissionNumber:'OLD'}]));
  w.eval(s.textContent);
  w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
@@ -53,6 +53,11 @@ test('cross-school and expired session cannot be falsely labelled as synced',asy
  assert.ok(d.getElementById('bnPrintCloudStatus').classList.contains('error'));
  assert.match(d.getElementById('dataSourcePill').textContent,/cloud not verified.*hidden/i);
  assert.equal(x.pulls(),0);
+ }finally{x.dom.window.close();}}
+});
+test('only a returned Supabase signature upgrades a printable card to signed',async()=>{
+ for(const signed of [false,true]){const x=mount({signed});try{await x.settle();
+  assert.equal(x.w.document.querySelector('.qr-text strong').textContent,signed?'SCHOOL-SIGNED STUDENT ID':'STUDENT ID PREVIEW');
  }finally{x.dom.window.close();}}
 });
 test('all shipped copies and native sidebar route are consistent',()=>{

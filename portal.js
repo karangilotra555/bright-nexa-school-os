@@ -49,7 +49,7 @@ function routePortal() {
   }
   const params = new URLSearchParams(window.location.search);
   const adm = params.get('adm') || params.get('admission') || params.get('id');
-  if (params.get('action') === 'verify' && adm) { showPublicVerification(adm, params.get('sig')); return; }
+  if (params.get('action') === 'verify' && adm) { showPublicVerification(adm, params.get('sig'),params.get('school')); return; }
   showLoginScreen();
   if (adm) $('admInput').value = adm;
 }
@@ -129,7 +129,7 @@ function switchTab(id, updateHash = true) {
   for (const panel of document.querySelectorAll('.tab-content')) panel.classList.toggle('active',panel.id === id);
   if (updateHash) window.location.hash = '#/' + id.replace('tab-','');
 }
-async function showPublicVerification(adm, sig) {
+async function showPublicVerification(adm, sig, school) {
   const generation = ++verificationGeneration;
   showView('verificationView');
   for (const id of ['vName','vAdm','vClass','vRoll','vSigHash']) $(id).textContent = '—';
@@ -139,7 +139,12 @@ async function showPublicVerification(adm, sig) {
   $('vSigMatchBadge').textContent = 'Pending';
   $('vBtnLogin').onclick = () => showLoginFromVerification(adm);
   try {
-    const data = await api('/api/verify?adm=' + encodeURIComponent(adm) + '&sig=' + encodeURIComponent(sig || ''));
+    const data = school
+      ? await api('https://mrfvbwmyxndrakskqyas.supabase.co/rest/v1/rpc/bn_verify_student_card',{
+          method:'POST',headers:{apikey:'sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT','Content-Type':'application/json'},
+          body:JSON.stringify({p_school:school,p_admission:adm,p_signature:sig||''})
+        })
+      : await api('/api/verify?adm=' + encodeURIComponent(adm) + '&sig=' + encodeURIComponent(sig || ''));
     if (generation !== verificationGeneration) return;
     const verified = data.verified === true;
     $('vTitle').textContent = verified ? 'Verified credential' : 'Credential not verified';

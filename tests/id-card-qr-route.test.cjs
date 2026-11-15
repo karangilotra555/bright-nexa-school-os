@@ -23,6 +23,11 @@ for(const name of ['id-card-a4.html','docs/id-card-a4.html']){
     assert.equal(parsed.searchParams.get('action'),'verify');
     assert.equal(parsed.searchParams.get('adm'),'DEMO 01/&');
     assert.equal(parsed.searchParams.has('sig'),false,'Never pretend to have server-issued signature');
+    vm.runInNewContext('url = getVerificationUrl({admissionNumber:"BNQA-2601",schoolId:"test-school",signature:"a".repeat(64)});',sandbox);
+    const signed=new URL(sandbox.url);
+    assert.equal(signed.origin,'https://bright-nexa-school-os.onrender.com');
+    assert.equal(signed.searchParams.get('school'),'test-school');
+    assert.equal(signed.searchParams.get('sig'),'a'.repeat(64));
     assert.ok(html.includes('href="'+service+'"'));
   });
   test(name+' must not claim client-side QR was cryptographically signed',()=>{
