@@ -8,6 +8,7 @@ test('Teacher phone layout keeps daily tabs and logout while moving account acti
  const html=read('teacher-access.html'),script=read('teacher-access.js');
  const dom=new JSDOM(html);
  const doc=dom.window.document;
+ const display=id=>dom.window.getComputedStyle(doc.getElementById(id)).display;
  assert.match(script,/const teacherApp=me\.role==='teacher'&&isMobileAppContext\(\)/);
  assert.match(script,/classList\.toggle\('bn-teacher-app',teacherApp\)/);
  assert.match(html,/body\.bn-teacher-app\s+#portalPermissionNotice/);
@@ -17,6 +18,13 @@ test('Teacher phone layout keeps daily tabs and logout while moving account acti
   assert.ok(doc.querySelector(`[data-tab="${tab}"]`));
  }
  assert.ok(doc.querySelector('header #logout'));
+ doc.getElementById('logout').classList.remove('hidden');
+ assert.notEqual(display('staffSmartToolsLink'),'none');
+ doc.body.classList.add('bn-teacher-app');
+ for(const id of ['portalPermissionNotice','portalStats'])assert.equal(display(id),'none',id);
+ assert.match(script,/display\('staffSmartToolsLink',canAcademic\(\)&&!document\.body\.classList\.contains\('bn-teacher-app'\)\)/);
+ assert.match(script,/display\('parentApp',!document\.body\.classList\.contains\('bn-teacher-app'\)\)/);
+ assert.notEqual(display('logout'),'none');
  dom.window.close();
 });
 function portal(){

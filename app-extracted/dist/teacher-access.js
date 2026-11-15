@@ -1009,7 +1009,8 @@
     display('staffDesktopShortcut',isAdm);
     display('staffBackToErp',isAdm);
     display('staffBrandBack',isAdm);
-    display('staffSmartToolsLink',canAcademic());
+    display('staffSmartToolsLink',canAcademic()&&!document.body.classList.contains('bn-teacher-app'));
+    display('parentApp',!document.body.classList.contains('bn-teacher-app'));
     display('staffSmartToolsQuickLink',canAcademic());
     display('feesTab',isAdm||role==='accountant');
     document.querySelectorAll('[data-tab]').forEach(btn=>{
