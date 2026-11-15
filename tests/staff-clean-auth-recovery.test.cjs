@@ -4,6 +4,16 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {JSDOM}=require('jsdom');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+test('School staff email and assigned role appear as readable profile details',()=>{
+ const dom=new JSDOM(read('teacher-access.html'));
+ try{
+  const doc=dom.window.document;
+  for(const id of ['accountEmailDisplay','accountRoleDisplay']){
+   assert.ok(doc.querySelector(`dl dd#${id}`),`${id} must be a display value`);
+  }
+  assert.ok(doc.querySelector('input#accountNameInput'));
+ }finally{dom.window.close();}
+});
 test('Teacher phone layout keeps daily tabs and logout while moving account actions out of the workspace header',()=>{
  const html=read('teacher-access.html'),script=read('teacher-access.js');
  const dom=new JSDOM(html);
