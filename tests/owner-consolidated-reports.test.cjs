@@ -39,6 +39,23 @@ test('Owner monthly totals use actual ledger: reversed fees excluded; salary is 
  assert.ok(report.estimatedPayroll<48000);
  assert.equal(report.expenses.length,2);
 });
+test('Owner collections include confirmed accountant receipts and exclude compensating entries',()=>{
+ const id='56cbc825-24a1-4cfe-aba7-fed92333aba8';
+ const charge='053826de-4141-4713-beac-143a0deaa52d';
+ const data={...fixture,externalFeeLedger:[
+  {id,studentId:'s1',kind:'payment',amountRupees:1200,reference:'BNQA-2601-RCPT',date:'2026-11-13'},
+  {id:'p2',studentId:'s1',kind:'payment',amountRupees:1050,reference:'BNQA-2601-RCPT-CORRECTED',date:'2026-11-13'},
+  {id:charge,studentId:'s1',kind:'charge',amountRupees:1800,reference:'BNQA-2601-CHG',date:'2026-11-01'},
+  {id:'r1',studentId:'s1',kind:'charge',amountRupees:1200,reference:'REV-'+id,description:'Correction reversal of '+id,date:'2026-11-13'},
+  {id:'r2',studentId:'s1',kind:'payment',amountRupees:1800,reference:'REV-'+charge,description:'Correction reversal of '+charge,date:'2026-11-01'}
+ ]};
+ const r=engine.aggregate(data,[{id:'s1',name:'Student One',admissionNumber:'A01'}],'2026-11');
+ assert.equal(r.feeCollected,2550);
+ assert.equal(r.feeReceipts,2);
+ assert.equal(r.fees.find(f=>f.receipt==='BNQA-2601-RCPT').status,'Reversed');
+ assert.equal(r.fees.find(f=>f.receipt==='BNQA-2601-RCPT-CORRECTED').admission,'A01');
+ assert.ok(r.fees.every(f=>!f.receipt.startsWith('REV-')));
+});
 test('Paid leave, staff absences and school holidays are different metrics',()=>{
  const teacher=report.staff.find(x=>x.id==='t1'),staff=report.staff.find(x=>x.id==='n1');
  assert.equal(teacher.paidLeave,1);
@@ -83,11 +100,11 @@ test('Owner reports files and PWA cache are mirrored with exact content checksum
  for(const prefix of ['docs/','app-extracted/dist/']){
   for(const file of ['school-owner-reports.js','school-owner-reports.css','index.html','sw.js'])assert.equal(read(prefix+file),read(file),prefix+file);
  }
- assert.match(index,/school-owner-reports\.js\?v=20261111-owner-reports-v2/);
+ assert.match(index,/school-owner-reports\.js\?v=20261115-owner-fees-v3/);
  assert.match(index,/school-owner-reports\.css\?v=20261111-owner-reports-v1/);
  for(const [path,content] of [
   ['index.html',index],['assets/index-brightnexa-v2.js',bundle],
-  ['school-owner-reports.js?v=20261111-owner-reports-v2',js],
+  ['school-owner-reports.js?v=20261115-owner-fees-v3',js],
   ['school-owner-reports.css?v=20261111-owner-reports-v1',css]
  ]){
   const digest=crypto.createHash('sha256').update(content).digest('hex');
