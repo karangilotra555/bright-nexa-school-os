@@ -37,6 +37,73 @@
   }
   function clearNotice(){ $('status').classList.add('hidden');$('status').textContent=''; }
 
+  function activateClassTimetable(){
+    if(!window.BNTimetable)return;
+    window.BNTimetable.activate({
+      me,classes:allClasses,assignments:allAssignments,staff:allStaff,
+      api,query,eq,notify:mobileTeacher()?undefined:notify,openAssignments:()=>tab('admin')
+    });
+  }
+  let teacherScheduleRequest=0,teacherScheduleMode='today';
+  async function openTeacherSchedule(mode){
+    teacherScheduleMode=mode;
+    const request=++teacherScheduleRequest,school=me.institution_id,teacherId=me.id;
+    const periodList=$('teacherPeriods');
+    const isClassView=mode==='classes';
+    display('schoolTimetableRoot',isClassView);
+    display('teacherPeriods',!isClassView);
+    display('retryTeacherTimetable',false);
+    document.querySelectorAll('[data-teacher-schedule]').forEach(button=>
+      button.setAttribute('aria-pressed',String(button.dataset.teacherSchedule===mode)));
+    periodList.replaceChildren();
+    if(isClassView){put('teacherTimetableStatus','');activateClassTimetable();return;}
+    const year=[...new Set(allClasses.map(cls=>cls.academic_year).filter(Boolean))].sort().at(-1);
+    if(!year){put('teacherTimetableStatus','No classes are assigned yet.');return;}
+    put('teacherTimetableStatus','Loading published periods…');
+    try{
+      const scope={institution_id:eq(school),academic_year:eq(year)};
+      const [slots,lessons]=await Promise.all([
+        api('school_timetable_slots',query({...scope,select:'id,weekday,slot_index,label,starts_at,ends_at,kind',order:'weekday.asc,slot_index.asc',limit:'1000'})),
+        api('school_timetable_published',query({...scope,teacher_user_id:eq(teacherId),select:'slot_id,class_id,subject,teacher_user_id',limit:'1000'}))
+      ]);
+      if(request!==teacherScheduleRequest||me?.institution_id!==school||me.id!==teacherId)return;
+      const bySlot=new Map(lessons.filter(lesson=>lesson.teacher_user_id===teacherId).map(lesson=>[lesson.slot_id,lesson]));
+      const classLabels=new Map(allClasses.map(cls=>[cls.id,[cls.name,cls.section].filter(Boolean).join(' ')]));
+      const weekdays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const today=new Date().getDay();
+      let priorDay=null;
+      for(const slot of slots){
+        const lesson=bySlot.get(slot.id);
+        if(!lesson||slot.kind!=='period'||(mode==='today'&&slot.weekday!==today))continue;
+        if(mode==='week'&&priorDay!==slot.weekday){
+          periodList.append(dom('h3',weekdays[slot.weekday]));
+          priorDay=slot.weekday;
+        }
+        const row=dom('div',undefined,'teacher-period'),detail=dom('div');
+        detail.append(dom('strong',lesson.subject),dom('small',[classLabels.get(lesson.class_id),slot.label].filter(Boolean).join(' · '),'muted'));
+        row.append(dom('span',slot.starts_at.slice(0,5)+'–'+slot.ends_at.slice(0,5),'muted'),detail);
+        periodList.append(row);
+      }
+      put('teacherTimetableStatus',periodList.childElementCount?'':mode==='today'?'No published periods for you today.':'No periods have been published for your account.');
+    }catch(error){
+      if(request!==teacherScheduleRequest||me?.institution_id!==school||me.id!==teacherId)return;
+      put('teacherTimetableStatus',"Couldn't load your timetable. Try again.");
+      display('retryTeacherTimetable',true);
+    }
+  }
+  document.querySelectorAll('[data-teacher-schedule]').forEach(button=>
+    button.addEventListener('click',()=>openTeacherSchedule(button.dataset.teacherSchedule)));
+  $('retryTeacherTimetable').addEventListener('click',()=>openTeacherSchedule(teacherScheduleMode));
+  $('teacherMore').addEventListener('keydown',event=>{
+    if(event.key==='Escape'){
+      $('teacherMore').open=false;
+      $('teacherMore').querySelector('summary').focus();
+    }
+  });
+  document.addEventListener?.('click',event=>{
+    if(mobileTeacher()&&!$('teacherMore').contains(event.target))$('teacherMore').open=false;
+  });
+
   // Host-safe confirmation and recovery destinations; never send mail to localhost from a deployed app.
   function emailReturnUrl(){
     const url=new URL('./teacher-access.html',location.href);
@@ -185,6 +252,7 @@
   const eq=x=>'eq.'+x;
   const isAdmin=()=>me?.role==='school_admin';
   const teacher=()=>me?.role==='teacher';
+  const mobileTeacher=()=>document.body?.classList.contains('bn-teacher-app')===true;
   const canAcademic=()=>['school_admin','principal','teacher'].includes(me?.role);
   // Website is for school office roles. Teacher/student daily work uses
   // the installed mobile PWA or trusted app WebView. This is a UX boundary;
@@ -227,12 +295,14 @@
     // Logging out of staff access must also revoke the local ERP UI bridge.
     // This does not touch school records, sync queues, local drafts or backups.
     sessionStorage.removeItem('bright-nexa-school-os:session:v2');
-    invalidateRoster();clearProfileEditor();resetTeacherMarks();
+    attendanceDrafts.clear();invalidateRoster();clearProfileEditor();resetTeacherMarks();resetHomeworkForm();
     $('bnTeacherActivationAdmin')?.remove();
     $('bnSchoolPendingRecovery')?.remove();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
     display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);showAuthView('login');
     document.body.classList.remove('bn-teacher-app');
+    $('teacherProfileShortcut')?.after?.($('logout'));
+    $('attendanceActions').prepend?.($('markRemainingPresent'));
     document.title=staffPageTitle;
     put('staffPortalTitle','Staff Portal');
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
@@ -263,13 +333,27 @@
     display('ownerTimetableNav',focused);
     document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('hidden',n.dataset.view!==name));
     if($('portalStats'))$('portalStats').classList.toggle('hidden',isAdmin());
-    document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
-    if(name==='marks')run(loadTeacherMarks);
-    if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
-    if(name==='timetable'&&window.BNTimetable)window.BNTimetable.activate({
-      me,classes:allClasses,assignments:allAssignments,staff:allStaff,
-      api,query,eq,notify,openAssignments:()=>tab('admin')
+    document.querySelectorAll('[data-tab]').forEach(n=>{
+      n.classList.toggle('active',n.dataset.tab===name);
+      if(n.closest?.('#teacherMobileNav')){
+        if(n.dataset.tab===name)n.setAttribute('aria-current','page');
+        else n.removeAttribute('aria-current');
+      }
     });
+    if(mobileTeacher()){
+      if(document.activeElement?.closest('#teacherMore'))$('teacherMore').querySelector('summary').focus();
+      if(window.scrollY>0)window.scrollTo(0,0);
+      const more=$('teacherMore');
+      more.open=false;
+      more.querySelector('summary').classList.toggle('active',Boolean(more.querySelector('[data-tab].active:not(.hidden)')));
+      if(name==='attendance'&&!rosterScope)openMobileAttendance();
+    }
+    if(name==='marks'&&!teacherMarksLoading&&(!mobileTeacher()||!teacherMarksRows.length))run(loadTeacherMarks);
+    if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
+    if(name==='timetable'){
+      if(mobileTeacher())openTeacherSchedule('today');
+      else{display('schoolTimetableRoot',true);activateClassTimetable();}
+    }
   }
 
 
@@ -507,12 +591,21 @@
     document.body.classList.toggle('bn-teacher-app',teacherApp);
     document.title=teacherApp?'Bright Nexa | Teacher Workspace':staffPageTitle;
     put('staffPortalTitle',teacherApp?'Teacher App':'Staff Portal');
+    if(teacherApp){
+      $('teacherAccountLogout').append($('logout'));
+      $('teacherAttendanceToolbar').append($('markRemainingPresent'));
+    }else{
+      $('teacherProfileShortcut').after($('logout'));
+      $('attendanceActions').prepend($('markRemainingPresent'));
+    }
+    put('homeworkHeading',teacherApp?'Homework':'Class homework');
+    display('homeworkForm',!teacherApp);
     const accountActions=$(teacherApp?'teacherSchoolAccount':'workspaceAccountActions');
     accountActions.prepend($('schoolPickerWrap'),$('switchSchoolAccount'));
     // Invalidate the previous school's visible cached rows before loading the
     // selected school's roster and role permissions.
     allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];allHomeworkFiles=[];
-    rolePermissions=null;feeStudentRoster=[];invalidateRoster();clearProfileEditor();resetTeacherMarks();
+    rolePermissions=null;feeStudentRoster=[];invalidateRoster();attendanceDrafts.clear();clearProfileEditor();resetTeacherMarks();resetHomeworkForm();
     sessionStorage.setItem(SELECTED_SCHOOL_KEY,school.id);
     const selector=$('schoolPicker');
     selector.replaceChildren();
@@ -554,7 +647,7 @@
     const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
     const openingView=deepLink||(preferredLandingView&&isTabVisibleForRole(preferredLandingView,me.role)?preferredLandingView:null)||landing||'account';
     tab(openingView);clearNotice();
-    if(openingView==='attendance'){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
+    if(openingView==='attendance'&&!teacherApp){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
   async function renderMobileReadiness(){
     const target=$('mobileReadinessStatus');
@@ -621,7 +714,15 @@
     applyNavigationVisibility();
     allHomeworkFiles=await homeworkFiles.list(allHomework.map(h=>h.id));
     put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
-    invalidateRoster();renderClasses();renderSelects();renderHomework();if(isAdmin()){renderAdmin();await renderMobileReadiness();}await loadNotices();
+    const activeAttendance=mobileTeacher()&&!document.querySelector('[data-view=attendance]')?.classList.contains('hidden');
+    if(!mobileTeacher()||!rosterScope?.saving){
+      invalidateRoster();
+      renderSelects();
+      if(activeAttendance)openMobileAttendance();
+    }else{
+      renderSelects({keepAttendance:true});
+    }
+    renderClasses();renderHomework();if(isAdmin()){renderAdmin();await renderMobileReadiness();}await loadNotices();
   }
   let readProfile=null,editingStudent=null,profileGeneration=0;
   function clearProfileEditor(){
@@ -897,7 +998,7 @@
       const count=allStudents.filter(s=>s.class_id===c.id).length;
       const line=dom('div',undefined,'rowlist');
       const left=dom('div');left.append(dom('strong',className(c)));
-      left.append(dom('div',count+' accessible students','muted'));
+      left.append(dom('div',count+(mobileTeacher()?' students':' accessible students'),'muted'));
       const assignments=allAssignments.filter(a=>a.class_id===c.id&&(isAdmin()||a.school_user_id===me.id));
       const flags=assignments.map(a=>a.assignment_type==='subject_teacher'?a.subject:'Class Teacher').join(', ');
       const right=dom('div',undefined,'flex');
@@ -907,26 +1008,29 @@
       right.append(dom('span',flags||'School access','pill'));
 
       if(canAcademic()&&isTabVisibleForRole('attendance',me.role)&&writableClasses('can_take_attendance').some(x=>x.id===c.id)){
-        const attBtn=dom('button','📋 Attendance','ghost');
+        const attBtn=dom('button',mobileTeacher()?'Attendance':'📋 Attendance','ghost');
         attBtn.type='button';
         attBtn.style.padding='4px 8px';
         attBtn.style.fontSize='12px';
         attBtn.addEventListener('click',()=>{
-          if($('attendanceClass')){$('attendanceClass').value=c.id;invalidateRoster();}
+          if(!mobileTeacher()||!rosterScope?.saving){
+            $('attendanceClass').value=c.id;invalidateRoster();
+          }
           tab('attendance');
-          run(loadAttendance);
+          if(!mobileTeacher())run(loadAttendance);
         });
 
         right.append(attBtn);
       }
       if(canAcademic()&&isTabVisibleForRole('homework',me.role)&&writableClasses('can_assign_homework').some(x=>x.id===c.id)){
-        const hwBtn=dom('button','📝 Homework','ghost');
+        const hwBtn=dom('button',mobileTeacher()?'Homework':'📝 Homework','ghost');
         hwBtn.type='button';
         hwBtn.style.padding='4px 8px';
         hwBtn.style.fontSize='12px';
         hwBtn.addEventListener('click',()=>{
-          if($('homeworkClass')){$('homeworkClass').value=c.id;fillSubject(c.id);}
           tab('homework');
+          if(mobileTeacher())showNewHomework(c.id);
+          else if($('homeworkClass')){$('homeworkClass').value=c.id;fillSubject(c.id);}
         });
         right.append(hwBtn);
       }
@@ -947,6 +1051,17 @@
       }
 
       line.append(left,right);root.append(line);
+      if(mobileTeacher()&&count){
+        const roster=dom('details',undefined,'teacher-class-roster');
+        const summary=dom('summary','View class roster');
+        const list=dom('ul');
+        for(const student of allStudents.filter(student=>student.class_id===c.id)){
+          const item=dom('li',student.name);
+          if(student.admission_number)item.append(dom('small',' · '+student.admission_number,'muted'));
+          list.append(item);
+        }
+        roster.append(summary,list);line.append(roster);
+      }
     }
   }
   function writableClasses(action){
@@ -1122,11 +1237,18 @@
     options('profileStudent',filtered,studentLabel);
     updateSelectedStudentBadge();
   }
-  function renderSelects(){
-    options('attendanceClass',writableClasses('can_take_attendance'),className);
-    options('homeworkClass',writableClasses('can_assign_homework'),className);
-    const current=writableClasses('can_assign_homework')[0];
-    if(current)fillSubject(current.id);
+  function renderSelects({keepAttendance=false}={}){
+    if(!keepAttendance){
+      const previousAttendanceClass=$('attendanceClass').value;
+      const attendanceClasses=writableClasses('can_take_attendance');
+      options('attendanceClass',attendanceClasses,mobileTeacher()?cls=>[cls.name,cls.section].filter(Boolean).join(' '):className);
+      if(attendanceClasses.some(cls=>cls.id===previousAttendanceClass))$('attendanceClass').value=previousAttendanceClass;
+    }
+    const homeworkClass=$('homeworkClass'),previousHomeworkClass=homeworkClass.value;
+    const homeworkClasses=writableClasses('can_assign_homework');
+    options('homeworkClass',homeworkClasses,className);
+    if(mobileTeacher()&&homeworkClasses.some(cls=>cls.id===previousHomeworkClass))homeworkClass.value=previousHomeworkClass;
+    if(homeworkClasses.length&&!editingHomework)fillSubject(homeworkClass.value);
     if(isAdmin()){
       options('assignTeacher',allStaff.filter(s=>s.role==='teacher'&&s.status==='active'),staffLabel);
       const subList=$('assignSubjectList');
@@ -1164,6 +1286,85 @@
     if(a.length===1&&!classT){$('homeworkSubject').value=a[0].subject;$('homeworkSubject').readOnly=true}
     else{$('homeworkSubject').readOnly=false;if(!a.some(x=>x.subject===$('homeworkSubject').value))$('homeworkSubject').value=''}
   }
+  let editingHomework=null;
+  function resetHomeworkForm(){
+    editingHomework=null;
+    const form=$('homeworkForm');
+    form.reset?.();delete form.dataset.pendingHomeworkId;
+    $('homeworkClass').disabled=false;$('homeworkSubject').disabled=false;
+    $('publishHomework').disabled=false;$('cancelHomeworkEdit').disabled=false;
+    $('newHomework').setAttribute('aria-expanded','false');
+    $('homeworkFeedback').dataset.error='false';
+    put('homeworkFeedback','');put('homeworkFormTitle','Publish homework');put('publishHomework','Publish homework');
+    if(mobileTeacher())display('homeworkForm',false);
+  }
+  function openHomeworkForm(){
+    display('homeworkForm',true);
+    $('newHomework').setAttribute('aria-expanded','true');
+    $('homeworkTitle').focus();
+  }
+  function showNewHomework(classId){
+    if($('publishHomework').disabled)return;
+    if(editingHomework){
+      if(!window.confirm('Discard the unsaved edits to this homework?'))return;
+      resetHomeworkForm();
+    }
+    if(classId)$('homeworkClass').value=classId;
+    fillSubject($('homeworkClass').value);
+    openHomeworkForm();
+  }
+  $('newHomework').addEventListener('click',()=>showNewHomework());
+  $('cancelHomeworkEdit').addEventListener('click',()=>{resetHomeworkForm();$('newHomework').focus();});
+  function startHomeworkEdit(row){
+    if($('publishHomework').disabled)return;
+    const form=$('homeworkForm');
+    if(!form.classList.contains('hidden')&&
+      ($('homeworkTitle').value||$('homeworkInstructions').value||$('homeworkFiles').files.length)&&
+      !window.confirm('Discard the unsaved homework currently open?'))return;
+    resetHomeworkForm();
+    editingHomework=row;
+    $('homeworkClass').value=row.class_id;
+    $('homeworkSubject').value=row.subject;
+    $('homeworkClass').disabled=true;$('homeworkSubject').disabled=true;
+    $('homeworkTitle').value=row.title;$('homeworkInstructions').value=row.instructions||'';$('homeworkDate').value=row.due_on||'';
+    put('homeworkFormTitle','Edit homework');put('publishHomework','Save changes');
+    openHomeworkForm();
+  }
+  async function updateHomework(original,payload,files){
+    const school=me.institution_id,owner=me.id;
+    if(original.created_by!==owner||original.institution_id!==school)throw Error('You can only edit your own homework.');
+    const same=(row,expected)=>row?.id===original.id
+      &&row.title===expected.title&&(row.instructions||'')===(expected.instructions||'')
+      &&(row.due_on||null)===(expected.due_on||null);
+    const where={id:eq(original.id),institution_id:eq(school),created_by:eq(owner)};
+    let confirmed,writeError;
+    try{
+      [confirmed]=await api('school_homework',query({...where,title:eq(original.title),
+        instructions:original.instructions==null?'is.null':eq(original.instructions),due_on:original.due_on?eq(original.due_on):'is.null'}),'PATCH',payload);
+    }catch(error){writeError=error;}
+    if(me?.institution_id!==school||me.id!==owner)return;
+    if(!same(confirmed,payload)){
+      try{[confirmed]=await api('school_homework',query(where));}
+      catch(error){throw writeError||error;}
+      if(me?.institution_id!==school||me.id!==owner)return;
+    }
+    if(confirmed?.id===original.id){
+      allHomework=allHomework.map(row=>row.id===original.id?confirmed:row);
+      renderHomework();
+    }
+    if(!same(confirmed,payload)){
+      if(confirmed?.id===original.id&&!same(confirmed,original))throw Error('Homework changed since you opened it. Copy your edits, then reopen the updated post.');
+      throw writeError||Error('Could not confirm the update. Try again.');
+    }
+    let fileError=null;
+    if(files.length){
+      try{await homeworkFiles.upload(confirmed,files);allHomeworkFiles=await homeworkFiles.list(allHomework.map(row=>row.id));}
+      catch(error){fileError=error;}
+    }
+    if(me?.institution_id!==school||me.id!==owner)return;
+    resetHomeworkForm();renderHomework();
+    notify(fileError?'Changes saved. Use Add photo / PDF on the post to retry the files.':'Homework updated.',Boolean(fileError));
+  }
   function renderHomework(){
     const root=$('homeworkList');root.replaceChildren();
     if(!allHomework.length){root.append(dom('p','No homework published yet.'));return}
@@ -1175,6 +1376,11 @@
       if(h.instructions)div.append(dom('p',h.instructions));
       homeworkFiles.links(div,allHomeworkFiles.filter(f=>f.homework_id===h.id));
       if(h.created_by===me.id&&writableClasses('can_assign_homework').some(c=>c.id===h.class_id)){
+        if(mobileTeacher()){
+          const edit=dom('button','Edit homework','ghost');edit.type='button';edit.dataset.editHomework=h.id;
+          edit.addEventListener('click',()=>startHomeworkEdit(h));
+          div.append(edit);
+        }
         const label=dom('label','Add photo / PDF','muted'),input=document.createElement('input');input.type='file';input.multiple=true;input.accept='application/pdf,image/jpeg,image/png,image/webp';label.append(input);div.append(label);
         input.addEventListener('change',()=>run(async()=>{input.disabled=true;try{await homeworkFiles.upload(h,input.files);await reload();notify('Homework files uploaded.');}finally{input.disabled=false;}}));
       }
@@ -1564,17 +1770,23 @@
   })});
   $('reload').addEventListener('click',()=>run(async()=>{await reload();notify('Updated from cloud.')}));
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-  let teacherMarksRows=[],teacherMarksRequest=0;
+  let teacherMarksRows=[],teacherMarksRequest=0,teacherMarksSaving=false,teacherMarksLoading=false;
+  const teacherMarkDrafts=new Map();
+  const teacherMarkKey=row=>JSON.stringify([$('teacherMarksClass').value,row.exam_id,row.subject,row.student_id]);
   const marksStatus=message=>put('teacherMarksStatus',message);
   function resetTeacherMarks(){
     teacherMarksRequest++;
-    teacherMarksRows=[];
+    teacherMarksRows=[];teacherMarksSaving=false;teacherMarksLoading=false;teacherMarkDrafts.clear();
+    $('teacherMarksRoster').replaceChildren();
+    $('teacherMarksClass').disabled=false;
+    $('teacherMarksReload').disabled=false;
     $('teacherMarksForm')?.reset?.();
     for(const field of ['Class','Exam','Student','Subject'])$('teacherMarks'+field)?.replaceChildren();
     $('teacherMarksSave').disabled=true;
     marksStatus('');
   }
   function renderMarksChoices(start){
+    if(mobileTeacher()){renderClassMarks();return;}
     const fields=[['Exam','exam_id',r=>r.exam_name],['Student','student_id',r=>r.student_name+' · '+r.admission_number],['Subject','subject',r=>r.subject]];
     let matches=teacherMarksRows;
     for(const [index,[field,key,label]] of fields.entries()){
@@ -1594,9 +1806,108 @@
     $('teacherMarksSave').disabled=!row;
     if(row)marksStatus(row.obtained===null?'Maximum '+row.maximum+' marks':'Draft saved · '+row.obtained+' / '+row.maximum);
   }
+  function renderClassMarks(){
+    const root=$('teacherMarksRoster');
+    root.replaceChildren();
+    for(const id of ['teacherMarksStudent','teacherMarksScore']){
+      $(id).disabled=true;
+      display(id+'Field',false);
+    }
+    const fill=(id,rows,key,label)=>{
+      const prior=$(id).value;
+      const choices=new Map(rows.map(row=>[row[key],{id:row[key],label:label(row)}]));
+      options(id,[...choices.values()],row=>row.label);
+      if(choices.has(prior))$(id).value=prior;
+      $(id).disabled=!choices.size;
+      return rows.filter(row=>row[key]===$(id).value);
+    };
+    const examRows=fill('teacherMarksExam',teacherMarksRows,'exam_id',row=>row.exam_name);
+    const rows=fill('teacherMarksSubject',examRows,'subject',row=>row.subject);
+    const list=[...rows].sort((a,b)=>a.student_name.localeCompare(b.student_name));
+    for(const row of list){
+      const key=teacherMarkKey(row),line=dom('label',undefined,'teacher-mark-row');
+      const info=dom('span'),hint=dom('small',row.admission_number||('Out of '+row.maximum),'muted');
+      info.append(dom('strong',row.student_name),hint);
+      const input=dom('input');
+      input.type='number';input.min='0';input.max=row.maximum;input.step='any';input.inputMode='decimal';
+      const draft=teacherMarkDrafts.get(key);
+      input.placeholder='/ '+row.maximum;input.value=draft?.value??row.obtained??'';
+      input.setAttribute('aria-label',row.student_name+', marks out of '+row.maximum);
+      const entry={row,input,hint,key,conflict:Boolean(draft&&draft.expected!==row.obtained&&draft.value!==String(row.obtained??''))};
+      if(entry.conflict){
+        line.dataset.error='true';
+        hint.textContent='Current saved mark: '+(row.obtained??'unmarked')+'. Re-enter your mark to confirm.';
+      }
+      input.addEventListener('input',()=>{
+        if(input.value===String(row.obtained??''))teacherMarkDrafts.delete(key);
+        else teacherMarkDrafts.set(key,{value:input.value,expected:row.obtained});
+        entry.conflict=false;line.dataset.error='false';hint.textContent=row.admission_number||('Out of '+row.maximum);
+      });
+      line.append(info,input);root.append(line);
+      line.markEntry=entry;
+    }
+    $('teacherMarksSave').disabled=!list.length;
+    if(list.length)marksStatus(list.length+' students · Marks saved here are drafts.');
+  }
+  async function saveClassMarks(){
+    const request=teacherMarksRequest,button=$('teacherMarksSave');
+    if(teacherMarksSaving||button.disabled)return;
+    const entries=[...$('teacherMarksRoster').children].map(line=>({line,...line.markEntry}));
+    const changed=entries.filter(({row,input})=>input.value!==String(row.obtained??''));
+    if(!changed.length){marksStatus('No marks changed.');return;}
+    const conflict=changed.find(entry=>entry.conflict);
+    if(conflict){marksStatus(conflict.row.student_name+' has a newer saved mark. Review it and re-enter your mark.');conflict.input.focus();return;}
+    const invalid=changed.find(({row,input})=>!input.value||!Number.isFinite(Number(input.value))||Number(input.value)<0||Number(input.value)>row.maximum);
+    if(invalid){
+      marksStatus('Enter marks between 0 and '+invalid.row.maximum+' for '+invalid.row.student_name+'.');
+      invalid.input.focus();return;
+    }
+    const fields=['Class','Exam','Subject','Reload'].map(key=>$('teacherMarks'+key));
+    const school=me.institution_id,classId=$('teacherMarksClass').value;
+    teacherMarksSaving=true;
+    button.disabled=true;
+    fields.forEach(field=>field.disabled=true);
+    entries.forEach(entry=>entry.input.disabled=true);
+    marksStatus('Saving '+changed.length+' marks…');
+    let saved=0;
+    try{
+      for(const {row,input,line,hint,key} of changed){
+        if(request!==teacherMarksRequest)return;
+        const value=Number(input.value);
+        teacherMarkDrafts.set(key,{value:input.value,expected:row.obtained});
+        try{
+          const result=await api('rpc/bn_teacher_save_exam_mark','','POST',{
+            p_school:school,p_class:classId,p_exam:row.exam_id,p_student:row.student_id,
+            p_subject:row.subject,p_obtained:value,p_expected:row.obtained
+          });
+          if(request!==teacherMarksRequest)return;
+          if(result?.obtained!==value)throw Error('Mark could not be confirmed. Try again.');
+          row.obtained=value;input.value=value;teacherMarkDrafts.delete(key);
+          line.dataset.error='false';hint.textContent='Saved · '+value+' / '+row.maximum;saved++;
+        }catch(error){
+          if(request!==teacherMarksRequest)return;
+          line.dataset.error='true';hint.textContent=error.message||'Could not save this mark.';
+        }
+      }
+      const outstanding=changed.length-saved;
+      marksStatus(outstanding?saved+' saved · '+outstanding+' to review or retry.':saved+(saved===1?' mark saved as draft.':' marks saved as drafts.'));
+    }finally{
+      if(request===teacherMarksRequest){
+        teacherMarksSaving=false;button.disabled=false;
+        fields.forEach(field=>field.disabled=false);
+        entries.forEach(entry=>entry.input.disabled=false);
+      }
+    }
+  }
   async function loadTeacherMarks(){
     const request=++teacherMarksRequest,school=me?.institution_id;
+    teacherMarksLoading=true;
     const select=$('teacherMarksClass'),previous=select.value;
+    if(mobileTeacher()){
+      $('teacherMarksRoster').replaceChildren();
+      for(const id of ['teacherMarksExam','teacherMarksSubject'])$(id).disabled=true;
+      for(const field of ['Student','Score']){$('teacherMarks'+field).disabled=true;display('teacherMarks'+field+'Field',false);}
+    }else for(const field of ['Student','Score'])display('teacherMarks'+field+'Field',true);
     $('teacherMarksSave').disabled=true;
     $('teacherMarksScore').disabled=true;
     teacherMarksRows=[];
@@ -1621,13 +1932,14 @@
       if(request!==teacherMarksRequest)return;
       renderMarksChoices(0);
       marksStatus(error.message||'Could not load marks. Use Refresh to retry.');
-    }
+    }finally{if(request===teacherMarksRequest)teacherMarksLoading=false;}
   }
   $('teacherMarksClass').addEventListener('change',()=>loadTeacherMarks());
   $('teacherMarksReload').addEventListener('click',()=>loadTeacherMarks());
   for(const [id,start] of [['Exam',1],['Student',2],['Subject',3]])$('teacherMarks'+id).addEventListener('change',()=>renderMarksChoices(start));
   $('teacherMarksForm').addEventListener('submit',async event=>{
     event.preventDefault();
+    if(mobileTeacher()){await saveClassMarks();return;}
     const button=$('teacherMarksSave'),input=$('teacherMarksScore'),request=teacherMarksRequest;
     const row=teacherMarksRows.find(row=>row.exam_id===$('teacherMarksExam').value
       &&row.student_id===$('teacherMarksStudent').value&&row.subject===$('teacherMarksSubject').value);
@@ -1653,16 +1965,94 @@
     }
   });
   $('homeworkClass').addEventListener('change',()=>fillSubject($('homeworkClass').value));
-  $('loadAttendance').addEventListener('click',()=>run(loadAttendance));
+  $('loadAttendance').addEventListener('click',()=>mobileTeacher()?openMobileAttendance():run(loadAttendance));
   let currentRoster=[],rosterScope=null,rosterGeneration=0;
-  function invalidateRoster(){rosterGeneration++;currentRoster=[];rosterScope=null;$('rosterList').replaceChildren();put('attendanceFeedback','');display('saveAttendance',false);display('markRemainingPresent',false);}
-  $('attendanceClass').addEventListener('change',invalidateRoster);
-  $('attendanceDate').addEventListener('change',invalidateRoster);
+  const attendanceDrafts=new Map();
+  function invalidateRoster(){
+    rosterGeneration++;currentRoster=[];rosterScope=null;
+    if(mobileTeacher())$('attendanceDate').disabled=false;
+    $('rosterList').replaceChildren();
+    $('attendanceActions').after?.($('attendanceFeedback'));
+    put('attendanceFeedback','');display('saveAttendance',false);display('markRemainingPresent',false);
+  }
+  for(const id of ['attendanceClass','attendanceDate']){
+    $(id).addEventListener('change',()=>mobileTeacher()?openMobileAttendance():invalidateRoster());
+  }
+  function attendanceKey(cls,day){return JSON.stringify([cls,day]);}
+  function updateAttendanceSummary(){
+    if(!mobileTeacher())return;
+    const rows=[...(rosterScope?.rows.values()||[])];
+    const pending=rows.filter(row=>row.select.value!==row.confirmedStatus).length;
+    const unmarked=rows.filter(row=>!row.select.value).length;
+    put('attendanceSummary',rows.length?(rows.length-unmarked)+' of '+rows.length+' marked':'');
+    const feedback=$('attendanceFeedback');
+    if(rows.length)$('attendanceActions').prepend(feedback);
+    const button=$('saveAttendance');
+    button.disabled=Boolean(rosterScope?.saving)||pending===0;
+    button.textContent=rosterScope?.saving?'Saving…':rosterScope?.retry?'Retry save · '+pending:
+      pending?'Save '+pending+(pending===1?' change':' changes'):rows.length&&unmarked===0?'✓ Saved':'Save attendance';
+    $('markRemainingPresent').disabled=Boolean(rosterScope?.saving)||unmarked===0;
+  }
+  async function openMobileAttendance(){
+    if(rosterScope?.saving)return;
+    clearNotice();
+    const classField=$('attendanceClass'),day=$('attendanceDate').value;
+    put('attendanceDateText',day?new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'}).format(new Date(day+'T00:00:00')):'Select date');
+    $('attendanceDateText').hidden=!day;
+    classField.disabled=writableClasses('can_take_attendance').length<=1;
+    put('attendanceDateLabel',day===dateLocal()?'Today':'Date');
+    display('loadAttendance',false);
+    if(!writableClasses('can_take_attendance').length||!day){
+      invalidateRoster();
+      put('attendanceSummary','');
+      $('attendanceFeedback').dataset.error='false';
+      put('attendanceFeedback',day?'No attendance class assigned. Contact your school office.':'Choose an attendance date.');
+      return;
+    }
+    const loading=loadAttendance(),generation=rosterGeneration;
+    put('attendanceSummary','');
+    put('attendanceFeedback','Loading class roster…');
+    $('attendanceFeedback').dataset.error='false';
+    try{
+      await loading;
+    }catch(error){
+      if(generation!==rosterGeneration)return;
+      put('attendanceFeedback',"Couldn't load attendance. "+error.message);
+      $('attendanceFeedback').dataset.error='true';
+      put('loadAttendance','Retry loading');
+      display('loadAttendance',true);
+    }
+  }
+  function attendanceChoices(student,select){
+    const group=dom('div',undefined,'attendance-choices teacher-only');
+    group.setAttribute('role','group');group.setAttribute('aria-label','Attendance for '+student.name);
+    const more=dom('details'),trigger=dom('summary','More');
+    trigger.setAttribute('aria-label','More attendance options for '+student.name);
+    const choices=new Map();
+    for(const [value,label] of [['present','Present'],['absent','Absent'],['excused','Leave'],['late','Late']]){
+      const button=dom('button',label);button.type='button';button.dataset.attendanceChoice=value;
+      button.addEventListener('click',()=>{
+        if(rosterScope?.saving)return;
+        select.value=value;select.dispatchEvent(new Event('change'));
+        more.open=false;
+        if(value==='late')trigger.focus();
+      });
+      choices.set(value,button);
+      if(value!=='late')group.append(button);
+    }
+    more.append(trigger,choices.get('late'));group.append(more);
+    return {group,choices,more,trigger};
+  }
   function refreshAttendanceBadge(row){
     const saved=row.select.value&&row.select.value===row.confirmedStatus;
     const changed=row.select.value!==row.confirmedStatus;
     row.badge.dataset.state=saved?'saved':changed?'pending':'unmarked';
-    row.badge.textContent=saved?'✓ Saved in Supabase':changed?'Unsaved change':'Not saved';
+    row.badge.textContent=saved?(row.controls?'✓ Saved':'✓ Saved in Supabase'):changed?'Unsaved change':'Not saved';
+    if(row.controls){
+      for(const [value,button] of row.controls.choices)button.setAttribute('aria-pressed',String(value===row.select.value));
+      row.controls.more.dataset.late=String(row.select.value==='late');
+      row.controls.trigger.textContent=row.select.value==='late'?'Late':'More';
+    }
   }
   function attendanceCount(count){return count+' '+(count===1?'student':'students');}
   function readAttendance(cls,day,institutionId){
@@ -1676,6 +2066,8 @@
     const records=await readAttendance(cls,day,me.institution_id);
     if(generation!==rosterGeneration||$('attendanceClass').value!==cls||$('attendanceDate').value!==day)return;
     currentRoster=roster;rosterScope={classId:cls,day,rows:new Map()};
+    const key=attendanceKey(cls,day),draft=attendanceDrafts.get(key);
+    put('attendanceFeedback','');
     const savedStatuses=new Map(records.map(record=>[record.student_id,record.status]));
     const root=$('rosterList');clearChildren(root);
     for(const student of currentRoster){
@@ -1690,17 +2082,40 @@
       select.dataset.studentId=student.id;select.dataset.classId=cls;
       const badge=dom('small',undefined,'attendance-save-state');
       const row={select,badge,confirmedStatus:status};
+      if(mobileTeacher()){
+        select.value=draft?.get(student.id)??status;
+        row.controls=attendanceChoices(student,select);
+      }
       rosterScope.rows.set(student.id,row);
       refreshAttendanceBadge(row);
-      select.addEventListener('change',()=>{refreshAttendanceBadge(row);put('attendanceFeedback','');});
+      select.addEventListener('change',()=>{refreshAttendanceBadge(row);attendanceEdited();});
       left.append(badge);
-      line.append(left,select);root.append(line);
+      line.append(left,select);
+      if(row.controls)line.append(row.controls.group);
+      root.append(line);
     }
     display('saveAttendance',currentRoster.length>0);
     display('markRemainingPresent',currentRoster.length>0);
     if(!currentRoster.length)root.append(dom('p','No students are published for this class.'));
-    else if(currentRoster.every(student=>savedStatuses.get(student.id)))
-      put('attendanceFeedback','Attendance already saved for '+attendanceCount(currentRoster.length)+'.');
+    else if(currentRoster.every(student=>savedStatuses.get(student.id))&&!draft?.size)
+      put('attendanceFeedback',mobileTeacher()?'✓ Attendance saved':'Attendance already saved for '+attendanceCount(currentRoster.length)+'.');
+    updateAttendanceSummary();
+  }
+  function rememberAttendance(scope){
+    if(!mobileTeacher())return;
+    const key=attendanceKey(scope.classId,scope.day);
+    const changed=new Map([...scope.rows].filter(([,row])=>row.select.value!==row.confirmedStatus)
+      .map(([id,row])=>[id,row.select.value]));
+    if(changed.size)attendanceDrafts.set(key,changed);
+    else attendanceDrafts.delete(key);
+  }
+  function attendanceEdited(){
+    put('attendanceFeedback','');
+    if(!mobileTeacher()||!rosterScope)return;
+    $('attendanceFeedback').dataset.error='false';
+    rosterScope.retry=false;
+    rememberAttendance(rosterScope);
+    updateAttendanceSummary();
   }
   $('markRemainingPresent').addEventListener('click',()=>{
     if(!rosterScope||rosterScope.classId!==$('attendanceClass').value||rosterScope.day!==$('attendanceDate').value)return;
@@ -1709,7 +2124,7 @@
       row.select.value='present';
       refreshAttendanceBadge(row);
     }
-    put('attendanceFeedback','');
+    attendanceEdited();
   });
   $('saveAttendance').addEventListener('click',()=>run(async()=>{
     const cls=$('attendanceClass').value,day=$('attendanceDate').value;
@@ -1718,13 +2133,27 @@
     if(!writableClasses('can_take_attendance').some(c=>c.id===cls))throw Error('You are not assigned to this attendance class.');
     if(rosterScope.classId!==cls||rosterScope.day!==day)throw Error('Class or date changed. Reload roster.');
     if(selects.some(s=>s.dataset.classId!==cls))throw Error('Class changed. Reload roster.');
-    if(selects.some(s=>!['present','absent','late','excused'].includes(s.value)))throw Error('Mark every student before saving attendance.');
+    if(selects.some(s=>!['present','absent','late','excused'].includes(s.value))){
+      if(!mobileTeacher())throw Error('Mark every student before saving attendance.');
+      put('attendanceFeedback','Mark every student before saving attendance.');
+      $('attendanceFeedback').dataset.error='true';
+      const invalid=selects.find(s=>!['present','absent','late','excused'].includes(s.value));
+      const row=rosterScope.rows.get(invalid.dataset.studentId);
+      row?.controls?.choices.get('present')?.focus();
+      return;
+    }
     const scope=rosterScope,institutionId=me.institution_id;
     const records=selects.filter(s=>s.value!==scope.rows.get(s.dataset.studentId).confirmedStatus)
       .map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:institutionId,day,status:s.value,recorded_by:me.id}));
     const button=$('saveAttendance');if(button.disabled)return;
     if(!records.length){put('attendanceFeedback','Attendance already saved for '+attendanceCount(selects.length)+'.');return;}
     button.disabled=true;
+    if(mobileTeacher()){
+      scope.saving=true;scope.retry=false;
+      $('attendanceClass').disabled=true;$('attendanceDate').disabled=true;
+      for(const row of scope.rows.values())for(const control of row.controls.choices.values())control.disabled=true;
+      updateAttendanceSummary();
+    }
     put('attendanceFeedback','');
     try{
       const matches=rows=>{
@@ -1747,17 +2176,48 @@
         row.confirmedStatus=status;
         refreshAttendanceBadge(row);
       }
-      put('attendanceFeedback','Attendance verified in Supabase for '+attendanceCount(records.length)+'.');
-    }finally{button.disabled=false;}
+      rememberAttendance(scope);
+      if(mobileTeacher())$('attendanceFeedback').dataset.error='false';
+      put('attendanceFeedback',mobileTeacher()?'✓ Attendance saved':'Attendance verified in Supabase for '+attendanceCount(records.length)+'.');
+    }catch(error){
+      if(!mobileTeacher())throw error;
+      if(scope!==rosterScope)return;
+      scope.retry=true;
+      $('attendanceFeedback').dataset.error='true';
+      put('attendanceFeedback',"Couldn't save attendance. Your choices are still here. Try again.");
+    }finally{
+      if(!mobileTeacher())button.disabled=false;
+      else if(scope===rosterScope){
+        scope.saving=false;
+        $('attendanceClass').disabled=writableClasses('can_take_attendance').length<=1;
+        $('attendanceDate').disabled=false;
+        for(const row of scope.rows.values())for(const control of row.controls.choices.values())control.disabled=false;
+        updateAttendanceSummary();
+      }
+    }
   }));
   $('homeworkForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const class_id=$('homeworkClass').value;
     if(!writableClasses('can_assign_homework').some(c=>c.id===class_id))throw Error('You are not assigned to this class.');
     const subject=$('homeworkSubject').value.trim(),title=$('homeworkTitle').value.trim();
     if(!subject||!title)throw Error('Subject and task are required.');
-    const button=$('publishHomework');if(button.disabled)return;const selectedFiles=Array.from($('homeworkFiles').files||[]);if(selectedFiles.length>5)throw Error('Choose up to 5 files.');for(const file of selectedFiles)await window.BNHomeworkFiles.validate(file);button.disabled=true;
+    const button=$('publishHomework');if(button.disabled)return;const selectedFiles=Array.from($('homeworkFiles').files||[]);if(selectedFiles.length>5)throw Error('Choose up to 5 files.');button.disabled=true;
+    const currentEditor=editingHomework;
+    const mobile=mobileTeacher(),school=me.institution_id,owner=me.id;
+    const editorFields=['homeworkClass','homeworkSubject','homeworkTitle','homeworkInstructions','homeworkDate','homeworkFiles'].map($);
+    const disabledFields=editorFields.map(field=>field.disabled);
+    if(mobile){
+      editorFields.forEach(field=>field.disabled=true);
+      $('cancelHomeworkEdit').disabled=true;$('homeworkFeedback').dataset.error='false';put('homeworkFeedback','Saving…');
+    }
     try{
       const form=$('homeworkForm');
+      for(const file of selectedFiles)await window.BNHomeworkFiles.validate(file);
+      if(me?.institution_id!==school||me.id!==owner)return;
+      if(currentEditor){
+        await updateHomework(currentEditor,{title,instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null},selectedFiles);
+        return;
+      }
       const id=form.dataset.pendingHomeworkId||(form.dataset.pendingHomeworkId=crypto.randomUUID());
       const payload={id,institution_id:me.institution_id,class_id,subject,title,
         instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null,created_by:me.id};
@@ -1775,13 +2235,30 @@
         }catch(_){}
       }
       if(!published)throw writeFailure||Error('Homework was not confirmed in Supabase. Retry without changing the form.');
+      if(me?.institution_id!==school||me.id!==owner)return;
       delete form.dataset.pendingHomeworkId;
       let fileError=null;
       try{if(selectedFiles.length)await homeworkFiles.upload(published,selectedFiles);}
       catch(err){fileError=err;}
-      e.target.reset();await reload();
-      notify(fileError?'Homework saved. Some files were not uploaded: '+fileError.message+' Use Add photo / PDF on this homework to retry.':'Homework verified in Supabase with '+selectedFiles.length+' file(s).',!!fileError);
-    }finally{button.disabled=false;}
+      if(me?.institution_id!==school||me.id!==owner)return;
+      if(mobile)resetHomeworkForm();
+      else e.target.reset();
+      await reload();
+      notify(fileError?'Homework saved. Some files were not uploaded: '+fileError.message+' Use Add photo / PDF on this homework to retry.':mobile?'Homework published.':'Homework verified in Supabase with '+selectedFiles.length+' file(s).',!!fileError);
+    }catch(error){
+      if(!mobile)throw error;
+      if(me?.institution_id!==school||me.id!==owner)return;
+      $('homeworkFeedback').dataset.error='true';
+      put('homeworkFeedback',error.message||'Could not save. Try again.');
+    }finally{
+      if(me?.institution_id===school&&me.id===owner){
+        button.disabled=false;
+        if(mobile){
+          $('cancelHomeworkEdit').disabled=false;
+          editorFields.forEach((field,index)=>field.disabled=editingHomework||!currentEditor?disabledFields[index]:false);
+        }
+      }
+    }
   })});
   $('inviteForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     if(!isAdmin())throw Error('School admin required.');

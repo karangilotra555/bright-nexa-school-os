@@ -1,0 +1,164 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {JSDOM}=require('jsdom');
+const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
+
+function fixture(handler){
+  const {window}=new JSDOM(read('teacher-access.html'),{url:'https://school.example/teacher-access.html',runScripts:'outside-only'});
+  const id=name=>window.document.getElementById(name),calls=[];
+  window.BNHomeworkFiles={create:()=>({links(){}})};
+  window.fetch=async (url,request)=>{
+    const call={table:new URL(url).pathname.split('/').pop(),query:new URL(url).searchParams,
+      method:request.method,body:request.body?JSON.parse(request.body):null};
+    calls.push(call);
+    return {ok:true,json:async()=>handler(call)};
+  };
+  window.eval(read('teacher-access.js').replace(/\}\)\(\);\s*$/, `
+    window.teacherTest={tab,loadAttendance,loadTeacherMarks,renderHomework,applyNavigationVisibility,setHomework(rows){allHomework=rows;},start(){
+      me={id:'teacher',role:'teacher',institution_id:'school'};
+      session={access_token:'test',expires_at:9999999999};
+      allClasses=[{id:'class-a',name:'LKG',section:'A',academic_year:'2026-2027'}];
+      allStudents=[{id:'one',name:'First student',class_id:'class-a'},{id:'two',name:'Second student',class_id:'class-a'}];
+      allAssignments=[{school_user_id:'teacher',class_id:'class-a',active:true,can_take_attendance:true,can_enter_marks:true,can_assign_homework:true,assignment_type:'class_teacher'}];
+      document.body.classList.add('bn-teacher-app');renderSelects();
+    }};
+  })();`));
+  window.teacherTest.start();
+  return {window,id,calls,api:window.teacherTest};
+}
+test('mobile attendance autoloads; quick marks preserve Leave and show only confirmed saves',async()=>{
+  let confirmed=false;
+  const f=fixture(call=>call.method==='POST'?(confirmed?call.body:[]):[]);
+  f.api.tab('attendance');await tick();
+  const rows=f.id('rosterList').children;
+  assert.equal(rows.length,2);
+  rows[0].querySelector('[data-attendance-choice="excused"]').click();
+  f.id('markRemainingPresent').click();
+  assert.match(f.id('saveAttendance').textContent,/2 changes/);
+  f.id('saveAttendance').click();await tick();
+  assert.match(f.id('attendanceFeedback').textContent,/couldn.t save/i);
+  assert.equal(rows[0].querySelector('[data-attendance-choice="excused"]').getAttribute('aria-pressed'),'true');
+  confirmed=true;f.id('saveAttendance').click();await tick();
+  assert.match(f.id('attendanceFeedback').textContent,/Attendance saved/);
+  assert.deepEqual(f.calls.filter(call=>call.method==='POST').at(-1).body.map(row=>row.status),['excused','present']);
+  assert.doesNotMatch(f.id('rosterList').textContent,/Supabase/);
+  f.window.close();
+});
+test('mobile attendance preserves unsaved choices when moving between dates',async()=>{
+  const f=fixture(()=>[]);
+  const day=f.id('attendanceDate');
+  day.value='2026-11-14';
+  await f.api.loadAttendance();
+  f.id('rosterList').querySelector('[data-attendance-choice="absent"]').click();
+  const change=async value=>{day.value=value;day.dispatchEvent(new f.window.Event('change'));await tick();};
+  await change('2026-11-15');await change('2026-11-14');
+  assert.equal(f.id('rosterList').querySelector('[data-attendance-choice="absent"]').getAttribute('aria-pressed'),'true');
+  assert.match(f.id('saveAttendance').textContent,/1 change/);
+  f.window.close();
+});
+test('mobile class marks use one subject list and retain unconfirmed rows for retry',async()=>{
+  let rejectSecond=true;
+  const f=fixture(call=>{
+    if(call.table==='bn_teacher_marks_classes')return [{id:'class-a',name:'LKG'}];
+    if(call.table==='bn_teacher_exam_marks')return ['one','two'].map(student_id=>({exam_id:'exam',exam_name:'Term',student_id,student_name:student_id,subject:'Math',maximum:20,obtained:10}));
+    return {obtained:rejectSecond&&call.body.p_student==='two'?10:call.body.p_obtained,maximum:20,changed:true};
+  });
+  await f.api.loadTeacherMarks();
+  const inputs=f.id('teacherMarksRoster').querySelectorAll('input');
+  assert.equal(inputs.length,2);
+  inputs[0].value='15';inputs[1].value='16';
+  f.id('teacherMarksForm').dispatchEvent(new f.window.Event('submit',{cancelable:true}));
+  await tick();
+  assert.match(f.id('teacherMarksStatus').textContent,/1 saved/);
+  assert.equal(inputs[1].value,'16');
+  rejectSecond=false;
+  f.id('teacherMarksForm').dispatchEvent(new f.window.Event('submit',{cancelable:true}));
+  await tick();
+  assert.deepEqual(f.calls.filter(call=>call.table==='bn_teacher_save_exam_mark').map(call=>call.body.p_student),['one','two','two']);
+  f.window.close();
+});
+test('teacher navigation retains access to Marks, Notices, Classes and Account',()=>{
+  const f=fixture(()=>[]);
+  f.api.applyNavigationVisibility();
+  const menu=f.id('teacherMore');
+  assert.deepEqual([...menu.querySelectorAll('[data-tab]')].map(button=>button.dataset.tab),['marks','notices','classes','profiles','account']);
+  f.window.close();
+});
+test('personal timetable displays only published lessons assigned to the signed-in teacher',async()=>{
+  const f=fixture(call=>{
+    if(call.table==='school_timetable_slots')return [{id:'bell',weekday:2,kind:'period',label:'Period 1',starts_at:'08:00:00',ends_at:'08:40:00'}];
+    if(call.table==='school_timetable_published')return [
+      {slot_id:'bell',class_id:'class-a',subject:'English',teacher_user_id:'teacher'},
+      {slot_id:'bell',class_id:'class-a',subject:'Other subject',teacher_user_id:'another-teacher'}
+    ];
+    return [];
+  });
+  f.api.tab('timetable');await tick();
+  f.window.document.querySelector('[data-teacher-schedule="week"]').click();await tick();
+  assert.match(f.id('teacherPeriods').textContent,/Tuesday.*English/);
+  assert.doesNotMatch(f.id('teacherPeriods').textContent,/Other subject/);
+  assert.equal(f.calls.find(call=>call.table==='school_timetable_published').query.get('teacher_user_id'),'eq.teacher');
+  f.window.close();
+});
+
+test('teacher edits an owned homework post in place and keeps the class and subject',async()=>{
+  const homework={id:'homework',institution_id:'school',class_id:'class-a',subject:'English',title:'Old title',instructions:'',due_on:null,created_by:'teacher'};
+  const f=fixture(call=>call.method==='PATCH'?[{...homework,...call.body}]:[]);
+  f.api.setHomework([homework,{...homework,id:'other',created_by:'another-teacher'}]);
+  f.api.renderHomework();
+  const edits=f.id('homeworkList').querySelectorAll('[data-edit-homework]');
+  assert.equal(edits.length,1);
+  edits[0].click();
+  assert.equal(f.id('homeworkClass').disabled,true);
+  f.id('homeworkTitle').value='New title';
+  f.id('homeworkForm').dispatchEvent(new f.window.Event('submit',{cancelable:true}));
+  await tick();
+  const write=f.calls.find(call=>call.method==='PATCH');
+  assert.equal(write.query.get('id'),'eq.homework');
+  assert.equal(write.query.get('institution_id'),'eq.school');
+  assert.deepEqual(write.body,{title:'New title',instructions:'',due_on:null});
+  assert.match(f.id('homeworkList').textContent,/New title/);
+  f.window.close();
+});
+
+test('refreshing marks requires review before overwriting a newer server mark',async()=>{
+  let current=10;
+  const f=fixture(call=>{
+    if(call.table==='bn_teacher_marks_classes')return [{id:'class-a',name:'LKG'}];
+    if(call.table==='bn_teacher_exam_marks')return [{exam_id:'exam',exam_name:'Term',student_id:'one',student_name:'First',subject:'Math',maximum:20,obtained:current}];
+    return {obtained:call.body.p_obtained,maximum:20,changed:true};
+  });
+  const getInput=()=>f.id('teacherMarksRoster').querySelector('input');
+  const input=value=>{getInput().value=value;getInput().dispatchEvent(new f.window.Event('input'));};
+  const submit=()=>f.id('teacherMarksForm').dispatchEvent(new f.window.Event('submit',{cancelable:true}));
+  await f.api.loadTeacherMarks();
+  input('15');
+  current=12;
+  await f.api.loadTeacherMarks();
+  assert.equal(getInput().value,'15');
+  assert.match(f.id('teacherMarksRoster').textContent,/Current saved mark: 12/);
+  submit();
+  await tick();
+  assert.equal(f.calls.some(call=>call.table==='bn_teacher_save_exam_mark'),false);
+  input('16');submit();await tick();
+  assert.equal(f.calls.find(call=>call.table==='bn_teacher_save_exam_mark').body.p_expected,12);
+  f.window.close();
+});
+
+test('a homework conflict refreshes the post and keeps the teacher’s edit visible',async()=>{
+  const post={id:'one',institution_id:'school',class_id:'class-a',subject:'Math',title:'Original task',instructions:'',due_on:null,created_by:'teacher'};
+  const f=fixture(call=>call.method==='PATCH'?[]:[{...post,title:'Updated on another device'}]);
+  f.api.setHomework([post]);f.api.renderHomework();
+  f.id('homeworkList').querySelector('[data-edit-homework]').click();
+  f.id('homeworkTitle').value='My draft';
+  f.id('homeworkForm').dispatchEvent(new f.window.Event('submit',{cancelable:true}));
+  await tick();
+  assert.equal(f.id('homeworkTitle').value,'My draft');
+  assert.match(f.id('homeworkFeedback').textContent,/Homework changed/);
+  assert.match(f.id('homeworkList').textContent,/Updated on another device/);
+  f.window.close();
+});
