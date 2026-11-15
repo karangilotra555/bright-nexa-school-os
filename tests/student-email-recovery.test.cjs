@@ -9,7 +9,7 @@ const {transformSync}=require('esbuild');
 const school='bc80e32d-485d-48a8-903a-92338aa61005';
 const studentId='11111111-1111-1111-1111-111111111111';
 const shadowEmail=createHash('sha256').update('student:'+school+':'+studentId).digest('hex')+'@student.brightnexa.invalid';
-function fixture(){
+function fixture({duplicate=false}={}){
  let email='verified-guardian@example.com',pending=false,resetMs=0;
  const sent=[],updates=[];
  const source=fs.readFileSync(path.join(__dirname,'../supabase/functions/school-student-login/index.ts'),'utf8')
@@ -31,6 +31,12 @@ function fixture(){
    const query={
     select(){return query},
     eq(key,value){filters[key]=value;return query},
+    limit(){
+     if(table!=='school_students'||filters.admission_number!=='ADM-1')return Promise.resolve({data:[]});
+     const candidates=[{id:studentId,institution_id:school}];
+     if(duplicate)candidates.push({id:'22222222-2222-4222-8222-222222222222',institution_id:'33333333-3333-4333-8333-333333333333'});
+     return Promise.resolve({data:candidates.filter(row=>!filters.institution_id||row.institution_id===filters.institution_id)});
+    },
     async maybeSingle(){
      if(table==='school_students')return {data:filters.institution_id===school&&filters.admission_number==='ADM-1'&&filters.status==='active'?{id:studentId,institution_id:school}:null};
      if(table==='school_student_profiles')return {data:filters.student_id===studentId?{guardian_email:email,guardian_phone:'9000012345'}:null};
@@ -60,6 +66,14 @@ function fixture(){
  };
  return {call,sent,updates,setEmail(v){email=v},setPending(v){pending=v}};
 }
+test('plain recovery entry resolves a unique school and carries it through the email link',async()=>{
+ const f=fixture();
+ await f.call({action:'request-reset',admissionNumber:'ADM-1',guardianEmail:'verified-guardian@example.com'});
+ assert.equal(new URL(f.sent[0].options.emailRedirectTo).searchParams.get('school'),school);
+ const ambiguous=fixture({duplicate:true});
+ await ambiguous.call({action:'request-reset',admissionNumber:'ADM-1',guardianEmail:'verified-guardian@example.com'});
+ assert.equal(ambiguous.sent.length,0);
+});
 test('student recovery sends email only to school-registered guardian',async()=>{
  const f=fixture();
  const base={action:'request-reset',admissionNumber:'ADM-1',schoolId:school};
@@ -70,7 +84,7 @@ test('student recovery sends email only to school-registered guardian',async()=>
  assert.equal(f.sent.length,1);
  assert.equal(f.sent[0].email,'verified-guardian@example.com');
  assert.equal(f.sent[0].options.shouldCreateUser,true);
- assert.ok(f.sent[0].options.emailRedirectTo.endsWith('parent-password-recovery.html'));
+ assert.equal(new URL(f.sent[0].options.emailRedirectTo).pathname,'/parent-password-recovery.html');
  f.setPending(true);
  await f.call({...base,guardianEmail:'verified-guardian@example.com'});
  assert.equal(f.sent.length,1,'Pending initial password must not email a reset link');
