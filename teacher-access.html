@@ -95,39 +95,95 @@ tr td select{padding:7px;min-width:115px}
 @media(max-width:700px){.formgrid,.formgrid.two,.cards{grid-template-columns:1fr 1fr}.panel{padding:16px}}
 @media(max-width:470px){.bar{flex-wrap:wrap}.bar>.flex{width:100%}.formgrid,.formgrid.two,.cards{grid-template-columns:1fr}.brand{font-size:16px}.bar{padding:0 13px}}
 
-body.bn-teacher-app header{padding:9px 0}
-body.bn-teacher-app .bar{min-height:44px;padding:0 16px;flex-wrap:nowrap}
+/* Installed Teacher App layout. Office roles retain the portal layout. */
+body:not(.bn-teacher-app) .teacher-only{display:none!important}
+body.bn-teacher-app{--teacher-nav-height:64px;--teacher-safe-bottom:env(safe-area-inset-bottom,0px)}
+body.bn-teacher-app header{padding:7px 0;background:#0b2545}
+body.bn-teacher-app .bar{min-height:44px;max-width:700px;padding:0 16px;flex-wrap:nowrap}
 body.bn-teacher-app .bar>.flex{width:auto;flex:0 0 auto}
-body.bn-teacher-app header .brand{min-width:0;font-size:16px}
+body.bn-teacher-app header .brand{min-width:0;font-size:15px}
 body.bn-teacher-app header .brand small{font-size:12px;overflow-wrap:anywhere}
-body.bn-teacher-app #logout{min-height:44px;padding:7px 12px;font-size:13px}
+body.bn-teacher-app #teacherProfileShortcut{display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%}
+body.bn-teacher-app #logout{min-height:44px}
 body.bn-teacher-app #parentApp,
 body.bn-teacher-app #staffSmartToolsLink,
 body.bn-teacher-app #installTeacherApp,
 body.bn-teacher-app #portalPermissionNotice,
-body.bn-teacher-app #rolePill,
-body.bn-teacher-app #portalStats{display:none!important}
-body.bn-teacher-app main{padding:14px 12px max(24px,env(safe-area-inset-bottom))}
-body.bn-teacher-app #status{margin:0 0 12px;padding:9px 11px}
-body.bn-teacher-app #hello{margin:0 0 3px;font-size:20px}
-body.bn-teacher-app #membership{margin:0}
-body.bn-teacher-app .portal-layout{display:grid;gap:12px;margin-top:12px}
-body.bn-teacher-app .portal-nav{position:static;width:100%;max-height:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:5px;border:1px solid #dce6ef;border-radius:12px;background:#fff;box-shadow:none;overflow:visible}
-body.bn-teacher-app .portal-nav-brand,body.bn-teacher-app .portal-nav-title,
-body.bn-teacher-app .portal-nav-divider,body.bn-teacher-app .portal-nav-foot{display:none}
-body.bn-teacher-app .portal-nav :is(.nav-btn,.nav-link){width:100%;min-height:44px;justify-content:center;gap:4px;margin:0;padding:5px 3px;font-size:12px;font-weight:700;color:#284866;text-align:center;line-height:1.2}
-body.bn-teacher-app .portal-nav .nav-icon{width:auto;font-size:13px}
-body.bn-teacher-app .portal-nav :is(.nav-btn,.nav-link):hover{background:#f0f6fb;color:#0b315e}
-body.bn-teacher-app .portal-nav .nav-btn.active{background:#e7f2ff;color:#093c69;box-shadow:inset 0 -2px #1878ba}
-body.bn-teacher-app .portal-content .panel{margin:0 0 12px;padding:14px}
-body.bn-teacher-app .portal-content .panel h2{margin:0 0 10px;font-size:17px}
+body.bn-teacher-app #portalSection>.row,
+body.bn-teacher-app #portalStats,
+body.bn-teacher-app .portal-layout>.portal-nav{display:none!important}
+body.bn-teacher-app main{max-width:700px;padding:12px 12px calc(var(--teacher-nav-height) + var(--teacher-safe-bottom) + 22px)}
+body.bn-teacher-app:has([data-view="attendance"]:not(.hidden) #saveAttendance:not(.hidden)) main{padding-bottom:calc(var(--teacher-nav-height) + var(--teacher-safe-bottom) + 126px)}
+body.bn-teacher-app #status{margin:0 0 10px;padding:9px 11px}
+body.bn-teacher-app .portal-layout{display:block;margin:0}
+body.bn-teacher-app .portal-content .panel{margin:0 0 12px;padding:15px;border-radius:13px;box-shadow:none}
+body.bn-teacher-app .portal-content .panel h2{margin:0 0 12px;font-size:20px}
 body.bn-teacher-app .portal-content .panel .row h2{margin:0}
 body.bn-teacher-app .portal-content :is(.primary,.ghost){min-height:44px}
-body.bn-teacher-app #teacherSchoolAccount{display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin-bottom:18px}
+body.bn-teacher-app #teacherSchoolAccount{display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin-bottom:15px}
 body.bn-teacher-app #teacherSchoolAccount:empty{display:none}
-body.bn-teacher-app .attendance-actions button{flex:1 1 150px}
-
-
+body.bn-teacher-app #logout{margin-top:16px}
+body.bn-teacher-app #teacherMobileNav:not(.hidden){display:flex;position:fixed;z-index:8;bottom:0;left:0;right:0;justify-content:center;gap:4px;padding:4px 8px calc(4px + var(--teacher-safe-bottom));min-height:calc(var(--teacher-nav-height) + var(--teacher-safe-bottom));background:#fff;border-top:1px solid #dce6ef}
+#teacherMobileNav button,#teacherMore summary{display:grid;place-items:center;align-content:center;gap:3px;min-width:0;width:100%;height:54px;padding:2px;border:0;border-radius:10px;background:#fff;color:#435d77;font-size:12px;font-weight:700}
+#teacherMobileNav>button,#teacherMore{flex:1 1 0;max-width:150px}
+#teacherMobileNav :is(button.active,summary.active){background:#eaf2fb;color:#0b4e87}
+#teacherMobileNav svg,#teacherProfileShortcut svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#teacherMore summary{list-style:none;cursor:pointer}
+#teacherMore summary::-webkit-details-marker,.attendance-choices summary::-webkit-details-marker{display:none}
+#teacherMore .teacher-more-items{position:absolute;right:12px;bottom:calc(var(--teacher-nav-height) + var(--teacher-safe-bottom) + 7px);width:min(230px,calc(100vw - 24px));padding:6px;border:1px solid #dce6ef;border-radius:12px;background:white;box-shadow:0 8px 24px #061a362b}
+#teacherMore .teacher-more-items button{display:flex;min-height:44px;height:auto;padding:9px 12px;font-size:14px;text-align:left}
+body.bn-teacher-app [data-view="attendance"]:not(.hidden){display:flex;flex-direction:column;align-items:stretch}
+body.bn-teacher-app #loadAttendance{align-self:start}
+body.bn-teacher-app .teacher-attendance-toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+body.bn-teacher-app #rosterList{order:1}
+body.bn-teacher-app .attendance-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:9px}
+body.bn-teacher-app .attendance-filters :is(input,select){display:block;min-width:0;min-height:42px;padding:7px 8px;font-size:14px}
+.attendance-filters input[type=date]{color-scheme:light}
+.attendance-date-control{position:relative}
+body.bn-teacher-app #attendanceDateText:not([hidden]){position:absolute;left:9px;top:50%;transform:translateY(-50%);max-width:calc(100% - 40px);overflow:hidden;white-space:nowrap;pointer-events:none;font-size:14px;background:#fff}
+body.bn-teacher-app .attendance-date-control:has(#attendanceDateText:not([hidden])) #attendanceDate{color:transparent}
+body.bn-teacher-app .attendance-date-control #attendanceDate:focus{color:inherit}
+body.bn-teacher-app .attendance-date-control:focus-within #attendanceDateText{display:none}
+body.bn-teacher-app #attendanceClass:disabled{appearance:none;opacity:1;color:inherit;background:#f6f8fb}
+body.bn-teacher-app #rosterList{margin:3px 0 0!important}
+body.bn-teacher-app #rosterList>.rowlist{display:grid;gap:7px;padding:9px 0}
+body.bn-teacher-app #rosterList>.rowlist:last-child{border-bottom:0}
+body.bn-teacher-app .attendance-student{display:flex;align-items:baseline;gap:4px 9px;flex-wrap:wrap}
+body.bn-teacher-app .attendance-student strong{font-size:15px}
+body.bn-teacher-app :is(.attendance-save-state,select[data-student-id]){display:none}
+.attendance-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 44px;gap:5px}
+.attendance-choices :is(button,summary){display:grid;place-items:center;min-height:44px;border:1px solid #d8e3ec;border-radius:8px;background:#fff;color:#37536e;font-size:12px;font-weight:750;text-align:center;padding:4px;cursor:pointer}
+.attendance-choices [aria-pressed="true"]{color:#094b82;background:#e7f1fc;border-color:#4282b9}
+.attendance-choices [data-attendance-choice="present"][aria-pressed="true"]{color:#116044;background:#e1f4e9;border-color:#348461}
+.attendance-choices [data-attendance-choice="absent"][aria-pressed="true"]{color:#9b263b;background:#fdecef;border-color:#c86276}
+.attendance-choices details{position:relative}
+.attendance-choices summary{list-style:none}
+.attendance-choices details button{position:absolute;right:0;top:calc(100% + 4px);z-index:2;min-width:82px;box-shadow:0 4px 12px #061a3622}
+.attendance-choices details[data-late="true"] summary{background:#fff4dc;color:#754813;border-color:#b68438}
+body.bn-teacher-app #markRemainingPresent{padding:5px 10px;font-size:12px;min-height:44px}
+body.bn-teacher-app #attendanceSummary{margin:0}
+#attendanceFeedback[data-error="true"],#homeworkFeedback[data-error="true"]{color:#9b263b}
+body.bn-teacher-app .attendance-actions:has(#saveAttendance:not(.hidden)){position:fixed;z-index:7;bottom:calc(var(--teacher-nav-height) + var(--teacher-safe-bottom));left:0;right:0;margin:auto;max-width:700px;padding:8px 12px;background:#f3f7fb;border-top:1px solid #dce6ef}
+body.bn-teacher-app #attendanceActions #attendanceFeedback{width:100%;margin:0}
+body.bn-teacher-app #attendanceActions #attendanceFeedback:empty{display:none}
+body.bn-teacher-app #saveAttendance{width:100%;background:#0b4f86}
+body.bn-teacher-app #saveAttendance:disabled{background:#e1e9f2;color:#385775;cursor:default}
+body.bn-teacher-app #teacherMarksRoster:not(.hidden){display:block;margin:12px 0}
+body.bn-teacher-app .teacher-mark-row{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #e6edf5}
+.teacher-mark-row small{display:block;margin-top:2px}
+.teacher-mark-row[data-error="true"] small{color:#9b263b}
+.teacher-period{display:grid;grid-template-columns:95px minmax(0,1fr);gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid #e6edf5}
+.teacher-period small{display:block}
+#teacherTimetable .teacher-view-controls{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+#teacherTimetable [aria-pressed="true"]{background:#0b4f86;color:#fff}
+body.bn-teacher-app [data-view="homework"]:not(.hidden){display:flex;flex-direction:column;align-items:stretch}
+body.bn-teacher-app #newHomework{align-self:start;margin-bottom:12px}
+body.bn-teacher-app #homeworkList{order:1}
+.teacher-class-roster{flex-basis:100%;font-size:13px;color:#36546e}
+.teacher-class-roster summary{cursor:pointer;min-height:44px;padding:12px 0;font-weight:700}
+.teacher-class-roster ul{margin:0 0 6px;padding-left:21px}
+.teacher-class-roster li{padding:4px 0}
+body.bn-teacher-app #homeworkForm{margin-bottom:12px;border-bottom:1px solid #e6edf5;padding-bottom:12px}
 
 /* Owner's timetable deep-link is a single module, not a second ERP shell.
    Role is verified by Supabase before this class is ever applied. */
@@ -225,10 +281,10 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
   body:has(#loginSection:not(.hidden)) #publicAuthIntro{padding:12px 16px}
 }
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261112-timetable-fix-v2" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261115-logout-v1" defer></script><script src="./school-workspace-cloud.js?v=20261113-photo-payload-v2" defer></script><script src="./teacher-access.js?v=20261115-teacher-marks-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261112-timetable-fix-v2" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261115-logout-v1" defer></script><script src="./school-workspace-cloud.js?v=20261113-photo-payload-v2" defer></script><script src="./teacher-access.js?v=20261115-teacher-mobile-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
-<header><div class="bar"><div class="brand"><a id="staffBrandBack" href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> <span id="staffPortalTitle">Staff Portal</span><small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a id="staffBackToErp" href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a id="staffSmartToolsLink" href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
+<header><div class="bar"><div class="brand"><a id="staffBrandBack" href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> <span id="staffPortalTitle">Staff Portal</span><small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a id="staffBackToErp" href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a id="staffSmartToolsLink" href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="teacherProfileShortcut" type="button" class="light teacher-only" aria-label="My account" data-tab="account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.3"/><path d="M5 20v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></svg></button><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
 <main>
 <aside id="publicAuthIntro" aria-label="Bright Nexa School OS">
   <div class="bn-auth-hero-brand">
@@ -316,6 +372,18 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
     <a href="./index.html?openSchool=true&amp;tab=Dashboard">← Back to School OS</a>
     <strong>School Timetable</strong><span>Bell timings · Class periods · Publish</span>
   </div>
+  <nav id="teacherMobileNav" class="teacher-only" aria-label="Teacher App">
+    <button type="button" data-tab="attendance"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2m6 2V2m-6 11 2 2 4-4"/></svg>Attendance</button>
+    <button type="button" data-tab="timetable"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-13 4h3m2 0h3m-8 3h3"/></svg>Timetable</button>
+    <button type="button" data-tab="homework"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h11l5 5v10H4zM15 5v5h5M8 13h8m-8 4h6"/></svg>Homework</button>
+    <details id="teacherMore"><summary><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>More</summary><div class="teacher-more-items">
+      <button type="button" data-tab="marks">Marks</button>
+      <button type="button" data-tab="notices">Notices</button>
+      <button type="button" data-tab="classes">My Classes</button>
+      <button type="button" data-tab="profiles">Student profiles</button>
+      <button type="button" data-tab="account">My Account</button>
+    </div></details>
+  </nav>
   <div class="portal-layout">
     <aside class="portal-nav" role="navigation" aria-label="Portal Navigation">
       <div class="portal-nav-brand">
@@ -407,20 +475,26 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
     <div class="tablewrap"><table><thead><tr><th>Date</th><th>Student</th><th>Type</th><th>Amount</th><th>Reference</th><th>Action</th></tr></thead><tbody id="feeEntries"></tbody></table></div>
   </div>
   <div data-view="attendance" class="panel hidden">
-    <h2>Class attendance</h2><div class="formgrid two">
+    <h2>Class attendance</h2><div class="formgrid two attendance-filters">
       <div><label for="attendanceClass">Class</label><select id="attendanceClass"></select></div>
-      <div><label for="attendanceDate">Day</label><input id="attendanceDate" type="date"></div>
-    </div><button type="button" class="ghost" id="loadAttendance">Load class roster</button><div id="rosterList" style="margin:15px 0"></div>
-    <div class="attendance-actions">
+      <div><label id="attendanceDateLabel" for="attendanceDate">Date</label><div class="attendance-date-control"><input id="attendanceDate" type="date"><span id="attendanceDateText" class="teacher-only" aria-hidden="true" hidden></span></div></div>
+    </div>
+    <button type="button" class="ghost" id="loadAttendance">Load class roster</button>
+    <div id="teacherAttendanceToolbar" class="teacher-attendance-toolbar teacher-only">
+      <p id="attendanceSummary" class="muted" aria-live="polite"></p>
+    </div>
+    <div id="rosterList" style="margin:15px 0"></div>
+    <div class="attendance-actions" id="attendanceActions">
       <button type="button" class="ghost hidden" id="markRemainingPresent">Mark remaining present</button>
       <button type="button" class="primary hidden" id="saveAttendance">Save attendance</button>
     </div>
     <p id="attendanceFeedback" role="status" aria-live="polite"></p>
   </div>
   <div data-view="homework" class="panel hidden">
-    <h2>Class homework</h2><div id="homeworkList"></div>
+    <h2 id="homeworkHeading">Class homework</h2><button id="newHomework" class="primary teacher-only" type="button" aria-expanded="false" aria-controls="homeworkForm">New homework</button>
+    <div id="homeworkList"></div>
     <form id="homeworkForm">
-      <h3>Publish homework</h3>
+      <h3 id="homeworkFormTitle">Publish homework</h3>
       <div class="formgrid">
         <div><label for="homeworkClass">Class</label><select id="homeworkClass" required></select></div>
         <div><label for="homeworkSubject">Subject</label><input id="homeworkSubject" required maxlength="80" placeholder="e.g. Mathematics" list="homeworkSubjectList"><datalist id="homeworkSubjectList"></datalist></div>
@@ -429,6 +503,8 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
       <div class="inputgroup"><label for="homeworkTitle">Task</label><input id="homeworkTitle" required maxlength="150" placeholder="Complete pages 12–14"></div>
       <div class="inputgroup" style="margin:11px 0"><label for="homeworkInstructions">Instructions</label><textarea id="homeworkInstructions" maxlength="2000"></textarea></div>
       <div class="inputgroup"><label for="homeworkFiles">Photos / PDF (optional)</label><input id="homeworkFiles" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple><p class="muted">Up to 5 files at a time · 10 MB per file · Students open files inside the app.</p></div><button class="primary" id="publishHomework" type="submit">Publish homework</button>
+      <button id="cancelHomeworkEdit" class="ghost teacher-only" type="button">Cancel</button>
+      <p id="homeworkFeedback" class="muted teacher-only" role="status"></p>
     </form>
   </div>
   <div data-view="marks" class="panel hidden">
@@ -438,10 +514,11 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
       <div class="formgrid two">
         <div><label for="teacherMarksClass">Class</label><select id="teacherMarksClass" required></select></div>
         <div><label for="teacherMarksExam">Exam</label><select id="teacherMarksExam" required></select></div>
-        <div><label for="teacherMarksStudent">Student</label><select id="teacherMarksStudent" required></select></div>
+        <div id="teacherMarksStudentField"><label for="teacherMarksStudent">Student</label><select id="teacherMarksStudent" required></select></div>
         <div><label for="teacherMarksSubject">Subject</label><select id="teacherMarksSubject" required></select></div>
-        <div><label for="teacherMarksScore">Marks obtained</label><input id="teacherMarksScore" type="number" min="0" step="any" inputmode="decimal" required></div>
+        <div id="teacherMarksScoreField"><label for="teacherMarksScore">Marks obtained</label><input id="teacherMarksScore" type="number" min="0" step="any" inputmode="decimal" required></div>
       </div>
+      <div id="teacherMarksRoster" class="teacher-only"></div>
       <div class="row">
         <button class="primary" id="teacherMarksSave" type="submit" disabled>Save marks</button>
         <button class="ghost" id="teacherMarksReload" type="button">Refresh</button>
@@ -450,7 +527,20 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
     </form>
   </div>
   <div data-view="notices" class="panel hidden"><h2>School notices</h2><button class="ghost" id="refreshNotices" type="button">↻ Refresh notices</button><div id="noticesList"></div></div>
-  <div data-view="timetable" class="panel hidden"><div id="schoolTimetableRoot"></div></div>
+  <div data-view="timetable" class="panel hidden">
+    <div id="teacherTimetable" class="teacher-only">
+      <h2>My Timetable</h2>
+      <div class="teacher-view-controls">
+        <button class="ghost" type="button" data-teacher-schedule="today" aria-pressed="true">Today</button>
+        <button class="ghost" type="button" data-teacher-schedule="week" aria-pressed="false">Week</button>
+        <button class="ghost" type="button" data-teacher-schedule="classes" aria-pressed="false">Class view</button>
+      </div>
+      <p class="muted" id="teacherTimetableStatus" role="status"></p>
+      <div id="teacherPeriods"></div>
+      <button id="retryTeacherTimetable" type="button" class="ghost hidden">Retry</button>
+    </div>
+    <div id="schoolTimetableRoot"></div>
+  </div>
   <div data-view="profiles" class="panel hidden"><h2>Student profile details</h2><p class="muted">School admin updates these records. The linked student / parent sees the same details in the mobile app and web.</p><div class="formgrid two"><div class="inputgroup"><label for="profileClassFilter">Filter by class</label><select id="profileClassFilter"><option value="">All accessible classes</option></select></div><div class="inputgroup"><label for="profileSearchInput">Search student (Name, Roll No, Admission No)</label><input type="search" id="profileSearchInput" placeholder="e.g. Aarav, 06, or BMS-2026-001" autocomplete="off"></div></div><div class="inputgroup" style="margin-bottom:12px"><label for="profileStudent">Student (<span id="profileStudentCount">0</span> available)</label><select id="profileStudent"></select></div><div id="profileSelectedBadge" class="notice hidden" style="margin-bottom:14px;border-left-color:#138ed8;background:#f0f8ff;color:#0b315e;font-weight:600"></div><button class="ghost" type="button" id="loadProfile">View / edit student</button><form id="studentProfileForm" class="hidden"><div id="profileEditor"></div><button class="primary" id="saveProfile" type="submit">Save student details</button></form>
     <div id="studentPhotoWrap" class="hidden" style="margin-top:14px;border-top:1px solid #e4ebf5;padding-top:14px">
       <h3>Student photo · Private cloud storage</h3>
@@ -471,7 +561,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
       </div>
       <p id="studentMarksheetStatus" class="muted" role="status" aria-live="polite"></p>
     </div></div><div data-view="account" class="panel hidden">
-    <div id="teacherSchoolAccount"></div>
+    <div id="teacherSchoolAccount"></div><div id="teacherAccountLogout"></div>
     <div style="border-bottom:1px solid #e6edf5;padding-bottom:19px;margin-bottom:21px">
       <h2>My profile</h2>
       <dl class="account-identity">
