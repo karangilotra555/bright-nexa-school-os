@@ -4,6 +4,21 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {JSDOM}=require('jsdom');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+test('Teacher phone layout keeps daily tabs and logout while moving account actions out of the workspace header',()=>{
+ const html=read('teacher-access.html'),script=read('teacher-access.js');
+ const dom=new JSDOM(html);
+ const doc=dom.window.document;
+ assert.match(script,/const teacherApp=me\.role==='teacher'&&isMobileAppContext\(\)/);
+ assert.match(script,/classList\.toggle\('bn-teacher-app',teacherApp\)/);
+ assert.match(html,/body\.bn-teacher-app\s+#portalPermissionNotice/);
+ assert.match(html,/body\.bn-teacher-app\s+#staffSmartToolsLink/);
+ assert.ok(doc.querySelector('[data-view="account"] #teacherSchoolAccount'));
+ for(const tab of ['classes','timetable','attendance','homework','notices','account']){
+  assert.ok(doc.querySelector(`[data-tab="${tab}"]`));
+ }
+ assert.ok(doc.querySelector('header #logout'));
+ dom.window.close();
+});
 function portal(){
  const dom=new JSDOM(read('teacher-access.html'),{url:'https://bright-nexa-school-os.onrender.com/teacher-access.html',runScripts:'outside-only'});
  const w=dom.window;
@@ -24,7 +39,7 @@ test('public login and recovery have branding and hide extra pre-login navigatio
  assert.match(html,/body:has\(#loginSection:not\(\.hidden\)\)>header\{display:none\}/);
  assert.match(html,/id="staffSmartToolsLink"/,'protected menu is preserved for logged-in staff');
  assert.match(html,/id="forgotFeedback"/);
- assert.match(html,/teacher-access\.js\?v=20261113-private-device-v1/);
+ assert.match(html,/teacher-access\.js\?v=20261115-teacher-mobile-v1/);
  assert.match(script,/const redirect=emailReturnUrl\(\);/);
  assert.match(script,/response\.status===429/);
  assert.match(script,/resetFeedback\(/);
