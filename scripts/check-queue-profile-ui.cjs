@@ -13,7 +13,7 @@ async function mount(component,props={},apiMock){
  dom.window.structuredClone=structuredClone;dom.window.confirm=()=>false;dom.window.fetch=async()=>{throw Error('Network disabled for isolated UI verification')};
  dom.window.BNSchoolWhatsApp=apiMock;
  dom.window.__props=props;dom.window.__student=student;dom.window.__ops=fixtureOps;
- const bootstrap=source.lastIndexOf('sa();\nCt.createRoot');assert(bootstrap>0,'recovered source bootstrap');
+ const bootstrap=source.search(/sa\(\);\r?\nCt\.createRoot/);assert(bootstrap>0,'recovered source bootstrap');
  const overrides=`\nconst fixtureSnapshot={...yn,role:'OWNER',institution:{...yn.institution,name:'Fixture School',session:'2026–27',institutionType:'School'}};const fixtureOperations={...Oi(),...window.__ops};\nwn=()=>fixtureSnapshot;Dn=()=>[window.__student];Ai=()=>fixtureOperations;Qt=()=>({role:'OWNER',name:'Fixture Admin'});kn=async()=>({snapshot:fixtureSnapshot,students:[window.__student]});Mi=async()=>fixtureOperations;Tn=On=ji=()=>{};bnScheduleCloudSync=()=>{};localStorage.setItem(ms,'fixture');\nCt.createRoot(document.getElementById('root')).render(w.createElement(${component},window.__props));`;
  const code=esbuild.transformSync(source.slice(0,bootstrap)+overrides,{loader:'jsx',format:'iife',jsxFactory:'w.createElement',jsxFragment:'w.Fragment',target:'es2022'}).code;
  dom.window.eval(code);await wait();assert.equal(errors.length,0,String(errors));return dom;
