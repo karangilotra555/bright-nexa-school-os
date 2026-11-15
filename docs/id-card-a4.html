@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student ID Card Bulk Generator (A4 Print Sheets) — Bright Nexa School OS</title>
   <script src="./assets/qrcode.min.js"></script>
-  <script src="./school-workspace-cloud.js?v=20261111-attendance-leave-v1"></script>
+  <script src="./school-workspace-cloud.js?v=20261115-signed-student-cards-v1"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
 
@@ -852,6 +852,10 @@
       'https://bright-nexa-school-os-api.onrender.com/student-portal.html';
 
     function getVerificationUrl(st) {
+      if(st.schoolId&&/^[0-9a-f]{64}$/.test(st.signature||'')) {
+        return 'https://bright-nexa-school-os.onrender.com/student-portal.html?action=verify&school='
+          +encodeURIComponent(st.schoolId)+'&adm='+encodeURIComponent(st.admissionNumber)+'&sig='+encodeURIComponent(st.signature);
+      }
       return SCHOOL_VERIFICATION_PORTAL
         + '?action=verify&adm=' + encodeURIComponent(st.admissionNumber);
     }
@@ -963,10 +967,21 @@
             String(student.name||'').trim()&&String(student.admissionNumber||'').trim()&&
             String(student.className||'').trim()&&String(student.section||'').trim();
         }).map(fromSchoolStudent);
+        let signatures=[];
+        try{signatures=await client.issueStudentCardSignatures(school.id);}catch(_){}
+        if(requestId!==cloudLoadRequest)return;
+        const signatureByAdmission=new Map((Array.isArray(signatures)?signatures:[]).map(row=>[row.admission_number,row.signature]));
+        for(const student of liveStudents){
+          const signature=signatureByAdmission.get(student.admissionNumber);
+          if(/^[0-9a-f]{64}$/.test(signature||'')){
+            student.schoolId=school.id;student.signature=signature;
+          }
+        }
         lastVerifiedCloudRevision=response.revision;
         activeStudents=liveStudents;
         const missing=liveStudents.filter(s=>!s.photoUrl).length;
-        reportCloudState('Supabase confirmed · Revision '+response.revision+' · '+liveStudents.length+' students · '+(liveStudents.length-missing)+' saved photos'+(missing?', '+missing+' without saved photos':'')+'.',false);
+        const signed=liveStudents.filter(s=>s.signature).length;
+        reportCloudState('Supabase confirmed · Revision '+response.revision+' · '+liveStudents.length+' students · '+(liveStudents.length-missing)+' saved photos'+(missing?', '+missing+' without saved photos':'')+' · '+signed+' signed QR codes.',false);
         updateSourceUI();populateFilters();
       } catch(error) {
         if(requestId!==cloudLoadRequest)return;
@@ -1206,7 +1221,7 @@
           // No client-side signatures: the school must issue its credential through the server.
 
           // Specimen watermark HTML for demo cards
-          const watermarkHtml = lastVerifiedCloudRevision===null
+          const watermarkHtml = st.signature?'':lastVerifiedCloudRevision===null
             ? '<div class="watermark-specimen">DEVICE PREVIEW • NOT VERIFIED</div>'
             : '<div class="watermark-specimen">QR SERVER SIGNATURE PENDING • VERIFY WITH SCHOOL</div>';
 
@@ -1284,9 +1299,7 @@
                   <div class="qr-container">
                     <canvas id="qr-${globalIdx}" class="qr-canvas"></canvas>
                     <div class="qr-text">
-                      <strong>STUDENT ID PREVIEW</strong><br>
-                      Scan to request school-server verification; this preview is not signed.
-                      <span class="qr-verify-code">SERVER SIGNATURE PENDING</span>
+                      ${st.signature?'<strong>SCHOOL-SIGNED STUDENT ID</strong><br>Scan to confirm active enrollment.':'<strong>STUDENT ID PREVIEW</strong><br>Scan to request school-server verification; this preview is not signed.<span class="qr-verify-code">SERVER SIGNATURE PENDING</span>'}
                     </div>
                   </div>
 
@@ -1298,7 +1311,7 @@
                 </div>
 
                 <div class="card-footer" style="background: #0f172a; color: #94a3b8; font-size: 3.6pt; justify-content: center; letter-spacing: 0.3px;">
-                  BRIGHT NEXA SCHOOL OS • SERVER VERIFICATION REQUIRED
+                  BRIGHT NEXA SCHOOL OS • ${st.signature?'SCAN TO VERIFY':'SERVER VERIFICATION REQUIRED'}
                 </div>
               </div>
             </div>
