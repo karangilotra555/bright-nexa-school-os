@@ -12,7 +12,7 @@ test('all core browser entrypoints bound network failure and do not claim succes
  assert.match(t,/result\.length===0/);
  assert.match(t,/Attendance verified in Supabase/);
  assert.match(t,/on_conflict=student_id%2Cday/);
- assert.match(t,/const expected=new Map\(records/);
+ assert.match(t,/records\.every\(row=>saved\.get\(row\.student_id\)===row\.status\)/);
  assert.match(t,/pendingHomeworkId/);
  assert.match(t,/if\(!published\)throw writeFailure/);
 });
@@ -30,7 +30,7 @@ test('browser script versions use changed services in school and parent portals'
   assert.match(s,/school-homework-files\.js\?v=20261111-sync-audit-v1/);
   assert.match(s,/school-student-photo-cloud\.js\?v=20261111-sync-audit-v1/);
  }
- assert.match(teacher,/teacher-access\.js\?v=20261115-teacher-workspace-v2/);
+ assert.match(teacher,/teacher-access\.js\?v=20261115-attendance-saved-v1/);
  assert.match(parent,/parents-cloud\.js\?v=20261111-sync-timeout-v1/);
  for(const f of ['teacher-access.html','teacher-access.js','parents.html','parents-cloud.js','school-homework-files.js','school-student-photo-cloud.js','teacher-drafts-cloud.js','school-workspace-controller.js'])
   assert.equal(read(f),read('docs/'+f),f+' mirror differs');

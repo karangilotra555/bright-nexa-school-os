@@ -50,7 +50,12 @@ button.danger{color:#a82b3f;background:#fff2f3;border:1px solid #f6c8d0;border-r
 .flex{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .rowlist{padding:10px 0;border-bottom:1px solid #e9edf4;display:flex;align-items:center;justify-content:space-between;gap:11px;flex-wrap:wrap}
 .attendance-student{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+.attendance-save-state{justify-self:start;border-radius:6px;padding:3px 7px;background:#f1f5f9;color:#526681;font-size:11px;font-weight:700}
+.attendance-save-state[data-state="saved"]{background:#e8f6ef;color:#156348}
+.attendance-save-state[data-state="pending"]{background:#fff3df;color:#84551b}
 .attendance-actions{display:flex;gap:8px;flex-wrap:wrap}
+#attendanceFeedback{margin:9px 0 0;font-size:13px;color:#156348}
+#attendanceFeedback:empty{margin:0}
 .muted{font-size:12px;color:#6d8194}
 .checks{display:flex;gap:13px;flex-wrap:wrap;margin:14px 0}.checks label{font-size:13px;color:#234366;display:flex;align-items:center;gap:6px}
 .checks input{width:16px;min-height:16px;height:16px}
@@ -220,7 +225,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
   body:has(#loginSection:not(.hidden)) #publicAuthIntro{padding:12px 16px}
 }
 </style>
-<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261112-timetable-fix-v2" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261115-logout-v1" defer></script><script src="./school-workspace-cloud.js?v=20261113-photo-payload-v2" defer></script><script src="./teacher-access.js?v=20261115-teacher-workspace-v2" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
+<script src="./school-student-profile.js?v=20261105-profile" defer></script><script src="./school-homework-files.js?v=20261111-sync-audit-v1" defer></script><script src="./school-timetable-cloud.js?v=20261112-timetable-fix-v2" defer></script><script src="./school-student-photo-cloud.js?v=20261111-sync-audit-v1" defer></script><script src="./school-role-entry.js?v=20261111-direct-admin-erp-v1" defer></script><script src="./school-workspace-cloud.js?v=20261111-autoretry-v1" defer></script><script src="./school-local-handoff.js?v=20261109-cloud-first-v2" defer></script><script src="./school-auth-signout.js?v=20261115-logout-v1" defer></script><script src="./school-workspace-cloud.js?v=20261113-photo-payload-v2" defer></script><script src="./teacher-access.js?v=20261115-attendance-saved-v1" defer></script><script src="./teacher-install.js?v=20261106-mobile-app" defer></script>
 </head>
 <body>
 <header><div class="bar"><div class="brand"><a id="staffBrandBack" href="./index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;margin-right:8px;font-size:13px;padding:4px 8px;border-radius:6px;background:#f1f5f9;color:#0b315e;font-weight:700">← Back</a>Bright Nexa <span style="color:#ff9f52">•</span> <span id="staffPortalTitle">Staff Portal</span><small id="schoolLabel">Cloud-based school access</small></div><div class="flex"><a id="staffBackToErp" href="./index.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#f8fafc;color:#0b315e;font-weight:700;border:1px solid #cbd5e1">← Back to School OS</a><a id="parentApp" href="./parents.html" class="light" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e">Student / Parent Login</a><a id="staffSmartToolsLink" href="./smart-tools.html" class="light" style="display:inline-flex;align-items:center;text-decoration:none;font-size:13px;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:750">🧠 Smart Tools</a><button id="installTeacherApp" type="button" class="light hidden">Install app</button><a id="librarianApp" class="light hidden" href="./library.html" style="text-decoration:none;padding:9px 12px;border-radius:10px;background:#e9f5ff;color:#0b315e;font-weight:700">📚 Library</a><button id="logout" type="button" class="light hidden">Log out</button></div></div></header>
@@ -409,6 +414,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
       <button type="button" class="ghost hidden" id="markRemainingPresent">Mark remaining present</button>
       <button type="button" class="primary hidden" id="saveAttendance">Save attendance</button>
     </div>
+    <p id="attendanceFeedback" role="status" aria-live="polite"></p>
   </div>
   <div data-view="homework" class="panel hidden">
     <h2>Class homework</h2><div id="homeworkList"></div>

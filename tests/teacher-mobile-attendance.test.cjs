@@ -1,9 +1,18 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const path=require('node:path');
-function setup(){
+function setup({saved=[],writeConfirms=true,writeReturnsRows=writeConfirms}={}){
  const nodes=new Map(),calls=[];let deferred=null;
+ const cloud=new Map(saved.map(row=>[row.student_id,row.status]));
  class E{constructor(){this.value='';this.dataset={};this.children=[];this.listeners={};this.disabled=false;this.classList={add(){},remove(){},toggle(){},contains(){return true}};}append(...v){this.children.push(...v)}replaceChildren(...v){this.children=v}addEventListener(k,f){this.listeners[k]=f}querySelectorAll(){return this.children.flatMap(c=>c.children||[]).filter(c=>c.dataset?.studentId)}setAttribute(){}}
  const node=id=>{if(!nodes.has(id))nodes.set(id,new E());return nodes.get(id)};
- const context={window:{BNHomeworkFiles:{create:()=>({list:async()=>[],links(){}})}},Date,URLSearchParams,document:{getElementById:node,querySelectorAll:()=>[],querySelector:()=>new E(),createElement:()=>new E()},sessionStorage:{getItem:()=>null,removeItem(){},setItem(){}},location:{hash:'',search:'',pathname:'',assign(){}},history:{replaceState(){}},fetch:async(url,opt)=>{calls.push({url,opt});if(deferred)await deferred;return {ok:true,json:async()=>[]}}};
+ const context={window:{BNHomeworkFiles:{create:()=>({list:async()=>[],links(){}})}},Date,URLSearchParams,document:{getElementById:node,querySelectorAll:()=>[],querySelector:()=>new E(),createElement:()=>new E()},sessionStorage:{getItem:()=>null,removeItem(){},setItem(){}},location:{hash:'',search:'',pathname:'',assign(){}},history:{replaceState(){}},fetch:async(url,opt)=>{
+  calls.push({url,opt});if(deferred)await deferred;
+  if(opt.method==='POST'){
+   const rows=JSON.parse(opt.body);
+   if(writeConfirms)for(const row of rows)cloud.set(row.student_id,row.status);
+   return {ok:true,json:async()=>writeReturnsRows?rows:[]};
+  }
+  return {ok:true,json:async()=>[...cloud].map(([student_id,status])=>({student_id,status}))};
+ }};
  vm.createContext(context);let src=fs.readFileSync(path.join(__dirname,'../docs/teacher-access.js'),'utf8');src=src.replace(/\}\)\(\);\s*$/,`globalThis.testAPI={loadAttendance,invalidateRoster,setState(s){me=s.me;allClasses=s.classes;allStudents=s.students;allAssignments=s.assignments;session={access_token:'test',expires_at:9999999999};}};})();`);vm.runInContext(src,context);
  const state={me:{id:'teacher',role:'teacher',institution_id:'school'},classes:[{id:'assigned'},{id:'other'}],students:[{id:'child',name:'Student',class_id:'assigned'},{id:'other-child',class_id:'other'}],assignments:[{school_user_id:'teacher',class_id:'assigned',active:true,can_take_attendance:true}]};context.testAPI.setState(state);node('attendanceClass').value='assigned';node('attendanceDate').value='2026-11-05';
  return {api:context.testAPI,node,calls,state,defer(){deferred=new Promise(resolve=>this.resolve=resolve);return deferred;}};
@@ -13,7 +22,38 @@ test('the roster renders student name and admission number in a dedicated identi
  const f=setup();f.state.students[0].admission_number='HPS0002';await f.api.loadAttendance();
  const identity=f.node('rosterList').children[0].children[0];
  assert.equal(identity.className,'attendance-student');
- assert.deepEqual(identity.children.map(node=>node.textContent),['Student','HPS0002']);
+ assert.deepEqual(identity.children.slice(0,2).map(node=>node.textContent),['Student','HPS0002']);
+});
+test('a saved roster is shown from Supabase and repeat Save leaves existing rows alone',async()=>{
+ const f=setup({saved:[{student_id:'child',status:'absent'}]});await f.api.loadAttendance();
+ const row=f.node('rosterList').children[0];
+ assert.match(row.children[0].children[2].textContent,/Saved in Supabase/);
+ assert.equal(row.children[1].value,'absent');
+ await f.node('saveAttendance').listeners.click();
+ assert.equal(f.calls.filter(c=>c.opt.method==='POST').length,0);
+ assert.match(f.node('attendanceFeedback').textContent,/already saved/i);
+});
+test('a correction is sent alone and a full roster read-back can confirm it',async()=>{
+ const f=setup({saved:[{student_id:'child',status:'absent'},{student_id:'child2',status:'present'}],writeReturnsRows:false});
+ f.state.students.push({id:'child2',name:'Second',class_id:'assigned'});
+ await f.api.loadAttendance();
+ const row=f.node('rosterList').children[0], select=row.children[1], badge=row.children[0].children[2];
+ select.value='late';select.listeners.change();
+ assert.match(badge.textContent,/Unsaved change/);
+ await f.node('saveAttendance').listeners.click();
+ assert.match(badge.textContent,/Saved in Supabase/);
+ await f.node('saveAttendance').listeners.click();
+ const writes=f.calls.filter(c=>c.opt.method==='POST');
+ assert.deepEqual(JSON.parse(writes[0].opt.body).map(r=>[r.student_id,r.status]),[['child','late']]);
+ assert.equal(writes.length,1);
+ assert.equal(f.calls.filter(c=>c.opt.method==='GET').length,2);
+});
+test('a write with no matching Supabase confirmation stays unsaved',async()=>{
+ const f=setup({writeConfirms:false});await f.api.loadAttendance();
+ const row=f.node('rosterList').children[0], select=row.children[1];
+ select.value='present';select.listeners.change();await f.node('saveAttendance').listeners.click();
+ assert.match(row.children[0].children[2].textContent,/Unsaved change/);
+ assert.match(f.node('status').textContent,/not confirmed/);
 });
 test('changing date or class blocks stale roster saves',async()=>{for(const id of ['attendanceClass','attendanceDate']){const f=setup();await f.api.loadAttendance();f.node(id).value=id==='attendanceClass'?'other':'2026-11-06';await f.node('saveAttendance').listeners.click();assert.equal(f.calls.filter(c=>c.opt.method==='POST').length,0);assert.match(f.node('status').textContent,/assigned|changed/);}});
 test('unassigned class cannot load; late requests cannot restore a changed roster',async()=>{const f=setup();f.node('attendanceClass').value='other';await assert.rejects(f.api.loadAttendance(),/assigned/);assert.equal(f.calls.length,0);f.node('attendanceClass').value='assigned';f.defer();const loading=f.api.loadAttendance();await Promise.resolve();f.node('attendanceDate').value='2026-11-06';f.api.invalidateRoster();f.resolve();await loading;assert.equal(f.node('rosterList').children.length,0);});
