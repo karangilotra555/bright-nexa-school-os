@@ -32,10 +32,24 @@ test('Teacher phone layout keeps daily tabs and logout while moving account acti
  assert.notEqual(display('staffSmartToolsLink'),'none');
  doc.body.classList.add('bn-teacher-app');
  for(const id of ['portalPermissionNotice','portalStats'])assert.equal(display(id),'none',id);
- assert.match(script,/display\('staffSmartToolsLink',canAcademic\(\)&&!document\.body\.classList\.contains\('bn-teacher-app'\)\)/);
- assert.match(script,/display\('parentApp',!document\.body\.classList\.contains\('bn-teacher-app'\)\)/);
  assert.notEqual(display('logout'),'none');
  dom.window.close();
+});
+test('A verified teacher has no Parent Portal or school-wide Smart Tools links while office staff keep their links',()=>{
+ const html=read('teacher-access.html'),src=read('teacher-access.js');
+ const dom=new JSDOM(html,{url:'https://bright-nexa-school-os.onrender.com/teacher-access.html',runScripts:'outside-only'});
+ try{
+  const w=dom.window,doc=w.document;
+  w.BNHomeworkFiles={create:()=>({})};
+  w.eval(src.replace(/\}\)\(\);\s*$/,`window.showStaffMenu=role=>{me={role};applyNavigationVisibility();};})();`));
+  const links=[...doc.querySelectorAll('header a[href="./parents.html"], header a[href="./smart-tools.html"], .portal-nav a[href="./parents.html"], .portal-nav a[href="./smart-tools.html"]')];
+  assert.equal(links.length,4);
+  w.showStaffMenu('teacher');
+  for(const link of links)assert.ok(link.classList.contains('hidden'),link.textContent.trim());
+  assert.equal(doc.querySelector('#mobileParentLogin').getAttribute('href'),'./parents.html');
+  w.showStaffMenu('school_admin');
+  for(const link of links)assert.ok(!link.classList.contains('hidden'),link.textContent.trim());
+ }finally{dom.window.close();}
 });
 function portal(){
  const dom=new JSDOM(read('teacher-access.html'),{url:'https://bright-nexa-school-os.onrender.com/teacher-access.html',runScripts:'outside-only'});
@@ -57,7 +71,7 @@ test('public login and recovery have branding and hide extra pre-login navigatio
  assert.match(html,/body:has\(#loginSection:not\(\.hidden\)\)>header\{display:none\}/);
  assert.match(html,/id="staffSmartToolsLink"/,'protected menu is preserved for logged-in staff');
  assert.match(html,/id="forgotFeedback"/);
- assert.match(html,/teacher-access\.js\?v=20261115-teacher-mobile-v1/);
+ assert.match(html,/teacher-access\.js\?v=20261115-teacher-workspace-v2/);
  assert.match(script,/const redirect=emailReturnUrl\(\);/);
  assert.match(script,/response\.status===429/);
  assert.match(script,/resetFeedback\(/);
