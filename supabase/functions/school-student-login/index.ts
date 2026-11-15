@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.0';
 const URL=Deno.env.get('SUPABASE_URL')||'';
 const SERVICE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
 const ANON=Deno.env.get('SUPABASE_ANON_KEY')||'';
-const DEFAULT_SCHOOL='bc80e32d-485d-48a8-903a-92338aa61005';
+const SCHOOL_ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const ALLOWED=new Set(['https://bright-nexa-school-os.onrender.com','https://karangilotra555.github.io']);
 const mobile=(v:string)=>{let s=String(v||'').replace(/\D/g,'');if(s.length===12&&s.startsWith('91'))s=s.slice(2);return /^[6-9]\d{9}$/.test(s)?s:'';};
 const digest=async(s:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -30,6 +30,13 @@ export function handler(create=createClient){return async(req:Request)=>{
    const {data:i}=await admin.from('institutions').select('status').eq('id',school).maybeSingle();
    return i&&['active','trial'].includes(i.status)?s:null;
   }
+  async function findAdmission(admission:string,school:string){
+   let query=admin.from('school_students').select('id,institution_id').eq('admission_number',admission).eq('status','active');
+   if(school)query=query.eq('institution_id',school);
+   const {data,error}=await query.limit(2);
+   if(error||!Array.isArray(data)||data.length>1)return null;
+   return data[0]||null;
+  }
   async function linkUser(user:any,s:any){
    const {data:existing,error:readError}=await admin.from('school_guardians').select('id,status').eq('institution_id',s.institution_id).eq('auth_user_id',user.id).maybeSingle();
    if(readError||existing?.status==='disabled')throw Error('School access is disabled. Contact the school office.');
@@ -46,16 +53,17 @@ export function handler(create=createClient){return async(req:Request)=>{
   if(body.action==='request-reset'){
    const generic=()=>reply({message:'If this admission number has a registered guardian email, a secure link will be sent. Check Inbox and Spam.'});
    const admission=String(body.admissionNumber||'').trim();
-   const school=String(body.schoolId||DEFAULT_SCHOOL);
+   const requestedSchool=String(body.schoolId||'');
    const email=String(body.guardianEmail||'').trim().toLowerCase();
-   if(!/^[A-Za-z0-9][A-Za-z0-9/_-]{0,63}$/.test(admission)||!/^[-a-f0-9]{36}$/.test(school)||email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return generic();
+   if(!/^[A-Za-z0-9][A-Za-z0-9/_-]{0,63}$/.test(admission)||(requestedSchool&&!SCHOOL_ID.test(requestedSchool))||email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return generic();
    // Dedicated throttle prevents repeated emails and account discovery.
    const {data:allowed,error:limitError}=await admin.rpc('bn_parent_login_attempt',{
-     p_bucket:await digest('recovery:'+school+':'+admission.toLowerCase()),p_limit:3
+     p_bucket:await digest('recovery:'+(requestedSchool||'any')+':'+admission.toLowerCase()),p_limit:3
    });
    if(limitError||!allowed)return generic();
-   const {data:record}=await admin.from('school_students').select('id').eq('institution_id',school).eq('admission_number',admission).eq('status','active').maybeSingle();
+   const record=await findAdmission(admission,requestedSchool);
    if(!record)return generic();
+   const school=record.institution_id;
    const {data:profile}=await admin.from('school_student_profiles').select('guardian_email').eq('student_id',record.id).eq('institution_id',school).maybeSingle();
    if(!profile?.guardian_email||profile.guardian_email.trim().toLowerCase()!==email)return generic();
    // Do not send a reset link when the student has not activated their
@@ -67,7 +75,7 @@ export function handler(create=createClient){return async(req:Request)=>{
    if(!linked?.user||linked.user.app_metadata?.bn_password_pending===true||linked.user.app_metadata?.bn_student_id!==record.id)return generic();
    const {error:sendError}=await auth.auth.signInWithOtp({email,options:{
      shouldCreateUser:true,
-     emailRedirectTo:'https://bright-nexa-school-os.onrender.com/parent-password-recovery.html'
+     emailRedirectTo:'https://bright-nexa-school-os.onrender.com/parent-password-recovery.html?school='+school
    }});
    if(sendError)console.warn('[StudentRecovery] Mail service rejected a reset-link request.');
    return generic();
@@ -79,13 +87,14 @@ export function handler(create=createClient){return async(req:Request)=>{
    const {data:verified,error:verifyError}=await auth.auth.getUser(jwt);
    const guardian=verified?.user;
    if(verifyError||!guardian||!guardian.email||!guardian.email_confirmed_at||guardian.is_anonymous)return denied();
-   const school=String(body.schoolId||DEFAULT_SCHOOL),admission=String(body.admissionNumber||'').trim();
+   const requestedSchool=String(body.schoolId||''),admission=String(body.admissionNumber||'').trim();
    const newPassword=String(body.newPassword||'');
-   if(!/^[-a-f0-9]{36}$/.test(school)||!/^[A-Za-z0-9][A-Za-z0-9/_-]{0,63}$/.test(admission))return denied();
+   if((requestedSchool&&!SCHOOL_ID.test(requestedSchool))||!/^[A-Za-z0-9][A-Za-z0-9/_-]{0,63}$/.test(admission))return denied();
    if(newPassword.length<12||newPassword.length>128||!/[a-z]/i.test(newPassword)||!/[0-9]/.test(newPassword))
      return reply({error:'Use a strong new password: 12–128 characters including letters and digits.'},400);
-   const {data:record}=await admin.from('school_students').select('id,institution_id').eq('institution_id',school).eq('admission_number',admission).eq('status','active').maybeSingle();
+   const record=await findAdmission(admission,requestedSchool);
    if(!record)return denied();
+   const school=record.institution_id;
    const {data:profile}=await admin.from('school_student_profiles').select('guardian_email,guardian_phone').eq('student_id',record.id).eq('institution_id',school).maybeSingle();
    if(!profile?.guardian_email||profile.guardian_email.trim().toLowerCase()!==String(guardian.email).trim().toLowerCase())return denied();
    if(mobile(newPassword)&&mobile(newPassword)===mobile(profile.guardian_phone))return reply({error:'Choose a password different from the registered mobile number.'},400);
@@ -135,15 +144,14 @@ export function handler(create=createClient){return async(req:Request)=>{
    return reply({session:data.session,mustChangePassword:false,links:[{institution_id:s.institution_id,student_id:s.id}]});
   }
   if(body.action!=='login')return reply({error:'Invalid action'},400);
-  const admission=String(body.admissionNumber||'').trim(),school=String(body.schoolId||DEFAULT_SCHOOL),password=String(body.password||'');
-  if(!/^[A-Za-z0-9][A-Za-z0-9/_-]{0,63}$/.test(admission)||!/^[-a-f0-9]{36}$/.test(school)||!password||password.length>128)return reply({error:'Enter admission number and password'},400);
-  const {data:ok,error:rateError}=await admin.rpc('bn_parent_login_attempt',{p_bucket:await digest('account:'+school+':'+admission.toLowerCase()),p_limit:10});
+  const admission=String(body.admissionNumber||'').trim(),requestedSchool=String(body.schoolId||''),password=String(body.password||'');
+  if(!/^[A-Za-z0-9][A-Za-z0-9/_-]{0,63}$/.test(admission)||(requestedSchool&&!SCHOOL_ID.test(requestedSchool))||!password||password.length>128)return reply({error:'Enter admission number and password'},400);
+  const {data:ok,error:rateError}=await admin.rpc('bn_parent_login_attempt',{p_bucket:await digest('account:'+(requestedSchool||'any')+':'+admission.toLowerCase()),p_limit:10});
   if(rateError)return reply({error:'Login service unavailable'},503);
   if(!ok)return reply({error:'Too many attempts. Try again after 15 minutes.'},429);
-  const {data:found,error:findError}=await admin.from('school_students').select('id').eq('institution_id',school).eq('admission_number',admission).eq('status','active').maybeSingle();
-  let studentId=found&&!findError?found.id:null;
-  if(!studentId){const {data:alias,error:aliasError}=await admin.from('school_student_profiles').select('student_id').eq('institution_id',school).eq('admission_login_alias',admission).maybeSingle();if(!aliasError)studentId=alias?.student_id;}
-  const s=studentId?await student(studentId,school):null;
+  let found=await findAdmission(admission,requestedSchool);
+  if(!found&&requestedSchool){const {data:alias,error:aliasError}=await admin.from('school_student_profiles').select('student_id').eq('institution_id',requestedSchool).eq('admission_login_alias',admission).maybeSingle();if(!aliasError&&alias)found={id:alias.student_id,institution_id:requestedSchool};}
+  const s=found?await student(found.id,found.institution_id):null;
   const invalid=()=>reply({error:'Admission number or password is incorrect. First login requires the mobile number saved by your school.'},401);
   if(!s)return invalid();
   const email=(await digest('student:'+s.institution_id+':'+s.id))+'@student.brightnexa.invalid';
