@@ -1,6 +1,10 @@
 (function(root){
 'use strict';
 const COUNTED=new Set(['present','absent','late','half_day']);
+const STATUS_LABELS={
+ present:'Present',absent:'Absent',late:'Late',half_day:'Half day',
+ excused:'Excused',holiday:'Holiday',week_off:'Week off',unrecorded:'Not recorded'
+};
 function clean(rows){const days=new Map();for(const r of rows||[]){if(!/^\d{4}-\d{2}-\d{2}$/.test(r.day||''))continue;const d=new Date(r.day+'T00:00:00Z');if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==r.day)continue;if(!days.has(r.day))days.set(r.day,{day:r.day,status:String(r.status||'').toLowerCase()});}return [...days.values()];}
 function summarize(rows){const counts={present:0,absent:0,late:0,half_day:0};for(const r of clean(rows))if(COUNTED.has(r.status))counts[r.status]++;const total=Object.values(counts).reduce((a,b)=>a+b,0),attended=counts.present+counts.late+counts.half_day*.5;return {...counts,total,attended,percent:total?Math.round(attended/total*1000)/10:null};}
 function academicStart(day){const y=Number(day.slice(0,4));return Number(day.slice(5,7))>=4?y:y-1;}
@@ -10,12 +14,36 @@ function render(container,rows,schoolSession){
  const years=new Set(records.map(r=>academicStart(r.day)));const match=String(schoolSession||'').match(/20\d{2}/);if(match)years.add(Number(match[0]));if(!years.size)years.add(thisYear);
  const selectedYears=[...years].sort((a,b)=>b-a);const previous=container.querySelector('select')?.value;let selected=selectedYears.includes(Number(previous))?Number(previous):(match&&years.has(Number(match[0]))?Number(match[0]):selectedYears[0]);
  function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
- function draw(){container.replaceChildren();const label=el('label','Academic session');const select=el('select',undefined,'bn-att-filter');select.setAttribute('aria-label','Attendance academic session');for(const y of selectedYears){const o=el('option',y+'–'+(y+1));o.value=y;o.selected=y===selected;select.append(o)}label.append(select);container.append(label);select.addEventListener('change',()=>{selected=Number(select.value);draw()});
+ function draw(){
+  const openMonths=new Set([...container.querySelectorAll('.bn-month[open]')].map(month=>month.dataset.month));
+  const sameSession=container.querySelector('select')?.value===String(selected)&&container.dataset.session===String(selected);
+  container.dataset.session=String(selected);
+  container.replaceChildren();const label=el('label','Academic session');const select=el('select',undefined,'bn-att-filter');select.setAttribute('aria-label','Attendance academic session');for(const y of selectedYears){const o=el('option',y+'–'+(y+1));o.value=y;o.selected=y===selected;select.append(o)}label.append(select);container.append(label);select.addEventListener('change',()=>{selected=Number(select.value);draw()});
   const sessionRows=records.filter(r=>academicStart(r.day)===selected),summary=summarize(sessionRows);const panel=el('div',undefined,'panel bn-att-summary'),ring=el('div',undefined,'bn-att-ring'+(summary.total?'':' empty-ring'));
   const deg=n=>summary.total?n/summary.total*360+'deg':'0deg';ring.style.setProperty('--present',deg(summary.present));ring.style.setProperty('--late',deg(summary.present+summary.late));ring.style.setProperty('--absent',deg(summary.present+summary.late+summary.absent));ring.setAttribute('aria-label',summary.total+' recorded days');const center=el('div');center.append(el('small','Recorded days'),el('b',String(summary.total)));ring.append(center);
-  const legend=el('div',undefined,'bn-att-legend');for(const [label,count] of [['Present',summary.present],['Absent',summary.absent],['Late',summary.late],...(summary.half_day?[['Half day',summary.half_day]]:[])]){const line=el('div');line.append(el('span',label+'  '),el('b',String(count)));legend.append(line)}legend.append(el('strong',summary.percent===null?'No attendance recorded':summary.percent+'% attendance'));panel.append(ring,legend);container.append(panel,el('p','Blue: present · Red: absent · Orange: late · Purple: excused. Grey days have no recorded attendance; they are not counted as absent.','bn-att-note'));
-  for(let i=0;i<12;i++){const month=(i+3)%12,year=selected+(i>=9?1:0),model=monthModel(year,month,sessionRows),title=new Date(Date.UTC(year,month,1)).toLocaleDateString('en-IN',{month:'long',year:'numeric',timeZone:'UTC'}),details=el('details',undefined,'bn-month'),heading=el('summary'),words=el('div');words.append(el('strong','▦ '+title),el('small',model.summary.attended+' / '+model.summary.total+' recorded days attended'));heading.append(words);details.append(heading);const calendar=el('div',undefined,'bn-calendar');for(const day of ['S','M','T','W','T','F','S'])calendar.append(el('div',day,'weekday'));for(let n=0;n<model.first;n++)calendar.append(el('span'));
-   for(let day=1;day<=model.length;day++){const status=model.statuses.get(day)||'unrecorded',known=['present','absent','late','excused','half_day','holiday','week_off'].includes(status),cell=el('div',undefined,'day '+(known?status:'unrecorded'));cell.append(el('span',String(day)));if(status==='week_off')cell.append(el('small','WO'));else if(status==='holiday')cell.append(el('small','H'));cell.setAttribute('aria-label',day+' '+title+': '+(known?status.replaceAll('_',' '):'not recorded'));cell.title=cell.getAttribute('aria-label');calendar.append(cell);}details.append(calendar);if(year===now.getFullYear()&&month===now.getMonth())details.open=true;container.append(details);
+  const legend=el('div',undefined,'bn-att-legend');for(const [label,count] of [['Present',summary.present],['Absent',summary.absent],['Late',summary.late],...(summary.half_day?[['Half day',summary.half_day]]:[])]){const line=el('div');line.append(el('span',label+'  '),el('b',String(count)));legend.append(line)}legend.append(el('strong',summary.percent===null?'No attendance recorded':summary.percent+'% attendance'));panel.append(ring,legend);container.append(panel);
+  const key=el('ul',undefined,'bn-att-key');key.setAttribute('aria-label','Attendance status key');
+  for(const status of ['present','absent','late','half_day','excused','unrecorded']){
+   const item=el('li',STATUS_LABELS[status],status);key.append(item);
+  }
+  container.append(key);
+  const months=Array.from({length:12},(_,i)=>({month:(i+3)%12,year:selected+(i>=9?1:0)}));
+  const latestDay=sessionRows.filter(r=>COUNTED.has(r.status)||r.status==='excused')
+   .reduce((latest,row)=>row.day>latest?row.day:latest,'');
+  const currentMonth=months.find(({year,month})=>year===now.getFullYear()&&month===now.getMonth());
+  const focus=latestDay
+   ? months.find(({year,month})=>year===Number(latestDay.slice(0,4))&&month===Number(latestDay.slice(5,7))-1)
+   : currentMonth||months[0];
+  const focusKey=focus.year+'-'+focus.month;
+  const preserveOpen=sameSession&&(openMonths.size!==1||!openMonths.has(container.dataset.focusMonth));
+  container.dataset.focusMonth=focusKey;
+  for(const {month,year} of [focus,...months.filter(month=>month!==focus)]){
+   const monthKey=year+'-'+month;
+   const model=monthModel(year,month,sessionRows),title=new Date(Date.UTC(year,month,1)).toLocaleDateString('en-IN',{month:'long',year:'numeric',timeZone:'UTC'}),details=el('details',undefined,'bn-month'),heading=el('summary'),words=el('div');
+   details.dataset.month=monthKey;
+   words.append(el('strong','▦ '+title),el('small',model.summary.total?model.summary.attended+' / '+model.summary.total+' recorded days attended':'No attendance recorded'));
+   heading.append(words);details.append(heading);const calendar=el('div',undefined,'bn-calendar');for(const day of ['S','M','T','W','T','F','S'])calendar.append(el('div',day,'weekday'));for(let n=0;n<model.first;n++)calendar.append(el('span'));
+   for(let day=1;day<=model.length;day++){const status=model.statuses.get(day)||'unrecorded',known=['present','absent','late','excused','half_day','holiday','week_off'].includes(status),cell=el('div',undefined,'day '+(known?status:'unrecorded'));cell.append(el('span',String(day)));if(status==='week_off')cell.append(el('small','WO'));else if(status==='holiday')cell.append(el('small','H'));cell.setAttribute('aria-label',day+' '+title+': '+(known?status.replaceAll('_',' '):'not recorded'));cell.title=cell.getAttribute('aria-label');calendar.append(cell);}details.append(calendar);details.open=preserveOpen?openMonths.has(monthKey):monthKey===focusKey;container.append(details);
   }
  }
  draw();

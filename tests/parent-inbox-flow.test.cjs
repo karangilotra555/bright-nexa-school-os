@@ -33,7 +33,7 @@ function app(state){
   const url=new URL(raw), table=url.pathname.split('/').at(-1);
   const filter=name=>url.searchParams.get(name)?.slice(3);
   let data=[];
-  if(table==='school-student-login')data={session:{access_token:'test-token',user:{id:'parent'}},links};
+  if(table==='school-student-login')data={session:{access_token:'test-token',user:{id:'parent'}},links:state.links||links};
   if(table==='school_students')data=[{id:filter('id'),name:filter('id'),class_id:filter('id')+'-class'}];
   if(table==='institutions')data=[{name:'Test School'}];
   if(table==='school_classes')data=[{name:'VII',section:'A'}];
@@ -41,6 +41,9 @@ function app(state){
   if(table==='school_attendance'&&filter('student_id')==='first')data=[absence];
   if(table==='school_homework'&&filter('class_id')==='first-class')data=[homework];
   if(table==='school_homework_files')data=[attachment];
+  if(table==='bn_portal_class_teachers'&&JSON.parse(options.body).p_student_id==='second'){
+   data=[{assignment_type:'class_teacher',teacher_name:'Assigned test teacher'}];
+  }
   if(url.pathname.endsWith(attachment.storage_path)){
    state.attachment=options.headers.Authorization;
    return {ok:true,blob:async()=>new window.Blob(['image'],{type:'image/png'})};
@@ -189,4 +192,24 @@ test('Supabase receipt policy enforces the logged-in guardian, student, school a
  await db.query('delete from guardian_fixture where account=$1 and student=$2',[otherParent,child]);
  await db.exec('set role authenticated');
  assert.deepEqual(await receipts(),[]);
+});
+
+test('parent home shows the selected child as the heading and labelled class section',async t=>{
+ const parent=app({receipts:new Map()});
+ t.after(()=>parent.dom.window.close());
+ await parent.login();
+ parent.dom.window.document.querySelector('[data-tab="home"]').click();
+ assert.equal(parent.$('app').querySelector('h1').textContent,'first');
+ assert.equal(parent.$('childSummary').textContent,'VII · Section A');
+ assert.equal(parent.$('childPicker').closest('[hidden]'),null);
+ parent.input('childPicker','1','change');
+ await waitFor(()=>parent.$('app').querySelector('h1').textContent==='second');
+ assert.equal(parent.$('childPicker').value,'1');
+ assert.match(parent.$('studentProfileSections').textContent,/Assigned test teacher/);
+
+ const single=app({receipts:new Map(),links:[links[0]]});
+ t.after(()=>single.dom.window.close());
+ await single.login();
+ assert.equal(single.$('childSwitcher').hidden,true);
+ assert.match(single.$('studentProfileSections').textContent,/Class teacherNot assigned by school/);
 });
