@@ -607,7 +607,7 @@
 
     function loadStudentTC() {
       const idx = document.getElementById('studentSelect').value;
-      const s = rosterReady && /^\\d+$/.test(idx) ? students[Number(idx)] : null;
+      const s = rosterReady && /^\d+$/.test(idx) ? students[Number(idx)] : null;
       const set = (id,value)=>{document.getElementById(id).textContent=String(value||'Not recorded');};
       // Blank/revalidate all TC fields when changing students. Do not allow
       // one child's certificate to inherit another child's static sample data.
@@ -623,7 +623,7 @@
       set('tcStudentName',s.name||'Not recorded');
       set('tcMotherName',s.motherName||'Not recorded');
       set('tcFatherName',s.fatherName||s.guardianName||'Not recorded');
-      set('tcClassLast',[s.className,s.section&&'('+s.section+')'].filter(Boolean).join(' ')||'Not recorded');
+      set('tcClassLast',[s.className,s.section&&'('+s.section+')',s.academicStream&&'• '+s.academicStream].filter(Boolean).join(' ')||'Not recorded');
       set('tcDob',s.dateOfBirth||s.dob||'Not recorded');
       set('tcCategory',s.category||'Not recorded');
       set('tcAdmDate',s.admissionDate||'Not recorded');

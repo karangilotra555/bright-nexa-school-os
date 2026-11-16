@@ -702,25 +702,19 @@
         min-height: 285mm !important;
       }
     }
+  .a4-marksheet[hidden]{display:none!important}
+    @media print{#markPreviewStatus{display:none}}
   </style>
 </head>
 <body>
 
   <!-- Controls for school admin -->
   <div class="no-print-bar">
-    <h2>🎓 Modern CBSE Academic Marksheet (A4 Format)</h2>
+    <h2>🎓 Academic Marksheet Preview (A4 Format)</h2>
     <div class="control-actions">
-      <select id="studentDropdown" onchange="switchStudent(this.value)">
-        <option value="0">Aarav Sharma (BMS-2026-001 • Class 6-A)</option>
-        <option value="1">Ananya Patel (BMS-2026-002 • Class 6-A)</option>
-        <option value="2">Rohan Verma (BMS-2026-003 • Class 6-A)</option>
-      </select>
-      <select id="examDropdown" onchange="switchExam(this.value)">
-        <option value="annual">Annual Examination 2026-27</option>
-        <option value="halfyearly">Half Yearly Examination</option>
-        <option value="ut1">Unit Test 1 (Formative)</option>
-      </select>
-      <button class="btn btn-primary" onclick="window.print()">
+      <select id="studentDropdown" onchange="switchStudent(this.value)"><option value="">Select student</option></select>
+      <select id="examDropdown" onchange="switchExam(this.value)"><option value="">Select exam</option></select>
+      <button class="btn btn-primary" id="markPrint" onclick="printMarksheetPreview()" disabled>
         🖨️ Print / Save PDF
       </button>
       <button class="btn btn-secondary" onclick="loadFromSchoolOS()">
@@ -729,8 +723,10 @@
     </div>
   </div>
 
+  <p id="markPreviewStatus" role="status" aria-live="polite" style="max-width:210mm;margin:0 auto 12px">Select a student and exam to preview marks.</p>
+
   <!-- A4 Certificate Sheet -->
-  <div class="a4-marksheet">
+  <div class="a4-marksheet" hidden>
     <!-- Watermark -->
     <div class="certificate-watermark">
       <img src="./bright-nexa-official-logo.jpg" onerror="this.src='./app-icon-512.png'" alt="Watermark">
@@ -748,25 +744,17 @@
         <img id="schoolLogo" src="./bright-nexa-official-logo.jpg" onerror="this.src='./app-icon-512.png'" alt="School Crest">
       </div>
       <div class="school-info-center">
-        <h1 class="school-main-title" id="schoolName">BRIGHT NEXA MODEL SR. SEC. SCHOOL</h1>
-        <div class="school-affiliation-tag" id="schoolAffil">
-          AFFILIATED TO CENTRAL BOARD OF SECONDARY EDUCATION (CBSE), NEW DELHI<br>
-          AFFILIATION NO.: 1730248 • SCHOOL CODE: 20458 • U-DISE CODE: 08240502104
-        </div>
-        <div class="school-contact-line" id="schoolContact">
-          Station Road, Sikar, Rajasthan - 332001 • Phone: +91 9876500000 • Email: office@brightnexa.edu.in
-        </div>
+        <h1 class="school-main-title" id="schoolName">—</h1>
+        <div class="school-affiliation-tag" id="schoolAffil">—</div>
+        <div class="school-contact-line" id="schoolContact">—</div>
         <div class="report-title-ribbon">
-          <span class="main-tag">ANNUAL PROGRESS REPORT CARD (CCE)</span>
-          <span class="session-tag" id="sessionTag">• ACADEMIC SESSION: 2026 - 2027</span>
+          <span class="main-tag">ACADEMIC MARKS PREVIEW</span>
+          <span class="session-tag" id="sessionTag">—</span>
         </div>
       </div>
       <div class="student-photo-frame">
         <div class="photo-inner-text">
           PASSPORT<br>PHOTO
-        </div>
-        <div class="photo-stamp-badge">
-          SEAL<br>OK
         </div>
       </div>
     </header>
@@ -776,37 +764,37 @@
       <div class="profile-row">
         <div class="profile-cell">
           <label>Student's Full Name</label>
-          <strong id="studentName">AARAV SHARMA</strong>
+          <strong id="studentName">—</strong>
         </div>
         <div class="profile-cell">
           <label>Roll Number</label>
-          <strong id="rollNumber">06</strong>
+          <strong id="rollNumber">—</strong>
         </div>
         <div class="profile-cell">
           <label>Admission / S.R. No.</label>
-          <strong id="admissionNumber">BMS-2026-001</strong>
+          <strong id="admissionNumber">—</strong>
         </div>
         <div class="profile-cell">
           <label>Class & Section</label>
-          <strong id="classSection">VI - A (Secondary)</strong>
+          <strong id="classSection">—</strong>
         </div>
       </div>
       <div class="profile-row">
         <div class="profile-cell">
           <label>Mother's Name</label>
-          <strong id="motherName">MRS. NEHA SHARMA</strong>
+          <strong id="motherName">—</strong>
         </div>
         <div class="profile-cell">
           <label>Father's / Guardian's Name</label>
-          <strong id="fatherName">MR. VIKAS SHARMA</strong>
+          <strong id="fatherName">—</strong>
         </div>
         <div class="profile-cell">
           <label>Date of Birth (DOB)</label>
-          <strong id="dob">12-03-2014</strong>
+          <strong id="dob">—</strong>
         </div>
         <div class="profile-cell">
           <label>Attendance Record</label>
-          <strong id="attendance">196 / 212 Days (92.5%)</strong>
+          <strong id="attendance">—</strong>
         </div>
       </div>
     </section>
@@ -820,85 +808,24 @@
         <tr>
           <th style="width: 6%;">S.NO.</th>
           <th style="width: 32%; text-align: left;">SUBJECT NAME</th>
-          <th style="width: 10%;">PERIODIC TEST (10)</th>
-          <th style="width: 10%;">NOTEBOOK (5)</th>
-          <th style="width: 10%;">ENRICHMENT (5)</th>
-          <th style="width: 11%;">ANNUAL EXAM (80)</th>
-          <th style="width: 11%;">TOTAL (100)</th>
+          <th style="width: 10%;">PERIODIC TEST</th>
+          <th style="width: 10%;">NOTEBOOK</th>
+          <th style="width: 10%;">ENRICHMENT</th>
+          <th style="width: 11%;">EXAM COMPONENT</th>
+          <th style="width: 11%;">MARKS OBTAINED</th>
           <th style="width: 8%;">GRADE</th>
         </tr>
       </thead>
-      <tbody id="subjectTableBody">
-        <tr>
-          <td>1</td>
-          <td style="text-align: left; font-weight: 700;">English Language & Literature</td>
-          <td>8.5</td>
-          <td>4.5</td>
-          <td>4.5</td>
-          <td>68.0</td>
-          <td style="font-weight: 800;">85.5</td>
-          <td style="font-weight: 800; color: #0284c7;">A2</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td style="text-align: left; font-weight: 700;">Hindi (Course A)</td>
-          <td>8.0</td>
-          <td>5.0</td>
-          <td>4.0</td>
-          <td>65.0</td>
-          <td style="font-weight: 800;">82.0</td>
-          <td style="font-weight: 800; color: #0284c7;">A2</td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td style="text-align: left; font-weight: 700;">Mathematics</td>
-          <td>9.5</td>
-          <td>5.0</td>
-          <td>5.0</td>
-          <td>74.0</td>
-          <td style="font-weight: 800;">93.5</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-        <tr>
-          <td>4</td>
-          <td style="text-align: left; font-weight: 700;">Science & Technology</td>
-          <td>9.0</td>
-          <td>4.5</td>
-          <td>5.0</td>
-          <td>71.5</td>
-          <td style="font-weight: 800;">90.0</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-        <tr>
-          <td>5</td>
-          <td style="text-align: left; font-weight: 700;">Social Science</td>
-          <td>8.0</td>
-          <td>4.5</td>
-          <td>4.5</td>
-          <td>62.0</td>
-          <td style="font-weight: 800;">79.0</td>
-          <td style="font-weight: 800; color: #0284c7;">B1</td>
-        </tr>
-        <tr>
-          <td>6</td>
-          <td style="text-align: left; font-weight: 700;">Computer Science / AI & Coding</td>
-          <td>10.0</td>
-          <td>5.0</td>
-          <td>5.0</td>
-          <td>76.0</td>
-          <td style="font-weight: 800;">96.0</td>
-          <td style="font-weight: 800; color: #059669;">A1</td>
-        </tr>
-      </tbody>
+      <tbody id="subjectTableBody"></tbody>
       <tfoot>
         <tr>
           <th colspan="2" style="text-align: right; padding-right: 12px;">GRAND TOTAL</th>
-          <th>53.0 / 60</th>
-          <th>28.5 / 30</th>
-          <th>28.0 / 30</th>
-          <th>416.5 / 480</th>
-          <th style="font-size: 11px; color: var(--navy);" id="grandTotal">526.0 / 600</th>
-          <th style="font-size: 11px; color: #0284c7;" id="overallGrade">A2</th>
+          <th>—</th>
+          <th>—</th>
+          <th>—</th>
+          <th>—</th>
+          <th style="font-size: 11px; color: var(--navy);" id="grandTotal">—</th>
+          <th style="font-size: 11px; color: #0284c7;" id="overallGrade">—</th>
         </tr>
       </tfoot>
     </table>
@@ -910,27 +837,27 @@
     <div class="coscholastic-grid">
       <div class="coscholastic-card">
         <span>Work Education & Computer / AI</span>
-        <strong>Grade A</strong>
+        <strong>—</strong>
       </div>
       <div class="coscholastic-card">
         <span>Visual & Performing Arts</span>
-        <strong>Grade A</strong>
+        <strong>—</strong>
       </div>
       <div class="coscholastic-card">
         <span>Health & Physical Education / Sports</span>
-        <strong>Grade A+</strong>
+        <strong>—</strong>
       </div>
       <div class="coscholastic-card">
         <span>Scientific Temper & Critical Thinking</span>
-        <strong>Grade A</strong>
+        <strong>—</strong>
       </div>
       <div class="coscholastic-card">
         <span>Discipline, Punctuality & Attendance</span>
-        <strong>Grade A+</strong>
+        <strong>—</strong>
       </div>
       <div class="coscholastic-card">
         <span>Social Harmony & Peer Leadership</span>
-        <strong>Grade A</strong>
+        <strong>—</strong>
       </div>
     </div>
 
@@ -938,48 +865,44 @@
     <div class="summary-metrics-bar">
       <div class="metric-pill highlight">
         <span>Overall Percentage</span>
-        <strong id="percentageText">87.7%</strong>
+        <strong id="percentageText">—</strong>
       </div>
       <div class="metric-pill highlight">
         <span>Overall Grade</span>
-        <strong id="overallGradePill" style="color: #0284c7;">A2 (Excellent)</strong>
+        <strong id="overallGradePill" style="color: #0284c7;">—</strong>
       </div>
       <div class="metric-pill">
         <span>Class Rank / Position</span>
-        <strong>3rd in Class</strong>
+        <strong>—</strong>
       </div>
       <div class="metric-pill">
         <span>Evaluation Status</span>
-        <strong style="color: #059669;">QUALIFIED</strong>
+        <strong style="color: #059669;">—</strong>
       </div>
     </div>
 
     <!-- Promotion Ribbon -->
     <div class="promotion-ribbon">
-      <span>OFFICIAL PROMOTION STATUS:</span>
-      <strong id="promotionText">PROMOTED TO CLASS VII - A (SESSION 2027 - 2028) WITH COMMENDABLE DISTINCTION</strong>
+      <span>PROMOTION STATUS:</span>
+      <strong id="promotionText">—</strong>
     </div>
 
     <!-- Qualitative Remarks -->
     <div class="remarks-grid">
       <div class="remark-box">
         <span>Class Teacher's Remark</span>
-        <p id="teacherRemark">
-          Aarav demonstrates excellent logical reasoning in Mathematics and enthusiastic curiosity in Science experiments. Maintains exemplary discipline and peer cooperation.
-        </p>
+        <p id="teacherRemark">—</p>
       </div>
       <div class="remark-box">
         <span>Principal's Observation</span>
-        <p id="principalRemark">
-          An outstanding academic performance. Has showcased continuous dedication and balanced growth across scholastic and co-scholastic domains. Best wishes for future endeavors.
-        </p>
+        <p id="principalRemark">—</p>
       </div>
     </div>
 
     <!-- Grading Scale Legend -->
     <div class="grading-legend-strip">
-      <strong>CBSE 8-POINT GRADING SCALE:</strong>
-      <span>A1 (91-100% Top 1/8th)</span> •
+      <strong>PREVIEW GRADING SCALE:</strong>
+      <span>A1 (91-100%)</span> •
       <span>A2 (81-90%)</span> •
       <span>B1 (71-80%)</span> •
       <span>B2 (61-70%)</span> •
@@ -1005,333 +928,182 @@
         <div class="official-seal-graphic">
           <span class="seal-star">★ ★ ★</span>
           <strong>BRIGHT NEXA</strong>
-          <small>OFFICIAL SEAL</small>
+          <small>UNSIGNED</small>
           <span class="seal-star">★ ★ ★</span>
         </div>
-        <span class="seal-caption">Verified Academic Document</span>
+        <span class="seal-caption">Unsigned preview</span>
       </div>
       <div class="sig-col">
         <div class="sig-line"></div>
-        <span id="principalName">DR. KAVITA JOSHI</span>
+        <span id="principalName">—</span>
         <small>Principal / Head of Institution</small>
       </div>
       <div class="qr-verify-col">
-        <div class="qr-box">
-          <svg viewBox="0 0 100 100" fill="#0b2545">
-            <path d="M0,0 h30 v30 h-30 z M5,5 v20 h20 v-20 z M10,10 h10 v10 h-10 z" />
-            <path d="M70,0 h30 v30 h-30 z M75,5 v20 h20 v-20 z M80,10 h10 v10 h-10 z" />
-            <path d="M0,70 h30 v30 h-30 z M5,75 v20 h20 v-20 z M10,80 h10 v10 h-10 z" />
-            <rect x="40" y="10" width="10" height="20" />
-            <rect x="55" y="15" width="10" height="10" />
-            <rect x="40" y="40" width="20" height="20" />
-            <rect x="70" y="45" width="20" height="10" />
-            <rect x="45" y="70" width="15" height="15" />
-            <rect x="75" y="75" width="20" height="20" />
-          </svg>
-        </div>
-        <div class="qr-text">
-          <strong>Digital Verification</strong>
-          Scan to verify certificate authenticity on School OS
-        </div>
+        <div class="qr-text">Preview from School OS records</div>
       </div>
     </footer>
   </div>
 
   <script>
-    const sampleStudents = [
-      {
-        name: "AARAV SHARMA",
-        roll: "06",
-        admission: "BMS-2026-001",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. NEHA SHARMA",
-        father: "MR. VIKAS SHARMA",
-        dob: "12-03-2014",
-        attendance: "196 / 212 Days (92.5%)",
-        rank: "3rd in Class",
-        percentage: "87.7%",
-        grade: "A2",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028) WITH COMMENDABLE DISTINCTION",
-        subjects: [
-          { name: "English Language & Literature", pt: 8.5, nb: 4.5, se: 4.5, annual: 68.0, total: 85.5, grade: "A2" },
-          { name: "Hindi (Course A)", pt: 8.0, nb: 5.0, se: 4.0, annual: 65.0, total: 82.0, grade: "A2" },
-          { name: "Mathematics", pt: 9.5, nb: 5.0, se: 5.0, annual: 74.0, total: 93.5, grade: "A1" },
-          { name: "Science & Technology", pt: 9.0, nb: 4.5, se: 5.0, annual: 71.5, total: 90.0, grade: "A1" },
-          { name: "Social Science", pt: 8.0, nb: 4.5, se: 4.5, annual: 62.0, total: 79.0, grade: "B1" },
-          { name: "Computer Science / AI & Coding", pt: 10.0, nb: 5.0, se: 5.0, annual: 76.0, total: 96.0, grade: "A1" },
-        ]
-      },
-      {
-        name: "ANANYA PATEL",
-        roll: "12",
-        admission: "BMS-2026-002",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. POOJA PATEL",
-        father: "MR. SURESH PATEL",
-        dob: "05-08-2014",
-        attendance: "205 / 212 Days (96.7%)",
-        rank: "1st in Class",
-        percentage: "94.2%",
-        grade: "A1",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028) - CLASS TOPPER",
-        subjects: [
-          { name: "English Language & Literature", pt: 9.5, nb: 5.0, se: 5.0, annual: 75.0, total: 94.5, grade: "A1" },
-          { name: "Hindi (Course A)", pt: 9.0, nb: 5.0, se: 5.0, annual: 73.0, total: 92.0, grade: "A1" },
-          { name: "Mathematics", pt: 10.0, nb: 5.0, se: 5.0, annual: 78.0, total: 98.0, grade: "A1" },
-          { name: "Science & Technology", pt: 9.5, nb: 5.0, se: 5.0, annual: 76.0, total: 95.5, grade: "A1" },
-          { name: "Social Science", pt: 9.0, nb: 4.5, se: 4.5, annual: 70.0, total: 88.0, grade: "A2" },
-          { name: "Computer Science / AI & Coding", pt: 10.0, nb: 5.0, se: 5.0, annual: 77.0, total: 97.0, grade: "A1" },
-        ]
-      },
-      {
-        name: "ROHAN VERMA",
-        roll: "18",
-        admission: "BMS-2026-003",
-        classSec: "VI - A (Secondary)",
-        mother: "MRS. SUNITA VERMA",
-        father: "MR. RAJESH VERMA",
-        dob: "21-11-2013",
-        attendance: "182 / 212 Days (85.8%)",
-        rank: "8th in Class",
-        percentage: "76.5%",
-        grade: "B1",
-        promotion: "PROMOTED TO CLASS VII - A (SESSION 2027 - 2028)",
-        subjects: [
-          { name: "English Language & Literature", pt: 7.5, nb: 4.0, se: 4.0, annual: 60.0, total: 75.5, grade: "B1" },
-          { name: "Hindi (Course A)", pt: 8.0, nb: 4.0, se: 4.0, annual: 62.0, total: 78.0, grade: "B1" },
-          { name: "Mathematics", pt: 8.5, nb: 4.5, se: 4.5, annual: 61.0, total: 78.5, grade: "B1" },
-          { name: "Science & Technology", pt: 7.0, nb: 4.0, se: 4.0, annual: 58.0, total: 73.0, grade: "B2" },
-          { name: "Social Science", pt: 7.5, nb: 4.0, se: 4.0, annual: 59.0, total: 74.5, grade: "B1" },
-          { name: "Computer Science / AI & Coding", pt: 9.0, nb: 4.5, se: 5.0, annual: 69.5, total: 88.0, grade: "A2" },
-        ]
-      }
-    ];
+    const field = id => document.getElementById(id);
+    const subjectKey = value => String(value ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+    const list = value => Array.isArray(value) ? value : [];
+    const sheet = document.querySelector('.a4-marksheet');
+    let students = [], operations = {}, printReady = false, loadVersion = 0;
 
-    let activeStudents = [...sampleStudents];
-
-    function calculateGrade(marks, max = 100) {
-      const pct = (marks / max) * 100;
-      if (pct >= 91) return 'A1';
-      if (pct >= 81) return 'A2';
-      if (pct >= 71) return 'B1';
-      if (pct >= 61) return 'B2';
-      if (pct >= 51) return 'C1';
-      if (pct >= 41) return 'C2';
-      if (pct >= 33) return 'D';
-      return 'E';
+    function set(id, value) { field(id).textContent = value || '—'; }
+    function classLabel(student) {
+      return [[student.className, student.section].filter(Boolean).join(' - '), student.academicStream].filter(Boolean).join(' • ');
     }
-
-    function switchStudent(index) {
-      const student = activeStudents[index] || activeStudents[0];
-      if (!student) return;
-      document.getElementById('studentName').textContent = student.name;
-      document.getElementById('rollNumber').textContent = student.roll;
-      document.getElementById('admissionNumber').textContent = student.admission;
-      document.getElementById('classSection').textContent = student.classSec;
-      document.getElementById('motherName').textContent = student.mother;
-      document.getElementById('fatherName').textContent = student.father;
-      document.getElementById('dob').textContent = student.dob;
-      document.getElementById('attendance').textContent = student.attendance;
-      document.getElementById('percentageText').textContent = student.percentage;
-      document.getElementById('overallGrade').textContent = student.grade;
-      document.getElementById('overallGradePill').textContent = student.grade + (student.grade === 'A1' ? ' (Outstanding)' : (student.grade === 'A2' ? ' (Excellent)' : (student.grade === 'B1' || student.grade === 'B2' ? ' (Good)' : (student.grade === '-' ? '' : ' (Needs Improvement)'))));
-      document.getElementById('promotionText').textContent = student.promotion;
-
+    function grade(score, maximum) {
+      const percentage = score * 100 / maximum;
+      return [[91,'A1'],[81,'A2'],[71,'B1'],[61,'B2'],[51,'C1'],[41,'C2'],[33,'D'],[0,'E']].find(([min]) => percentage >= min)?.[1] || '—';
+    }
+    function setResultState(message, hasMarks = false) {
+      printReady = hasMarks;
+      sheet.hidden = !hasMarks;
+      field('markPrint').disabled = !hasMarks;
+      set('markPreviewStatus', message);
+    }
+    function applicableExams(student) {
+      const className = value => subjectKey(value).replace(/^(class|grade)\s*[-:]?\s*/, '');
+      const recordedExamIds = new Set(list(operations.marks)
+        .filter(mark => mark?.studentId === student.id).map(mark => mark.examId));
+      return list(operations.exams).filter(exam => exam?.id && (recordedExamIds.has(exam.id) || (
+        (!exam.classId || !student.classId || exam.classId === student.classId) &&
+        (!exam.className || className(exam.className) === className(student.className)) &&
+        (!exam.section || subjectKey(exam.section) === 'all' || subjectKey(exam.section) === subjectKey(student.section)) &&
+        (!exam.academicStream || subjectKey(exam.academicStream) === subjectKey(student.academicStream)) &&
+        (!exam.academicYear || !student.academicSession && !student.academicYear ||
+          exam.academicYear === (student.academicSession || student.academicYear)))));
+    }
+    function switchStudent(id) {
+      const selector = field('studentDropdown');
+      selector.value = String(id);
+      const student = students.find(row => String(row.id) === selector.value);
+      const exams = student ? applicableExams(student) : [];
+      const picker = field('examDropdown');
+      const previous = picker.value;
+      picker.replaceChildren(new Option(exams.length ? 'Select exam' : 'No exams available', ''));
+      for (const exam of exams) picker.add(new Option(exam.name || 'Unnamed exam', String(exam.id)));
+      picker.disabled = !exams.length;
+      switchExam(exams.some(exam => String(exam.id) === previous) ? previous : String(exams[0]?.id ?? ''));
+    }
+    function switchExam(id) {
+      setResultState('Select a student and exam to preview marks.');
+      const picker = field('examDropdown');
+      picker.value = String(id);
+      const student = students.find(row => String(row.id) === field('studentDropdown').value);
+      const exam = student && applicableExams(student).find(row => String(row.id) === picker.value);
+      if (!exam) return;
+      const studentMarks = list(operations.marks).filter(mark => mark?.studentId === student.id && mark.examId === exam.id);
+      const bySubject = new Map();
+      for (const mark of studentMarks) {
+        const key = subjectKey(mark.subject);
+        if (key && !bySubject.has(key)) bySubject.set(key, mark);
+      }
+      const configured = list(exam.subjects);
+      const subjects = configured.length ? configured : [...bySubject.values()].map(mark => ({name:mark.subject,maximumMarks:mark.maximumMarks}));
+      const table = field('subjectTableBody');
+      table.replaceChildren();
+      const seen = new Set();
+      let total = 0, maximum = 0;
+      for (const subject of subjects) {
+        const name = String(typeof subject === 'string' ? subject : subject?.name || '').trim();
+        const key = subjectKey(name);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        const mark = bySubject.get(key);
+        const score = mark?.obtainedMarks;
+        const max = mark?.maximumMarks ?? subject?.maximumMarks;
+        const hasEntry = Number.isFinite(score) && Number.isFinite(max) && max > 0 && score >= 0 && score <= max;
+        const sub = {pt:null,nb:null,se:null,annual:null};
+        const row = table.insertRow();
+        const cells = [seen.size, name,
+          hasEntry && Number.isFinite(sub.pt) ? sub.pt.toFixed(1) : '—',
+          hasEntry && Number.isFinite(sub.nb) ? sub.nb.toFixed(1) : '—',
+          hasEntry && Number.isFinite(sub.se) ? sub.se.toFixed(1) : '—',
+          hasEntry && Number.isFinite(sub.annual) ? sub.annual.toFixed(1) : '—',
+          hasEntry ? score.toFixed(1) : '—', hasEntry ? grade(score,max) : '—'];
+        cells.forEach((value, index) => {
+          const cell = row.insertCell();
+          cell.textContent = value;
+          if (index === 1) cell.style.cssText = 'text-align:left;font-weight:700';
+          if (index >= 6) cell.style.fontWeight = '800';
+        });
+        if (hasEntry) { total += score; maximum += max; }
+      }
+      if (!maximum) { setResultState('No marks entered for the selected student and exam.'); return; }
+      for (const [id, value] of Object.entries({
+        studentName:student.name,rollNumber:student.rollNumber,admissionNumber:student.admissionNumber,
+        classSection:classLabel(student),motherName:student.motherName||student.mother,
+        fatherName:student.fatherName||student.guardianName||student.father,dob:student.dateOfBirth||student.dob,
+        grandTotal:total.toFixed(1)+' / '+maximum.toFixed(1),percentageText:(total*100/maximum).toFixed(1)+'%',
+        overallGrade:grade(total,maximum),overallGradePill:grade(total,maximum)
+      })) set(id,value);
+      const attendance = list(operations.attendance).filter(row => row.studentId === student.id);
+      const present = attendance.filter(row => ['Present','Late','Half-Day'].includes(row.status)).length;
+      set('attendance', attendance.length ? present+' / '+attendance.length+' recorded days' : '');
       const photoFrame = document.querySelector('.student-photo-frame');
-      if (photoFrame) {
-        if (student.photoDataUrl) {
-          photoFrame.innerHTML = `<img src="${student.photoDataUrl}" alt="${student.name}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
-        } else {
-          photoFrame.innerHTML = `<div class="photo-inner-text">PASSPORT<br>PHOTO</div><div class="photo-stamp-badge">SEAL<br>OK</div>`;
-        }
+      const photoDataUrl = String(student.photoDataUrl || student.photoUrl || '');
+      photoFrame.textContent = 'Photo not uploaded';
+      if (/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(photoDataUrl) || /^https:\/\/[^\s<>"']+$/i.test(photoDataUrl)) {
+        const img = document.createElement('img');
+        img.src = photoDataUrl;
+        img.alt = student.name;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:4px';
+        photoFrame.replaceChildren();
+        photoFrame.append(img);
       }
-
-      let tbodyHtml = '';
-      let sumPt = 0, sumNb = 0, sumSe = 0, sumAnn = 0, sumTot = 0;
-      (student.subjects || []).forEach((sub, i) => {
-        const hasEntry = sub.hasEntry !== undefined ? sub.hasEntry : (sub.total > 0 || sub.grade !== '-');
-        if (hasEntry) {
-          if (Number.isFinite(sub.pt)) sumPt += sub.pt;
-          if (Number.isFinite(sub.nb)) sumNb += sub.nb;
-          if (Number.isFinite(sub.se)) sumSe += sub.se;
-          if (Number.isFinite(sub.annual)) sumAnn += sub.annual;
-          sumTot += sub.total;
-        }
-        tbodyHtml += `
-          <tr>
-            <td>${i + 1}</td>
-            <td style="text-align: left; font-weight: 700;">${sub.name}</td>
-            <td>${hasEntry && Number.isFinite(sub.pt) ? sub.pt.toFixed(1) : '-'}</td>
-            <td>${hasEntry && Number.isFinite(sub.nb) ? sub.nb.toFixed(1) : '-'}</td>
-            <td>${hasEntry && Number.isFinite(sub.se) ? sub.se.toFixed(1) : '-'}</td>
-            <td>${hasEntry && Number.isFinite(sub.annual) ? sub.annual.toFixed(1) : '-'}</td>
-            <td style="font-weight: 800;">${hasEntry ? sub.total.toFixed(1) : '-'}</td>
-            <td style="font-weight: 800; color: ${sub.grade === 'A1' ? '#059669' : (sub.grade === '-' || sub.grade === 'E' ? '#dc2626' : '#0284c7')};">${sub.grade}</td>
-          </tr>
-        `;
-      });
-      document.getElementById('subjectTableBody').innerHTML = tbodyHtml;
-      const enteredSubs = (student.subjects || []).filter(s => s.hasEntry !== false && (s.total > 0 || s.grade !== '-'));
-      document.getElementById('grandTotal').textContent = enteredSubs.length > 0 ? `${sumTot.toFixed(1)} / ${enteredSubs.length * 100}` : '-';
+      document.querySelector('.report-title-ribbon .main-tag').textContent = 'MARKS PREVIEW • '+(exam.name || 'Exam');
+      setResultState('Showing recorded marks for the selected exam. This preview is unsigned.',true);
     }
-
-    function switchExam(val) {
-      // Switches current examination term
+    function printMarksheetPreview() {
+      if (!printReady || sheet.hidden) return false;
+      window.print();
+      return true;
     }
-
     async function loadFromSchoolOS() {
-      await window.BNPrivateCache.ensureUnlocked();
-      // 1. Sync Live School Profile
+      const version = ++loadVersion;
+      const params = new URLSearchParams(location.search);
+      const studentPicker = field('studentDropdown'), examPicker = field('examDropdown');
+      const priorStudent = studentPicker.value, priorExam = examPicker.value;
+      students = []; operations = {};
+      setResultState('Loading School OS records…');
+      studentPicker.replaceChildren(new Option('Select student',''));
+      examPicker.replaceChildren(new Option('Select exam',''));
       try {
-        const snapshotRaw = window.BNPrivateCache.storage.getItem('bright-nexa-school-os:snapshot:v1');
-        if (snapshotRaw) {
-          const snapshot = JSON.parse(snapshotRaw);
-          const inst = snapshot.institution || {};
-          if (inst.name) document.getElementById('schoolName').textContent = inst.name.toUpperCase();
-          if (inst.principalName) document.getElementById('principalName').textContent = inst.principalName.toUpperCase();
-          if (inst.logoDataUrl) document.getElementById('schoolLogo').src = inst.logoDataUrl;
-          if (inst.boardType && document.getElementById('schoolAffil')) {
-            document.getElementById('schoolAffil').innerHTML = `AFFILIATED TO ${inst.boardType.toUpperCase()}<br>SCHOOL CODE: 20458 • AFFILIATION NO: 1730248`;
-          }
-          if (inst.session && document.getElementById('sessionTag')) {
-            document.getElementById('sessionTag').textContent = `• ACADEMIC SESSION: ${inst.session}`;
-          }
-          if (document.getElementById('schoolContact')) {
-            const addrParts = [inst.address, inst.city, inst.state, inst.pinCode ? '-' + inst.pinCode : ''].filter(Boolean).join(', ');
-            const ph = inst.contactNumber ? `Phone: +91 ${inst.contactNumber}` : '';
-            const em = inst.email ? `Email: ${inst.email}` : '';
-            const line = [addrParts, ph, em].filter(Boolean).join(' • ');
-            if (line) document.getElementById('schoolContact').textContent = line;
-          }
-        }
-      } catch (e) {
-        console.warn('Could not read localStorage snapshot', e);
+        const cache = window.BNPrivateCache;
+        if (!cache) throw Error('School OS data is unavailable.');
+        await cache.ensureUnlocked();
+        if (version !== loadVersion) return;
+        const read = key => JSON.parse(cache.storage.getItem('bright-nexa-school-os:'+key+':v1') || 'null');
+        const snapshot = read('snapshot');
+        const inst = snapshot?.institution || {};
+        students = list(read('students')).filter(row => row?.id && row.name);
+        operations = read('operations') || {};
+        set('schoolName',inst.name);
+        set('principalName',inst.principalName);
+        set('schoolAffil',[inst.boardType && 'Board: '+inst.boardType,
+          inst.affiliationNumber && 'Affiliation No.: '+inst.affiliationNumber,
+          inst.udiseCode && 'UDISE: '+inst.udiseCode].filter(Boolean).join(' • '));
+        set('schoolContact',[inst.address,inst.city,inst.state,inst.pinCode,inst.contactNumber,inst.email].filter(Boolean).join(' • '));
+        set('sessionTag',inst.session && '• ACADEMIC SESSION: '+inst.session);
+        const logo = field('schoolLogo');
+        if (/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/]+={0,2}$/i.test(inst.logoDataUrl||'')) logo.src = inst.logoDataUrl;
+        else logo.removeAttribute('src');
+        for (const student of students) studentPicker.add(new Option(student.name+' • '+(student.admissionNumber || classLabel(student)),String(student.id)));
+        if (!students.length) { setResultState('No student records available.'); return; }
+        const target = params.get('studentId')||params.get('id')||params.get('admission')||params.get('adm');
+        const selected = students.find(student => String(student.id) === target || student.admissionNumber === target);
+        switchStudent(selected?.id ?? priorStudent);
+        const examId = params.get('examId') || priorExam;
+        if (examId && [...examPicker.options].some(option => option.value === examId)) switchExam(examId);
+      } catch (error) {
+        if (version === loadVersion) setResultState(error.message || 'Could not read School OS records.');
       }
-
-      // 2. Sync Real Students
-      try {
-        const studentsRaw = window.BNPrivateCache.storage.getItem('bright-nexa-school-os:students:v1');
-        const operationsRaw = window.BNPrivateCache.storage.getItem('bright-nexa-school-os:operations:v1');
-        let realStudents = [];
-        if (studentsRaw) realStudents = JSON.parse(studentsRaw);
-        let operations = {};
-        if (operationsRaw) {
-          try { operations = JSON.parse(operationsRaw); } catch(e){}
-        }
-
-        if (Array.isArray(realStudents) && realStudents.length > 0) {
-          const defaultSubjects = [
-            "English Language & Literature",
-            "Hindi (Course A)",
-            "Mathematics",
-            "Science & Technology",
-            "Social Science",
-            "Computer Science / AI & Coding"
-          ];
-
-          activeStudents = realStudents.map((s, idx) => {
-            const studentMarks = (operations.marks || []).filter(m => m.studentId === s.id);
-            const studentAttendance = (operations.attendance || []).filter(a => a.studentId === s.id);
-            const subjectMarks = [];
-            let totalMarks = 0;
-            let enteredCount = 0;
-            const subs = (operations.subjects && operations.subjects.length > 0) ? operations.subjects : defaultSubjects;
-
-            subs.forEach((subName, sIdx) => {
-              const sTitle = typeof subName === 'string' ? subName : (subName.name || `Subject ${sIdx + 1}`);
-              const enteredMark = studentMarks.find(m => {
-                if (!m || !m.subject) return false;
-                const ms = m.subject.trim().toLowerCase();
-                const st = sTitle.trim().toLowerCase();
-                return ms === st || st.includes(ms) || ms.includes(st);
-              });
-
-              let pt = 0, nb = 0, se = 0, annual = 0, tot = 0, grade = '-';
-              if (enteredMark && typeof enteredMark.obtainedMarks === 'number') {
-                const maxM = (enteredMark.maximumMarks && enteredMark.maximumMarks > 0) ? enteredMark.maximumMarks : 100;
-                tot = Math.min(100, Math.max(0, parseFloat(((enteredMark.obtainedMarks / maxM) * 100).toFixed(1))));
-                // A total cannot establish separate examination component marks.
-                pt = nb = se = annual = null;
-                grade = calculateGrade(tot, 100);
-                totalMarks += tot;
-                enteredCount++;
-              }
-
-              subjectMarks.push({
-                name: sTitle,
-                pt: Math.max(0, pt),
-                nb: Math.max(0, nb),
-                se: Math.max(0, se),
-                annual: Math.max(0, annual),
-                total: tot,
-                grade: grade,
-                hasEntry: !!enteredMark
-              });
-            });
-
-            let pct = 0;
-            let overallGrade = '-';
-            let promotion = 'MARKS AWAITED / PENDING';
-            if (enteredCount > 0) {
-              pct = (totalMarks / (enteredCount * 100)) * 100;
-              overallGrade = calculateGrade(pct);
-              promotion = pct >= 33 ? `PROMOTED TO NEXT HIGHER CLASS WITH ACADEMIC DISTINCTION` : 'NEEDS IMPROVEMENT / COMPARTMENT';
-            }
-
-            let attendanceStr = 'Not Marked';
-            if (studentAttendance.length > 0) {
-              const totalDays = studentAttendance.length;
-              const presentDays = studentAttendance.filter(a => a.status === 'Present' || a.status === 'Late' || a.status === 'Half-Day').length;
-              const pctAtt = ((presentDays / totalDays) * 100).toFixed(1);
-              attendanceStr = `${presentDays} / ${totalDays} Days (${pctAtt}%)`;
-            }
-
-            return {
-              id: s.id,
-              name: (s.name || 'STUDENT RECORD').toUpperCase(),
-              roll: s.rollNumber || '-',
-              admission: s.admissionNumber || ('BMS-2026-' + String(idx + 1).padStart(3, '0')),
-              classSec: `${s.className || 'Class VI'} ${s.section ? '- ' + s.section : '- A'}`.trim(),
-              mother: (s.motherName ? 'MRS. ' + s.motherName : (s.mother ? 'MRS. ' + s.mother : 'MRS. GUARDIAN')).toUpperCase(),
-              father: (s.fatherName ? 'MR. ' + s.fatherName : (s.guardianName ? 'MR. ' + s.guardianName : (s.father ? 'MR. ' + s.father : 'MR. PARENT'))).toUpperCase(),
-              dob: s.dateOfBirth || s.dob || '12-03-2014',
-              attendance: attendanceStr,
-              percentage: enteredCount > 0 ? pct.toFixed(1) + '%' : '-',
-              grade: overallGrade,
-              promotion: promotion,
-              photoDataUrl: s.photoDataUrl || s.photoUrl || null,
-              subjects: subjectMarks
-            };
-          });
-
-          const dropdown = document.getElementById('studentDropdown');
-          if (dropdown) {
-            dropdown.innerHTML = activeStudents.map((st, i) => 
-              `<option value="${i}">${st.name} (${st.admission} • ${st.classSec})</option>`
-            ).join('');
-          }
-        }
-      } catch (e) {
-        console.warn('Could not read real students from localStorage:', e);
-      }
-
-      // 3. Check URL query params for auto-selecting requested student
-      const urlParams = new URLSearchParams(window.location.search);
-      const studentId = urlParams.get('studentId') || urlParams.get('id');
-      const admission = urlParams.get('admission') || urlParams.get('adm');
-      let targetIndex = 0;
-      if (studentId || admission) {
-        const found = activeStudents.findIndex(st => st.id === studentId || st.admission === admission);
-        if (found !== -1) targetIndex = found;
-      }
-      const dd = document.getElementById('studentDropdown');
-      if (dd) dd.value = targetIndex;
-      switchStudent(targetIndex);
     }
-
-    // Auto-initialize on DOM load
-    window.addEventListener('DOMContentLoaded', loadFromSchoolOS);
-    loadFromSchoolOS();
+    window.addEventListener('DOMContentLoaded', loadFromSchoolOS, {once:true});
   </script>
 </body>
 </html>

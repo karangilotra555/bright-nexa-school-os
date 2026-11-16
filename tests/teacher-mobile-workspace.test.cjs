@@ -190,3 +190,22 @@ test('mobile draft marks recover after reload from the unlocked private device c
   assert.equal(again.calls.some(call=>call.table==='bn_teacher_save_exam_marks_batch'),false);
   again.window.close();
 });
+
+test('clearing a saved mobile mark sends null without treating it as zero',async()=>{
+  const f=fixture(call=>{
+    if(call.table==='bn_teacher_marks_classes')return [{id:'class-a',name:'11'}];
+    if(call.table==='bn_teacher_exam_marks')return [{exam_id:'exam',exam_name:'Term',student_id:'one',student_name:'Student',subject:'Science',maximum:20,obtained:10}];
+    return call.body.p_marks.map(mark=>({student_id:mark.student_id,obtained:mark.obtained,error:null}));
+  });
+  await f.api.loadTeacherMarks();
+  const input=f.id('teacherMarksRoster').querySelector('input');
+  input.value='';
+  input.dispatchEvent(new f.window.Event('input'));
+  f.id('teacherMarksForm').dispatchEvent(new f.window.Event('submit',{cancelable:true}));
+  await tick();
+  const call=f.calls.find(x=>x.table==='bn_teacher_save_exam_marks_batch');
+  assert.deepEqual(call?.body.p_marks,[{student_id:'one',obtained:null,expected:10}]);
+  assert.match(f.id('teacherMarksRoster').textContent,/Cleared/);
+  assert.equal(input.value,'');
+  f.window.close();
+});

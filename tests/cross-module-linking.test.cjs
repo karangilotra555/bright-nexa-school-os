@@ -57,7 +57,7 @@ test('marksheet.html and marksheet-a4.html link to real student marks, attendanc
       assert.match(content,/operations\.marks/,f+' must read marks');
       assert.match(content,/operations\.attendance/,f+' must read attendance');
       assert.match(content,/photoDataUrl/,f+' must have photo');
-      assert.match(content,/photoFrame\.innerHTML/,f+' must render photo');
+      assert.match(content,/photoFrame\.append\(img\)/,f+' must render photo');
     }
   }
 });

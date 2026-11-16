@@ -110,7 +110,7 @@ check('Photo Propagation: Uploaded student photos link to Marksheets, ID Cards a
   for (const file of ['marksheet.html', 'marksheet-a4.html', 'docs/marksheet.html', 'docs/marksheet-a4.html']) {
     const html = read(file);
     assert.match(html, /photoDataUrl/, `${file} must support student photoDataUrl`);
-    assert.match(html, /photoFrame\.innerHTML/, `${file} must render student photo frame`);
+    assert.match(html, /photoFrame\.append\(img\)/, `${file} must render student photo frame`);
   }
   for (const file of ['id-card-a4.html', 'docs/id-card-a4.html']) {
     const html = read(file);
