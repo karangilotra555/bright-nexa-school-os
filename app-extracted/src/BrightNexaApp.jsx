@@ -21934,6 +21934,7 @@ function Sr({ data: e, onUpdate: t }) {
   let [n, r] = (0, w.useState)(false);
   let [i, a] = (0, w.useState)(null);
   let [o, s] = (0, w.useState)(null);
+  const [teacherSaveFeedback,setTeacherSaveFeedback] = (0, w.useState)('');
   const [teacherDeleteState,setTeacherDeleteState] = (0, w.useState)({id:null,error:''});
   let [c, l] = (0, w.useState)(``);
   const [photoPreview, setPhotoPreview] = (0, w.useState)(null);
@@ -21961,6 +21962,11 @@ function Sr({ data: e, onUpdate: t }) {
     // Keep the form open until the revision-checked Supabase push is confirmed.
     if (result?.status !== 'synced' || result.pending)
       throw Error(result?.error?.message || 'Teacher is pending in this browser. Supabase has not confirmed the save. Keep this form open and retry with the same teacher ID.');
+    try {
+      setTeacherSaveFeedback(await bnEnsureTeacherAppAccount(n));
+    } catch (error) {
+      throw Error('Teacher profile saved. Teacher App access still needs setup. '+error.message+' Retry Save Teacher to check again.');
+    }
     r(false);
     s(null);
   };
@@ -21971,11 +21977,13 @@ function Sr({ data: e, onUpdate: t }) {
     try {
       // Revoke class-scoped App access before deleting the cloud faculty profile.
       // If the subsequent ERP save fails, an existing App account remains safely disabled.
-      await bnDeactivateTeacherAppAccount(teacher);
+      const access = await bnDeactivateTeacherAppAccount(teacher);
       const result = await t({...e,teachers:e.teachers.filter(row => row.id !== teacher.id)},
         'DELETE','Teacher',teacher.name || teacher.employeeCode || 'Faculty record');
       if (result?.status !== 'synced' || result.pending)
         throw Error(result?.error?.message || 'Teacher deletion is not confirmed in Supabase. Resolve sync conflict and retry.');
+      // A concurrent first enrollment can finish between the initial check and deletion.
+      if (access.status === 'not-enrolled') await bnDeactivateTeacherAppAccount(teacher);
       a(null);
     } catch(error) {
       setTeacherDeleteState({id:null,error:error?.message || 'Teacher was not deleted in Supabase.'});
@@ -22013,6 +22021,7 @@ function Sr({ data: e, onUpdate: t }) {
           </Component176>
         }
       />
+      {teacherSaveFeedback && <p role="status">{teacherSaveFeedback}</p>}
       <Component177 className={`student-summary`}>
         <I label={`Teachers`} value={e.teachers.length} />
         <I
@@ -22365,6 +22374,10 @@ function Cr({
           if (a.employmentType === 'Visiting' &&
               (!Number.isInteger(Number(a.visitsPerMonth)) || Number(a.visitsPerMonth) < 1 || Number(a.visitsPerMonth) > 31)) {
             u('Visiting staff require 1–31 visits per month.');return;
+          }
+          if (!n && a.status === 'Active' && !/^[6-9]\d{9}$/.test(String(a.mobile||'').trim())) {
+            u('Enter the teacher’s 10-digit mobile number for first Teacher App login.');
+            return;
           }
           if (a.mobile && !/^\d{10}$/.test(a.mobile)) {
             u(`Enter a valid 10-digit mobile number.`);
@@ -22817,9 +22830,8 @@ function Cr({
     </L>
   );
 }
-async function bnInviteTeacherAppAccount(teacher) {
-  // A faculty profile is NOT an Auth user. This action runs only on an explicit
-  // admin click, against the existing admin-only Supabase Edge Function.
+async function bnInviteTeacherAppAccount(teacher, automatic = false) {
+  // Supabase verifies the school administrator and the saved faculty record.
   const email = String(teacher?.email || '').trim().toLowerCase();
   if (!teacher?.id || teacher.status !== 'Active') throw Error('Save an Active faculty profile before creating Teacher App access.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -22838,22 +22850,33 @@ async function bnInviteTeacherAppAccount(teacher) {
   }
   const response = await fetch('https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-invite-staff', {
     method: 'POST',
+    ...(automatic ? {signal:AbortSignal.timeout(20000)} : {}),
     cache: 'no-store',
     headers: {
       apikey: 'sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT',
       Authorization: 'Bearer ' + schoolSession.access_token,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ email, role: 'teacher', facultyId:String(teacher.id) })
+    body: JSON.stringify({ email, role: 'teacher', facultyId:String(teacher.id), ...(automatic ? {action:'ensure_teacher_account'} : {}) })
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result?.ok || result?.role !== 'teacher' ||
-      !['invited','updated'].includes(result?.status) ||
+      !(automatic ? ['invited','already-active','existing-unlinked','disabled'] : ['invited','updated','existing-auth-linked']).includes(result?.status) ||
       String(result?.email || '').toLowerCase() !== email) {
     throw Error(result?.error || 'Supabase did not confirm teacher account enrollment. No invitation success has been recorded.');
   }
   // Accepted by Supabase Auth != delivered to inbox or activated by teacher.
   return { email, status: result.status, assignments: Number(result.assignments || 0) };
+}
+async function bnEnsureTeacherAppAccount(teacher) {
+  if (teacher.status !== 'Active') return '';
+  if (!/^[6-9]\d{9}$/.test(String(teacher.mobile || '').trim()))
+    return 'Teacher profile saved. Add a valid mobile number to set up Teacher App access.';
+  const result = await bnInviteTeacherAppAccount(teacher, true);
+  if (result.status === 'disabled') return 'Teacher profile saved. Teacher App access is disabled. Open the teacher profile to review access.';
+  if (result.status === 'existing-unlinked') return 'Teacher profile saved. An active login uses this email. Review its profile link under Teacher App access.';
+  if (result.status === 'already-active') return 'Teacher profile saved. Teacher App access is active.';
+  return 'Teacher profile saved. Teacher App access is ready.';
 }
 async function bnDeactivateTeacherAppAccount(teacher) {
   const email = String(teacher?.email || '').trim().toLowerCase();

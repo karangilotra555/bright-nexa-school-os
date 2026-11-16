@@ -44,11 +44,11 @@ test('WhatsApp setup changes preserve source/host/desktop bundle mirrors and PWA
   for(const dir of ['docs','app-extracted/dist'])assert.equal(read(dir+'/'+filename),content);
  }
  const index=read('index.html'),entry=read('school-erp-entry.js'),sw=read('sw.js');
- assert.match(index,/school-erp-entry\.js\?v=20261115-logout-v1/);
- assert.match(entry,/index-brightnexa-v2\.js\?v=20261115-logout-v1/);
+ assert.match(index,/school-erp-entry\.js\?v=20261116-teacher-app-setup-v1/);
+ assert.match(entry,/index-brightnexa-v2\.js\?v=20261116-teacher-app-setup-v1/);
  const digest=x=>crypto.createHash('sha256').update(fs.readFileSync(path.join(root,x))).digest('hex');
  assert.ok(sw.includes('"url":"index.html","revision":"'+digest('index.html')+'"'));
- assert.ok(sw.includes('"url":"school-erp-entry.js?v=20261115-logout-v1","revision":"'+digest('school-erp-entry.js')+'"'));
+ assert.ok(sw.includes('"url":"school-erp-entry.js?v=20261116-teacher-app-setup-v1","revision":"'+digest('school-erp-entry.js')+'"'));
  assert.ok(sw.includes('url:"assets/index-brightnexa-v2.js",revision:"'+digest('assets/index-brightnexa-v2.js')+'"'));
 });
 test('editable React JSX with field help links compiles',()=>{

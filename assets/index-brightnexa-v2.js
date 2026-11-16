@@ -20927,6 +20927,7 @@ function Sr({ data: e2, onUpdate: t2 }) {
   let [n2, r2] = (0, w.useState)(false);
   let [i2, a2] = (0, w.useState)(null);
   let [o2, s2] = (0, w.useState)(null);
+  const [teacherSaveFeedback, setTeacherSaveFeedback] = (0, w.useState)("");
   const [teacherDeleteState, setTeacherDeleteState] = (0, w.useState)({ id: null, error: "" });
   let [c2, l2] = (0, w.useState)(``);
   const [photoPreview, setPhotoPreview] = (0, w.useState)(null);
@@ -20947,6 +20948,11 @@ function Sr({ data: e2, onUpdate: t2 }) {
     );
     if (result?.status !== "synced" || result.pending)
       throw Error(result?.error?.message || "Teacher is pending in this browser. Supabase has not confirmed the save. Keep this form open and retry with the same teacher ID.");
+    try {
+      setTeacherSaveFeedback(await bnEnsureTeacherAppAccount(n3));
+    } catch (error) {
+      throw Error("Teacher profile saved. Teacher App access still needs setup. " + error.message + " Retry Save Teacher to check again.");
+    }
     r2(false);
     s2(null);
   };
@@ -20955,7 +20961,7 @@ function Sr({ data: e2, onUpdate: t2 }) {
     if (!window.confirm(`Delete ${teacher.name || teacher.employeeCode || "this faculty record"}? Teacher App access must be revoked separately.`)) return;
     setTeacherDeleteState({ id: teacher.id, error: "" });
     try {
-      await bnDeactivateTeacherAppAccount(teacher);
+      const access = await bnDeactivateTeacherAppAccount(teacher);
       const result = await t2(
         { ...e2, teachers: e2.teachers.filter((row) => row.id !== teacher.id) },
         "DELETE",
@@ -20964,6 +20970,7 @@ function Sr({ data: e2, onUpdate: t2 }) {
       );
       if (result?.status !== "synced" || result.pending)
         throw Error(result?.error?.message || "Teacher deletion is not confirmed in Supabase. Resolve sync conflict and retry.");
+      if (access.status === "not-enrolled") await bnDeactivateTeacherAppAccount(teacher);
       a2(null);
     } catch (error) {
       setTeacherDeleteState({ id: null, error: error?.message || "Teacher was not deleted in Supabase." });
@@ -20996,7 +21003,7 @@ function Sr({ data: e2, onUpdate: t2 }) {
       subtitle: `Manage staff profiles, subjects, and class assignments`,
       action: /* @__PURE__ */ w.createElement(Component176, { className: `primary-button`, onClick: () => r2(true) }, /* @__PURE__ */ w.createElement(_Component2, { size: 18 }), `Add Teacher`)
     }
-  ), /* @__PURE__ */ w.createElement(Component177, { className: `student-summary` }, /* @__PURE__ */ w.createElement(I, { label: `Teachers`, value: e2.teachers.length }), /* @__PURE__ */ w.createElement(
+  ), teacherSaveFeedback && /* @__PURE__ */ w.createElement("p", { role: "status" }, teacherSaveFeedback), /* @__PURE__ */ w.createElement(Component177, { className: `student-summary` }, /* @__PURE__ */ w.createElement(I, { label: `Teachers`, value: e2.teachers.length }), /* @__PURE__ */ w.createElement(
     I,
     {
       label: `Active`,
@@ -21321,6 +21328,10 @@ function Cr({
           }
           if (a2.employmentType === "Visiting" && (!Number.isInteger(Number(a2.visitsPerMonth)) || Number(a2.visitsPerMonth) < 1 || Number(a2.visitsPerMonth) > 31)) {
             u2("Visiting staff require 1\u201331 visits per month.");
+            return;
+          }
+          if (!n2 && a2.status === "Active" && !/^[6-9]\d{9}$/.test(String(a2.mobile || "").trim())) {
+            u2("Enter the teacher\u2019s 10-digit mobile number for first Teacher App login.");
             return;
           }
           if (a2.mobile && !/^\d{10}$/.test(a2.mobile)) {
@@ -21727,7 +21738,7 @@ function Cr({
     )
   );
 }
-async function bnInviteTeacherAppAccount(teacher) {
+async function bnInviteTeacherAppAccount(teacher, automatic = false) {
   const email = String(teacher?.email || "").trim().toLowerCase();
   if (!teacher?.id || teacher.status !== "Active") throw Error("Save an Active faculty profile before creating Teacher App access.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -21751,19 +21762,30 @@ async function bnInviteTeacherAppAccount(teacher) {
   }
   const response = await fetch("https://mrfvbwmyxndrakskqyas.supabase.co/functions/v1/school-invite-staff", {
     method: "POST",
+    ...automatic ? { signal: AbortSignal.timeout(2e4) } : {},
     cache: "no-store",
     headers: {
       apikey: "sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT",
       Authorization: "Bearer " + schoolSession.access_token,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ email, role: "teacher", facultyId: String(teacher.id) })
+    body: JSON.stringify({ email, role: "teacher", facultyId: String(teacher.id), ...automatic ? { action: "ensure_teacher_account" } : {} })
   });
   const result = await response.json().catch(() => null);
-  if (!response.ok || !result?.ok || result?.role !== "teacher" || !["invited", "updated"].includes(result?.status) || String(result?.email || "").toLowerCase() !== email) {
+  if (!response.ok || !result?.ok || result?.role !== "teacher" || !(automatic ? ["invited", "already-active", "existing-unlinked", "disabled"] : ["invited", "updated", "existing-auth-linked"]).includes(result?.status) || String(result?.email || "").toLowerCase() !== email) {
     throw Error(result?.error || "Supabase did not confirm teacher account enrollment. No invitation success has been recorded.");
   }
   return { email, status: result.status, assignments: Number(result.assignments || 0) };
+}
+async function bnEnsureTeacherAppAccount(teacher) {
+  if (teacher.status !== "Active") return "";
+  if (!/^[6-9]\d{9}$/.test(String(teacher.mobile || "").trim()))
+    return "Teacher profile saved. Add a valid mobile number to set up Teacher App access.";
+  const result = await bnInviteTeacherAppAccount(teacher, true);
+  if (result.status === "disabled") return "Teacher profile saved. Teacher App access is disabled. Open the teacher profile to review access.";
+  if (result.status === "existing-unlinked") return "Teacher profile saved. An active login uses this email. Review its profile link under Teacher App access.";
+  if (result.status === "already-active") return "Teacher profile saved. Teacher App access is active.";
+  return "Teacher profile saved. Teacher App access is ready.";
 }
 async function bnDeactivateTeacherAppAccount(teacher) {
   const email = String(teacher?.email || "").trim().toLowerCase();

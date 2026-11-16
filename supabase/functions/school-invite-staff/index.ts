@@ -28,7 +28,7 @@ type TeacherRecord = {
 async function teacherContext(admin: ReturnType<typeof createClient>, schoolId:string, facultyId:string, email:string) {
   if (!facultyId) throw Error("Select a saved ERP faculty profile before creating Teacher App access.");
   const {data:workspace,error:readError} = await admin.from("school_workspaces")
-    .select("snapshot").eq("institution_id",schoolId).single();
+    .select("snapshot,revision").eq("institution_id",schoolId).single();
   if (readError || !workspace) throw Error("Could not verify the current Supabase faculty record.");
   const list = workspace.snapshot?.operations?.teachers;
   const faculty:TeacherRecord|undefined = Array.isArray(list)
@@ -62,17 +62,14 @@ async function teacherContext(admin: ReturnType<typeof createClient>, schoolId:s
     if (candidates.length !== 1) throw Error("Teacher has a missing or ambiguous class assignment: "+label);
     for (const subject of subjects) teachingRows.push({class_id:candidates[0].id,subject});
   }
-  return {faculty,type,teachingRows,mobile,partDays,partHours,visits};
+  return {faculty,type,teachingRows,mobile,partDays,partHours,visits,revision:workspace.revision};
 }
 
-async function syncTeacher(
-  admin:ReturnType<typeof createClient>, schoolId:string, userId:string,
-  facultyId:string, email:string, profile:Awaited<ReturnType<typeof teacherContext>>
-) {
-  const {faculty,type,teachingRows,mobile,partDays,partHours,visits}=profile;
-  const staffRecord={
-    institution_id:schoolId,school_user_id:userId,display_name:norm(faculty.name),
-    staff_category:"teaching",designation:norm(faculty.designation)||null,
+function teacherStaffRecord(facultyId:string, email:string, profile:Awaited<ReturnType<typeof teacherContext>>) {
+  const {faculty,type,mobile,partDays,partHours,visits}=profile;
+  return {
+    display_name:norm(faculty.name),
+    staff_category:"teaching",designation:norm(faculty.designation),
     employment_type:employment[type],contact_email:email,contact_mobile:mobile,
     contract_end_on:type==="Contract"?norm(faculty.contractEndDate):null,
     days_per_week:type==="Part-time"?partDays:null,
@@ -80,6 +77,14 @@ async function syncTeacher(
     visits_per_month:type==="Visiting"?visits:null,
     notes:"ERP faculty ref: "+facultyId
   };
+}
+
+async function syncTeacher(
+  admin:ReturnType<typeof createClient>, schoolId:string, userId:string,
+  facultyId:string, email:string, profile:Awaited<ReturnType<typeof teacherContext>>
+) {
+  const {faculty,teachingRows}=profile;
+  const staffRecord={...teacherStaffRecord(facultyId,email,profile),institution_id:schoolId,school_user_id:userId};
   const {error:staffError}=await admin.from("school_staff_profiles")
     .upsert(staffRecord,{onConflict:"school_user_id,institution_id"});
   if (staffError) throw Error("Teacher profile sync failed. Account is disabled for safety.");
@@ -175,6 +180,9 @@ Deno.serve(async (req:Request)=>{
     const email=norm(body?.email).toLowerCase(),role=norm(body?.role);
     if(!validEmail(email) || !roles.has(role))return reply({error:"Valid staff email and role required"},400);
     let facultyId=norm(body?.facultyId);
+    const automatic=body?.action==="ensure_teacher_account";
+    if(automatic&&(role!=="teacher"||!facultyId))
+      return reply({error:"Verified faculty ID and teacher role are required."},400);
     if(["activation_link","initial_mobile_password"].includes(String(body?.action)) && role==="teacher" && !facultyId){
       const {data:staffMatches,error:matchError}=await admin.from("school_staff_profiles")
         .select("notes").eq("institution_id",member.institution_id)
@@ -276,10 +284,32 @@ Deno.serve(async (req:Request)=>{
     }
 
     const {data:existing,error:existingError}=await admin.from("school_users")
-      .select("id,role,status").eq("institution_id",member.institution_id).eq("email",email).maybeSingle();
+      .select("id,role,status,auth_user_id").eq("institution_id",member.institution_id).eq("email",email).maybeSingle();
     if(existingError)return reply({error:"Staff enrollment check failed"},500);
     if(existing && (role!=="teacher" || existing.role!=="teacher"))
       return reply({error:"This email is already enrolled at this school"},409);
+
+    if(automatic){
+      const {data:link,error:linkError}=await admin.from("school_staff_profiles")
+        .select("school_user_id").eq("institution_id",member.institution_id)
+        .eq("notes","ERP faculty ref: "+facultyId).maybeSingle();
+      if(linkError)return reply({error:"Could not verify faculty account linkage."},503);
+      if(link?.school_user_id&&link.school_user_id!==existing?.id)
+        return reply({error:"This faculty profile is linked to a different login email. Review Teacher App access before changing it."},409);
+      if(existing){
+        const {data:owner,error:ownerError}=await admin.from("school_staff_profiles")
+          .select("notes").eq("institution_id",member.institution_id).eq("school_user_id",existing.id).maybeSingle();
+        if(ownerError)return reply({error:"Could not verify Teacher App profile ownership."},503);
+        if(owner?.notes?.startsWith("ERP faculty ref: ")&&owner.notes!=="ERP faculty ref: "+facultyId)
+          return reply({error:"This login email is already linked to another faculty profile."},409);
+        if(existing.status==="disabled")return reply({ok:true,email,role,status:"disabled"});
+        if(!existing.auth_user_id)return reply({error:"Teacher App membership needs account recovery."},409);
+        const {data:linkedAuth,error:linkedError}=await admin.auth.admin.getUserById(existing.auth_user_id);
+        if(linkedError||norm(linkedAuth?.user?.email).toLowerCase()!==email)
+          return reply({error:"Teacher App identity could not be verified."},409);
+        return reply({ok:true,email,role,status:link?.school_user_id?"already-active":"existing-unlinked"});
+      }
+    }
 
     // Updating an existing teacher is a data-sync action, not a new email invitation.
     if(existing && facultyProfile){
@@ -297,19 +327,39 @@ Deno.serve(async (req:Request)=>{
     // Auth lookup runs server-side only; no privileged key is exposed to the ERP.
     let authUserId = "";
     let reusedAuth = false;
+    let provisionScope;
+    if(automatic&&facultyProfile){
+      const encoder=new TextEncoder();
+      const key=await crypto.subtle.importKey("raw",encoder.encode(serviceKey),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+      const scopeText=JSON.stringify([member.institution_id,facultyId,email,facultyProfile.mobile]);
+      const signature=new Uint8Array(await crypto.subtle.sign("HMAC",key,encoder.encode(scopeText)));
+      const credential=Array.from(signature,byte=>byte.toString(16).padStart(2,"0")).join("");
+      provisionScope={school:member.institution_id,faculty:facultyId,credential};
+    }
     for (let page=1; page<=20; page++) {
       const {data:pageData,error:pageError}=await admin.auth.admin.listUsers({page,perPage:1000});
       if(pageError)return reply({error:"Unable to inspect existing Auth accounts safely"},503);
       const users=pageData?.users || [];
       const matchUser=users.find(u=>norm(u.email).toLowerCase()===email);
-      if(matchUser){authUserId=matchUser.id;reusedAuth=true;break;}
+      if(matchUser){
+        if(automatic){
+          const scope=matchUser.app_metadata?.bn_teacher_provision;
+          if(scope?.school!==member.institution_id||scope?.faculty!==facultyId||matchUser.last_sign_in_at||
+             matchUser.app_metadata?.bn_teacher_mobile_pending!==true)
+            return reply({error:"This email already has an account. Review existing Teacher App access before linking it."},409);
+          if(scope.credential!==provisionScope?.credential)
+            return reply({error:"The mobile number changed during account setup. Review Teacher App access to complete recovery."},409);
+        }
+        authUserId=matchUser.id;reusedAuth=true;break;
+      }
       if(users.length<1000)break;
     }
     if(!authUserId){
       if(role==="teacher"&&facultyProfile){
         const {data:created,error:createError}=await admin.auth.admin.createUser({
           email,password:facultyProfile.mobile!,email_confirm:true,
-          app_metadata:{bn_teacher_mobile_pending:true}
+          app_metadata:{bn_teacher_mobile_pending:true,
+            ...(provisionScope?{bn_teacher_provision:provisionScope}:{})}
         });
         if(createError||!created?.user)return reply({error:"Teacher mobile-password account creation failed."},422);
         authUserId=created.user.id;
@@ -321,6 +371,17 @@ Deno.serve(async (req:Request)=>{
           return reply({error:"Auth invitation failed: "+(inviteError?.message||"Unknown mail provider error")},422);
         authUserId=invite.user.id;
       }
+    }
+    if(automatic&&facultyProfile){
+      const {data:memberId,error:provisionError}=await admin.rpc("bn_create_teacher_app_membership",{
+        p_school:member.institution_id,p_actor:member.id,p_auth_user:authUserId,p_revision:facultyProfile.revision,
+        p_email:email,p_staff:teacherStaffRecord(facultyId,email,facultyProfile),
+        p_assignments:facultyProfile.teachingRows
+      });
+      if(provisionError||!memberId)
+        return reply({error:"Teacher App setup was not confirmed. Retry Save Teacher."},503);
+      return reply({ok:true,email,role,status:"invited",emailSent:false,initialMobilePassword:true,
+        assignments:facultyProfile.teachingRows.length},201);
     }
     const {data:record,error:insertError}=await admin.from("school_users")
       .insert({institution_id:member.institution_id,email,role,
