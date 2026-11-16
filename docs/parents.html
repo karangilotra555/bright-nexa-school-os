@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#061a36"><meta name="description" content="Bright Nexa Student & Parent — school updates, attendance, fees and homework in one place.">
-<link rel="manifest" href="./parents.webmanifest"><title>Bright Nexa Student & Parent</title><link rel="stylesheet" href="school-mobile-details.css?v=20261105-profile">
+<link rel="manifest" href="./parents.webmanifest"><title>Bright Nexa Student & Parent</title><link rel="stylesheet" href="school-mobile-details.css?v=20261116-attendance-colors">
 <style>
 :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#102640;background:#f3f7fb;font-synthesis:none}*{box-sizing:border-box}
 body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #138ed8;outline-offset:2px}
@@ -13,7 +13,14 @@ body{margin:0}button,input,textarea{font:inherit}button{cursor:pointer}button:fo
 .logo{background:#ffffff2c;border:1px solid #ffffff48;width:47px;height:47px;border-radius:16px;display:grid;place-items:center;font-size:25px}
 .brandName{font-weight:800;font-size:17px;letter-spacing:-.4px}.eyebrow{font-size:12px;opacity:.85}
 .welcome{margin-top:25px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.welcome h1{font-size:24px;line-height:1.2;margin:6px 0}.welcome p{font-size:13px;margin:0;opacity:.9}
+.welcome>div:first-child{min-width:0}
+.welcome h1{font-size:clamp(24px,6.7vw,32px);line-height:1.14;margin:0 0 7px;overflow-wrap:anywhere}
+.welcome p{font-size:14px;margin:0;color:#d9ecff}
+.welcome .avatar{flex:none;overflow:hidden}
+#childPicker{appearance:none;display:block;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%230b315e' stroke-width='1.7' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") right 12px center/16px no-repeat;border:1px solid #dce6ef;border-radius:13px;padding:11px 34px 11px 13px;font:inherit;color:#102640}
+#childPicker:focus-visible{outline:3px solid #138ed8;outline-offset:2px}
+#syncStatus{margin:12px 0 17px;color:#526681;font-size:12px}
+#syncStatus:empty{display:none}
 .avatar{width:62px;height:62px;border-radius:23px;background:#fff2;display:grid;place-items:center;border:2px solid #ffffff65;font-size:27px;font-weight:800}
 main{padding:22px 17px}
 h2{font-size:18px;letter-spacing:-.3px;margin:7px 0 13px}
@@ -92,10 +99,10 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
 <div id="app" class="hidden">
  <header class="top">
   <div class="brand"><div style="display:flex;gap:11px;align-items:center"><div class="logo" aria-hidden="true">🎓</div><div><div class="brandName">Bright Nexa <span style="font-weight:500">Parents</span></div><div class="eyebrow" id="schoolShort">School portal</div></div></div><div aria-label="School portal" style="font-size:23px">✦</div></div>
-  <div class="welcome"><div><p>Your school information, in your pocket</p><h1>Hi, welcome! 👋</h1><p id="childSummary">Student overview</p></div><div id="avatar" class="avatar">BN</div></div>
+  <div class="welcome"><div><h1 id="studentName">Student overview</h1><p id="childSummary"></p></div><div id="avatar" class="avatar">BN</div></div>
  </header>
  <main>
-<label class="field" for="childPicker">Student account</label><select id="childPicker" class="wide" aria-label="Select your child"></select><p id="syncStatus" role="status" aria-live="polite"></p>
+<div id="childSwitcher" hidden><label class="field" for="childPicker">Switch student</label><select id="childPicker" class="wide"></select></div><p id="syncStatus" role="status" aria-live="polite"></p>
   <div data-view="home">
    <section class="section"><h2>Overview</h2>
     <div class="grid">
@@ -137,7 +144,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages" aria-label="Messages"><span aria-hidden="true">✉</span><span id="inboxUnread" aria-hidden="true" hidden></span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261105-profile"></script><script src="parents-cloud.js?v=20261116-parent-inbox-v1"></script>
+<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261116-attendance-month"></script><script src="parents-cloud.js?v=20261116-parent-inbox-v1"></script>
 <script>
 (() => {
 'use strict';
@@ -277,7 +284,10 @@ async function json(res){const p=await res.json().catch(()=>({}));if(!res.ok)thr
 function setTab(tab){document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('hidden',el.dataset.view!==tab));document.querySelectorAll('[data-tab]').forEach(el=>{el.classList.toggle('active',el.dataset.tab===tab);el.setAttribute('aria-current',el.dataset.tab===tab?'page':'false')});window.scrollTo(0,0)}
 function render(p){
  data=p;const s=p.student||{},a=p.attendance||{},f=p.fees||{};
- setText('schoolShort',p.school?.name||'School portal');setText('childSummary',[s.name,s.className,s.section].filter(Boolean).join(' · '));
+ setText('schoolShort',p.school?.name||'School portal');
+ setText('studentName',s.name||'Student overview');
+ $('childSummary').textContent=[s.className,s.section?'Section '+s.section:''].filter(Boolean).join(' · ');
+ $('childSummary').hidden=!$('childSummary').textContent;
  const avatar=$('avatar');
  avatar.replaceChildren();
  if(s.photoUrl&&/^https:\/\/[-a-z0-9]+\.supabase\.co\/storage\/v1\/object\/sign\//i.test(s.photoUrl)){
@@ -302,8 +312,8 @@ function render(p){
    m.publishedAt?'Published '+day(m.publishedAt):''));
 }
 async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0),link=links[index];$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(link);if(generation!==loadGeneration)return;render(p);setInbox(p,link);$('childPicker').options[index].textContent=p.student.name;show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;data=null;resetInbox();show('gate');$('loginError').textContent=e.message}}
-function logout(){resetInbox();$('studentProfileSections').replaceChildren();$('publishedMarksheets').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
-async function openLinked(nextLinks){resetInbox();links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();}
+function logout(){resetInbox();$('attendanceList').replaceChildren();$('studentProfileSections').replaceChildren();$('publishedMarksheets').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
+async function openLinked(nextLinks){resetInbox();links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childSwitcher').hidden=links.length===1;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();}
 $('studentForgotToggle').addEventListener('click',()=>{
  const form=$('forgotStudentForm'),visible=form.classList.contains('hidden');
  form.classList.toggle('hidden',!visible);
@@ -321,7 +331,7 @@ $('loginForm').addEventListener('submit',async e=>{e.preventDefault();const butt
 $('passwordForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');$('passwordError').textContent='';if($('newPassword').value!==$('confirmPassword').value){$('passwordError').textContent='Passwords do not match.';return}button.disabled=true;try{const nextLinks=await cloud.changePassword($('newPassword').value);e.target.reset();await openLinked(nextLinks)}catch(err){$('passwordError').textContent=err.message}finally{button.disabled=false}});
 $('changePassword').addEventListener('click',()=>{show('passwordGate');$('passwordHeading').textContent='Change your password';$('passwordError').textContent='';});
 $('passwordCancel').addEventListener('click',()=>{ $('passwordForm').reset();logout(); });
-$('childPicker').addEventListener('change',()=>{data=null;resetInbox();show('gate');refresh()});
+$('childPicker').addEventListener('change',()=>{data=null;resetInbox();$('attendanceList').replaceChildren();show('gate');refresh()});
 $('inboxSearch').addEventListener('input',renderInbox);
 $('inboxFilter').addEventListener('change',renderInbox);
 $('leaveForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{await cloud.leave($('leaveFrom').value,$('leaveTo').value,$('leaveReason').value);$('leaveResult').textContent='Request submitted to school.';e.target.reset();await refresh();setTab('activity')}catch(err){$('leaveResult').textContent=err.message}finally{button.disabled=false}});
