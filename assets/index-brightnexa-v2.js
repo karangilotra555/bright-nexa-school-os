@@ -19046,7 +19046,48 @@ function Yn(e2, t2, n2, r2) {
 function Xn(e2, t2, n2, r2, i2) {
   let a2 = /* @__PURE__ */ new Map();
   let o2 = /* @__PURE__ */ new Map();
-  for (let t3 of e2.feePayments) {
+  const allPayments = Array.isArray(e2.feePayments) ? [...e2.feePayments] : [];
+  if (Array.isArray(e2.externalFeeLedger)) {
+    const byId = new Map(e2.externalFeeLedger.map(entry => [entry.id, entry]));
+    const reversals = new Set();
+    for (const entry of e2.externalFeeLedger) {
+      const match = String(entry.reference || '').match(/^REV-([a-f0-9-]{36})$/i);
+      if (match) {
+        const revId = match[1];
+        const orig = byId.get(revId);
+        if (orig && entry.description === 'Correction reversal of ' + revId &&
+            orig.studentId === entry.studentId && orig.kind !== entry.kind &&
+            Number(orig.amountRupees) === Number(entry.amountRupees)) {
+          reversals.add(revId);
+        }
+      }
+    }
+    const studentId = t2?.id;
+    for (const entry of e2.externalFeeLedger) {
+      const revOf = String(entry.reference || '').slice(4);
+      if (entry.kind !== 'payment' || reversals.has(entry.id) ||
+          (entry.reference === 'REV-' + revOf && reversals.has(revOf))) continue;
+      if (entry.studentId === studentId || entry.studentId === 'cloud:' + studentId) {
+        const matchedCategory = (e2.feeStructures || []).find(s => s.category === entry.description)?.category ||
+          entry.description || (e2.feeStructures?.[0]?.category || 'Tuition Fee');
+        allPayments.push({
+          id: entry.id,
+          receiptNumber: entry.reference || '',
+          studentId,
+          category: matchedCategory,
+          amount: Number(entry.amountRupees) || 0,
+          baseAmountReceived: Number(entry.amountRupees) || 0,
+          paymentDate: entry.date,
+          billingMonth: entry.date ? Number(entry.date.slice(5, 7)) : undefined,
+          billingYear: entry.date ? Number(entry.date.slice(0, 4)) : undefined,
+          status: 'Posted',
+          method: 'Staff Portal',
+          external: true
+        });
+      }
+    }
+  }
+  for (let t3 of allPayments) {
     let e3 = `${t3.studentId}|${t3.category}`;
     let n3 = o2.get(e3) || [];
     n3.push(t3);
@@ -19500,17 +19541,39 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
       }
       return att;
     });
-    const oldKey = `${oldClass.name}-${oldClass.section}`;
-    const newKey = `${newClass.name}-${newClass.section}`;
+    const oldStream = oldClass.academicStream || '';
+    const newStream = newClass.academicStream || '';
+    const oldKey = oldStream ? `${oldClass.name}-${oldClass.section} (${oldStream})` : `${oldClass.name}-${oldClass.section}`;
+    const newKey = newStream ? `${newClass.name}-${newClass.section} (${newStream})` : `${newClass.name}-${newClass.section}`;
+    const oldBaseKey = `${oldClass.name}-${oldClass.section}`;
+
     updatedTeachers = updatedTeachers.map((teacher) => {
       if (Array.isArray(teacher.assignedClasses) && teacher.assignedClasses.length > 0) {
-        const hasOld = teacher.assignedClasses.some(
-          (ac) => ac === oldKey || isClassMatch(ac.split("-")[0], oldClass.name) && isSectionMatch(ac.split("-")[1], oldClass.section)
-        );
+        const hasOld = teacher.assignedClasses.some((ac) => {
+          if (ac === oldKey) return true;
+          if (!oldStream && ac === oldBaseKey) return true;
+          const match = /^([^(]+?)-([^(]+?)(?:\s*\(([^)]+)\))?$/.exec(ac);
+          if (match) {
+            const [, acName, acSec, acStream = ''] = match;
+            if (oldStream && acStream && oldStream.toLowerCase() !== acStream.trim().toLowerCase()) return false;
+            if (oldStream && !acStream) return false;
+            return isClassMatch(acName, oldClass.name) && isSectionMatch(acSec, oldClass.section);
+          }
+          return false;
+        });
         if (hasOld) {
           const newAssigned = teacher.assignedClasses.map((ac) => {
-            if (ac === oldKey || isClassMatch(ac.split("-")[0], oldClass.name) && isSectionMatch(ac.split("-")[1], oldClass.section)) {
+            if (ac === oldKey || (!oldStream && ac === oldBaseKey)) {
               return newKey;
+            }
+            const match = /^([^(]+?)-([^(]+?)(?:\s*\(([^)]+)\))?$/.exec(ac);
+            if (match) {
+              const [, acName, acSec, acStream = ''] = match;
+              if (oldStream && acStream && oldStream.toLowerCase() !== acStream.trim().toLowerCase()) return ac;
+              if (oldStream && !acStream) return ac;
+              if (isClassMatch(acName, oldClass.name) && isSectionMatch(acSec, oldClass.section)) {
+                return newKey;
+              }
             }
             return ac;
           });
@@ -19521,11 +19584,14 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
     });
     if (updatedTimetable.length > 0) {
       updatedTimetable = updatedTimetable.map((item) => {
-        if (isClassMatch(item.className, oldClass.name) && (!oldClass.section || isSectionMatch(item.section, oldClass.section))) {
+        if (isClassMatch(item.className, oldClass.name) &&
+            (!oldClass.section || isSectionMatch(item.section, oldClass.section)) &&
+            (!oldClass.academicStream || !item.academicStream || item.academicStream.toLowerCase() === oldClass.academicStream.toLowerCase())) {
           return {
             ...item,
             className: newClass.name,
-            section: newClass.section || item.section
+            section: newClass.section || item.section,
+            ...(Object.hasOwn(item, 'academicStream') ? { academicStream: newClass.academicStream || '' } : {})
           };
         }
         return item;
@@ -21314,6 +21380,9 @@ function Cr({
             return;
           }
           const knownClasses = new Set(teacherClassOptions.map((row) => `${row.name}-${row.section}`));
+          for (const row of teacherClassOptions) {
+            if (row.academicStream) knownClasses.add(`${row.name}-${row.section} (${row.academicStream})`);
+          }
           if ((a2.assignedClasses || []).some((value) => !knownClasses.has(value))) {
             u2("One or more assigned classes no longer exist. Update teacher assignments.");
             return;
@@ -21557,18 +21626,19 @@ function Cr({
           placeholder: `Workshops, orientation, and in-service training`
         }
       )), /* @__PURE__ */ w.createElement(R, { label: `Assigned Classes`, wide: true }, /* @__PURE__ */ w.createElement(Component251, { className: `check-grid` }, e2.map((e3) => {
-        let t3 = `${e3.name}-${e3.section}`;
+        let t3 = e3.academicStream ? `${e3.name}-${e3.section} (${e3.academicStream})` : `${e3.name}-${e3.section}`;
         const Component248 = `input`;
         const Component249 = `span`;
         const Component250 = `label`;
+        const isChecked = a2.assignedClasses.includes(t3) || (!e3.academicStream && a2.assignedClasses.includes(`${e3.name}-${e3.section}`));
         return /* @__PURE__ */ w.createElement(Component250, { key: e3.id }, /* @__PURE__ */ w.createElement(
           Component248,
           {
             type: `checkbox`,
-            checked: a2.assignedClasses.includes(t3),
+            checked: isChecked,
             onChange: (e4) => m2(
               `assignedClasses`,
-              e4.target.checked ? [...a2.assignedClasses, t3] : a2.assignedClasses.filter((e5) => e5 !== t3)
+              e4.target.checked ? [...a2.assignedClasses.filter((x) => x !== t3 && x !== `${e3.name}-${e3.section}`), t3] : a2.assignedClasses.filter((x) => x !== t3 && x !== `${e3.name}-${e3.section}`)
             )
           }
         ), /* @__PURE__ */ w.createElement(Component249, null, t3));
@@ -24098,7 +24168,43 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
     ]).filter(Boolean),
     [e2.feeStructures, n2.session]
   );
-  let ue = (0, w.useMemo)(() => e2.feePayments.filter(Kn), [e2.feePayments]);
+  let ue = (0, w.useMemo)(() => {
+    const list = Array.isArray(e2.feePayments) ? [...e2.feePayments.filter(Kn)] : [];
+    if (Array.isArray(e2.externalFeeLedger)) {
+      const byId = new Map(e2.externalFeeLedger.map(entry => [entry.id, entry]));
+      const reversals = new Set();
+      for (const entry of e2.externalFeeLedger) {
+        const match = String(entry.reference || '').match(/^REV-([a-f0-9-]{36})$/i);
+        if (match) {
+          const revId = match[1];
+          const orig = byId.get(revId);
+          if (orig && entry.description === 'Correction reversal of ' + revId &&
+              orig.studentId === entry.studentId && orig.kind !== entry.kind &&
+              Number(orig.amountRupees) === Number(entry.amountRupees)) {
+            reversals.add(revId);
+          }
+        }
+      }
+      for (const entry of e2.externalFeeLedger) {
+        const revOf = String(entry.reference || '').slice(4);
+        if (entry.kind !== 'payment' || reversals.has(entry.id) ||
+            (entry.reference === 'REV-' + revOf && reversals.has(revOf))) continue;
+        list.push({
+          id: entry.id,
+          receiptNumber: entry.reference || '',
+          studentId: entry.studentId,
+          category: entry.description || 'Staff Portal payment',
+          amount: Number(entry.amountRupees) || 0,
+          baseAmountReceived: Number(entry.amountRupees) || 0,
+          paymentDate: entry.date,
+          status: 'Posted',
+          method: 'Staff Portal',
+          external: true
+        });
+      }
+    }
+    return list;
+  }, [e2.feePayments, e2.externalFeeLedger]);
   let de = (0, w.useMemo)(() => ue.reduce((e3, t3) => e3 + t3.amount, 0), [ue]);
   let fe = (0, w.useMemo)(
     () => Ci(
@@ -24134,11 +24240,11 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
   let ve = (0, w.useMemo)(() => {
     let n3 = new Map(t2.map((e3) => [e3.id, e3]));
     let r3 = k.toLowerCase();
-    return e2.feePayments.filter((e3) => {
+    return ue.filter((e3) => {
       let t3 = n3.get(e3.studentId);
       return [e3.receiptNumber, e3.category, t3?.name, t3?.studentUniqueId].join(` `).toLowerCase().includes(r3);
     });
-  }, [e2.feePayments, k, t2]);
+  }, [ue, k, t2]);
   let ye = (t3) => {
     let n3 = e2.feeStructures.some((e3) => e3.id === t3.id);
     let i3 = n3 ? e2.feeStructures.map((e3) => e3.id === t3.id ? t3 : e3) : [t3, ...e2.feeStructures];
@@ -24195,6 +24301,10 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
     d2(`9`);
   };
   let M2 = (t3) => {
+    if (Array.isArray(e2.externalFeeLedger) && e2.externalFeeLedger.some(x => (x.studentId === t3.studentId || x.studentId === 'cloud:' + t3.studentId))) {
+      window.alert('Accountant ledger entries already exist in Supabase for this student. Use Staff Portal > Fees & Payments to record or correct fee entries.');
+      return;
+    }
     r2(
       {
         ...e2,
@@ -24209,6 +24319,10 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
   };
   let Se2 = (t3) => {
     if (!!j && !(t3.balance <= 0)) {
+      if (Array.isArray(e2.externalFeeLedger) && e2.externalFeeLedger.some(x => (x.studentId === j.id || x.studentId === 'cloud:' + j.id))) {
+        window.alert('Accountant ledger entries already exist in Supabase for this student. Use Staff Portal > Fees & Payments to review or waive fee entries.');
+        return;
+      }
       if (window.confirm(
         `Waive the full outstanding amount of \u20B9${t3.balance.toLocaleString(`en-IN`)} for ${t3.structure.category}${t3.period ? ` (${t3.period})` : ``}?`
       )) {

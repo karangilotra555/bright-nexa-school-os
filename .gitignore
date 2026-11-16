@@ -7,7 +7,7 @@ node_modules/
 *.tmp
 *.ipynb
 .env
-deploy-render.*
+/deploy-render.*
 scratch/
 
 # Data, local database and secret keys
