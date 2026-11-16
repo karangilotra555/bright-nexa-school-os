@@ -5,6 +5,7 @@ const ANON=Deno.env.get('SUPABASE_ANON_KEY')||'';
 const SCHOOL_ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const RENDER='https://bright-nexa-school-os.onrender.com';
 const GITHUB='https://karangilotra555.github.io';
+const GITHUB_PAGES_RECOVERY=Deno.env.get('BN_GITHUB_PAGES_RECOVERY')==='true';
 const ALLOWED=new Set([RENDER,GITHUB]);
 const mobile=(v:string)=>{let s=String(v||'').replace(/\D/g,'');if(s.length===12&&s.startsWith('91'))s=s.slice(2);return /^[6-9]\d{9}$/.test(s)?s:'';};
 const digest=async(s:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -77,7 +78,7 @@ export function handler(create=createClient){return async(req:Request)=>{
    if(!linked?.user||linked.user.app_metadata?.bn_password_pending===true||linked.user.app_metadata?.bn_student_id!==record.id)return generic();
    const {error:sendError}=await auth.auth.signInWithOtp({email,options:{
      shouldCreateUser:true,
-     emailRedirectTo:(origin===GITHUB?GITHUB+'/bright-nexa-school-os':RENDER)+'/parent-password-recovery.html?school='+school
+     emailRedirectTo:(GITHUB_PAGES_RECOVERY&&origin===GITHUB?GITHUB+'/bright-nexa-school-os':RENDER)+'/parent-password-recovery.html?school='+school
    }});
    if(sendError)console.warn('[StudentRecovery] Mail service rejected a reset-link request.');
    return generic();
@@ -175,4 +176,3 @@ export function handler(create=createClient){return async(req:Request)=>{
  }catch(_){return reply({error:'Unable to complete student login. Try again or contact the school office.'},500);}
 };}
 Deno.serve(handler());
-
