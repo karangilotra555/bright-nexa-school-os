@@ -1887,7 +1887,7 @@
       line.markEntry=entry;
     }
     $('teacherMarksSave').disabled=!list.length;
-    if(list.length)marksStatus(list.length+' students · Marks saved here are drafts.');
+    if(list.length)marksStatus(list.length+' students · Leave a score blank and save to clear its draft mark.');
   }
   async function saveClassMarks(){
     const request=teacherMarksRequest,button=$('teacherMarksSave');
@@ -1897,7 +1897,8 @@
     if(!changed.length){marksStatus('No marks changed.');return;}
     const conflict=changed.find(entry=>entry.conflict);
     if(conflict){marksStatus(conflict.row.student_name+' has a newer saved mark. Review it and re-enter your mark.');conflict.input.focus();return;}
-    const invalid=changed.find(({row,input})=>!input.value||!Number.isFinite(Number(input.value))||Number(input.value)<0||Number(input.value)>row.maximum);
+    const invalid=changed.find(({row,input})=>input.validity.badInput||(input.value!==''&&
+      (!Number.isFinite(Number(input.value))||Number(input.value)<0||Number(input.value)>row.maximum)));
     if(invalid){
       marksStatus('Enter marks between 0 and '+invalid.row.maximum+' for '+invalid.row.student_name+'.');
       invalid.input.focus();return;
@@ -1917,7 +1918,7 @@
         const group=changed.slice(offset,offset+batchSize);
         const p_marks=group.map(({row,input,key})=>{
           setMarkDraft(key,{value:input.value,expected:row.obtained});
-          return {student_id:row.student_id,obtained:Number(input.value),expected:row.obtained};
+          return {student_id:row.student_id,obtained:input.value===''?null:Number(input.value),expected:row.obtained};
         });
         try{
           const results=await api('rpc/bn_teacher_save_exam_marks_batch','','POST',{
@@ -1930,13 +1931,13 @@
             throw Error('Marks could not be confirmed. Try again.');
           }
           for(const {row,input,line,hint,key} of group){
-            const result=byStudent.get(row.student_id),value=Number(input.value);
+            const result=byStudent.get(row.student_id),value=input.value===''?null:Number(input.value);
             if(result.error||result.obtained!==value){
               line.dataset.error='true';hint.textContent=result.error||'Mark could not be confirmed. Try again.';
               continue;
             }
-            row.obtained=value;input.value=value;setMarkDraft(key,null);
-            line.dataset.error='false';hint.textContent='Saved · '+value+' / '+row.maximum;saved++;
+            row.obtained=value;input.value=value??'';setMarkDraft(key,null);
+            line.dataset.error='false';hint.textContent=value===null?'Cleared · Unmarked':'Saved · '+value+' / '+row.maximum;saved++;
           }
         }catch(error){
           if(request!==teacherMarksRequest)return;

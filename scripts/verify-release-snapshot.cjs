@@ -92,7 +92,8 @@ precache('school-private-cache.js?v='+cacheVersion[1],'school-private-cache.js')
 // sessions, recovery navigation, encrypted storage/migration/queue and hydration.
 const security=require('node:child_process').spawnSync(process.execPath,['--test',
  'tests/precache-assets.test.cjs','tests/server.test.cjs','tests/recovery-navigation.test.cjs','tests/private-cache.test.cjs','tests/workspace-persistence.test.cjs','tests/teacher-mobile-workspace.test.cjs',
- 'tests/workspace-cloud.test.cjs','tests/student-email-recovery.test.cjs'],
+ 'tests/workspace-cloud.test.cjs','tests/student-email-recovery.test.cjs',
+ 'tests/marksheet-component-integrity.test.cjs','tests/print-documents-cloud-verification.test.cjs'],
  {cwd:root,stdio:'inherit'});
 if(security.error)throw security.error;
 assert.equal(security.status,0,'Security release regressions failed');

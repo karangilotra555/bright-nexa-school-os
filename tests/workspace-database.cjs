@@ -251,6 +251,15 @@ end loop;end$$;
  create or replace function school_private.teacher_can(i uuid,c uuid,a text,s text) returns boolean language sql stable as
  $$select auth.uid()='${teacher}'::uuid and i='${school}'::uuid and c='${scienceId}'::uuid and a='marks.write' and s='Math'$$;`);
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261116072400_teacher_batch_exam_marks.sql'),'utf8'));
+ // PGlite lacks pgcrypto here. Use deterministic fixture functions to exercise
+ // the SQL scoping, cardinality and response shape. Hosted crypto is unchanged.
+ await db.exec(`create schema extensions;
+ create function extensions.gen_random_bytes(integer) returns bytea language sql as $$select decode(repeat('c1',$1),'hex')$$;
+ create function extensions.digest(bytea,text) returns bytea language sql as $$select sha256($1)$$;
+ create function extensions.hmac(bytea,bytea,text) returns bytea language sql as $$select sha256($1||$2)$$;`);
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261115085000_sign_supabase_student_id_cards.sql'),'utf8'));
+ for(const filename of fs.readdirSync(path.join(__dirname,'../supabase/migrations')).filter(name=>name.endsWith('_clear_teacher_marks_and_verify_stream.sql')))
+  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations',filename),'utf8'));
  await db.exec('set role authenticated');
  await as(teacher);
  const examRoster=async classId=>(await db.query("select student_id from bn_teacher_exam_marks($1,$2) where exam_id='term-11' order by student_id",[school,classId])).rows.map(row=>row.student_id);
@@ -274,6 +283,38 @@ end loop;end$$;
  const afterBatch=await pull();
  assert.equal(afterBatch.revision,result.revision+1,'only one workspace write for two marks, with idempotent retry');
  assert.deepEqual(afterBatch.snapshot.operations.marks.filter(m=>m.examId==='term-11').map(m=>m.obtainedMarks).sort(),[61,79]);
+ // An admin payload captured before the teacher save must fail atomically.
+ const cards=(await db.query('select * from bn_issue_student_card_signatures($1)',[school])).rows;
+ const scienceCard=cards.find(card=>card.admission_number==='SCI');
+ const verify=async admission=>(await db.query('select bn_verify_student_card($1,$2,$3) result',[school,admission,scienceCard.signature])).rows[0].result;
+ assert.equal((await verify('SCI')).student.academicStream,'Science');
+ assert.equal((await verify('COM')).verified,false);
+ // A legacy database with duplicate admission numbers must still verify
+ // only the student whose immutable ID matches the QR signature.
+ await db.exec('reset role');
+ await db.exec('alter table school_students drop constraint school_students_institution_id_admission_number_key');
+ await db.query("insert into school_students(institution_id,class_id,admission_number,name) values($1,$2,'SCI','Legacy duplicate')",[school,commerceId]);
+ await db.exec('set role authenticated');
+ assert.equal((await verify('SCI')).student.name,'Science Student');
+
+ await assert.rejects(push(result.revision),/revision conflict/i);
+ assert.deepEqual((await pull()).snapshot.operations.marks.filter(m=>m.examId==='term-11').map(m=>m.obtainedMarks).sort(),[61,79]);
+ const beforeClear=await pull();
+ await as(teacher);
+ await assert.rejects(batch(scienceId,[{student_id:scienceStudent,expected:61}]),/invalid or duplicate/i);
+ const [staleClear]=await batch(scienceId,[{student_id:scienceStudent,expected:60,obtained:null}]);
+ assert.match(staleClear.error,/changed/);
+ const [cleared]=await batch(scienceId,[{student_id:scienceStudent,expected:61,obtained:null}]);
+ assert.equal(cleared.error,null);
+ assert.equal(cleared.obtained,null);
+ const [clearedAgain]=await batch(scienceId,[{student_id:scienceStudent,expected:61,obtained:null}]);
+ assert.equal(clearedAgain.error,null);
+ const [zero]=await batch(scienceId,[{student_id:scienceStudent,expected:null,obtained:0}]);
+ assert.equal(zero.obtained,0);
+ await as(admin);
+ const afterClears=await pull();
+ assert.equal(afterClears.revision,beforeClear.revision+2);
+ assert.deepEqual(afterClears.snapshot.operations.marks.filter(m=>m.examId==='term-11').map(m=>m.obtainedMarks).sort(),[0,79]);
  await db.exec("select set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false)");
  await assert.rejects(pull(),/administrator required/); assert.equal((await db.query('select * from school_workspaces')).rows.length,0);
  await db.close(); console.log('workspace database: migration and behavioral assertions passed (isolated PGlite fixture)');

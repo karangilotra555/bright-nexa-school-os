@@ -156,7 +156,7 @@ async function showPublicVerification(adm, sig, school) {
     if (verified && data.student) {
       $('vName').textContent = value(data.student.name);
       $('vAdm').textContent = value(data.student.admissionNumber);
-      $('vClass').textContent = [data.student.className,data.student.section].filter(Boolean).join(' — ');
+      $('vClass').textContent = [data.student.className,data.student.section,data.student.academicStream].filter(Boolean).join(' — ');
       $('vRoll').textContent = value(data.student.rollNumber);
     }
   } catch (_) {

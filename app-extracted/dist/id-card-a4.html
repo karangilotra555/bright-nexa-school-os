@@ -916,13 +916,16 @@
       return {
         id: String(s.id || ''), name: String(s.name || '').toUpperCase(),
         rollNumber: s.rollNumber == null ? '' : String(s.rollNumber).padStart(2,'0'),
-        admissionNumber: String(s.admissionNumber || ''), className:cName,section:s.section||'',
+        admissionNumber: String(s.admissionNumber || ''), className:cName,section:s.section||'',academicStream:s.academicStream||'',
         fatherName: String(s.fatherName || s.guardianName || '').toUpperCase(),
         contactNumber:s.parentMobile||s.contactNumber||s.phone||s.alternateMobile||'',
         bloodGroup:s.bloodGroup||'',dob:s.dateOfBirth||s.dob||'',
         address:s.address||'',busStop:s.busStop||s.transportRoute||'',
         photoUrl:s.photoDataUrl||s.photoUrl||s.avatarUrl||null
       };
+    }
+    function studentClassLabel(student) {
+      return [[student.className,student.section].filter(Boolean).join(' - '),student.academicStream].filter(Boolean).join(' • ');
     }
     function reportCloudState(message,isError) {
       const node=document.getElementById('bnPrintCloudStatus');
@@ -1070,7 +1073,7 @@
       const studentSelect = document.getElementById('studentFilter');
       let studentHtml = `<option value="ALL">All in Filter (${filtered.length} Students)</option>`;
       filtered.forEach(s => {
-        studentHtml += `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${escapeHtml(s.rollNumber)} • ${escapeHtml(s.className)}-${escapeHtml(s.section)})</option>`;
+        studentHtml += `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${escapeHtml(s.rollNumber)} • ${escapeHtml(studentClassLabel(s))})</option>`;
       });
       studentSelect.innerHTML = studentHtml;
 
@@ -1098,7 +1101,7 @@
       if (!picker) return;
       const previous = picker.value;
       picker.replaceChildren(new Option('Select student', ''));
-      for (const st of activeStudents) picker.add(new Option(st.name + ' · ' + st.className, String(st.id)));
+      for (const st of activeStudents) picker.add(new Option(st.name + ' · ' + studentClassLabel(st), String(st.id)));
       if ([...picker.options].some(o => o.value === previous)) picker.value = previous;
     }
     function clearIdPhoto() {
@@ -1146,7 +1149,7 @@
           (s.name && s.name.toLowerCase().includes(query)) ||
           (s.rollNumber && s.rollNumber.toLowerCase().includes(query)) ||
           (s.admissionNumber && s.admissionNumber.toLowerCase().includes(query)) ||
-          (s.className && s.className.toLowerCase().includes(query)) ||
+          studentClassLabel(s).toLowerCase().includes(query) ||
           (s.fatherName && s.fatherName.toLowerCase().includes(query)) ||
           (s.contactNumber && s.contactNumber.includes(query))
         );
@@ -1241,7 +1244,7 @@
                     <img src="${photoSrc}" alt="${escapeHtml(st.name)}" onerror="this.onerror=null;this.src='${avatarSvg}'">
                   </div>
                   <div class="student-name">${escapeHtml(st.name)}</div>
-                  <div class="class-badge">${escapeHtml(st.className)} - ${escapeHtml(st.section)}</div>
+                  <div class="class-badge">${escapeHtml(studentClassLabel(st))}</div>
 
                   <div class="info-list">
                     <div class="info-row">

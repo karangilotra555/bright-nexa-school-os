@@ -821,11 +821,11 @@
         <tr>
           <th style="width: 6%;">S.NO.</th>
           <th style="width: 32%; text-align: left;">SUBJECT NAME</th>
-          <th style="width: 10%;">PERIODIC TEST (10)</th>
-          <th style="width: 10%;">NOTEBOOK (5)</th>
-          <th style="width: 10%;">ENRICHMENT (5)</th>
-          <th style="width: 11%;">ANNUAL EXAM (80)</th>
-          <th style="width: 11%;">TOTAL (100)</th>
+          <th style="width: 10%;">PERIODIC TEST</th>
+          <th style="width: 10%;">NOTEBOOK</th>
+          <th style="width: 10%;">ENRICHMENT</th>
+          <th style="width: 11%;">EXAM COMPONENT</th>
+          <th style="width: 11%;">MARKS OBTAINED</th>
           <th style="width: 8%;">GRADE</th>
         </tr>
       </thead>
@@ -1065,9 +1065,9 @@
     function setSchoolProfile(inst,school){
       document.getElementById('schoolName').textContent=String(inst.name||school.name||'School');
       document.getElementById('principalName').textContent=inst.principalName||'Principal not recorded';
-      document.getElementById('schoolAffil').textContent=inst.boardType
-        ? 'Board: '+inst.boardType+' • Affiliation number not independently verified'
-        : 'Board / affiliation not verified';
+      document.getElementById('schoolAffil').textContent=[inst.boardType && 'Board: '+inst.boardType,
+        inst.affiliationNumber && 'Affiliation No.: '+inst.affiliationNumber,
+        inst.udiseCode && 'UDISE: '+inst.udiseCode].filter(Boolean).join(' • ') || 'Board / affiliation not recorded';
       document.getElementById('sessionTag').textContent=inst.session
         ? '• ACADEMIC SESSION: '+inst.session : '• ACADEMIC SESSION: Not recorded';
       const address=[inst.address,inst.city,inst.state,inst.pinCode].filter(Boolean).join(', ');
@@ -1090,7 +1090,7 @@
       const subjects=[];
       let obtained=0,maximum=0;
       for(const row of subjectRows){
-        const name=String(row.subject||'').trim(),score=Number(row.obtained),max=Number(row.maximum);
+        const name=String(row.subject||'').trim(),score=row.obtained,max=row.maximum;
         if(!name||!Number.isFinite(score)||!Number.isFinite(max)||max<=0||score<0||score>max){
           printStatus('Published marks contain invalid subject values; printing blocked.',true);
           return;
@@ -1201,7 +1201,7 @@
           .map(s=>({
             id:cloudIds.get(String(s.id||''))||'',name:String(s.name||''),roll:String(s.rollNumber||'—'),
             admission:String(s.admissionNumber||'—'),
-            classSec:[s.className,s.section].filter(Boolean).join(' - ')||'Not assigned',
+            classSec:[[s.className,s.section].filter(Boolean).join(' - '),s.academicStream].filter(Boolean).join(' • ')||'Not assigned',
             mother:s.motherName||'Not recorded',father:s.fatherName||s.guardianName||'Not recorded',
             dob:s.dateOfBirth||'Not recorded',attendance:'Not verified',percentage:'—',
             grade:'—',promotion:'Not verified',
