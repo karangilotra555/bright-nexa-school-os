@@ -33,8 +33,10 @@ export function handler(create=createClient){return async(req:Request)=>{
    const {data:i}=await admin.from('institutions').select('status').eq('id',school).maybeSingle();
    return i&&['active','trial'].includes(i.status)?s:null;
   }
-  async function findAdmission(admission:string,school:string){
-   let query=admin.from('school_students').select('id,institution_id').eq('admission_number',admission).eq('status','active');
+  async function findAdmission(admission:string,school:string,ignoreCase=false){
+   let query=admin.from('school_students').select('id,institution_id').eq('status','active');
+   // Escape the only LIKE wildcard allowed by admission validation.
+   query=ignoreCase?query.ilike('admission_number',admission.replace(/_/g,'\\_')):query.eq('admission_number',admission);
    if(school)query=query.eq('institution_id',school);
    const {data,error}=await query.limit(2);
    if(error||!Array.isArray(data)||data.length>1)return null;
@@ -152,8 +154,17 @@ export function handler(create=createClient){return async(req:Request)=>{
   const {data:ok,error:rateError}=await admin.rpc('bn_parent_login_attempt',{p_bucket:await digest('account:'+(requestedSchool||'any')+':'+admission.toLowerCase()),p_limit:10});
   if(rateError)return reply({error:'Login service unavailable'},503);
   if(!ok)return reply({error:'Too many attempts. Try again after 15 minutes.'},429);
-  let found=await findAdmission(admission,requestedSchool);
-  if(!found&&requestedSchool){const {data:alias,error:aliasError}=await admin.from('school_student_profiles').select('student_id').eq('institution_id',requestedSchool).eq('admission_login_alias',admission).maybeSingle();if(!aliasError&&alias)found={id:alias.student_id,institution_id:requestedSchool};}
+  let found=null;
+  if(requestedSchool){
+   // Preserve existing school-specific login IDs before considering mixed case.
+   found=await findAdmission(admission,requestedSchool);
+   if(!found){
+    const {data:alias,error:aliasError}=await admin.from('school_student_profiles').select('student_id').eq('institution_id',requestedSchool).eq('admission_login_alias',admission).maybeSingle();
+    if(aliasError)return reply({error:'Login service unavailable'},503);
+    if(alias)found={id:alias.student_id,institution_id:requestedSchool};
+   }
+  }
+  found??=await findAdmission(admission,requestedSchool,true);
   const s=found?await student(found.id,found.institution_id):null;
   const invalid=()=>reply({error:'Admission number or password is incorrect. First login requires the mobile number saved by your school.'},401);
   if(!s)return invalid();
