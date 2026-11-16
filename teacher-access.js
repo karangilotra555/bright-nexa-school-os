@@ -68,7 +68,7 @@
       ]);
       if(request!==teacherScheduleRequest||me?.institution_id!==school||me.id!==teacherId)return;
       const bySlot=new Map(lessons.filter(lesson=>lesson.teacher_user_id===teacherId).map(lesson=>[lesson.slot_id,lesson]));
-      const classLabels=new Map(allClasses.map(cls=>[cls.id,[cls.name,cls.section].filter(Boolean).join(' ')]));
+      const classLabels=new Map(allClasses.map(cls=>[cls.id,shortClassName(cls)]));
       const weekdays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
       const today=new Date().getDay();
       let priorDay=null;
@@ -280,7 +280,8 @@
     section.replaceChildren(page);
     display('loginSection',false);display('portalSection',true);display('logout',true);
   }
-  const className=c=>c?c.name+' '+(c.section||'')+' ('+c.academic_year+')':'Unknown class';
+  const shortClassName=c=>[c.name,c.section,c.academic_stream].filter(Boolean).join(' ');
+  const className=c=>c?shortClassName(c)+' ('+c.academic_year+')':'Unknown class';
   function clearChildren(e){e.replaceChildren();}
   function options(target,records,label){
     const s=$(target);s.replaceChildren();
@@ -690,7 +691,7 @@
   async function reload(){
     await loadRolePermissions();
     const institution_id=me.institution_id;
-    const cQ=query({select:'id,institution_id,name,section,academic_year',institution_id:eq(institution_id),order:'name.asc',limit:'500'});
+    const cQ=query({select:'id,institution_id,name,section,academic_year,academic_stream',institution_id:eq(institution_id),order:'name.asc',limit:'500'});
     const sQ=query({select:'id,name,admission_number,class_id,institution_id,status',institution_id:eq(institution_id),status:eq('active'),limit:'1000'});
     const aQ=query({select:'*',institution_id:eq(institution_id),limit:'1000'});
     const hQ=query({select:'*',institution_id:eq(institution_id),order:'created_at.desc',limit:'100'});
@@ -1241,7 +1242,7 @@
     if(!keepAttendance){
       const previousAttendanceClass=$('attendanceClass').value;
       const attendanceClasses=writableClasses('can_take_attendance');
-      options('attendanceClass',attendanceClasses,mobileTeacher()?cls=>[cls.name,cls.section].filter(Boolean).join(' '):className);
+      options('attendanceClass',attendanceClasses,mobileTeacher()?cls=>shortClassName(cls):className);
       if(attendanceClasses.some(cls=>cls.id===previousAttendanceClass))$('attendanceClass').value=previousAttendanceClass;
     }
     const homeworkClass=$('homeworkClass'),previousHomeworkClass=homeworkClass.value;
@@ -1774,6 +1775,43 @@
   const teacherMarkDrafts=new Map();
   const teacherMarkKey=row=>JSON.stringify([$('teacherMarksClass').value,row.exam_id,row.subject,row.student_id]);
   const marksStatus=message=>put('teacherMarksStatus',message);
+  const markDraftButton=$('teacherMarksDeviceDrafts');
+  function markDraftStorageKey(key){
+    return 'bright-nexa-school-os:teacher-mark-draft:v1:'+JSON.stringify([me.institution_id,me.id,key]);
+  }
+  function readMarkDraft(key){
+    if(teacherMarkDrafts.has(key))return teacherMarkDrafts.get(key);
+    const cache=window.BNPrivateCache;
+    if(!cache?.isUnlocked()||!me)return;
+    try{
+      const draft=JSON.parse(cache.storage.getItem(markDraftStorageKey(key))||'null');
+      if(draft&&typeof draft.value==='string'&&(draft.expected===null||Number.isFinite(draft.expected)))return draft;
+    }catch(_){marksStatus('Could not read the encrypted device draft.');}
+  }
+  function setMarkDraft(key,draft){
+    if(draft)teacherMarkDrafts.set(key,draft);
+    else teacherMarkDrafts.delete(key);
+    const cache=window.BNPrivateCache;
+    if(!cache?.isUnlocked()||!me)return;
+    const storageKey=markDraftStorageKey(key);
+    try{
+      if(draft)cache.storage.setItem(storageKey,JSON.stringify(draft));
+      else cache.storage.removeItem(storageKey);
+    }catch(_){marksStatus('Could not update the encrypted device draft. Save your marks online before closing.');}
+  }
+  markDraftButton?.addEventListener('click',async()=>{
+    const cache=window.BNPrivateCache,member=me;
+    if(!cache||!member)return;
+    markDraftButton.disabled=true;
+    try{
+      await cache.ensureUnlocked();
+      if(me!==member||!mobileTeacher())return;
+      for(const [key,draft] of teacherMarkDrafts)setMarkDraft(key,draft);
+      renderClassMarks();
+    }catch(_){marksStatus('Could not open encrypted device drafts.');}
+    finally{markDraftButton.disabled=false;}
+  });
+
   function resetTeacherMarks(){
     teacherMarksRequest++;
     teacherMarksRows=[];teacherMarksSaving=false;teacherMarksLoading=false;teacherMarkDrafts.clear();
@@ -1808,6 +1846,8 @@
   }
   function renderClassMarks(){
     const root=$('teacherMarksRoster');
+    const cache=window.BNPrivateCache;
+    display('teacherMarksDeviceDrafts',Boolean(cache&&!cache.isUnlocked()));
     root.replaceChildren();
     for(const id of ['teacherMarksStudent','teacherMarksScore']){
       $(id).disabled=true;
@@ -1830,7 +1870,8 @@
       info.append(dom('strong',row.student_name),hint);
       const input=dom('input');
       input.type='number';input.min='0';input.max=row.maximum;input.step='any';input.inputMode='decimal';
-      const draft=teacherMarkDrafts.get(key);
+      let draft=readMarkDraft(key);
+      if(draft?.value===String(row.obtained??'')){setMarkDraft(key,null);draft=null;}
       input.placeholder='/ '+row.maximum;input.value=draft?.value??row.obtained??'';
       input.setAttribute('aria-label',row.student_name+', marks out of '+row.maximum);
       const entry={row,input,hint,key,conflict:Boolean(draft&&draft.expected!==row.obtained&&draft.value!==String(row.obtained??''))};
@@ -1839,8 +1880,7 @@
         hint.textContent='Current saved mark: '+(row.obtained??'unmarked')+'. Re-enter your mark to confirm.';
       }
       input.addEventListener('input',()=>{
-        if(input.value===String(row.obtained??''))teacherMarkDrafts.delete(key);
-        else teacherMarkDrafts.set(key,{value:input.value,expected:row.obtained});
+        setMarkDraft(key,input.value===String(row.obtained??'')?null:{value:input.value,expected:row.obtained});
         entry.conflict=false;line.dataset.error='false';hint.textContent=row.admission_number||('Out of '+row.maximum);
       });
       line.append(info,input);root.append(line);
@@ -1871,22 +1911,38 @@
     marksStatus('Saving '+changed.length+' marks…');
     let saved=0;
     try{
-      for(const {row,input,line,hint,key} of changed){
+      const batchSize=500;
+      for(let offset=0;offset<changed.length;offset+=batchSize){
         if(request!==teacherMarksRequest)return;
-        const value=Number(input.value);
-        teacherMarkDrafts.set(key,{value:input.value,expected:row.obtained});
+        const group=changed.slice(offset,offset+batchSize);
+        const p_marks=group.map(({row,input,key})=>{
+          setMarkDraft(key,{value:input.value,expected:row.obtained});
+          return {student_id:row.student_id,obtained:Number(input.value),expected:row.obtained};
+        });
         try{
-          const result=await api('rpc/bn_teacher_save_exam_mark','','POST',{
-            p_school:school,p_class:classId,p_exam:row.exam_id,p_student:row.student_id,
-            p_subject:row.subject,p_obtained:value,p_expected:row.obtained
+          const results=await api('rpc/bn_teacher_save_exam_marks_batch','','POST',{
+            p_school:school,p_class:classId,p_exam:group[0].row.exam_id,p_subject:group[0].row.subject,p_marks
           });
           if(request!==teacherMarksRequest)return;
-          if(result?.obtained!==value)throw Error('Mark could not be confirmed. Try again.');
-          row.obtained=value;input.value=value;teacherMarkDrafts.delete(key);
-          line.dataset.error='false';hint.textContent='Saved · '+value+' / '+row.maximum;saved++;
+          if(!Array.isArray(results))throw Error('Marks could not be confirmed. Try again.');
+          const byStudent=new Map(results.map(result=>[result.student_id,result]));
+          if(byStudent.size!==group.length||results.length!==group.length||p_marks.some(mark=>!byStudent.has(mark.student_id))){
+            throw Error('Marks could not be confirmed. Try again.');
+          }
+          for(const {row,input,line,hint,key} of group){
+            const result=byStudent.get(row.student_id),value=Number(input.value);
+            if(result.error||result.obtained!==value){
+              line.dataset.error='true';hint.textContent=result.error||'Mark could not be confirmed. Try again.';
+              continue;
+            }
+            row.obtained=value;input.value=value;setMarkDraft(key,null);
+            line.dataset.error='false';hint.textContent='Saved · '+value+' / '+row.maximum;saved++;
+          }
         }catch(error){
           if(request!==teacherMarksRequest)return;
-          line.dataset.error='true';hint.textContent=error.message||'Could not save this mark.';
+          for(const {line,hint} of group){
+            line.dataset.error='true';hint.textContent=error.message||'Could not save these marks.';
+          }
         }
       }
       const outstanding=changed.length-saved;
@@ -1915,7 +1971,7 @@
     try{
       const classes=await api('rpc/bn_teacher_marks_classes','','POST',{p_school:school});
       if(request!==teacherMarksRequest)return;
-      options('teacherMarksClass',classes,className);
+      options('teacherMarksClass',classes,c=>className(allClasses.find(known=>known.id===c.id)||c));
       if(classes.some(row=>row.id===previous))select.value=previous;
       if(!classes.length){renderMarksChoices(0);marksStatus('No classes are assigned for marks entry.');return;}
       const scope={p_school:school,p_class:select.value},rows=[],batchSize=500;

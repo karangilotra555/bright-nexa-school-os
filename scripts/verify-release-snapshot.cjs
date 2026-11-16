@@ -91,7 +91,8 @@ precache('school-private-cache.js?v='+cacheVersion[1],'school-private-cache.js')
 // Executable regressions: no disclosure without a valid QR signature, no DOB
 // sessions, recovery navigation, encrypted storage/migration/queue and hydration.
 const security=require('node:child_process').spawnSync(process.execPath,['--test',
- 'tests/precache-assets.test.cjs','tests/server.test.cjs','tests/recovery-navigation.test.cjs','tests/private-cache.test.cjs','tests/workspace-persistence.test.cjs','tests/teacher-mobile-workspace.test.cjs'],
+ 'tests/precache-assets.test.cjs','tests/server.test.cjs','tests/recovery-navigation.test.cjs','tests/private-cache.test.cjs','tests/workspace-persistence.test.cjs','tests/teacher-mobile-workspace.test.cjs',
+ 'tests/workspace-cloud.test.cjs','tests/student-email-recovery.test.cjs'],
  {cwd:root,stdio:'inherit'});
 if(security.error)throw security.error;
 assert.equal(security.status,0,'Security release regressions failed');

@@ -7,9 +7,10 @@ const {JSDOM}=require('jsdom');
 const read=file=>fs.readFileSync(path.join(__dirname,'..',file),'utf8');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
-function fixture(handler){
+function fixture(handler,vault){
   const {window}=new JSDOM(read('teacher-access.html'),{url:'https://school.example/teacher-access.html',runScripts:'outside-only'});
   const id=name=>window.document.getElementById(name),calls=[];
+  if(vault)window.BNPrivateCache=vault;
   window.BNHomeworkFiles={create:()=>({links(){}})};
   window.fetch=async (url,request)=>{
     const call={table:new URL(url).pathname.split('/').pop(),query:new URL(url).searchParams,
@@ -65,7 +66,7 @@ test('mobile class marks use one subject list and retain unconfirmed rows for re
   const f=fixture(call=>{
     if(call.table==='bn_teacher_marks_classes')return [{id:'class-a',name:'LKG'}];
     if(call.table==='bn_teacher_exam_marks')return ['one','two'].map(student_id=>({exam_id:'exam',exam_name:'Term',student_id,student_name:student_id,subject:'Math',maximum:20,obtained:10}));
-    return {obtained:rejectSecond&&call.body.p_student==='two'?10:call.body.p_obtained,maximum:20,changed:true};
+    return call.body.p_marks.map(mark=>({student_id:mark.student_id,obtained:rejectSecond&&mark.student_id==='two'?10:mark.obtained}));
   });
   await f.api.loadTeacherMarks();
   const inputs=f.id('teacherMarksRoster').querySelectorAll('input');
@@ -78,7 +79,7 @@ test('mobile class marks use one subject list and retain unconfirmed rows for re
   rejectSecond=false;
   f.id('teacherMarksForm').dispatchEvent(new f.window.Event('submit',{cancelable:true}));
   await tick();
-  assert.deepEqual(f.calls.filter(call=>call.table==='bn_teacher_save_exam_mark').map(call=>call.body.p_student),['one','two','two']);
+  assert.deepEqual(f.calls.filter(call=>call.table==='bn_teacher_save_exam_marks_batch').map(call=>call.body.p_marks.map(mark=>mark.student_id)),[['one','two'],['two']]);
   f.window.close();
 });
 test('teacher navigation retains access to Marks, Notices, Classes and Account',()=>{
@@ -130,7 +131,7 @@ test('refreshing marks requires review before overwriting a newer server mark',a
   const f=fixture(call=>{
     if(call.table==='bn_teacher_marks_classes')return [{id:'class-a',name:'LKG'}];
     if(call.table==='bn_teacher_exam_marks')return [{exam_id:'exam',exam_name:'Term',student_id:'one',student_name:'First',subject:'Math',maximum:20,obtained:current}];
-    return {obtained:call.body.p_obtained,maximum:20,changed:true};
+    return call.body.p_marks.map(mark=>({student_id:mark.student_id,obtained:mark.obtained}));
   });
   const getInput=()=>f.id('teacherMarksRoster').querySelector('input');
   const input=value=>{getInput().value=value;getInput().dispatchEvent(new f.window.Event('input'));};
@@ -143,9 +144,9 @@ test('refreshing marks requires review before overwriting a newer server mark',a
   assert.match(f.id('teacherMarksRoster').textContent,/Current saved mark: 12/);
   submit();
   await tick();
-  assert.equal(f.calls.some(call=>call.table==='bn_teacher_save_exam_mark'),false);
+  assert.equal(f.calls.some(call=>call.table==='bn_teacher_save_exam_marks_batch'),false);
   input('16');submit();await tick();
-  assert.equal(f.calls.find(call=>call.table==='bn_teacher_save_exam_mark').body.p_expected,12);
+  assert.equal(f.calls.find(call=>call.table==='bn_teacher_save_exam_marks_batch').body.p_marks[0].expected,12);
   f.window.close();
 });
 
@@ -161,4 +162,31 @@ test('a homework conflict refreshes the post and keeps the teacher’s edit visi
   assert.match(f.id('homeworkFeedback').textContent,/Homework changed/);
   assert.match(f.id('homeworkList').textContent,/Updated on another device/);
   f.window.close();
+});
+
+test('mobile draft marks recover after reload from the unlocked private device cache',async()=>{
+  const records=new Map();
+  let unlocked=false;
+  const vault={isUnlocked:()=>unlocked,ensureUnlocked:async()=>{unlocked=true;},storage:{
+    getItem:key=>records.get(key)??null,setItem:(key,value)=>records.set(key,value),removeItem:key=>records.delete(key)
+  }};
+  function response(call){
+    if(call.table==='bn_teacher_marks_classes')return [{id:'class-a',name:'LKG'}];
+    if(call.table==='bn_teacher_exam_marks')return [{exam_id:'exam',exam_name:'Term',student_id:'one',student_name:'First',subject:'Math',maximum:20,obtained:10}];
+    return [];
+  }
+  const first=fixture(response,vault);
+  await first.api.loadTeacherMarks();
+  const draft=first.id('teacherMarksRoster').querySelector('input');
+  draft.value='15';draft.dispatchEvent(new first.window.Event('input'));
+  first.id('teacherMarksDeviceDrafts')?.click();await tick();
+  first.window.close();
+  unlocked=false;
+  const again=fixture(response,vault);
+  await again.api.loadTeacherMarks();
+  assert.equal(again.id('teacherMarksRoster').querySelector('input').value,'10');
+  again.id('teacherMarksDeviceDrafts')?.click();await tick();
+  assert.equal(again.id('teacherMarksRoster').querySelector('input').value,'15');
+  assert.equal(again.calls.some(call=>call.table==='bn_teacher_save_exam_marks_batch'),false);
+  again.window.close();
 });

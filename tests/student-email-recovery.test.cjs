@@ -9,7 +9,7 @@ const {transformSync}=require('esbuild');
 const school='bc80e32d-485d-48a8-903a-92338aa61005';
 const studentId='11111111-1111-1111-1111-111111111111';
 const shadowEmail=createHash('sha256').update('student:'+school+':'+studentId).digest('hex')+'@student.brightnexa.invalid';
-function fixture({duplicate=false}={}){
+function fixture({duplicate=false,origin='https://bright-nexa-school-os.onrender.com'}={}){
  let email='verified-guardian@example.com',pending=false,resetMs=0;
  const sent=[],updates=[];
  const source=fs.readFileSync(path.join(__dirname,'../supabase/functions/school-student-login/index.ts'),'utf8')
@@ -59,7 +59,7 @@ function fixture({duplicate=false}={}){
  }};
  const edge=context.__edgeHandler((_url,key)=>key==='service'?admin:auth);
  const call=async(body,token)=>{
-  const payload=JSON.stringify(body),headers={'Content-Type':'application/json',Origin:'https://bright-nexa-school-os.onrender.com'};
+  const payload=JSON.stringify(body),headers={'Content-Type':'application/json',Origin:origin};
   if(token)headers.Authorization='Bearer '+token;
   const response=await edge(new Request('https://school.supabase.co/functions/v1/school-student-login',{method:'POST',headers,body:payload}));
   return {status:response.status,body:await response.json()};
@@ -117,4 +117,13 @@ test('guardian email reset pages mirror and avoid credential persistence',()=>{
  assert.equal(read('parents-cloud.js'),read('docs/parents-cloud.js'));
  assert.ok(read('parents.html').includes('id="forgotStudentForm"'));
  assert.ok(read('parents-cloud.js').includes("action:'request-reset'"));
+});
+
+test('guardian recovery link stays on the approved GitHub Pages deployment',async()=>{
+ const f=fixture({origin:'https://karangilotra555.github.io'});
+ await f.call({action:'request-reset',admissionNumber:'ADM-1',guardianEmail:'verified-guardian@example.com'});
+ const redirect=new URL(f.sent[0].options.emailRedirectTo);
+ assert.equal(redirect.origin,'https://karangilotra555.github.io');
+ assert.equal(redirect.pathname,'/bright-nexa-school-os/parent-password-recovery.html');
+ assert.equal(redirect.searchParams.get('school'),school);
 });
