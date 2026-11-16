@@ -20,6 +20,11 @@ test('Library endpoints require authenticated staff and never use a browser-only
  assert.match(html,/id="issueBook"/);
  assert.match(html,/id="returnList"/);
 });
+test('Library unreturned loan display resolves transferred/archived students and restricts issue to active',()=>{
+ const js=R('library.js');
+ assert.doesNotMatch(js,/all\('school_students'[^)]*status:'eq\.active'/,'student query must not filter active-only so unreturned loans resolve transferred students');
+ assert.match(js,/status\s*!==\s*'active'|status\s*===\s*'active'/,'unreturned loan display must identify student status and active status');
+});
 test('Library schema is Supabase RLS first and forbids cross-tenant or duplicate active loans',()=>{
  const text=R('supabase/migrations/20261106140122_librarian_role_library_inventory_rls.sql');
  for(const p of [/ENABLE ROW LEVEL SECURITY/g,/CREATE POLICY library_loans_insert/,/CREATE POLICY library_items_read/,/FOREIGN KEY\(student_id,institution_id\)/,/UNIQUE INDEX school_library_one_active_loan/,/school_private\.has_role/,/school_library_loan_update_guard/])assert.match(text,p);
