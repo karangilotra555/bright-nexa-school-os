@@ -9,7 +9,7 @@ const {transformSync}=require('esbuild');
 const school='bc80e32d-485d-48a8-903a-92338aa61005';
 const studentId='11111111-1111-1111-1111-111111111111';
 const shadowEmail=createHash('sha256').update('student:'+school+':'+studentId).digest('hex')+'@student.brightnexa.invalid';
-function fixture({duplicate=false,origin='https://bright-nexa-school-os.onrender.com'}={}){
+function fixture({duplicate=false,origin='https://bright-nexa-school-os.onrender.com',githubPagesRecovery=false}={}){
  let email='verified-guardian@example.com',pending=false,resetMs=0;
  const sent=[],updates=[];
  const source=fs.readFileSync(path.join(__dirname,'../supabase/functions/school-student-login/index.ts'),'utf8')
@@ -19,7 +19,7 @@ function fixture({duplicate=false,origin='https://bright-nexa-school-os.onrender
  assert.ok(source.includes('__edgeHandler=handler'));
  const compiled=transformSync(source,{loader:'ts',target:'es2022',format:'iife'}).code;
  const context={
-   Deno:{env:{get:name=>({SUPABASE_URL:'https://school.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service',SUPABASE_ANON_KEY:'public'})[name]||''}},
+   Deno:{env:{get:name=>({SUPABASE_URL:'https://school.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service',SUPABASE_ANON_KEY:'public',BN_GITHUB_PAGES_RECOVERY:githubPagesRecovery?'true':'false'})[name]||''}},
    crypto:webcrypto,TextEncoder,Request,Response,URLSearchParams,atob,console:{warn(){}}
  };
  vm.createContext(context);
@@ -120,10 +120,19 @@ test('guardian email reset pages mirror and avoid credential persistence',()=>{
 });
 
 test('guardian recovery link stays on the approved GitHub Pages deployment',async()=>{
- const f=fixture({origin:'https://karangilotra555.github.io'});
+ const f=fixture({origin:'https://karangilotra555.github.io',githubPagesRecovery:true});
  await f.call({action:'request-reset',admissionNumber:'ADM-1',guardianEmail:'verified-guardian@example.com'});
  const redirect=new URL(f.sent[0].options.emailRedirectTo);
  assert.equal(redirect.origin,'https://karangilotra555.github.io');
  assert.equal(redirect.pathname,'/bright-nexa-school-os/parent-password-recovery.html');
+ assert.equal(redirect.searchParams.get('school'),school);
+});
+
+test('guardian recovery uses Render while the GitHub Pages recovery page is unpublished',async()=>{
+ const f=fixture({origin:'https://karangilotra555.github.io'});
+ await f.call({action:'request-reset',admissionNumber:'ADM-1',guardianEmail:'verified-guardian@example.com'});
+ const redirect=new URL(f.sent[0].options.emailRedirectTo);
+ assert.equal(redirect.origin,'https://bright-nexa-school-os.onrender.com');
+ assert.equal(redirect.pathname,'/parent-password-recovery.html');
  assert.equal(redirect.searchParams.get('school'),school);
 });
