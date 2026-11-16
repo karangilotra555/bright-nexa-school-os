@@ -101,3 +101,34 @@ test('calculateFeeObligations respects reversal entries in externalFeeLedger', (
   assert.equal(obligations[0].balance, 3000, 'Balance must be 3000 after 1000 credited');
   assert.equal(obligations[0].status, 'Partially Paid');
 });
+
+test('workspace projection does not turn an Accountant receipt into a second ledger payment', () => {
+  const { buildProjection } = require('../school-workspace-cloud.js');
+  const student = {
+    id: 's-1', name: 'Student', admissionNumber: 'A1', dateOfBirth: '2015-02-03',
+    className: '10', section: 'A', status: 'Active'
+  };
+  const institution = { id: 'school', name: 'School', session: '2026-2027' };
+  const operations = {
+    classes: [{ id: 'c-1', name: '10', section: 'A' }],
+    feeStructures: [
+      { id: 'fs-1', className: '10', category: 'Tuition Fee', amount: 4000, frequency: 'Annual' }
+    ],
+    feePayments: [{
+      id: 'local-receipt', studentId: 's-1', category: 'Tuition Fee', amount: 1000,
+      baseAmountReceived: 1000, status: 'Posted'
+    }],
+    externalFeeLedger: [{
+      id: 'cloud-receipt', studentId: 's-1', kind: 'payment', amountRupees: 3000,
+      reference: 'STAFF-01', description: 'Tuition Fee', date: '2026-11-16'
+    }]
+  };
+  const calculate = getCalculateObligations();
+  const snapshot = { institution: { institution }, students: [student], operations };
+  const baseline = { ...snapshot, operations: { ...operations, externalFeeLedger: [] } };
+  assert.equal(calculate(operations, student, institution)[0].balance, 0);
+  const expected = buildProjection(baseline, calculate).fees;
+  assert.equal(expected.find(fee => fee.kind === 'payment').amountRupees, 1000);
+  assert.deepEqual(buildProjection(snapshot, calculate).fees, expected);
+  assert.equal(snapshot.operations.externalFeeLedger.length, 1);
+});
