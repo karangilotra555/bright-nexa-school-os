@@ -75,5 +75,67 @@ test('dashboard guard and ERP entry are identical in root, docs, and distributio
   assert.equal(read(prefix+'school-dashboard-integrity.js'),source);
   assert.equal(read(prefix+'index.html'),read('index.html'));
  }
- assert.equal((read('index.html').match(/school-dashboard-integrity\.js\?v=20261113-teacher-app-counts-v3/g)||[]).length,1);
+ assert.equal((read('index.html').match(/school-dashboard-integrity\.js\?v=20261116-metric-shortcuts-v1/g)||[]).length,1);
+});
+
+function metricFixture(t,faculty=false){
+ const {dom,w,doc}=fixture();
+ t.after(()=>dom.window.close());
+ const nav=doc.querySelector('.navigation');
+ nav.querySelector('.active').classList.remove('active');
+ nav.firstElementChild.classList.add('active');
+ nav.firstElementChild.addEventListener('click',()=>{
+  nav.querySelector('.active').classList.remove('active');
+  nav.firstElementChild.classList.add('active');
+ });
+ const seen=[];
+ for(const destination of ['Students','Teachers','Attendance','Fees']){
+  const button=doc.createElement('button');button.className='nav-item';button.textContent=faculty&&destination==='Teachers'?'Faculty':destination;
+  button.addEventListener('click',()=>{
+   seen.push(destination);
+   nav.querySelector('.active').classList.remove('active');button.classList.add('active');
+  });
+  nav.append(button);
+ }
+ const titles=['Total students',faculty?'Faculty':'Teachers',"Today's attendance",'Fees collected this month'];
+ const grid=doc.querySelector('.metric-grid');
+ grid.innerHTML=titles.map(label=>`<article class="metric-card"><div class="metric-icon"></div><div><span>${label}</span><strong>0</strong><small>Current total</small></div></article>`).join('');
+ const cards=[...grid.children];
+ const boot=()=>doc.dispatchEvent(new w.Event('DOMContentLoaded'));
+ return {w,doc,nav,grid,cards,seen,boot};
+}
+
+test('clicking any dashboard metric opens its existing sidebar section without reloading',async t=>{
+ const f=metricFixture(t);f.boot();
+ for(const [i,destination] of ['Students','Teachers','Attendance','Fees'].entries()){
+  const card=f.cards[i];
+  assert.equal(card.getAttribute('role'),'button');
+  assert.equal(card.tabIndex,0);
+  assert.ok(card.getAttribute('aria-label').startsWith(card.querySelector('span').textContent));
+  card.querySelector('strong').click();
+  assert.equal(f.seen.at(-1),destination);
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(new URL(f.w.location.href).searchParams.get('tab'),destination);
+  assert.equal(f.doc.querySelector('.metric-grid'),f.grid);
+  f.nav.firstElementChild.click();
+  await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ assert.deepEqual(f.seen,['Students','Teachers','Attendance','Fees']);
+});
+
+test('dashboard metrics support Enter and Space and skip disabled sidebar destinations',t=>{
+ const f=metricFixture(t,true);
+ f.nav.lastElementChild.disabled=true;
+ f.boot();
+ assert.equal(f.cards[3].hasAttribute('tabindex'),false);
+ f.cards[3].click();assert.deepEqual(f.seen,[]);
+ const faculty=f.cards[1];faculty.focus();
+ assert.equal(f.doc.activeElement,faculty);
+ faculty.dispatchEvent(new f.w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+ assert.deepEqual(f.seen,['Teachers']);
+ f.nav.firstElementChild.click();
+ const space=new f.w.KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true});
+ f.cards[2].dispatchEvent(space);
+ assert.equal(space.defaultPrevented,true);
+ assert.deepEqual(f.seen,['Teachers','Attendance']);
 });
