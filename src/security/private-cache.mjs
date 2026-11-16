@@ -48,7 +48,7 @@ export function createPrivateCache({storage:raw,indexedDB,crypto,timeoutMs=DATAB
    if(attempt!==generation)throw Error('Device unlock was cancelled. Retry.');
    const old=raw.getItem(k);if(old===null)continue;
    let parsed;try{parsed=JSON.parse(old);}catch{}
-   if(parsed?.bnEncrypted===1){open(parsed,'local:'+k);continue;}
+   if(parsed?.bnEncrypted===1)continue;
    const replacement=JSON.stringify(seal(old,'local:'+k));
    if(open(JSON.parse(replacement),'local:'+k)!==old)throw Error('Device migration verification failed.');
    raw.setItem(k,replacement);
@@ -105,8 +105,8 @@ export function createPrivateCache({storage:raw,indexedDB,crypto,timeoutMs=DATAB
  function migrateDatabase(name,store,attempt){
   return scanDatabase(name,store,'readwrite',row=>{
    if(attempt!==generation)throw Error('Device unlock was cancelled. Retry.');
+   if(row.value?.bnEncrypted===1)return;
    const context=store+':'+row.key;
-   if(row.value?.bnEncrypted===1){open(row.value,context);return;}
    const replacement=seal(row.value,context);
    if(JSON.stringify(open(replacement,context))!==JSON.stringify(row.value))throw Error('Device migration verification failed.');
    row.update(replacement);
