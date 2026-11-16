@@ -203,6 +203,77 @@ end loop;end$$;
  projection.fees[0].amountRupees=81.10;
  await assert.rejects(push(result.revision),/Accountant ledger.*Fees & Payments/);
  assert.equal(Number((await db.query('select revision from school_workspaces')).rows[0].revision),result.revision,'unsafe ledger edit is atomic');
+ // Test the latest workspace functions against real Postgres constraints.
+ await db.exec('reset role');
+ await db.exec('create table school_teacher_assignments(institution_id uuid,class_id uuid,school_user_id uuid,subject text,active boolean,can_enter_marks boolean)');
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261115092000_teacher_assigned_exam_marks.sql'),'utf8'));
+ for(const name of [
+  '20261111092219_avoid_rewriting_unchanged_school_profiles_workspace_links.sql',
+  '20261113035818_page5_reduce_workspace_pull_jsonb_rebuilds.sql',
+  ...fs.readdirSync(path.join(__dirname,'../supabase/migrations')).filter(name=>name.endsWith('_workspace_academic_streams.sql'))
+ ]) await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations',name),'utf8'));
+ await db.exec('set role authenticated');
+ result=await pull();
+ projection.fees[0].amountRupees=80.10;
+ projection.classes.push(
+  {localId:'science',name:'11',section:'A',academicYear:'2026',academicStream:'Science'},
+  {localId:'commerce',name:'11',section:'A',academicYear:'2026',academicStream:'Commerce'}
+ );
+ projection.students.push(
+  {localId:'science-student',admissionNumber:'SCI',name:'Science Student',classLocalId:'science',profile:{details:{academicStream:'Science'}}},
+  {localId:'commerce-student',admissionNumber:'COM',name:'Commerce Student',classLocalId:'commerce',profile:{details:{academicStream:'Commerce'}}}
+ );
+ result=await push(result.revision);
+ const streamLinks=async()=>(await db.query("select admission_number,class_id::text from school_students where admission_number in ('SCI','COM') order by admission_number")).rows;
+ const originalLinks=await streamLinks();
+ assert.equal(new Set(originalLinks.map(s=>s.class_id)).size,2);
+ assert.deepEqual(result.snapshot.operations.classes.filter(c=>c.name==='11').map(c=>c.academicStream).sort(),['Commerce','Science']);
+ // A client using the old payload shape must retain the cloud stream on a linked row.
+ delete projection.classes.at(-1).academicStream;
+ result=await push(result.revision);
+ assert.deepEqual(await streamLinks(),originalLinks);
+ assert.equal(result.snapshot.students.find(s=>s.admissionNumber==='COM').academicStream,'Commerce');
+ const wrongStream=structuredClone(projection);
+ wrongStream.students.at(-1).classLocalId='science';
+ await assert.rejects(push(result.revision,wrongStream),/academic stream/i);
+ assert.equal((await pull()).revision,result.revision);
+ // Exercise the deployed marks read permissions and draft writes against the separated classes.
+ const scienceId=originalLinks.find(row=>row.admission_number==='SCI').class_id;
+ const commerceId=originalLinks.find(row=>row.admission_number==='COM').class_id;
+ const ids=(await db.query("select admission_number,id from school_students where admission_number in ('SCI','COM')")).rows;
+ const scienceStudent=ids.find(row=>row.admission_number==='SCI').id;
+ const commerceStudent=ids.find(row=>row.admission_number==='COM').id;
+ projection.students.push({localId:'science-two',admissionNumber:'SCI2',name:'Second Science Student',classLocalId:'science',profile:{details:{academicStream:'Science'}}});
+ snapshot.operations.exams.push({id:'term-11',name:'Term 11',className:'11',section:'A',academicYear:'2026',academicStream:'Science',subjects:[{name:'Math',maximumMarks:100}]});
+ result=await push(result.revision);
+ const otherScienceStudent=(await db.query("select id from school_students where admission_number='SCI2'")).rows[0].id;
+ await db.exec(`reset role;
+ create or replace function school_private.teacher_can(i uuid,c uuid,a text,s text) returns boolean language sql stable as
+ $$select auth.uid()='${teacher}'::uuid and i='${school}'::uuid and c='${scienceId}'::uuid and a='marks.write' and s='Math'$$;`);
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261116072400_teacher_batch_exam_marks.sql'),'utf8'));
+ await db.exec('set role authenticated');
+ await as(teacher);
+ const examRoster=async classId=>(await db.query("select student_id from bn_teacher_exam_marks($1,$2) where exam_id='term-11' order by student_id",[school,classId])).rows.map(row=>row.student_id);
+ assert.deepEqual(await examRoster(scienceId),[scienceStudent,otherScienceStudent].sort());
+ assert.deepEqual(await examRoster(commerceId),[]);
+ const batch=async (classId,marks)=>(await db.query("select bn_teacher_save_exam_marks_batch($1,$2,'term-11','Math',$3::jsonb) result",[school,classId,JSON.stringify(marks)])).rows[0].result;
+ const one={student_id:scienceStudent,obtained:61,expected:null};
+ const two={student_id:otherScienceStudent,obtained:79,expected:null};
+ const outside={student_id:commerceStudent,obtained:88,expected:null};
+ await assert.rejects(batch(commerceId,[outside]),/active class and subject assignment/);
+ await assert.rejects(batch(scienceId,[one,one]),/duplicate mark entries/);
+ const outcomes=Object.fromEntries((await batch(scienceId,[one,two,outside])).map(row=>[row.student_id,row]));
+ assert.equal(outcomes[scienceStudent].obtained,61);
+ assert.equal(outcomes[otherScienceStudent].obtained,79);
+ assert.match(outcomes[commerceStudent].error,/unavailable/);
+ const [stale]=await batch(scienceId,[{...one,obtained:90}]);
+ assert.match(stale.error,/changed/);
+ const [retry]=await batch(scienceId,[one]);
+ assert.equal(retry.obtained,61);
+ await as(admin);
+ const afterBatch=await pull();
+ assert.equal(afterBatch.revision,result.revision+1,'only one workspace write for two marks, with idempotent retry');
+ assert.deepEqual(afterBatch.snapshot.operations.marks.filter(m=>m.examId==='term-11').map(m=>m.obtainedMarks).sort(),[61,79]);
  await db.exec("select set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false)");
  await assert.rejects(pull(),/administrator required/); assert.equal((await db.query('select * from school_workspaces')).rows.length,0);
  await db.close(); console.log('workspace database: migration and behavioral assertions passed (isolated PGlite fixture)');

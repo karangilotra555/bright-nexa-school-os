@@ -13,8 +13,8 @@
  function buildProjection(snapshot,feeObligations){
   shape(snapshot);const ops=snapshot.operations,institution=snapshot.institution.institution;
   const localClasses=unique(rows(ops,'classes'),'class');
-  const classes=localClasses.map(c=>({localId:required(c.id,'Class ID'),name:required(c.name,'Class name'),section:str(c.section),academicYear:required(c.academicSession||c.academicYear||institution.session,'Academic year')}));
-  unique(classes,'class name / section / year',c=>[norm(c.name),norm(c.section),norm(c.academicYear)].join('|'));
+  const classes=localClasses.map(c=>({localId:required(c.id,'Class ID'),name:required(c.name,'Class name'),section:str(c.section),academicStream:str(c.academicStream),academicYear:required(c.academicSession||c.academicYear||institution.session,'Academic year')}));
+  unique(classes,'class name / section / year / stream',c=>JSON.stringify([c.name,c.section,c.academicYear,c.academicStream].map(norm)));
   // Class Teacher in the legacy class editor is a local teacher identifier.
   // The school workspace RPC does NOT create school_users or
   // school_teacher_assignments from this field. Fail clearly rather than
@@ -28,8 +28,23 @@
   if(!classes.length && (snapshot.students.length || rows(ops,'attendance').length || rows(ops,'homework').length)){
     throw Error('Cannot remove all classes while student, attendance or homework records still use them. Keep the existing classes or resolve those records first. No Supabase save was attempted.');
   }
-  const classIds=new Set(classes.map(c=>c.localId));
-  function classFor(row){if(str(row.classId)){if(!classIds.has(str(row.classId)))throw Error('Unknown class reference: '+row.classId);return str(row.classId);}const found=localClasses.filter(c=>norm(c.name)===norm(row.className)&&norm(c.section)===norm(row.section)&&(!str(row.academicStream)||norm(c.academicStream)===norm(row.academicStream)));if(found.length!==1)throw Error('Unknown or ambiguous class / section / stream for '+(row.name||row.id)+'.');return str(found[0].id);}
+  const classesById=new Map(classes.map(c=>[c.localId,c]));
+  function classFor(row){
+    const stream=norm(row.academicStream);
+    if(str(row.classId)){
+      const current=classesById.get(str(row.classId));
+      if(!current)throw Error('Unknown class reference: '+row.classId);
+      if(stream&&current.academicStream&&stream!==norm(current.academicStream)){
+        throw Error('Academic stream does not match the selected class for '+(row.name||row.id)+'.');
+      }
+      return current.localId;
+    }
+    const year=norm(row.academicSession||row.academicYear||institution.session);
+    const found=classes.filter(c=>norm(c.name)===norm(row.className)&&norm(c.section)===norm(row.section)
+      &&(!year||year===norm(c.academicYear))&&(!stream||stream===norm(c.academicStream)));
+    if(found.length!==1)throw Error('Unknown or ambiguous class / section / stream for '+(row.name||row.id)+'.');
+    return found[0].localId;
+  }
   const students=unique(snapshot.students,'student').map(s=>{const status=norm(required(s.status,'Student status'));if(!['active','graduated','transferred','archived'].includes(status))throw Error('Invalid student status: '+s.status);return {localId:str(s.id),admissionNumber:required(s.admissionNumber,'Admission number'),name:required(s.name,'Student name'),classLocalId:classFor(s),dob:date(s.dateOfBirth,'Birth date',true),status,profile:{guardian_name:str(s.guardianName||s.fatherName||s.motherName)||null,guardian_phone:str(s.parentMobile)||null,address_line:str(s.address)||null,details:((row)=>{const details={...row};delete details.photoDataUrl;return details;})(s)}};});
   unique(students,'admission number',s=>norm(s.admissionNumber));const studentMap=new Map(students.map(s=>[s.localId,s]));
   const attendance=unique(rows(ops,'attendance'),'attendance').map(a=>{const student=studentMap.get(str(a.studentId));if(!student)throw Error('Unknown attendance student reference.');const classLocalId=classFor(a);/* Past attendance belongs to the class attended on that date, not necessarily the student's current class after a transfer. The class reference must still exist within the school; the server enforces tenant and record permissions. */const rawStatus=norm(a.status),status=rawStatus==='leave'?'excused':rawStatus;if(!['present','absent','late','excused'].includes(status))throw Error('Invalid attendance status: '+a.status);return {localId:str(a.id),studentLocalId:student.localId,classLocalId,day:date(a.date,'Attendance date'),status};});

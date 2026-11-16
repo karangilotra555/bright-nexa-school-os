@@ -71,7 +71,7 @@ test('public login and recovery have branding and hide extra pre-login navigatio
  assert.match(html,/body:has\(#loginSection:not\(\.hidden\)\)>header\{display:none\}/);
  assert.match(html,/id="staffSmartToolsLink"/,'protected menu is preserved for logged-in staff');
  assert.match(html,/id="forgotFeedback"/);
- assert.match(html,/teacher-access\.js\?v=20261115-teacher-mobile-v1/);
+ assert.match(html,/teacher-access\.js\?v=20261116-school-sync-v1/);
  assert.match(script,/const redirect=emailReturnUrl\(\);/);
  assert.match(script,/response\.status===429/);
  assert.match(script,/resetFeedback\(/);

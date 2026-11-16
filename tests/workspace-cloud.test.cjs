@@ -26,7 +26,7 @@ test('conflict preserves records and reports recovery',async()=>{const h=harness
 test('missing session, wrong role and cross-school responses fail closed',async()=>{await assert.rejects(harness({noSession:true}).client.connect(),/sign in|log in/i);await assert.rejects(harness({role:'teacher'}).client.pull('school'),/admin|access/i);await assert.rejects(harness({crossSchool:true}).client.pull('school'),/school/i);});
 test('expired session is refreshed before authenticating user',async()=>{const h=harness({expired:true});await h.client.connect();assert.ok(h.calls[0].url.includes('grant_type=refresh_token'));assert.equal(h.calls[1].init.headers.Authorization,'Bearer new-token');});
 test('projection retains IDs, preserves snapshot, uses fee engine credits including concessions/reversal',()=>{const s=snapshot(),before=structuredClone(s);s.operations.notices=[{id:'notice',audience:'All parents',title:'Hello',content:'World'},{id:'private',audience:'Teachers',title:'Private'}];const p=cloud.buildProjection(s,()=>[{key:'obligation',amount:1000,credited:250,period:'November',structure:{category:'Tuition'},billingYear:2026,billingMonth:11,payments:[{amount:300,concession:50,reversed:100}]}]);assert.equal(p.students[0].localId,'student');assert.equal(p.classes[0].localId,'class');assert.deepEqual(p.fees.map(f=>[f.kind,f.amountRupees]),[['charge',1000],['payment',250]]);assert.equal(p.notices.length,1);assert.deepEqual(s.students,before.students);assert.deepEqual(p,cloud.buildProjection(s,()=>[{key:'obligation',amount:1000,credited:250,period:'November',structure:{category:'Tuition'},billingYear:2026,billingMonth:11}]));});
-test('invalid identity, dates, references, streams fail before RPC',async()=>{for(const mutate of [s=>s.students[0].admissionNumber='',s=>s.students.push({...s.students[0]}),s=>s.students[0].classId='missing',s=>s.students[0].dateOfBirth='2015-02-30',s=>s.operations.attendance[0].status='unknown',s=>s.operations.classes.push({id:'other',name:'6',section:'A',academicStream:'Arts'})]){const s=snapshot();mutate(s);assert.throws(()=>cloud.buildProjection(s,()=>[]));}});
+test('invalid identity, dates, references, streams fail before RPC',async()=>{for(const mutate of [s=>s.students[0].admissionNumber='',s=>s.students.push({...s.students[0]}),s=>s.students[0].classId='missing',s=>s.students[0].dateOfBirth='2015-02-30',s=>s.operations.attendance[0].status='unknown',s=>s.operations.classes.push({id:'other',name:'6',section:'A'})]){const s=snapshot();mutate(s);assert.throws(()=>cloud.buildProjection(s,()=>[]));}});
 test('push independently rejects invalid local references before network',async()=>{const h=harness(),s=snapshot(),p=cloud.buildProjection(s,()=>[]);s.students[0].classId='missing';await assert.rejects(h.client.push('school',1,s,p),/class/i);assert.equal(h.calls.length,0);});
 test('real fee engine keeps reversal unpaid and concessions credited without calculating a second balance',()=>{const fs=require('node:fs'),vm=require('node:vm'),src=fs.readFileSync(require('node:path').join(__dirname,'../app-extracted/src/BrightNexaApp.jsx'),'utf8'),start=src.indexOf('var Rn = ['),end=src.indexOf('var Zn = ',start),context={};vm.createContext(context);vm.runInContext(src.slice(start,end)+';this.fees=Xn;',context);const s=snapshot();s.operations.feeStructures=[{id:'tuition',category:'Tuition',className:'6',academicSession:'2026-27',amount:1000,frequency:'Monthly',dueDay:10}];s.operations.feePayments=[{studentId:'student',category:'Tuition',amount:1000,billingMonth:4,billingYear:2026,status:'Reversed'},{studentId:'student',category:'Tuition',amount:0,concessionAmount:1000,billingMonth:5,billingYear:2026}];const fees=cloud.buildProjection(s,context.fees).fees;assert.equal(fees.find(f=>f.kind==='payment'&&f.occurredOn==='2026-04-01').amountRupees,0);assert.equal(fees.find(f=>f.kind==='payment'&&f.occurredOn==='2026-05-01').amountRupees,1000);});
 
@@ -133,4 +133,22 @@ test('ERP Leave maps to valid Supabase excused status, and cloud pull restores E
  const pulled=await h.client.pull('school');
  assert.equal(pulled.snapshot.operations.attendance[0].status,'Leave');
  assert.equal(cloud.buildProjection(pulled.snapshot,()=>[]).attendance[0].status,'excused');
+});
+
+test('workspace projects same-section Science and Commerce as different classes',()=>{
+ const s=snapshot();
+ s.operations.classes=[
+  {id:'science',name:'11',section:'A',academicStream:'Science'},
+  {id:'commerce',name:'11',section:'A',academicStream:'Commerce'}
+ ];
+ s.students=[
+  {...s.students[0],className:'11',academicStream:'Science'},
+  {...s.students[0],id:'other-student',admissionNumber:'A2',className:'11',academicStream:'Commerce'}
+ ];
+ s.operations.attendance=[];
+ const p=cloud.buildProjection(s,()=>[]);
+ assert.deepEqual(p.classes.map(c=>[c.localId,c.academicStream]),[['science','Science'],['commerce','Commerce']]);
+ assert.deepEqual(p.students.map(c=>c.classLocalId),['science','commerce']);
+ s.students[0].classId='commerce';
+ assert.throws(()=>cloud.buildProjection(s,()=>[]),/stream/i);
 });
