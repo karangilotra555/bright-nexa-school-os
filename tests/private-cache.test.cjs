@@ -119,3 +119,89 @@ test('logout during key derivation cannot resurrect an unlocked key',async()=>{
  const f=await fixture(),vault=f.make();const pending=vault.unlock(PASSWORD);vault.lock();
  await assert.rejects(pending,/cancelled/);assert.equal(vault.isUnlocked(),false);assert.throws(()=>vault.seal({},'test'),/locked/);
 });
+
+test('a stalled IndexedDB unlock fails visibly, ignores late opens and can retry without changing records',{timeout:5000},async()=>{
+ const {createPrivateCache}=await import('../src/security/private-cache.mjs');
+ const f=await fixture();
+ const setup=f.make();await setup.unlock(PASSWORD);setup.storage.setItem(KEY,'preserve school data');setup.lock();
+ let openRequest,closed=0;let stalled=true;
+ const indexedDB={open(...args){if(!stalled)return f.indexedDB.open(...args);openRequest={};return openRequest;}};
+ const vault=createPrivateCache({storage:f.raw,indexedDB,crypto,timeoutMs:30});
+ let deadline;
+ try{await assert.rejects(Promise.race([vault.unlock(PASSWORD),new Promise((_,reject)=>{deadline=setTimeout(()=>reject(Error('still waiting')),3000);})]),/timed out.*close other School OS tabs/i);}
+ finally{clearTimeout(deadline);}
+ assert.equal(vault.isUnlocked(),false);
+ openRequest.result={close(){closed++;}};
+ openRequest.onsuccess();
+ assert.equal(closed,1);
+ stalled=false;
+ await vault.unlock(PASSWORD);
+ assert.equal(vault.storage.getItem(KEY),'preserve school data');
+});
+
+test('a blocked recovery export releases the dialog and a retry downloads only encrypted data',async t=>{
+ const {JSDOM}=require('jsdom'),{installPrivateCache}=await import('../src/security/private-cache.mjs');
+ const dom=new JSDOM('<body></body>',{url:'https://fixture.test'}),w=dom.window;
+ t.after(()=>w.close());
+ Object.defineProperty(w,'crypto',{value:crypto});
+ Object.defineProperty(w,'Blob',{value:Blob});
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+ w.HTMLDialogElement.prototype.close=function(){this.open=false;};
+ const f=await fixture();
+ let blocked=true,closed=0,download,blob;
+ w.indexedDB={open(...args){
+   if(!blocked)return f.indexedDB.open(...args);
+   const request={result:{close(){closed++;}}};
+   queueMicrotask(()=>{request.onblocked?.();if(request.onblocked)request.onsuccess?.();});
+   return request;
+ }};
+ w.localStorage.setItem(KEY,'private school record');
+ w.URL.createObjectURL=value=>{blob=value;return 'blob:encrypted-recovery';};
+ w.URL.revokeObjectURL=()=>{};
+ w.HTMLAnchorElement.prototype.click=function(){download=this.download;};
+ const vault=installPrivateCache(w);vault.ensureUnlocked();
+ const form=w.document.querySelector('form');
+ const [input,confirm]=form.querySelectorAll('input');
+ input.value=confirm.value=PASSWORD;
+ const backup=form.querySelector('button[type=button]');
+ const submit=form.querySelector('button[type=submit]');
+ const message=form.querySelector('[role=status]');
+ backup.click();await new Promise(resolve=>setImmediate(resolve));
+ assert.match(message.textContent,/close other School OS tabs/i);
+ assert.equal(backup.disabled,false);
+ assert.equal(submit.disabled,false);
+ assert.equal(closed,1);
+ blocked=false;
+ backup.click();
+ const until=Date.now()+2000;
+ while(backup.disabled&&Date.now()<until)await new Promise(resolve=>setTimeout(resolve,10));
+ assert.equal(download,'school-device-recovery.encrypted.json');
+ const payload=JSON.parse(await blob.text());
+ assert.equal(payload.format,'bright-nexa-device-recovery-v1');
+ assert.ok(payload.data);
+ assert.doesNotMatch(JSON.stringify(payload),/private school record/);
+ assert.equal(w.localStorage.getItem(KEY),'private school record');
+ assert.equal(vault.isUnlocked(),false);
+});
+
+test('a stalled migration cursor aborts its transaction and ignores a late record',{timeout:5000},async()=>{
+ const {createPrivateCache}=await import('../src/security/private-cache.mjs');
+ const f=await fixture();
+ const cursor={};let aborted=0,closed=0,writes=0;
+ const tx={abort(){aborted++;},objectStore(){return {openCursor:()=>cursor};}};
+ const indexedDB={open(){
+   const request={result:{transaction:()=>tx,close(){closed++;}}};
+   queueMicrotask(()=>request.onsuccess());
+   return request;
+ }};
+ f.raw.setItem(KEY,'original device record');
+ const vault=createPrivateCache({storage:f.raw,indexedDB,crypto,timeoutMs:30});
+ let deadline;
+ try{await assert.rejects(Promise.race([vault.unlock(PASSWORD),new Promise((_,reject)=>{deadline=setTimeout(()=>reject(Error('still waiting')),3000);})]),/timed out/i);}
+ finally{clearTimeout(deadline);}
+ cursor.result={key:'students',value:'original IndexedDB record',update(){writes++;},continue(){}};
+ cursor.onsuccess();
+ assert.deepEqual({aborted,closed,writes},{aborted:1,closed:1,writes:0});
+ assert.equal(vault.isUnlocked(),false);
+ assert.equal(f.raw.getItem(KEY),'original device record');
+});

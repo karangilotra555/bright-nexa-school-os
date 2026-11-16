@@ -2,6 +2,9 @@ import { gcm } from '@noble/ciphers/aes.js';
 
 const META='bn.private-cache.v1';
 const ITERATIONS=600000;
+const DATABASE_TIMEOUT_MS=20000;
+const DATABASES=[['bright-nexa-school-os','records'],['bn-workspace-recovery-v1','backups']];
+const BLOCKED='Close other School OS tabs, then retry.';
 const enc=new TextEncoder(),dec=new TextDecoder();
 const protectedKey=k=>k.startsWith('bright-nexa-school-os:')||k.startsWith('bn.workspace.v1.')||k==='school_admin_token';
 function base64(bytes){let s='';for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s);}
@@ -10,7 +13,7 @@ function bytes(s){return Uint8Array.from(atob(s),c=>c.charCodeAt(0));}
 // The key lives only in this page's memory. No key/passphrase is persisted or
 // transmitted. Synchronous AEAD keeps existing durable Storage/CAS semantics;
 // PBKDF2 runs in native WebCrypto before the application can read any records.
-export function createPrivateCache({storage:raw,indexedDB,crypto}){
+export function createPrivateCache({storage:raw,indexedDB,crypto,timeoutMs=DATABASE_TIMEOUT_MS}){
  let key=null,ready=false,generation=0;
  function requireKey(){if(!key)throw Error('Device records are locked. Unlock with the device passphrase.');}
  function seal(value,context){
@@ -35,32 +38,62 @@ export function createPrivateCache({storage:raw,indexedDB,crypto}){
    if(raw.getItem(k)!==replacement)throw Error('Device migration write failed.');
   }
  }
- async function migrateDatabase(name,store){
-  const db=await new Promise((resolve,reject)=>{
-   const request=indexedDB.open(name,1);let failed=false;
-   request.onupgradeneeded=()=>request.result.createObjectStore(store);
-   request.onblocked=()=>{failed=true;reject(Error('Close other School OS tabs and retry device encryption.'));};
-   request.onerror=()=>reject(request.error);
-   request.onsuccess=()=>{if(failed)request.result.close();else resolve(request.result);};
-  });
-  try{await new Promise((resolve,reject)=>{
-   const tx=db.transaction(store,'readwrite');let failure;
-   tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(failure||tx.error||Error('Device migration failed.'));
-   const cursor=tx.objectStore(store).openCursor();
-   cursor.onsuccess=()=>{
-    const row=cursor.result;if(!row)return;
-    try{
-     const context=store+':'+row.key;
-     if(row.value?.bnEncrypted===1)open(row.value,context);
-     else{
-      const replacement=seal(row.value,context);
-      if(JSON.stringify(open(replacement,context))!==JSON.stringify(row.value))throw Error('Device migration verification failed.');
-      row.update(replacement);
-     }
-     row.continue();
-    }catch(error){failure=error;tx.abort();}
+ function scanDatabase(name,store,mode,visit){
+  return new Promise((resolve,reject)=>{
+   let request,db,tx,timer,finished=false;
+   function watchProgress(){
+    clearTimeout(timer);
+    timer=setTimeout(()=>fail(Error('Device storage timed out. '+BLOCKED)),timeoutMs);
+   }
+   watchProgress();
+   function finish(error){
+    if(finished)return;
+    finished=true;
+    clearTimeout(timer);
+    if(error&&tx){try{tx.abort();}catch{}}
+    db?.close();
+    if(error)reject(error);else resolve();
+   }
+   function fail(error){finish(error||Error('Unable to read device storage. '+BLOCKED));}
+   try{request=indexedDB.open(name,1);}catch(error){fail(error);return;}
+   request.onblocked=()=>fail(Error('Device storage is busy. '+BLOCKED));
+   request.onerror=()=>fail(request.error);
+   request.onupgradeneeded=()=>{
+    if(finished){request.transaction.abort();return;}
+    try{request.result.createObjectStore(store);}catch(error){
+     request.transaction.abort();fail(error);
+    }
    };
-  });}finally{db.close();}
+   request.onsuccess=()=>{
+    if(finished){request.result.close();return;}
+    db=request.result;
+    watchProgress();
+    try{
+     tx=db.transaction(store,mode);
+     tx.oncomplete=()=>finish();
+     tx.onabort=tx.onerror=()=>fail(tx.error);
+     const cursor=tx.objectStore(store).openCursor();
+     cursor.onerror=()=>fail(cursor.error);
+     cursor.onsuccess=()=>{
+      if(finished)return;
+      watchProgress();
+      const row=cursor.result;
+      if(!row)return;
+      try{visit(row);row.continue();}catch(error){fail(error);}
+     };
+    }catch(error){fail(error);}
+   };
+  });
+ }
+ function migrateDatabase(name,store,attempt){
+  return scanDatabase(name,store,'readwrite',row=>{
+   if(attempt!==generation)throw Error('Device unlock was cancelled. Retry.');
+   const context=store+':'+row.key;
+   if(row.value?.bnEncrypted===1){open(row.value,context);return;}
+   const replacement=seal(row.value,context);
+   if(JSON.stringify(open(replacement,context))!==JSON.stringify(row.value))throw Error('Device migration verification failed.');
+   row.update(replacement);
+  });
  }
  async function unlock(passphrase){
   lock();const attempt=generation;
@@ -76,8 +109,10 @@ export function createPrivateCache({storage:raw,indexedDB,crypto}){
    if(raw.getItem(META)!==original)throw Error('Another tab configured device encryption. Retry with its passphrase.');
    if(original){if(open(metadata.check,'verifier')!=='Bright Nexa device cache')throw Error('Incorrect device passphrase.');}
    else{metadata.check=seal('Bright Nexa device cache','verifier');raw.setItem(META,JSON.stringify(metadata));}
-   await migrateDatabase('bright-nexa-school-os','records');
-   await migrateDatabase('bn-workspace-recovery-v1','backups');
+   for(const [name,store] of DATABASES){
+    if(attempt!==generation)throw Error('Device unlock was cancelled. Retry.');
+    await migrateDatabase(name,store,attempt);
+   }
    if(attempt!==generation)throw Error('Device unlock was cancelled. Retry.');
    migrateLocal();ready=true;
   }catch(error){if(attempt===generation)lock();throw error;}
@@ -88,16 +123,10 @@ export function createPrivateCache({storage:raw,indexedDB,crypto}){
   if(typeof passphrase!=='string'||passphrase.length<12)throw Error('Use a recovery passphrase of at least 12 characters.');
   const records={format:'bright-nexa-device-recovery-v1',local:{},databases:{}};
   for(let i=0;i<raw.length;i++){const k=raw.key(i);if(k&&(protectedKey(k)||k===META))records.local[k]=raw.getItem(k);}
-  for(const [name,store] of [['bright-nexa-school-os','records'],['bn-workspace-recovery-v1','backups']]){
-   records.databases[name]=await new Promise((resolve,reject)=>{
-    const request=indexedDB.open(name,1);
-    request.onupgradeneeded=()=>request.result.createObjectStore(store);
-    request.onerror=()=>reject(request.error);
-    request.onsuccess=()=>{const db=request.result,rows=[];const tx=db.transaction(store,'readonly');
-     const cursor=tx.objectStore(store).openCursor();cursor.onsuccess=()=>{const row=cursor.result;if(row){rows.push({key:row.key,value:row.value});row.continue();}};
-     tx.oncomplete=()=>{db.close();resolve({store,rows});};tx.onerror=tx.onabort=()=>{db.close();reject(tx.error);};
-    };
-   });
+  for(const [name,store] of DATABASES){
+   const rows=[];
+   await scanDatabase(name,store,'readonly',row=>rows.push({key:row.key,value:row.value}));
+   records.databases[name]={store,rows};
   }
   const salt=crypto.getRandomValues(new Uint8Array(16)),nonce=crypto.getRandomValues(new Uint8Array(12));
   const material=await crypto.subtle.importKey('raw',enc.encode(passphrase),'PBKDF2',false,['deriveKey']);
@@ -130,26 +159,38 @@ export function installPrivateCache(root){
    label.textContent='Device passphrase';input.type='password';input.minLength=12;input.required=true;input.autocomplete=setup?'new-password':'current-password';
    confirmLabel.textContent='Confirm device passphrase';confirm.type='password';confirm.minLength=12;confirm.required=setup;confirm.autocomplete='new-password';confirmLabel.hidden=!setup;
    for(const field of [input,confirm])field.style.cssText='display:block;width:100%;box-sizing:border-box;padding:12px;margin:6px 0 16px;border:1px solid #ccd6e2;border-radius:8px';
-   button.textContent=setup?'Encrypt and continue':'Unlock';button.type='submit';button.style.cssText='padding:12px 18px;border:0;border-radius:8px;color:white;background:#087dcc;font:inherit';
-   message.setAttribute('role','status');label.append(input);confirmLabel.append(confirm);form.append(title,info,label,confirmLabel,message,button);dialog.append(form);doc.body.append(dialog);
-   const backup=doc.createElement('button');backup.type='button';backup.textContent='Download encrypted device recovery';backup.style.cssText='display:block;margin-top:16px';form.append(backup);
+   button.textContent=setup?'Encrypt and continue':'Unlock';button.type='submit';
+   const backup=doc.createElement('button');backup.type='button';backup.textContent='Download encrypted recovery';
+   button.style.cssText=backup.style.cssText='min-height:44px;padding:10px 14px;border-radius:9px;font:inherit;font-weight:650;cursor:pointer';
+   button.style.cssText+=';background:#0b6bac;color:#fff;border:1px solid #0b6bac';
+   backup.style.cssText+=';background:#eef5fc;color:#0b315e;border:1px solid #c6dcec';
+   const actions=doc.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:10px';
+   actions.append(button,backup);
+   message.style.cssText='margin:0 0 14px;overflow-wrap:anywhere';
+   message.setAttribute('role','status');label.append(input);confirmLabel.append(confirm);form.append(title,info,label,confirmLabel,message,actions);dialog.append(form);doc.body.append(dialog);
+   function setBusy(busy){
+    button.disabled=busy;backup.disabled=busy;input.readOnly=busy;confirm.readOnly=busy;
+    button.style.opacity=backup.style.opacity=busy?'.65':'1';
+    actions.setAttribute('aria-busy',String(busy));
+   }
    backup.addEventListener('click',async()=>{
     if(button.disabled||backup.disabled)return;
     if(setup&&input.value!==confirm.value){message.textContent='Passphrases do not match.';return;}
-    backup.disabled=true;button.disabled=true;
+    setBusy(true);message.textContent='Preparing encrypted recovery…';
     try{const recovery=await vault.exportRecovery(input.value);const url=root.URL.createObjectURL(new root.Blob([JSON.stringify(recovery)],{type:'application/json'}));
-     const link=doc.createElement('a');link.href=url;link.download='school-device-recovery.encrypted.json';link.click();root.setTimeout(()=>root.URL.revokeObjectURL(url),60000);
-     message.textContent='Encrypted recovery downloaded. Keep this passphrase and any earlier device passphrase. No records were removed. Recovery instructions: DEVICE_CACHE_RECOVERY.md.';
+     const link=doc.createElement('a');link.href=url;link.download='school-device-recovery.encrypted.json';link.hidden=true;dialog.append(link);
+     try{link.click();}finally{link.remove();root.setTimeout(()=>root.URL.revokeObjectURL(url),60000);}
+     message.textContent='Encrypted recovery download started. Keep this passphrase and any earlier device passphrase. No records were removed. Recovery instructions: DEVICE_CACHE_RECOVERY.md.';
     }catch(error){message.textContent='Recovery export failed: '+error.message;}
-    finally{backup.disabled=false;button.disabled=false;}
+    finally{setBusy(false);}
    });
    dialog.addEventListener('cancel',event=>event.preventDefault());
    form.addEventListener('submit',async event=>{
     event.preventDefault();if(button.disabled)return;
     if(setup&&input.value!==confirm.value){message.textContent='Passphrases do not match.';return;}
-    button.disabled=true;message.textContent='Unlocking and verifying device records…';
+    setBusy(true);message.textContent='Unlocking and verifying device records…';
     try{await vault.unlock(input.value);input.value='';confirm.value='';dialog.close();dialog.remove();resolve();}
-    catch(error){message.textContent='Unable to unlock: '+error.message+'. Records were retained. If storage is full, download encrypted device recovery before freeing space; do not clear site data without a verified backup.';button.disabled=false;}
+    catch(error){message.textContent='Unable to unlock: '+error.message+'. Records were retained. If storage is full, download encrypted recovery before freeing space.';setBusy(false);}
    });
    dialog.showModal();input.focus();
   }).finally(()=>{pending=null;});
