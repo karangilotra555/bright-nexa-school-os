@@ -260,3 +260,21 @@ test('editing homework with an expired due date requires a current date or clear
   await tick();
   assert.equal(f.calls.find(call=>call.method==='PATCH').body.due_on,null);
 });
+
+test('mobile homework uses a labelled upload action and separates task titles from metadata',()=>{
+  const f=fixture(()=>[]);
+  const homework={id:'post',class_id:'class-a',subject:'English',title:'Circle the first letter',instructions:'Use the worksheet.',due_on:'2026-11-20',created_by:'teacher'};
+  f.api.setHomework([homework,{...homework,id:'another',created_by:'another-teacher'}]);
+  f.api.renderHomework();
+  const [owned,shared]=f.id('homeworkList').children;
+  assert.equal(owned.querySelector('h3').textContent,homework.title);
+  assert.equal(owned.querySelector('.teacher-homework-subject').textContent,'English');
+  assert.match(owned.querySelector('.teacher-homework-meta').textContent,/LKG A.*20 Nov 2026/);
+  const actions=owned.querySelector('.teacher-homework-actions');
+  const file=actions.querySelector('input[type="file"]');
+  assert.equal(file.labels[0].textContent,'Add photo / PDF');
+  assert.equal(file.multiple,true);
+  assert.equal(actions.querySelector('[data-edit-homework]').textContent,'Edit homework');
+  assert.equal(shared.querySelector('input[type="file"]'),null);
+  f.window.close();
+});
