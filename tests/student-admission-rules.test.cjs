@@ -31,8 +31,33 @@ test('invalid parent mobile and date blocked before sync',()=>{
 });
 test('stream is required and selected stream must match configured class',()=>{
  assert.ok(rules.validate({...base,className:'11',section:'A',academicStream:''},[],classes).academicStream);
+ assert.ok(rules.validate({...base,className:'Class 11',section:'A',academicStream:''},[],classes).academicStream);
+ assert.ok(rules.validate({...base,className:'Class 12',section:'A',academicStream:''},[],classes).academicStream);
+ assert.ok(rules.validate({...base,className:'XI',section:'A',academicStream:''},[],classes).academicStream);
+ assert.ok(rules.validate({...base,className:'XII',section:'A',academicStream:''},[],classes).academicStream);
  assert.ok(rules.validate({...base,className:'11',section:'A',academicStream:'Medical'},[],classes).className);
  assert.deepEqual(rules.validate({...base,className:'11',section:'A',academicStream:'Commerce'},[],classes),{});
+});
+test('roll number validation enforces positive integer and class-level uniqueness',()=>{
+ const class11Classes=[{id:'c3',name:'11',section:'A',academicStream:'Commerce',status:'Active'},{id:'c4',name:'11',section:'B',academicStream:'Commerce',status:'Active'}];
+ const existing=[
+  {id:'s1',name:'Student One',admissionNumber:'ADM-001',className:'11',section:'A',academicStream:'Commerce',rollNumber:'5',status:'Active'},
+  {id:'s2',name:'Student Two',admissionNumber:'ADM-002',className:'11',section:'A',academicStream:'Commerce',rollNumber:'12',status:'Transferred'}
+ ];
+ // invalid formats
+ assert.match(rules.validate({...base,className:'11',section:'A',academicStream:'Commerce',rollNumber:'-1'},existing,class11Classes).rollNumber,/positive/i);
+ assert.match(rules.validate({...base,className:'11',section:'A',academicStream:'Commerce',rollNumber:'0'},existing,class11Classes).rollNumber,/positive/i);
+ assert.match(rules.validate({...base,className:'11',section:'A',academicStream:'Commerce',rollNumber:'abc'},existing,class11Classes).rollNumber,/positive/i);
+ assert.match(rules.validate({...base,className:'11',section:'A',academicStream:'Commerce',rollNumber:'1.5'},existing,class11Classes).rollNumber,/positive/i);
+ // duplicate active roll in same class/section/stream
+ assert.match(rules.validate({...base,className:'11',section:'A',academicStream:'Commerce',rollNumber:'5'},existing,class11Classes).rollNumber,/already assigned/i);
+ assert.match(rules.validate({...base,className:'11',section:'A',academicStream:'Commerce',rollNumber:'05'},existing,class11Classes).rollNumber,/already assigned/i);
+ // self edit allows own roll
+ assert.equal(rules.validate({...base,id:'s1',className:'11',section:'A',academicStream:'Commerce',rollNumber:'5'},existing,class11Classes,'s1').rollNumber,undefined);
+ // transferred student roll can be reassigned
+ assert.equal(rules.validate({...base,className:'11',section:'A',academicStream:'Commerce',rollNumber:'12'},existing,class11Classes).rollNumber,undefined);
+ // same roll in different section allowed
+ assert.equal(rules.validate({...base,className:'11',section:'B',academicStream:'Commerce',rollNumber:'5'},existing,class11Classes).rollNumber,undefined);
 });
 test('import refuses section that was not configured',()=>{
  assert.equal(rules.importAllowed({...base,section:'D'},[],classes),false);

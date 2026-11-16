@@ -12,10 +12,15 @@
   const clean=x=>String(x==null?'':x).trim();
   const key=x=>clean(x).replace(/\s+/g,' ').toLowerCase();
   const allowedStatuses=new Set(['active','transferred','graduated','archived']);
+  function isSeniorClass(className){
+    const s=clean(className).toLowerCase().replace(/^(class|grade|batch|std|standard)\s*[-:]?\s*/i,'').replace(/^(\d+)(st|nd|rd|th)$/i,'$1').trim();
+    return s==='11'||s==='12'||s==='xi'||s==='xii';
+  }
   function normalize(row){
     return {...row,name:clean(row?.name),admissionNumber:clean(row?.admissionNumber),
       className:clean(row?.className),section:clean(row?.section),
       academicStream:clean(row?.academicStream)||undefined,
+      rollNumber:clean(row?.rollNumber)||undefined,
       status:clean(row?.status)||'Active'};
   }
   function validate(input,existing=[],classes=[],editingId=null){
@@ -29,8 +34,25 @@
       errors.admissionNumber='Admission number already exists for this school.';
     if(!row.className)errors.className='Select a class already created in Class & Section Setup.';
     if(!row.section)errors.section='Select a configured section.';
-    if(['11','12'].includes(row.className)&&!row.academicStream)
+    if(isSeniorClass(row.className)&&!row.academicStream)
       errors.academicStream='Select a stream for Class 11 or 12.';
+    if(row.rollNumber){
+      const rollStr=clean(row.rollNumber);
+      if(!/^0*[1-9]\d*$/.test(rollStr)){
+        errors.rollNumber='Roll number must be a positive number.';
+      }else{
+        const rollNum=parseInt(rollStr,10);
+        const dup=(existing||[]).some(s=>{
+          if(s.id===editingId)return false;
+          if(key(s.status||'Active')!=='active')return false;
+          if(key(s.className)!==key(row.className))return false;
+          if(key(s.section)!==key(row.section))return false;
+          if((row.academicStream||s.academicStream)&&key(s.academicStream)!==key(row.academicStream))return false;
+          return parseInt(clean(s.rollNumber),10)===rollNum;
+        });
+        if(dup)errors.rollNumber='Roll number already assigned to another student in this class.';
+      }
+    }
     if(row.className&&row.section){
       const matches=(classes||[]).filter(c=>
         c.status!=='Inactive'&&key(c.name)===key(row.className)&&

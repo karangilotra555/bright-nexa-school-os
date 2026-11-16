@@ -58,7 +58,8 @@
   $('bookList').replaceChildren();$('returnList').replaceChildren();$('issueItem').replaceChildren();$('issueStudent').replaceChildren();
   const available=bookRows.filter(i=>i.status==='active'&&!active.has(i.id));
   for(const item of available)option($('issueItem'),item.id,item.accession_no+' — '+item.title);
-  for(const stu of studentRows)option($('issueStudent'),stu.id,stu.name+' ('+stu.admission_number+')');
+  const activeStudents=studentRows.filter(s=>s.status==='active');
+  for(const stu of activeStudents)option($('issueStudent'),stu.id,stu.name+' ('+stu.admission_number+')');
   for(const item of bookRows)row($('bookList'),[item.accession_no,item.title,item.author,item.status==='withdrawn'?'Withdrawn':active.has(item.id)?'On loan':'Available']);
   for(const loan of loanRows.filter(l=>!l.returned_on)){
    const item=books.get(loan.item_id),student=students.get(loan.student_id);
@@ -75,14 +76,15 @@
      await reload();note('Book returned and stock updated in Supabase.');
     }finally{b.disabled=false}
    }));
-   row($('returnList'),[item?item.title:'Book copy',student?student.name+' ('+student.admission_number+')':'Student',loan.issued_on,loan.due_on],b);
+   const studentLabel=student?student.name+' ('+student.admission_number+')'+(student.status!=='active'?' ['+student.status.charAt(0).toUpperCase()+student.status.slice(1)+']':''):'Student';
+   row($('returnList'),[item?item.title:'Book copy',studentLabel,loan.issued_on,loan.due_on],b);
   }
-  $('issueItem').disabled=!writable||!available.length;$('issueStudent').disabled=!writable||!studentRows.length;
+  $('issueItem').disabled=!writable||!available.length;$('issueStudent').disabled=!writable||!activeStudents.length;
  }
  async function reload(){
   [bookRows,studentRows,loanRows]=await Promise.all([
    all('school_library_items','id,institution_id,accession_no,title,author,isbn,status',{order:'title.asc'}),
-   all('school_students','id,name,admission_number,status',{status:'eq.active',order:'name.asc'}),
+   all('school_students','id,name,admission_number,status',{order:'name.asc'}),
    all('school_library_loans','id,institution_id,item_id,student_id,issued_on,due_on,returned_on',{order:'issued_on.desc'})
   ]);
   render();
@@ -103,6 +105,7 @@
   if(!writable)throw Error('Library write permission required.');
   const itemId=$('issueItem').value,studentId=$('issueStudent').value,due=$('dueOn').value,day=today();
   if(!itemId||!studentId||!/^\d{4}-\d{2}-\d{2}$/.test(due)||due<day)throw Error('Choose an available book, enrolled student and valid future due date.');
+  if(!studentRows.some(s=>s.id===studentId&&s.status==='active'))throw Error('Books can only be issued to active enrolled students.');
   const button=event.target.querySelector('button[type=submit]');button.disabled=true;
   try{
    const payload={institution_id:member.institution_id,item_id:itemId,student_id:studentId,issued_on:day,due_on:due,issued_by:member.id};

@@ -61,6 +61,17 @@ test('mobile attendance preserves unsaved choices when moving between dates',asy
   assert.match(f.id('saveAttendance').textContent,/1 change/);
   f.window.close();
 });
+test('mobile attendance rejects future date and sets max date attribute',async()=>{
+  const f=fixture(()=>[]);
+  const day=f.id('attendanceDate');
+  assert.ok(day.max,'attendanceDate must have max attribute set');
+  day.value='2099-01-01';
+  day.dispatchEvent(new f.window.Event('change'));
+  await tick();
+  assert.match(f.id('attendanceFeedback').textContent,/future/i);
+  assert.equal(f.calls.filter(c=>c.method==='POST').length,0);
+  f.window.close();
+});
 test('mobile class marks use one subject list and retain unconfirmed rows for retry',async()=>{
   let rejectSecond=true;
   const f=fixture(call=>{

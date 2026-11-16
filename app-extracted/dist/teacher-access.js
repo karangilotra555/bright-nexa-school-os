@@ -2054,6 +2054,13 @@
     if(rosterScope?.saving)return;
     clearNotice();
     const classField=$('attendanceClass'),day=$('attendanceDate').value;
+    if(day>dateLocal()){
+      invalidateRoster();
+      put('attendanceSummary','');
+      $('attendanceFeedback').dataset.error='true';
+      put('attendanceFeedback','Attendance cannot be marked for future dates.');
+      return;
+    }
     put('attendanceDateText',day?new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'}).format(new Date(day+'T00:00:00')):'Select date');
     $('attendanceDateText').hidden=!day;
     classField.disabled=writableClasses('can_take_attendance').length<=1;
@@ -2185,6 +2192,7 @@
   });
   $('saveAttendance').addEventListener('click',()=>run(async()=>{
     const cls=$('attendanceClass').value,day=$('attendanceDate').value;
+    if(day>dateLocal())throw Error('Attendance cannot be marked for future dates.');
     const selects=[...$('rosterList').querySelectorAll('select[data-student-id]')];
     if(!selects.length||!rosterScope)throw Error('Load the roster first.');
     if(!writableClasses('can_take_attendance').some(c=>c.id===cls))throw Error('You are not assigned to this attendance class.');
@@ -2367,6 +2375,7 @@
     const d=new Date();const yyyy=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');
     return yyyy+'-'+m+'-'+day;
   }
+  $('attendanceDate').max=dateLocal();
   $('attendanceDate').value=dateLocal();
   if(FROM_LOCAL){
     // Local draft information belongs to the authenticated school-creation step,

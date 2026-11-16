@@ -115,11 +115,18 @@ test('ambiguous-write readback uses the raw school workspace, never a portal ove
 test('embedded photo is kept in authoritative ERP snapshot but not duplicated into profile projection',()=>{
  const s=snapshot();
  const photo='data:image/jpeg;base64,'+'A'.repeat(250000);
+ const aadhaarDoc='data:image/jpeg;base64,'+'B'.repeat(250000);
  s.students[0].photoDataUrl=photo;
+ s.students[0].aadhaarFrontDataUrl=aadhaarDoc;
+ s.students[0].aadhaarBackDataUrl=aadhaarDoc;
  const projected=cloud.buildProjection(s,()=>[]);
  assert.equal(s.students[0].photoDataUrl,photo,'original student photo must never be altered');
- assert.equal(projected.students[0].profile.details.photoDataUrl,undefined,'do not send photo twice in one transaction');
- assert.ok(JSON.stringify(projected).length<JSON.stringify(s).length/3,'profile projection should be much smaller than the student photo');
+ assert.equal(s.students[0].aadhaarFrontDataUrl,aadhaarDoc,'original student aadhaar front must never be altered');
+ assert.equal(s.students[0].aadhaarBackDataUrl,aadhaarDoc,'original student aadhaar back must never be altered');
+ assert.equal(projected.students[0].profile.details.photoDataUrl,undefined,'do not send photo in details');
+ assert.equal(projected.students[0].profile.details.aadhaarFrontDataUrl,undefined,'do not send aadhaar front data URL in details');
+ assert.equal(projected.students[0].profile.details.aadhaarBackDataUrl,undefined,'do not send aadhaar back data URL in details');
+ assert.ok(JSON.stringify(projected).length<JSON.stringify(s).length/3,'profile projection should be much smaller than student documents');
 });
 
 test('ERP Leave maps to valid Supabase excused status, and cloud pull restores ERP Leave',async()=>{
