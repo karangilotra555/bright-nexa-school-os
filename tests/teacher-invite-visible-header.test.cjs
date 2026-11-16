@@ -23,6 +23,6 @@ test('teacher profile still shows feedback errors in its visible header',()=>{
   assert.ok(profile.indexOf('{inviteFeedback ||') < profile.indexOf('<Component299 className={`simple-modal-body`}'));
   assert.ok(profile.includes('onClick={n}'));
   assert.ok(profile.includes('onClick={r}'));
-  assert.ok(src.includes('async function bnInviteTeacherAppAccount(teacher)'));
+  assert.ok(src.includes('async function bnInviteTeacherAppAccount(teacher, automatic = false)'));
   assert.ok(src.includes("status: result.status, assignments: Number(result.assignments || 0)"));
 });

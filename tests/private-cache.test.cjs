@@ -210,14 +210,17 @@ test('a stalled passphrase verification times out before storage opens and a lat
  const {createPrivateCache}=await import('../src/security/private-cache.mjs');
  const f=await fixture(),setup=f.make();
  await setup.unlock(PASSWORD);setup.storage.setItem(KEY,'preserved offline record');setup.lock();
+ const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(PASSWORD),'PBKDF2',false,['deriveBits']);
+ const metadata=JSON.parse(f.raw.getItem('bn.private-cache.v1'));
+ const retryKey=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:Buffer.from(metadata.salt,'base64'),iterations:600000},material,256);
  let finishDerivation,stall=true,openCalls=0;
  const provider={
   getRandomValues:crypto.getRandomValues.bind(crypto),
   subtle:{
    importKey:crypto.subtle.importKey.bind(crypto.subtle),
-   deriveBits(...args){
+   deriveBits(){
     if(stall)return new Promise(resolve=>{finishDerivation=resolve;});
-    return crypto.subtle.deriveBits(...args);
+    return Promise.resolve(retryKey);
    }
   }
  };
@@ -259,4 +262,3 @@ test('already encrypted records in IndexedDB and storage are not re-decrypted du
   TextDecoder.prototype.decode = origDecode;
  }
 });
-

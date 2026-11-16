@@ -58,6 +58,6 @@ test('every authorized ERP Dashboard deeplink intentionally opens cloud backup-f
  const crypto=require('node:crypto');
  const digest=crypto.createHash('sha256').update(entry).digest('hex');
  for(const p of ['','docs/','app-extracted/dist/']){
-  assert.ok(read(p+'sw.js').includes('"url":"school-erp-entry.js?v=20261115-logout-v1","revision":"'+digest+'"'));
+  assert.ok(read(p+'sw.js').includes('"url":"school-erp-entry.js?v=20261116-teacher-app-setup-v1","revision":"'+digest+'"'));
  }
 });
