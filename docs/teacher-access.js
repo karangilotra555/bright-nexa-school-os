@@ -81,7 +81,7 @@
         }
         const row=dom('div',undefined,'teacher-period'),detail=dom('div');
         detail.append(dom('strong',lesson.subject),dom('small',[classLabels.get(lesson.class_id),slot.label].filter(Boolean).join(' · '),'muted'));
-        row.append(dom('span',slot.starts_at.slice(0,5)+'–'+slot.ends_at.slice(0,5),'muted'),detail);
+        row.append(dom('span',slot.starts_at.slice(0,5)+'–'+slot.ends_at.slice(0,5),'teacher-period-time'),detail);
         periodList.append(row);
       }
       put('teacherTimetableStatus',periodList.childElementCount?'':mode==='today'?'No published periods for you today.':'No periods have been published for your account.');
@@ -1377,20 +1377,32 @@
   function renderHomework(){
     const root=$('homeworkList');root.replaceChildren();
     if(!allHomework.length){root.append(dom('p','No homework published yet.'));return}
+    const mobile=mobileTeacher();
     for(const h of allHomework.slice(0,25)){
       const c=allClasses.find(c=>c.id===h.class_id);
-      const div=dom('div',undefined,'assignment');
-      div.append(dom('strong',h.subject+' · '+h.title));
-      div.append(dom('div',(c?className(c):'Class')+(h.due_on?' · Due '+h.due_on:''),'muted'));
+      const div=mobile?dom('article',undefined,'teacher-homework-post'):dom('div',undefined,'assignment');
+      if(mobile){
+        const due=h.due_on?new Date(h.due_on+'T00:00:00Z'):null;
+        const dueText=due&&!Number.isNaN(due.getTime())?new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(due):h.due_on;
+        const context=[c?shortClassName(c):'Class',dueText?'Due '+dueText:''].filter(Boolean).join(' · ');
+        div.append(dom('span',h.subject,'teacher-homework-subject'),dom('h3',h.title),dom('div',context,'muted teacher-homework-meta'));
+      }else{
+        div.append(dom('strong',h.subject+' · '+h.title));
+        div.append(dom('div',(c?className(c):'Class')+(h.due_on?' · Due '+h.due_on:''),'muted'));
+      }
       if(h.instructions)div.append(dom('p',h.instructions));
       homeworkFiles.links(div,allHomeworkFiles.filter(f=>f.homework_id===h.id));
       if(h.created_by===me.id&&writableClasses('can_assign_homework').some(c=>c.id===h.class_id)){
-        if(mobileTeacher()){
+        const actions=mobile?dom('div',undefined,'teacher-homework-actions'):div;
+        if(mobile){
           const edit=dom('button','Edit homework','ghost');edit.type='button';edit.dataset.editHomework=h.id;
           edit.addEventListener('click',()=>startHomeworkEdit(h));
-          div.append(edit);
+          actions.append(edit);
         }
-        const label=dom('label','Add photo / PDF','muted'),input=document.createElement('input');input.type='file';input.multiple=true;input.accept='application/pdf,image/jpeg,image/png,image/webp';label.append(input);div.append(label);
+        const label=dom('label','Add photo / PDF',mobile?'teacher-homework-upload':'muted'),input=document.createElement('input');
+        input.type='file';input.multiple=true;input.accept='application/pdf,image/jpeg,image/png,image/webp';
+        label.append(input);actions.append(label);
+        if(mobile)div.append(actions);
         input.addEventListener('change',()=>run(async()=>{input.disabled=true;try{await homeworkFiles.upload(h,input.files);await reload();notify('Homework files uploaded.');}finally{input.disabled=false;}}));
       }
       root.append(div);
