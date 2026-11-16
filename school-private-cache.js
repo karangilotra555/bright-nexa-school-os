@@ -529,6 +529,7 @@
   var META = "bn.private-cache.v1";
   var ITERATIONS = 6e5;
   var DATABASE_TIMEOUT_MS = 2e4;
+  var CRYPTO_TIMEOUT_MS = 15e3;
   var DATABASES = [["bright-nexa-school-os", "records"], ["bn-workspace-recovery-v1", "backups"]];
   var BLOCKED = "Close other School OS tabs, then retry.";
   var enc = new TextEncoder();
@@ -542,7 +543,31 @@
   function bytes(s) {
     return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   }
-  function createPrivateCache({ storage: raw, indexedDB, crypto, timeoutMs = DATABASE_TIMEOUT_MS }) {
+  function createPrivateCache({ storage: raw, indexedDB, crypto, timeoutMs = DATABASE_TIMEOUT_MS, cryptoTimeoutMs = CRYPTO_TIMEOUT_MS }) {
+    async function runCrypto(operation, timeoutMessage, discard = () => {
+    }) {
+      let timer, expired = false;
+      const check = () => {
+        if (expired) throw Error(timeoutMessage);
+      };
+      const work = Promise.resolve().then(() => operation(check)).then((value) => {
+        if (expired) {
+          discard(value);
+          throw Error(timeoutMessage);
+        }
+        return value;
+      });
+      try {
+        return await Promise.race([work, new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            expired = true;
+            reject(Error(timeoutMessage));
+          }, cryptoTimeoutMs);
+        })]);
+      } finally {
+        clearTimeout(timer);
+      }
+    }
     let key = null, ready = false, generation = 0;
     function requireKey() {
       if (!key) throw Error("Device records are locked. Unlock with the device passphrase.");
@@ -563,9 +588,11 @@
       if (key) key.fill(0);
       key = null;
     }
-    function migrateLocal() {
+    async function migrateLocal(attempt) {
       const keys = Array.from({ length: raw.length }, (_, i) => raw.key(i)).filter((k) => k && protectedKey(k));
       for (const k of keys) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        if (attempt !== generation) throw Error("Device unlock was cancelled. Retry.");
         const old = raw.getItem(k);
         if (old === null) continue;
         let parsed;
@@ -672,15 +699,20 @@
         row.update(replacement);
       });
     }
-    async function unlock(passphrase) {
+    async function unlock(passphrase, progress = () => {
+    }) {
       lock();
       const attempt = generation;
       if (typeof passphrase !== "string" || passphrase.length < 12) throw Error("Use a device passphrase of at least 12 characters.");
       const original = raw.getItem(META);
       const metadata = original ? JSON.parse(original) : { version: 1, salt: base64(crypto.getRandomValues(new Uint8Array(16))), iterations: ITERATIONS };
       if (metadata.version !== 1 || metadata.iterations !== ITERATIONS) throw Error("Unsupported device encryption settings. Records were retained.");
-      const material = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveBits"]);
-      const derived = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: bytes(metadata.salt), iterations: ITERATIONS }, material, 256));
+      progress("Verifying device passphrase\u2026");
+      const derived = await runCrypto(async (check) => {
+        const material = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveBits"]);
+        check();
+        return new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: bytes(metadata.salt), iterations: ITERATIONS }, material, 256));
+      }, "Device passphrase verification timed out. Retry or restart this browser.", (value) => value.fill(0));
       if (attempt !== generation) {
         derived.fill(0);
         throw Error("Device unlock was cancelled. Retry.");
@@ -689,25 +721,36 @@
       try {
         if (raw.getItem(META) !== original) throw Error("Another tab configured device encryption. Retry with its passphrase.");
         if (original) {
-          if (open(metadata.check, "verifier") !== "Bright Nexa device cache") throw Error("Incorrect device passphrase.");
+          let verified;
+          try {
+            verified = open(metadata.check, "verifier");
+          } catch {
+            throw Error("Device passphrase could not be verified");
+          }
+          if (verified !== "Bright Nexa device cache") throw Error("Device passphrase could not be verified");
         } else {
           metadata.check = seal("Bright Nexa device cache", "verifier");
           raw.setItem(META, JSON.stringify(metadata));
         }
         for (const [name, store] of DATABASES) {
+          progress(store === "records" ? "Opening offline school records\u2026" : "Opening pending-change backups\u2026");
           if (attempt !== generation) throw Error("Device unlock was cancelled. Retry.");
           await migrateDatabase(name, store, attempt);
         }
         if (attempt !== generation) throw Error("Device unlock was cancelled. Retry.");
-        migrateLocal();
+        progress("Checking local records\u2026");
+        await migrateLocal(attempt);
+        if (attempt !== generation) throw Error("Device unlock was cancelled. Retry.");
         ready = true;
       } catch (error) {
         if (attempt === generation) lock();
         throw error;
       }
     }
-    async function exportRecovery(passphrase) {
+    async function exportRecovery(passphrase, progress = () => {
+    }) {
       if (typeof passphrase !== "string" || passphrase.length < 12) throw Error("Use a recovery passphrase of at least 12 characters.");
+      progress("Reading device records for recovery\u2026");
       const records = { format: "bright-nexa-device-recovery-v1", local: {}, databases: {} };
       for (let i = 0; i < raw.length; i++) {
         const k = raw.key(i);
@@ -719,9 +762,15 @@
         records.databases[name] = { store, rows };
       }
       const salt = crypto.getRandomValues(new Uint8Array(16)), nonce = crypto.getRandomValues(new Uint8Array(12));
-      const material = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-      const recoveryKey = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: ITERATIONS }, material, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
-      const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: enc.encode(records.format) }, recoveryKey, enc.encode(JSON.stringify(records)));
+      progress("Encrypting recovery file\u2026");
+      const payload = enc.encode(JSON.stringify(records));
+      const data = await runCrypto(async (check) => {
+        const material = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+        check();
+        const recoveryKey = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: ITERATIONS }, material, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
+        check();
+        return crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: enc.encode(records.format) }, recoveryKey, payload);
+      }, "Recovery encryption timed out. Retry or restart this browser.");
       return { format: records.format, iterations: ITERATIONS, salt: base64(salt), nonce: base64(nonce), data: base64(new Uint8Array(data)) };
     }
     const storage = {
@@ -800,6 +849,9 @@
           button.style.opacity = backup.style.opacity = busy ? ".65" : "1";
           actions.setAttribute("aria-busy", String(busy));
         }
+        const showProgress = (text) => {
+          message.textContent = text;
+        };
         backup.addEventListener("click", async () => {
           if (button.disabled || backup.disabled) return;
           if (setup && input.value !== confirm.value) {
@@ -809,7 +861,7 @@
           setBusy(true);
           message.textContent = "Preparing encrypted recovery\u2026";
           try {
-            const recovery = await vault.exportRecovery(input.value);
+            const recovery = await vault.exportRecovery(input.value, showProgress);
             const url = root.URL.createObjectURL(new root.Blob([JSON.stringify(recovery)], { type: "application/json" }));
             const link = doc.createElement("a");
             link.href = url;
@@ -838,16 +890,15 @@
             return;
           }
           setBusy(true);
-          message.textContent = "Unlocking and verifying device records\u2026";
           try {
-            await vault.unlock(input.value);
+            await vault.unlock(input.value, showProgress);
             input.value = "";
             confirm.value = "";
             dialog.close();
             dialog.remove();
             resolve();
           } catch (error) {
-            message.textContent = "Unable to unlock: " + error.message + ". Records were retained. If storage is full, download encrypted recovery before freeing space.";
+            message.textContent = "Unable to unlock: " + error.message.replace(/[.]$/, "") + ". Records were retained. If storage is full, download encrypted recovery before freeing space.";
             setBusy(false);
           }
         });
