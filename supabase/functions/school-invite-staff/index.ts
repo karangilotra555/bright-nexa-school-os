@@ -49,7 +49,7 @@ async function teacherContext(admin: ReturnType<typeof createClient>, schoolId:s
     throw Error("Employment schedule is incomplete. Correct the ERP faculty profile.");
   }
   const {data:schoolClasses,error:classesError}=await admin.from("school_classes")
-    .select("id,name,section").eq("institution_id",schoolId);
+    .select("id,name,section,academic_stream").eq("institution_id",schoolId);
   if (classesError) throw Error("Could not verify school class assignments.");
   const assigned=Array.isArray(faculty.assignedClasses)?faculty.assignedClasses:[];
   const subjects=Array.isArray(faculty.subjects)
@@ -58,9 +58,20 @@ async function teacherContext(admin: ReturnType<typeof createClient>, schoolId:s
     throw Error("Assign a subject before publishing Teacher App class access.");
   const teachingRows:Array<{class_id:string;subject:string}> = [];
   for (const label of new Set(assigned)) {
-    const candidates=(schoolClasses || []).filter(row => `${row.name}-${row.section}` === label);
-    if (candidates.length !== 1) throw Error("Teacher has a missing or ambiguous class assignment: "+label);
-    for (const subject of subjects) teachingRows.push({class_id:candidates[0].id,subject});
+    const candidates = (schoolClasses || []).filter(row => {
+      const stream = norm(row.academic_stream);
+      const withParen = stream ? `${row.name}-${row.section} (${stream})` : `${row.name}-${row.section}`;
+      const withBullet = stream ? `${row.name}-${row.section} • ${stream}` : `${row.name}-${row.section}`;
+      const withDash = stream ? `${row.name}-${row.section}-${stream}` : `${row.name}-${row.section}`;
+      if (label === withParen || label === withBullet || label === withDash) return true;
+      if (!stream && `${row.name}-${row.section}` === label) return true;
+      return false;
+    });
+    const finalCandidates = candidates.length > 0
+      ? candidates
+      : (schoolClasses || []).filter(row => `${row.name}-${row.section}` === label);
+    if (finalCandidates.length !== 1) throw Error("Teacher has a missing or ambiguous class assignment: "+label);
+    for (const subject of subjects) teachingRows.push({class_id:finalCandidates[0].id,subject});
   }
   return {faculty,type,teachingRows,mobile,partDays,partHours,visits,revision:workspace.revision};
 }

@@ -160,18 +160,39 @@
       });
 
       // 4. Cascade to Teachers' assignedClasses
-      const oldKey = `${oldClass.name}-${oldClass.section}`;
-      const newKey = `${newClass.name}-${newClass.section}`;
+      const oldStream = oldClass.academicStream || '';
+      const newStream = newClass.academicStream || '';
+      const oldKey = oldStream ? `${oldClass.name}-${oldClass.section} (${oldStream})` : `${oldClass.name}-${oldClass.section}`;
+      const newKey = newStream ? `${newClass.name}-${newClass.section} (${newStream})` : `${newClass.name}-${newClass.section}`;
+      const oldBaseKey = `${oldClass.name}-${oldClass.section}`;
+
       updatedTeachers = updatedTeachers.map(teacher => {
         if (Array.isArray(teacher.assignedClasses) && teacher.assignedClasses.length > 0) {
-          const hasOld = teacher.assignedClasses.some(ac => 
-            ac === oldKey || 
-            (isClassMatch(ac.split('-')[0], oldClass.name) && isSectionMatch(ac.split('-')[1], oldClass.section))
-          );
+          const hasOld = teacher.assignedClasses.some(ac => {
+            if (ac === oldKey) return true;
+            if (!oldStream && ac === oldBaseKey) return true;
+            const match = /^([^(]+?)-([^(]+?)(?:\s*\(([^)]+)\))?$/.exec(ac);
+            if (match) {
+              const [, acName, acSec, acStream = ''] = match;
+              if (oldStream && acStream && oldStream.toLowerCase() !== acStream.trim().toLowerCase()) return false;
+              if (oldStream && !acStream) return false;
+              return isClassMatch(acName, oldClass.name) && isSectionMatch(acSec, oldClass.section);
+            }
+            return false;
+          });
           if (hasOld) {
             const newAssigned = teacher.assignedClasses.map(ac => {
-              if (ac === oldKey || (isClassMatch(ac.split('-')[0], oldClass.name) && isSectionMatch(ac.split('-')[1], oldClass.section))) {
+              if (ac === oldKey || (!oldStream && ac === oldBaseKey)) {
                 return newKey;
+              }
+              const match = /^([^(]+?)-([^(]+?)(?:\s*\(([^)]+)\))?$/.exec(ac);
+              if (match) {
+                const [, acName, acSec, acStream = ''] = match;
+                if (oldStream && acStream && oldStream.toLowerCase() !== acStream.trim().toLowerCase()) return ac;
+                if (oldStream && !acStream) return ac;
+                if (isClassMatch(acName, oldClass.name) && isSectionMatch(acSec, oldClass.section)) {
+                  return newKey;
+                }
               }
               return ac;
             });
@@ -184,11 +205,14 @@
       // 5. Cascade to Timetable if present
       if (updatedTimetable.length > 0) {
         updatedTimetable = updatedTimetable.map(item => {
-          if (isClassMatch(item.className, oldClass.name) && (!oldClass.section || isSectionMatch(item.section, oldClass.section))) {
+          if (isClassMatch(item.className, oldClass.name) &&
+              (!oldClass.section || isSectionMatch(item.section, oldClass.section)) &&
+              (!oldClass.academicStream || !item.academicStream || item.academicStream.toLowerCase() === oldClass.academicStream.toLowerCase())) {
             return {
               ...item,
               className: newClass.name,
-              section: newClass.section || item.section
+              section: newClass.section || item.section,
+              ...(Object.hasOwn(item, 'academicStream') ? { academicStream: newClass.academicStream || '' } : {})
             };
           }
           return item;
