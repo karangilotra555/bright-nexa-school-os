@@ -205,3 +205,35 @@ test('a stalled migration cursor aborts its transaction and ignores a late recor
  assert.equal(vault.isUnlocked(),false);
  assert.equal(f.raw.getItem(KEY),'original device record');
 });
+
+test('a stalled passphrase verification times out before storage opens and a later retry can unlock',{timeout:5000},async()=>{
+ const {createPrivateCache}=await import('../src/security/private-cache.mjs');
+ const f=await fixture(),setup=f.make();
+ await setup.unlock(PASSWORD);setup.storage.setItem(KEY,'preserved offline record');setup.lock();
+ let finishDerivation,stall=true,openCalls=0;
+ const provider={
+  getRandomValues:crypto.getRandomValues.bind(crypto),
+  subtle:{
+   importKey:crypto.subtle.importKey.bind(crypto.subtle),
+   deriveBits(...args){
+    if(stall)return new Promise(resolve=>{finishDerivation=resolve;});
+    return crypto.subtle.deriveBits(...args);
+   }
+  }
+ };
+ const indexedDB={open(...args){openCalls++;return f.indexedDB.open(...args);}};
+ const vault=createPrivateCache({storage:f.raw,indexedDB,crypto:provider,cryptoTimeoutMs:400});
+ const stages=[];let deadline;
+ try{await assert.rejects(Promise.race([vault.unlock(PASSWORD,stage=>stages.push(stage)),new Promise((_,reject)=>{deadline=setTimeout(()=>reject(Error('still waiting')),1200);})]),/passphrase verification timed out/i);}
+ finally{clearTimeout(deadline);}
+ assert.deepEqual(stages,['Verifying device passphrase…']);
+ assert.equal(openCalls,0);
+ const lateResult=new Uint8Array(32).fill(255);
+ finishDerivation(lateResult.buffer);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.ok(lateResult.every(byte=>byte===0),'late key bytes must be erased');
+ assert.equal(vault.isUnlocked(),false);
+ stall=false;
+ await vault.unlock(PASSWORD);
+ assert.equal(vault.storage.getItem(KEY),'preserved offline record');
+});
