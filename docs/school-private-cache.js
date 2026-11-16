@@ -1,5 +1,5 @@
 (() => {
-  // ../../19347191f4e8/school-review/node_modules/@noble/ciphers/utils.js
+  // node_modules/@noble/ciphers/utils.js
   function isBytes(a) {
     return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array" && "BYTES_PER_ELEMENT" in a && a.BYTES_PER_ELEMENT === 1;
   }
@@ -165,7 +165,7 @@
     return Uint8Array.from(abytes(bytes2));
   }
 
-  // ../../19347191f4e8/school-review/node_modules/@noble/ciphers/_polyval.js
+  // node_modules/@noble/ciphers/_polyval.js
   var BLOCK_SIZE = 16;
   var ZEROS16 = /* @__PURE__ */ new Uint8Array(16);
   var ZEROS32 = /* @__PURE__ */ u32(ZEROS16);
@@ -307,7 +307,7 @@
   };
   var ghash = /* @__PURE__ */ wrapMacConstructor(16, (key, expectedLength) => new GHASH(key, expectedLength), (msg) => [msg.length]);
 
-  // ../../19347191f4e8/school-review/node_modules/@noble/ciphers/aes.js
+  // node_modules/@noble/ciphers/aes.js
   var BLOCK_SIZE2 = 16;
   var BLOCK_SIZE32 = 4;
   var EMPTY_BLOCK = /* @__PURE__ */ new Uint8Array(BLOCK_SIZE2);
@@ -600,10 +600,7 @@
           parsed = JSON.parse(old);
         } catch {
         }
-        if (parsed?.bnEncrypted === 1) {
-          open(parsed, "local:" + k);
-          continue;
-        }
+        if (parsed?.bnEncrypted === 1) continue;
         const replacement = JSON.stringify(seal(old, "local:" + k));
         if (open(JSON.parse(replacement), "local:" + k) !== old) throw Error("Device migration verification failed.");
         raw.setItem(k, replacement);
@@ -689,11 +686,8 @@
     function migrateDatabase(name, store, attempt) {
       return scanDatabase(name, store, "readwrite", (row) => {
         if (attempt !== generation) throw Error("Device unlock was cancelled. Retry.");
+        if (row.value?.bnEncrypted === 1) return;
         const context = store + ":" + row.key;
-        if (row.value?.bnEncrypted === 1) {
-          open(row.value, context);
-          return;
-        }
         const replacement = seal(row.value, context);
         if (JSON.stringify(open(replacement, context)) !== JSON.stringify(row.value)) throw Error("Device migration verification failed.");
         row.update(replacement);

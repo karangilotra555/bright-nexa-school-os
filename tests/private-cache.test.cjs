@@ -237,3 +237,26 @@ test('a stalled passphrase verification times out before storage opens and a lat
  await vault.unlock(PASSWORD);
  assert.equal(vault.storage.getItem(KEY),'preserved offline record');
 });
+
+test('already encrypted records in IndexedDB and storage are not re-decrypted during unlock', async () => {
+ const { createPrivateCache } = await import('../src/security/private-cache.mjs');
+ const f = await fixture();
+ await dbRequest(f.indexedDB, 'bn-workspace-recovery-v1', 'backups', JSON.stringify({ name: 'BACKUP DATA' }));
+ await dbRequest(f.indexedDB, 'bright-nexa-school-os', 'records', JSON.stringify({ name: 'SCHOOL DATA' }));
+ f.raw.setItem(KEY, JSON.stringify([{ name: 'LOCAL DATA' }]));
+
+ const vault = f.make();
+ await vault.unlock(PASSWORD);
+ vault.lock();
+
+ let decodeCalls = 0;
+ const origDecode = TextDecoder.prototype.decode;
+ TextDecoder.prototype.decode = function(...args) { decodeCalls++; return origDecode.apply(this, args); };
+ try {
+  await vault.unlock(PASSWORD);
+  assert.equal(decodeCalls, 1, 'Only the verifier token should be decrypted; already encrypted records must not be redundantly decrypted during unlock');
+ } finally {
+  TextDecoder.prototype.decode = origDecode;
+ }
+});
+
