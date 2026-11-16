@@ -5,16 +5,17 @@ const {JSDOM}=require('jsdom');
 const engine=require('../school-timetable-cloud.js');
 const school='11111111-1111-1111-1111-111111111111';
 const cls='22222222-2222-2222-2222-222222222222';
+const otherClass='55555555-5555-5555-5555-555555555555';
 const teacher='33333333-3333-3333-3333-333333333333';
 const slot='44444444-4444-4444-4444-444444444444';
 
-async function mount(role='school_admin'){
+async function mount(role='school_admin',initial={}){
  const dom=new JSDOM('<div id="schoolTimetableRoot"></div>',{url:'https://school.invalid/teacher-access.html'});
  const before={document:global.document,confirm:global.confirm};
  global.document=dom.window.document;global.confirm=()=>true;
  const state={
   slots:[{id:slot,institution_id:school,academic_year:'2026',weekday:1,slot_index:1,kind:'period',label:'Period 1',starts_at:'08:00:00',ends_at:'08:40:00'}],
-  drafts:[],published:[],loads:[],calls:[]
+  drafts:[],published:[],loads:[],calls:[],...initial
  };
  const ctx={
   me:{role,institution_id:school},
@@ -87,3 +88,18 @@ test('teacher timetable view remains read-only and loads published lessons',asyn
   assert.equal(f.state.calls.filter(c=>c.method!=='GET').length,0);
  }finally{f.restore();}
 });
+
+for(const source of ['drafts','published']){
+ test('manual timetable rejects a same-period teacher clash in another class '+source,async()=>{
+  const f=await mount('school_admin',{[source]:[{class_id:otherClass,slot_id:slot,teacher_user_id:teacher,subject:'English',notes:''}]});
+  try{
+   const d=f.dom.window.document;
+   d.getElementById('bnTimeSubject').value='Mathematics';
+   d.getElementById('bnTimeTeacher').value=teacher;
+   d.getElementById('bnTimeSubject').closest('form').requestSubmit();
+   await f.tick();
+   assert.equal(f.state.calls.filter(c=>c.method==='POST'&&c.table==='school_timetable_drafts').length,0);
+   assert.match(d.getElementById('schoolTimetableRoot').querySelector('[role=status]').textContent,/teacher.*another class.*draft.*published/i);
+  }finally{f.restore();}
+ });
+}

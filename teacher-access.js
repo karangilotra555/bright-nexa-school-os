@@ -1299,7 +1299,15 @@
     put('homeworkFeedback','');put('homeworkFormTitle','Publish homework');put('publishHomework','Publish homework');
     if(mobileTeacher())display('homeworkForm',false);
   }
+  const homeworkDueDateError='Homework due date must be today or later.';
+  function setHomeworkDateError(){
+    const feedback=$('homeworkFeedback');
+    feedback.dataset.error='true';
+    put('homeworkFeedback',homeworkDueDateError);
+    notify(homeworkDueDateError,true);
+  }
   function openHomeworkForm(){
+    $('homeworkDate').min=dateLocal();
     display('homeworkForm',true);
     $('newHomework').setAttribute('aria-expanded','true');
     $('homeworkTitle').focus();
@@ -2001,19 +2009,25 @@
     const row=teacherMarksRows.find(row=>row.exam_id===$('teacherMarksExam').value
       &&row.student_id===$('teacherMarksStudent').value&&row.subject===$('teacherMarksSubject').value);
     if(button.disabled||!row)return;
-    const value=Number(input.value);
-    if(!input.value||!Number.isFinite(value)||value<0||value>row.maximum){marksStatus('Enter a number between 0 and '+row.maximum+'.');return;}
+    const value=input.value===''?null:Number(input.value);
+    if(input.validity.badInput||(value!==null&&(!Number.isFinite(value)||value<0||value>row.maximum))){
+      marksStatus('Enter a number between 0 and '+row.maximum+'.');return;
+    }
+    const expected=row.obtained;
     const fields=['Class','Exam','Student','Subject','Score','Reload'].map(key=>$('teacherMarks'+key));
     button.disabled=true;fields.forEach(field=>field.disabled=true);marksStatus('Saving marks…');
     try{
-      const result=await api('rpc/bn_teacher_save_exam_mark','','POST',{
+      const results=await api('rpc/bn_teacher_save_exam_marks_batch','','POST',{
         p_school:me.institution_id,p_class:$('teacherMarksClass').value,p_exam:row.exam_id,
-        p_student:row.student_id,p_subject:row.subject,p_obtained:value,p_expected:row.obtained
+        p_subject:row.subject,p_marks:[{student_id:row.student_id,obtained:value,expected}]
       });
       if(request!==teacherMarksRequest)return;
+      const result=Array.isArray(results)&&results.length===1&&results[0]?.student_id===row.student_id?results[0]:null;
+      if(result?.error)throw Error(result.error);
       if(result?.obtained!==value)throw Error('Supabase did not confirm the mark. Refresh and try again.');
       row.obtained=result.obtained;
-      marksStatus((result.changed?'Draft saved':'Draft already saved')+' · '+result.obtained+' / '+result.maximum);
+      marksStatus(value===null?(expected===null?'Unmarked':'Cleared · Unmarked'):
+        (expected===value?'Draft already saved':'Draft saved')+' · '+value+' / '+row.maximum);
     }catch(error){
       if(request===teacherMarksRequest)marksStatus(error.message||'Could not save marks. Try again.');
     }finally{
@@ -2261,11 +2275,25 @@
       }
     }
   }));
+  $('homeworkDate').addEventListener('focus',()=>{$('homeworkDate').min=dateLocal();});
+  $('homeworkDate').addEventListener('invalid',()=>{
+    if($('homeworkDate').validity.rangeUnderflow)setHomeworkDateError();
+  });
+  $('homeworkDate').addEventListener('input',()=>{
+    if($('homeworkFeedback').textContent===homeworkDueDateError){
+      put('homeworkFeedback','');
+      $('homeworkFeedback').dataset.error='false';
+      if($('status').textContent===homeworkDueDateError)clearNotice();
+    }
+  });
   $('homeworkForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const class_id=$('homeworkClass').value;
     if(!writableClasses('can_assign_homework').some(c=>c.id===class_id))throw Error('You are not assigned to this class.');
     const subject=$('homeworkSubject').value.trim(),title=$('homeworkTitle').value.trim();
     if(!subject||!title)throw Error('Subject and task are required.');
+    const dateInput=$('homeworkDate'),dueOn=dateInput.value||null;
+    dateInput.min=dateLocal();
+    if(dueOn&&dueOn<dateInput.min){setHomeworkDateError();return;}
     const button=$('publishHomework');if(button.disabled)return;const selectedFiles=Array.from($('homeworkFiles').files||[]);if(selectedFiles.length>5)throw Error('Choose up to 5 files.');button.disabled=true;
     const currentEditor=editingHomework;
     const mobile=mobileTeacher(),school=me.institution_id,owner=me.id;
@@ -2280,12 +2308,12 @@
       for(const file of selectedFiles)await window.BNHomeworkFiles.validate(file);
       if(me?.institution_id!==school||me.id!==owner)return;
       if(currentEditor){
-        await updateHomework(currentEditor,{title,instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null},selectedFiles);
+        await updateHomework(currentEditor,{title,instructions:$('homeworkInstructions').value.trim(),due_on:dueOn},selectedFiles);
         return;
       }
       const id=form.dataset.pendingHomeworkId||(form.dataset.pendingHomeworkId=crypto.randomUUID());
       const payload={id,institution_id:me.institution_id,class_id,subject,title,
-        instructions:$('homeworkInstructions').value.trim(),due_on:$('homeworkDate').value||null,created_by:me.id};
+        instructions:$('homeworkInstructions').value.trim(),due_on:dueOn,created_by:me.id};
       let published=null,writeFailure=null;
       try{
         const result=await api('school_homework','','POST',payload);
@@ -2377,6 +2405,7 @@
   }
   $('attendanceDate').max=dateLocal();
   $('attendanceDate').value=dateLocal();
+  $('homeworkDate').min=dateLocal();
   if(FROM_LOCAL){
     // Local draft information belongs to the authenticated school-creation step,
     // never the public sign-in screen; it is not a login error.
