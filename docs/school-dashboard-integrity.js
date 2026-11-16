@@ -12,14 +12,25 @@
   let dashboardDeepLinkPending=false,routeAttempts=0,lastRouteClick=0;
   let cloudCounts=null,cloudReading=false,lastReadAt=0,cloudRequestId=0,cloudIdentity=null;
   const tabs=new Set(['Dashboard','School Profile','Class & Section Setup','Students','ID Cards & Certificates','Teachers','Non-Teaching Staff','Attendance','Homework & Notices','Exams & Marks','Report Cards','Fees','Expenses & Budget','Owner Reports','Transport & Routes','Infrastructure & Assets','Parent Messages','AI Teacher Tools','Smart Tools','Opportunity Desk','Growth Passport','School Quality Score','Settings','Contact & Support']);
+  const metricSections=new Map([
+    ['total students','Students'],
+    ['teachers','Teachers'],
+    ['faculty','Teachers'],
+    ["today's attendance",'Attendance'],
+    ['fees collected this month','Fees']
+  ]);
+  function tabLabel(element){
+    const label=element?.textContent?.trim().replace(/\s+/g,' ');
+    return label==='Faculty'?'Teachers':label;
+  }
   function activeTab(){
     const nav=doc?.querySelector('.navigation .nav-item.active');
-    const label=nav?.textContent?.trim().replace(/\s+/g,' ');
+    const label=tabLabel(nav);
     return tabs.has(label)?label:null;
   }
   function targetButton(label){
     return [...(doc?.querySelectorAll('.navigation button.nav-item')||[])]
-      .find(b=>b.textContent.trim().replace(/\s+/g,' ')===label);
+      .find(b=>tabLabel(b)===label);
   }
   function alignRoute(){
     const chosen=activeTab();
@@ -70,6 +81,23 @@
       dashboardDeepLinkPending=false;
       doc.getElementById('bn-dashboard-route-error')?.remove();
     }
+  }
+  function availableMetricTarget(section){
+    const button=targetButton(section);
+    return button&&!button.disabled&&!button.closest('[hidden], [aria-hidden="true"], [aria-disabled="true"], [inert]')?button:null;
+  }
+  function openMetric(event){
+    if(activeTab()!=='Dashboard'||event.defaultPrevented)return;
+    if(event.type==='keydown'&&(event.repeat||(event.key!=='Enter'&&event.key!==' ')))return;
+    const card=event.target?.closest?.('.metric-grid .metric-card[data-bn-metric-section]');
+    if(!card)return;
+    const button=availableMetricTarget(card.dataset.bnMetricSection);
+    if(!button)return;
+    if(event.type==='keydown')event.preventDefault();
+    dashboardDeepLinkPending=false;
+    button.click();
+    button.focus();
+    schedule();
   }
   function cloudErrorActive(){
     const panel=doc?.getElementById('bn-cloud-publish-status');
@@ -172,6 +200,21 @@
     if(activeTab()!=='Dashboard')return;
     for(const card of doc.querySelectorAll('.metric-grid .metric-card')){
       const content=(card.textContent||'').toLowerCase();
+      const label=card.querySelector('div:not(.metric-icon) > span')?.textContent.trim();
+      const section=metricSections.get(label?.toLowerCase());
+      if(section&&availableMetricTarget(section)){
+        card.dataset.bnMetricSection=section;
+        if(card.getAttribute('role')!=='button')card.setAttribute('role','button');
+        if(card.tabIndex!==0)card.tabIndex=0;
+        const metricValue=card.querySelector('strong')?.textContent.trim();
+        const accessibleName=[label,metricValue,'Open '+section].filter(Boolean).join(' · ');
+        if(card.getAttribute('aria-label')!==accessibleName)card.setAttribute('aria-label',accessibleName);
+      }else if(card.dataset.bnMetricSection){
+        delete card.dataset.bnMetricSection;
+        card.removeAttribute('role');
+        card.removeAttribute('tabindex');
+        card.removeAttribute('aria-label');
+      }
       // React can reuse metric cards when switching schools or logging out.
       delete card.dataset.bnCloudCount;
       delete card.dataset.bnAttendanceNote;
@@ -210,6 +253,9 @@
       // Metric cloud annotations belong BELOW the primary number, never as
       // competing flex columns. Keep existing dashboard design and spacing.
       '.metric-grid .metric-card{flex-wrap:wrap;align-content:flex-start}',
+      '.metric-grid .metric-card[data-bn-metric-section]{cursor:pointer}',
+      '.metric-grid .metric-card[data-bn-metric-section]:hover{border-color:#7da6cd}',
+      '.metric-grid .metric-card[data-bn-metric-section]:focus-visible{outline:2px solid #1d5f9e;outline-offset:2px}',
       '.metric-grid .metric-card>.metric-icon{flex:0 0 43px}',
       '.metric-grid .metric-card>div:not(.metric-icon){flex:1 1 0;min-width:0}',
       '.metric-grid .metric-card strong{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word;line-height:1.25}',
@@ -241,8 +287,10 @@
       addStyles();
       scan();
       const obs=new root.MutationObserver(schedule);
-      obs.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','role','title','aria-label']});
+      obs.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','role','title','aria-label','disabled','hidden','aria-disabled','aria-hidden','inert']});
       doc.addEventListener('click',onNavClick,true);
+      doc.addEventListener('click',openMetric);
+      doc.addEventListener('keydown',openMetric);
       root.addEventListener('popstate',schedule);
     };
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
