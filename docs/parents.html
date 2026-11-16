@@ -40,6 +40,17 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
 .profileRow{display:flex;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid #edf1f7;font-size:14px}
 .profileRow span{color:#64758a}.profileRow b{text-align:right;max-width:65%;overflow-wrap:anywhere}
 .status{font-size:12px;color:#0b315e;background:#e7f3ff;padding:5px 9px;border-radius:12px}
+[hidden]{display:none!important}
+.inboxTools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-bottom:12px}
+.inboxTools select{max-width:126px;background:white;color:#102640;border:1px solid #dce6ef;border-radius:13px;padding:0 9px;font:inherit;font-size:13px}
+.inboxItem summary{cursor:pointer;padding:5px 0;overflow-wrap:anywhere}
+.inboxItem strong{font-size:14px;font-weight:600}
+.inboxItem[data-unread] strong{font-weight:800;color:#0b6bac}
+.inboxItem small{display:block;color:#64758a;margin:5px 0 0 15px;font-size:11px}
+.inboxItem p{margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.inboxItem .bn-file-button{margin-top:8px}
+.nav button[data-tab=messages]{position:relative}
+#inboxUnread{position:absolute;top:0;left:calc(50% + 8px);background:#ad2543;color:white;font-size:10px;line-height:16px;min-width:16px;padding:0 3px;border-radius:20px}
 .hidden{display:none!important}#loading{position:absolute;inset:0;background:#f3f7fb;display:grid;place-items:center;z-index:8;color:#138ed8;font-weight:800}
 .notice{font-size:12px;color:#64758a;line-height:1.5}
 @media(min-width:700px){.phone{margin-top:14px;margin-bottom:14px;min-height:calc(100dvh - 28px);border-radius:25px;overflow:hidden}.nav{border-radius:0 0 25px 25px}}
@@ -103,7 +114,18 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
     <div class="panel"><h2>Apply for leave</h2><form id="leaveForm"><label class="field" for="leaveFrom">From</label><input required type="date" id="leaveFrom"><label class="field" for="leaveTo">To</label><input required type="date" id="leaveTo"><label class="field" for="leaveReason">Reason</label><textarea id="leaveReason" minlength="5" maxlength="500" required placeholder="Reason for leave"></textarea><div id="leaveResult" class="success" role="status"></div><button class="primary wide" type="submit">Send leave request</button></form></div>
   </div>
   <div data-view="messages" class="hidden">
-    <h2>School messages</h2><p class="sub">Notices published by your school</p><div id="allNotices" class="panel"></div>
+    <h2>School messages</h2>
+    <div class="inboxTools">
+      <input id="inboxSearch" type="search" aria-label="Search school messages" placeholder="Search messages">
+      <select id="inboxFilter" aria-label="Filter school messages">
+        <option value="all">All messages</option><option value="unread">Unread</option>
+        <option value="homework">Homework</option><option value="notice">Notices</option>
+        <option value="attendance">Attendance</option>
+      </select>
+    </div>
+    <p id="inboxStatus" class="sub" role="status"></p>
+    <button id="inboxRetry" class="secondary" type="button" hidden>Retry</button>
+    <div id="allNotices" class="panel"></div>
   </div>
   <div data-view="profile" class="hidden">
     <h2>Student profile</h2><div id="studentProfileSections"></div>
@@ -112,10 +134,10 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
     <button class="secondary wide" id="logout" type="button">Log out</button>
   </div>
  </main>
- <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages"><span>✉</span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
+ <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages" aria-label="Messages"><span aria-hidden="true">✉</span><span id="inboxUnread" aria-hidden="true" hidden></span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261105-profile"></script><script src="parents-cloud.js?v=20261111-sync-timeout-v1"></script>
+<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261105-profile"></script><script src="parents-cloud.js?v=20261116-parent-inbox-v1"></script>
 <script>
 (() => {
 'use strict';
@@ -144,6 +166,106 @@ const find=s=>document.querySelector(s);
 const TOKEN_KEY='bn_parents_session';
 const cloud=window.BNParentsCloud;
 let token=null, data=null,links=[],loadGeneration=0;
+let inbox=null;
+
+function inboxMessageKey(message){return message.kind+':'+message.id}
+function inboxMessages(p){
+ const messages=[
+  ...(p.notices||[]).map(n=>({kind:'notice',id:n.id,title:n.title,body:n.body,label:'School notice',date:n.published_at})),
+  ...(p.homework||[]).map(h=>({kind:'homework',id:h.id,title:h.inboxTitle||h.title,body:h.instructions,label:h.subject?'Homework · '+h.subject:'Homework',date:h.created_at,due:h.due_date,files:h.files||[]})),
+  ...(p.attendance?.recent||[]).filter(a=>a.status==='absent').map(a=>({kind:'attendance',id:a.id,title:'Marked absent',label:'Attendance',date:a.day,body:'The school recorded an absence on '+day(a.day)+'.'}))
+ ];
+ return messages.filter(m=>m.id).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||inboxMessageKey(a).localeCompare(inboxMessageKey(b)));
+}
+function resetInbox(){
+ inbox=null;
+ $('allNotices').replaceChildren();
+ $('inboxSearch').value='';$('inboxFilter').value='all';
+ setInboxStatus('');
+ updateInboxBadge();
+}
+function updateInboxBadge(){
+ const count=inbox?.reads?inbox.messages.filter(m=>!inbox.reads.has(inboxMessageKey(m))).length:0;
+ const badge=$('inboxUnread');
+ badge.hidden=!count;badge.textContent=count>99?'99+':count?String(count):'';
+ find('[data-tab="messages"]').setAttribute('aria-label',count?'Messages, '+count+' unread':'Messages');
+}
+function setInboxStatus(message='',retry=null){
+ $('inboxStatus').textContent=message;
+ $('inboxRetry').hidden=!retry;
+ $('inboxRetry').onclick=retry;
+}
+function renderInbox(){
+ if(!inbox)return;
+ const state=inbox,query=$('inboxSearch').value.trim().toLowerCase(),filter=$('inboxFilter').value;
+ const opened=new Set([...$('allNotices').querySelectorAll('details[open]')].map(entry=>entry.dataset.messageKey));
+ const messages=state.messages.filter(m=>{
+  if(filter==='unread'&&(!state.reads||state.reads.has(inboxMessageKey(m))))return false;
+  if(filter!=='all'&&filter!=='unread'&&filter!==m.kind)return false;
+  return [m.title,m.body,m.label,day(m.date),day(m.due),...(m.files||[]).map(f=>f.name)].join(' ').toLowerCase().includes(query);
+ });
+ const empty=filter==='unread'&&!state.reads?'Unread status is unavailable.':
+  state.messages.length?'No messages match your search or filter.':'No school messages yet.';
+ items('allNotices',messages,empty,(root,m)=>{
+  const key=inboxMessageKey(m),entry=document.createElement('details');
+  entry.className='feedItem inboxItem';entry.dataset.messageKey=key;
+  entry.toggleAttribute('data-unread',Boolean(state.reads&&!state.reads.has(key)));
+  const summary=document.createElement('summary'),title=document.createElement('strong'),meta=document.createElement('small');
+  title.textContent=m.title||m.label;meta.textContent=[m.label,day(m.date)].filter(Boolean).join(' · ');
+  summary.append(title,meta);entry.append(summary);
+  if(m.body||m.due){const body=document.createElement('p');body.textContent=[m.body,m.due?'Due '+day(m.due):''].filter(Boolean).join('\n');entry.append(body);}
+  cloud.fileLinks(entry,m.files||[]);
+  entry.open=opened.has(key);
+  summary.addEventListener('click',()=>{if(!entry.open&&inbox===state)void markInboxMessage(state,m);});
+  root.append(entry);
+ });
+ updateInboxBadge();
+}
+async function loadInboxReads(state){
+ const version=++state.readVersion;
+ if(!state.reads)setInboxStatus('Loading unread status…');
+ try{
+  const rows=state.messages.length?await cloud.inboxReads(state.link):[];
+  if(inbox!==state||version!==state.readVersion)return;
+  const confirmed=new Set(rows.map(r=>r.item_kind+':'+r.item_id));
+  state.reads?.forEach(key=>confirmed.add(key));
+  state.reads=confirmed;
+  if(!state.failedKey)setInboxStatus();
+  for(const entry of $('allNotices').querySelectorAll('details[open]')){
+   const message=state.messages.find(m=>inboxMessageKey(m)===entry.dataset.messageKey);
+   if(message&&entry.dataset.messageKey!==state.failedKey)void markInboxMessage(state,message);
+  }
+  renderInbox();
+ }catch(_){
+  if(inbox===state&&version===state.readVersion&&!state.failedKey)setInboxStatus('Could not load unread status.',()=>loadInboxReads(state));
+ }
+}
+async function markInboxMessage(state,message){
+ const key=inboxMessageKey(message);
+ if(!state.reads||state.reads.has(key)||state.pending.has(key))return;
+ state.pending.add(key);
+ try{
+  await cloud.markInboxRead(state.link,message.kind,message.id);
+  state.reads.add(key);
+  if(inbox!==state)return;
+  for(const matching of $('allNotices').querySelectorAll('details')){
+   if(matching.dataset.messageKey===key)matching.removeAttribute('data-unread');
+  }
+  if(state.failedKey===key){state.failedKey=null;setInboxStatus();}
+  updateInboxBadge();
+ }catch(_){
+  if(inbox===state){
+   state.failedKey=key;
+   setInboxStatus('Could not mark this message as read.',()=>markInboxMessage(state,message));
+  }
+ }finally{state.pending.delete(key);}
+}
+function setInbox(p,link){
+ if(!inbox||inbox.link!==link)inbox={link,messages:[],reads:null,pending:new Set(),readVersion:0,failedKey:null};
+ inbox.messages=inboxMessages(p);
+ renderInbox();
+ void loadInboxReads(inbox);
+}
 function setText(id,value){$(id).textContent=value==null||value===''?'—':String(value)}
 function show(id){$('loading').classList.add('hidden');$('gate').classList.toggle('hidden',id!=='gate');$('app').classList.toggle('hidden',id!=='app');$('passwordGate').classList.toggle('hidden',id!=='passwordGate')}
 function money(n){return n==null?'—':'₹'+Number(n).toLocaleString('en-IN')}
@@ -170,7 +292,6 @@ function render(p){
  const notices=p.notices||[],homework=p.homework||[];
  const drawNotice=(root,n)=>item(root,n.title,n.body,day(n.published_at));
  items('homeNotices',notices.slice(0,3),'No notices published yet.',drawNotice);
- items('allNotices',notices,'No school messages published yet.',drawNotice);
  items('homeHomework',homework,'No homework published for this class yet.',(root,h)=>{item(root,h.subject,h.title,h.due_date?'Due '+day(h.due_date):'');cloud.fileLinks(root,h.files||[]);});
  window.BNAttendance.render($('attendanceList'),a.recent||[],p.school?.session);
  items('leaveList',p.leaves||[],'No leave requests yet.',(root,r)=>item(root,day(r.from_day)+' – '+day(r.to_day),r.reason,r.status));
@@ -180,9 +301,9 @@ function render(p){
   (root,m)=>item(root,m.examName,m.subjects.map(s=>s.subject+' '+s.obtained+' / '+s.maximum).join(' · '),
    m.publishedAt?'Published '+day(m.publishedAt):''));
 }
-async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0);$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(links[index]);if(generation!==loadGeneration)return;render(p);show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;data=null;show('gate');$('loginError').textContent=e.message}}
-function logout(){$('studentProfileSections').replaceChildren();$('publishedMarksheets').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
-async function openLinked(nextLinks){links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();if(data)$('childPicker').selectedOptions[0].textContent=data.student.name;}
+async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0),link=links[index];$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(link);if(generation!==loadGeneration)return;render(p);setInbox(p,link);$('childPicker').options[index].textContent=p.student.name;show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;data=null;resetInbox();show('gate');$('loginError').textContent=e.message}}
+function logout(){resetInbox();$('studentProfileSections').replaceChildren();$('publishedMarksheets').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
+async function openLinked(nextLinks){resetInbox();links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();}
 $('studentForgotToggle').addEventListener('click',()=>{
  const form=$('forgotStudentForm'),visible=form.classList.contains('hidden');
  form.classList.toggle('hidden',!visible);
@@ -200,7 +321,9 @@ $('loginForm').addEventListener('submit',async e=>{e.preventDefault();const butt
 $('passwordForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');$('passwordError').textContent='';if($('newPassword').value!==$('confirmPassword').value){$('passwordError').textContent='Passwords do not match.';return}button.disabled=true;try{const nextLinks=await cloud.changePassword($('newPassword').value);e.target.reset();await openLinked(nextLinks)}catch(err){$('passwordError').textContent=err.message}finally{button.disabled=false}});
 $('changePassword').addEventListener('click',()=>{show('passwordGate');$('passwordHeading').textContent='Change your password';$('passwordError').textContent='';});
 $('passwordCancel').addEventListener('click',()=>{ $('passwordForm').reset();logout(); });
-$('childPicker').addEventListener('change',()=>{data=null;show('gate');refresh()});
+$('childPicker').addEventListener('change',()=>{data=null;resetInbox();show('gate');refresh()});
+$('inboxSearch').addEventListener('input',renderInbox);
+$('inboxFilter').addEventListener('change',renderInbox);
 $('leaveForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{await cloud.leave($('leaveFrom').value,$('leaveTo').value,$('leaveReason').value);$('leaveResult').textContent='Request submitted to school.';e.target.reset();await refresh();setTab('activity')}catch(err){$('leaveResult').textContent=err.message}finally{button.disabled=false}});
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
 $('logout').addEventListener('click',logout);$('refresh').addEventListener('click',refresh);
