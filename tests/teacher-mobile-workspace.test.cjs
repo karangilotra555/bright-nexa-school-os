@@ -220,3 +220,43 @@ test('clearing a saved mobile mark sends null without treating it as zero',async
   assert.equal(input.value,'');
   f.window.close();
 });
+
+test('homework create rejects a past due date and accepts today',async t=>{
+  const f=fixture(call=>call.method==='POST'?[call.body]:[]);
+  t.after(()=>f.window.close());
+  const now=new f.window.Date();
+  const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  f.id('newHomework').click();
+  f.id('homeworkClass').value='class-a';
+  f.id('homeworkSubject').value='English';
+  f.id('homeworkTitle').value='New task';
+  const due=f.id('homeworkDate'),form=f.id('homeworkForm');
+  due.value='2000-01-01';
+  form.dispatchEvent(new f.window.Event('submit',{cancelable:true}));
+  await tick();
+  assert.match(f.id('homeworkFeedback').textContent,/due date.*today/i);
+  assert.equal(due.min,today);
+  assert.equal(due.validity.rangeUnderflow,true);
+  assert.equal(f.calls.some(call=>call.table==='school_homework'&&call.method==='POST'),false);
+  due.value=today;
+  form.requestSubmit();
+  await tick();
+  assert.equal(f.calls.find(call=>call.table==='school_homework'&&call.method==='POST').body.due_on,today);
+});
+
+test('editing homework with an expired due date requires a current date or clearing the optional date',async t=>{
+  const post={id:'homework',institution_id:'school',class_id:'class-a',subject:'English',title:'Old title',instructions:'',due_on:'2000-01-01',created_by:'teacher'};
+  const f=fixture(call=>call.method==='PATCH'?[{...post,...call.body}]:[]);
+  t.after(()=>f.window.close());
+  f.api.setHomework([post]);f.api.renderHomework();
+  f.id('homeworkList').querySelector('[data-edit-homework]').click();
+  const form=f.id('homeworkForm');
+  form.dispatchEvent(new f.window.Event('submit',{cancelable:true}));
+  await tick();
+  assert.equal(f.calls.some(call=>call.method==='PATCH'),false);
+  assert.match(f.id('homeworkFeedback').textContent,/due date.*today/i);
+  f.id('homeworkDate').value='';
+  form.requestSubmit();
+  await tick();
+  assert.equal(f.calls.find(call=>call.method==='PATCH').body.due_on,null);
+});

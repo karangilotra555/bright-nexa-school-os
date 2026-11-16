@@ -247,8 +247,8 @@ function activate(ctx){
    if(!slot)throw Error('Select a teaching period.');
    const subject=subjectInput.value.trim(),teacher=teacherPick.value||null;
    if(!subject)throw Error('Enter a subject.');
-   if(teacher&&st.published.some(p=>p.class_id!==st.classId&&p.slot_id===slot.id&&p.teacher_user_id===teacher))
-     throw Error('Teacher already has a published class in this period. Choose another teacher or slot.');
+   if(teacher&&[...st.drafts,...st.published].some(p=>p.class_id!==st.classId&&p.slot_id===slot.id&&p.teacher_user_id===teacher))
+     throw Error('Teacher is already assigned in another class draft or published period for this slot. Choose another teacher or slot.');
    if(teacher&&!teacherAssignments.some(a=>a.school_user_id===teacher&&
       (a.assignment_type==='class_teacher'||a.subject.toLowerCase()===subject.toLowerCase())))
      throw Error('This teacher is not assigned to that subject and class.');
