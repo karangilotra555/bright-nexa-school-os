@@ -169,3 +169,23 @@ test('logout from another Parent window cannot be undone by a pending password r
   await assert.rejects(change,/log in again/i);
   assert.equal(await createStore('parent',device).read(),null);
 });
+
+test('Parent restore does not reopen a session after another window signs out', async () => {
+  const { createStore } = require('../school-mobile-session.js');
+  const preferences=new Map();
+  const device={indexedDB:new IDBFactory(),crypto:webcrypto,navigator:{userAgent:'Android; wv)'},
+    localStorage:{getItem:k=>preferences.get(k)??null,setItem:(k,v)=>preferences.set(k,v),removeItem:k=>preferences.delete(k)}};
+  const store=createStore('parent',device);
+  await store.write('before-logout',true);
+  let respond,requestStarted;
+  const started=new Promise(resolve=>{requestStarted=resolve;});
+  const pending=new Promise(resolve=>{respond=resolve;});
+  const api=create(async()=>{requestStarted();return pending;},store);
+  const restore=api.restore();
+  await started;
+  await createStore('parent',device).clear();
+  respond({ok:true,status:200,text:async()=>JSON.stringify({access_token:'jwt', refresh_token:'rotated',
+    user:{id:'guardian',app_metadata:{bn_institution_id:'school',bn_student_id:'student'}}})});
+  assert.equal(await restore,null);
+  assert.equal(await store.read(),null);
+});

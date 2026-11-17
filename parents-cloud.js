@@ -14,7 +14,8 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
  }
  async function refreshSession(refreshToken,expectedSchool){
   if(refreshing?.token===refreshToken&&refreshing.school===expectedSchool)return refreshing.promise;
-  const revision=authRevision;
+  const revision=authRevision,marker=deviceStore?.marker?.();
+  const stillCurrent=()=>revision===authRevision&&marker===deviceStore?.marker?.();
   const current={token:refreshToken,school:expectedSchool,promise:null};
   current.promise=(async()=>{
    try{
@@ -22,21 +23,20 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
      method:'POST',cache:'no-store',headers:{apikey:KEY,'Content-Type':'application/json'},
      body:JSON.stringify({refresh_token:refreshToken})
     });
-    if(revision!==authRevision)return null;
+    if(!stillCurrent())return null;
     if([400,401,403].includes(response.status)){await endSession();return null;}
     if(!response.ok)throw Error('Could not verify saved login. Check your connection and try again.');
     const next=JSON.parse(await response.text());
-    if(revision!==authRevision)return null;
+    if(!stillCurrent())return null;
     const meta=next.user?.app_metadata;
     if(!next.access_token||!next.refresh_token||!next.user?.id||!meta?.bn_student_id
        ||!meta.bn_institution_id||meta.bn_password_pending===true){
      await endSession();return null;
     }
-    const matches=!expectedSchool||meta.bn_institution_id===expectedSchool;
-    if(matches)setSession(next);
-    await deviceStore?.write(next.refresh_token);
-    if(!matches)return null;
-    return revision===authRevision?{links:[{institution_id:meta.bn_institution_id,student_id:meta.bn_student_id}]}:null;
+    const saved=await deviceStore?.write(next.refresh_token,false,marker);
+    if(!stillCurrent()||saved===false||(expectedSchool&&meta.bn_institution_id!==expectedSchool))return null;
+    setSession(next);
+    return {links:[{institution_id:meta.bn_institution_id,student_id:meta.bn_student_id}]};
    }finally{if(refreshing===current)refreshing=null;}
   })();
   refreshing=current;
