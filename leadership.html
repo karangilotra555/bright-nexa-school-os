@@ -7,7 +7,7 @@
 <title>Bright Nexa · Owner & Principal</title>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#122742;background:#edf3f9;font-synthesis:none}*{box-sizing:border-box}
-body{margin:0}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:wait}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #28aee6;outline-offset:3px}
+body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:wait}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #28aee6;outline-offset:3px}
 [hidden]{display:none!important}.phone{max-width:530px;margin:0 auto;min-height:100dvh;background:#f4f7fc;padding-bottom:90px;box-shadow:0 4px 30px #0a2c5015}
 .header{background:radial-gradient(circle at right top,#167baa77,transparent 63%),linear-gradient(130deg,#061931,#0a3763);color:#fff;border-radius:0 0 28px 28px;padding:26px 19px 29px}
 .brand{display:flex;align-items:center;gap:10px}.brand img{width:44px;height:44px;border-radius:13px;background:white;object-fit:cover}.brand small{display:block;color:#c6e2fb;font-size:11px}.brand strong{font-size:16px}
@@ -27,7 +27,8 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
 .sub{font-size:12px;color:#6a7d90;line-height:1.5}.bodytext{font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
 .warning{font-size:12px;color:#a44821;background:#fff5e7;padding:9px;border-radius:9px}
 .field{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#455f77;font-weight:700;margin:12px 0}
-.field input,.field select{width:100%;background:#fff;border:1px solid #cddbe8;border-radius:12px;padding:12px 13px;color:#163450}
+.field input,.field select,.field textarea{width:100%;background:#fff;border:1px solid #cddbe8;border-radius:12px;padding:12px 13px;color:#163450}
+.field textarea{min-height:140px;resize:vertical}.metric .detail{display:block;color:#617891;font-size:10px;line-height:1.4;margin-top:7px}.feeLine{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2f8;font-size:13px}.feeLine span{color:#577088}.feeLine b{text-align:right}
 #loginPage{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:28px 24px;background:radial-gradient(circle at 50% 5%,#d7eeff,transparent 60%),#f3f7fb}
 #loginPage img{width:65px;height:65px;border-radius:18px;object-fit:cover;margin-bottom:13px}
 #loginPage h1{font-size:29px;margin:2px 0 7px}#loginPage p{font-size:14px;color:#526982;line-height:1.6}
@@ -61,12 +62,21 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     <section data-page="home">
       <span class="eyebrow">Daily school overview</span><p id="lastSync" class="sub"></p>
       <div class="grid">
-        <div class="metric"><span class="symbol">🎓</span><b id="metricStudents">—</b><small>Students (verified)</small></div>
-        <div class="metric"><span class="symbol">👩‍🏫</span><b id="metricTeachers">—</b><small>Active teachers</small></div>
+        <div class="metric"><span class="symbol">🎓</span><b id="metricStudents">—</b><small>Students present</small><span id="attendanceCoverage" class="detail">Awaiting marks</span></div>
+        <div class="metric"><span class="symbol">👩‍🏫</span><b id="metricTeachers">—</b><small>Teachers present</small><span id="teacherCoverage" class="detail">Awaiting verified staff marks</span></div>
         <div class="metric"><span class="symbol">📋</span><b id="metricPending">—</b><small>Pending leave</small></div>
-        <div class="metric"><span class="symbol">⚡</span><b id="metricUrgent">—</b><small>Emergency requests</small></div>
+        <div class="metric"><span class="symbol">⚡</span><b id="metricUrgent">—</b><small>Uncovered periods</small><span id="periodCoverage" class="detail">Published timetable only</span></div>
       </div>
       <article class="panel"><h2>School Operations Brief</h2><div id="dailyBrief"></div></article>
+      <article class="panel" aria-label="Read-only school fee snapshot">
+        <h2>Today's Fee Counter <small class="sub">(Read-only)</small></h2>
+        <div class="feeLine"><span>Posted payments</span><b id="feeTotal">—</b></div>
+        <div class="feeLine"><span>Cash recorded</span><b id="feeCash">—</b></div>
+        <div class="feeLine"><span>Online recorded</span><b id="feeOnline">—</b></div>
+        <div class="feeLine"><span>Mode not recorded</span><b id="feeUnknown">—</b></div>
+        <p id="feeReceipts" class="sub">Awaiting verified ledger snapshot</p>
+        <p class="sub">Payment method is never inferred from amount or receipt number. Reconciliation and reversals may affect final collection figures.</p>
+      </article>
       <button id="refreshBtn" data-action="refresh" type="button" class="secondary">Refresh live status</button>
     </section>
     <section data-page="leaves" hidden>
@@ -75,9 +85,34 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     </section>
     <section data-page="cover" hidden>
       <h2 id="coverHeading" class="screenTitle">Substitute planner</h2>
-      <p class="sub">The first eligible candidate is suggested, never automatically published. Admin confirms every duty.</p>
+      <p class="sub">Eligible candidates are validated by Supabase. Optional AI suggestions must be reviewed; they never publish automatically.</p><p id="coverReviewStatus" class="warning"></p>
       <label class="field" for="coverDate">Cover date<input id="coverDate" type="date"></label>
-      <div id="coverRows"></div><button id="publishCover" data-action="publish" type="button" class="primary">Publish selected covers</button>
+      <div id="coverRows"></div>
+      <button id="aiSuggest" data-action="ai" type="button" class="secondary">Ask AI to improve cover suggestions</button>
+      <p id="aiCoverReason" class="sub" role="status"></p>
+      <div class="actions">
+        <button id="approveFromCover" data-action="approve" type="button" class="primary" hidden>Approve leave, then review covers</button>
+        <button id="publishCover" data-action="publish" type="button" class="primary">Publish selected covers</button>
+      </div>
+    </section>
+    <section data-page="urgent" hidden>
+      <h2 class="screenTitle">Official Urgent Circular</h2>
+      <p class="sub">Publish an official school notice after confirmation. This does not guarantee delivery as a push notification, SMS or WhatsApp message.</p>
+      <label class="field" for="noticeTemplate">Quick draft
+        <select id="noticeTemplate">
+          <option value="">Write a custom urgent notice</option>
+          <option value="weather">Severe weather update</option>
+          <option value="closure">Early school dismissal</option>
+        </select>
+      </label>
+      <label class="field" for="noticeTitle">Notice title
+        <input id="noticeTitle" maxlength="120" placeholder="Emergency school notice">
+      </label>
+      <label class="field" for="noticeBody">Official message
+        <textarea id="noticeBody" maxlength="1500" placeholder="Mention the confirmed date, timing, pickup instructions and helpline."></textarea>
+      </label>
+      <button id="sendNotice" data-action="notice" type="button" class="primary">Review &amp; publish official notice</button>
+      <p id="noticePublishStatus" class="warning" role="status">No message has been sent. Verify parent and teacher delivery separately.</p>
     </section>
     <section data-page="account" hidden>
       <h2 class="screenTitle">Leadership account</h2>
@@ -89,12 +124,13 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     <button class="selected" data-nav="home" type="button"><span>⌂</span>Home</button>
     <button data-nav="leaves" type="button"><span>☷</span>Leaves</button>
     <button data-nav="cover" type="button"><span>⇄</span>Covers</button>
+    <button data-nav="urgent" type="button"><span>⚠</span>Urgent</button>
     <button data-nav="account" type="button"><span>⚙</span>Account</button>
   </nav>
 </div>
 <div id="notice" class="notice" role="status" aria-live="polite"></div>
 </div>
 <script src="./school-mobile-session.js?v=20261117-mobile-login"></script>
-<script src="./leadership-app.js?v=20261118-leadership-v1"></script>
+<script src="./leadership-app.js?v=20261118-leadership-v2"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
 </body></html>
