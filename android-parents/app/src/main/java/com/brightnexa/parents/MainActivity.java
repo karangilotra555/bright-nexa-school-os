@@ -1,6 +1,10 @@
 package com.brightnexa.parents;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
@@ -22,11 +26,23 @@ import android.widget.TextView;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 import java.net.URI;
+import java.util.Collections;
+import androidx.webkit.JavaScriptReplyProxy;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.messaging.FirebaseMessaging;
+import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
     private static final String STORAGE = "bn_parents_settings";
     private static final String KEY_URL = "school_url";
     private static final int FILE_REQUEST = 407;
+    private static final int ALERT_PERMISSION = 408;
+    private static final String ALERT_BRIDGE = "BrightNexaPeriodAlerts";
+    private JavaScriptReplyProxy permissionReply;
+    private String permissionNonce;
+    private boolean alertBridgeAdded;
     private ValueCallback<Uri[]> fileCallback;
     private WebView web;
     private LinearLayout toolbar;
@@ -177,7 +193,9 @@ public final class MainActivity extends Activity {
             return;
         }
         // Do not load arbitrary subpaths or parameters.
+        if (!liveHost.isEmpty() && !liveHost.equalsIgnoreCase(parsed.getHost())) TeacherPeriodMessages.clear(this);
         liveHost = parsed.getHost();
+        installAlertBridge();
         String base = "https://" + liveHost + (parsed.getPath()==null?"":parsed.getPath());
         String path = base.endsWith("/") ? base : base + "/";
         if (base.endsWith("/parents.html")) path = base;
@@ -186,8 +204,114 @@ public final class MainActivity extends Activity {
         getSharedPreferences(STORAGE, MODE_PRIVATE).edit().putString(KEY_URL, configuredUrl).apply();
         updateToolbar(path, "");
         web.clearCache(true);
-        web.loadUrl(path);
+        web.loadUrl(TeacherPeriodMessages.OPEN_TIMETABLE.equals(getIntent().getAction()) ? teacherTimetableUrl() : path);
+        getIntent().setAction(null);
     }
+    private String teacherTimetableUrl() {
+        return "https://" + liveHost + "/teacher-access.html?view=timetable";
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (TeacherPeriodMessages.OPEN_TIMETABLE.equals(intent.getAction()) && !liveHost.isEmpty()) {
+            URI page = parse(web.getUrl());
+            if (page != null && "/teacher-access.html".equals(page.getPath()) && liveHost.equalsIgnoreCase(page.getHost())) {
+                web.evaluateJavascript("window.dispatchEvent(new Event('bright-nexa-open-timetable'))", null);
+            } else {
+                web.loadUrl(teacherTimetableUrl());
+            }
+        }
+    }
+
+    private void installAlertBridge() {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return;
+        if (alertBridgeAdded) WebViewCompat.removeWebMessageListener(web, ALERT_BRIDGE);
+        WebViewCompat.addWebMessageListener(web, ALERT_BRIDGE, Collections.singleton("https://" + liveHost),
+            (view, message, origin, isMainFrame, reply) -> {
+                URI page = parse(view.getUrl());
+                if (!isMainFrame || page == null || !"/teacher-access.html".equals(page.getPath())
+                    || !"https".equals(origin.getScheme()) || !liveHost.equalsIgnoreCase(origin.getHost())
+                    || !liveHost.equalsIgnoreCase(page.getHost())) return;
+                String nonce = "";
+                try {
+                    JSONObject request = new JSONObject(message.getData());
+                    nonce = request.optString("nonce");
+                    String school = request.optString("school");
+                    String member = request.optString("member");
+                    String action = request.getString("action");
+                    if ("clear".equals(action)) {
+                        TeacherPeriodMessages.clear(this);
+                        return;
+                    }
+                    if (!school.matches("[0-9a-f-]{36}") || !member.matches("[0-9a-f-]{36}")) return;
+                    if ("bind".equals(action)) {
+                        String binding = request.getString("binding");
+                        if (binding.matches("[0-9a-f-]{36}")) TeacherPeriodMessages.enroll(this, school, member, binding);
+                        return;
+                    }
+                    if (!nonce.matches("[0-9a-f-]{36}")) return;
+                    if ("resume".equals(action) && !TeacherPeriodMessages.enrolled(this, school, member)) {
+                        TeacherPeriodMessages.clear(this);
+                        replyAlert(reply, nonce, "off", "");
+                        return;
+                    }
+                    if (!"enable".equals(action) && !"resume".equals(action)) return;
+                    if (FirebaseApp.getApps(this).isEmpty()) {
+                        replyAlert(reply, nonce, "unconfigured", "");
+                        return;
+                    }
+                    if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        if ("enable".equals(action) && permissionReply == null) {
+                            permissionReply = reply;
+                            permissionNonce = nonce;
+                            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, ALERT_PERMISSION);
+                        } else replyAlert(reply, nonce, "denied", "");
+                        return;
+                    }
+                    sendAlertToken(reply, nonce);
+                } catch (Exception ignored) {
+                    replyAlert(reply, nonce, "error", "");
+                }
+            });
+        alertBridgeAdded = true;
+    }
+
+    private void sendAlertToken(JavaScriptReplyProxy reply, String nonce) {
+        try {
+            if (!getSystemService(NotificationManager.class).areNotificationsEnabled()) {
+                replyAlert(reply, nonce, "denied", "");
+                return;
+            }
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(this, task ->
+                replyAlert(reply, nonce, task.isSuccessful() ? "ready" : "error", task.isSuccessful() ? task.getResult() : ""));
+        } catch (Exception ignored) {
+            replyAlert(reply, nonce, "error", "");
+        }
+    }
+
+    private void replyAlert(JavaScriptReplyProxy reply, String nonce, String status, String token) {
+        try {
+            JSONObject result = new JSONObject().put("status", status).put("nonce", nonce)
+                .put("installation", TeacherPeriodMessages.installation(this));
+            if ("ready".equals(status)) result.put("token", token);
+            reply.postMessage(result.toString());
+        } catch (Exception ignored) {
+            // Navigation can close the originating page during permission/token setup.
+        }
+    }
+
+    @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(code, permissions, results);
+        if (code == ALERT_PERMISSION && permissionReply != null) {
+            JavaScriptReplyProxy reply = permissionReply;
+            String nonce = permissionNonce;
+            permissionReply = null;
+            permissionNonce = null;
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) sendAlertToken(reply, nonce);
+            else replyAlert(reply, nonce, "denied", "");
+        }
+    }
+
     private void configureSchool() {
         EditText input = new EditText(this);
         input.setSingleLine(true);

@@ -310,7 +310,7 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
  const schoolUrl=(env.SCHOOL_SUPABASE_URL||'https://mrfvbwmyxndrakskqyas.supabase.co').replace(/\/$/,'');
  const pubKey=env.SCHOOL_SUPABASE_PUBLISHABLE_KEY||'sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
  const usage=new Map();
- async function authorized(token){
+ async function authorized(token,requestedSchool){
   ensure(typeof token==='string'&&token.length>=8,401,'Sign in through Teachers & Staff before generating school material.');
   const headers={apikey:pubKey,Authorization:'Bearer '+token};
   const who=await fetcher(schoolUrl+'/auth/v1/user',{headers,cache:'no-store'});
@@ -321,7 +321,7 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
   const members=await fetcher(schoolUrl+'/rest/v1/school_users?'+qs,{headers,cache:'no-store'});
   ensure(members.ok,403,'Cannot verify active school membership.');
   const list=await readJson(members);
-  const own=Array.isArray(list)?list.filter(m=>m.auth_user_id===identity.id&&m.status==='active'&&['school_admin','principal','teacher'].includes(m.role)):[];
+  const own=Array.isArray(list)?list.filter(m=>m.auth_user_id===identity.id&&m.status==='active'&&['school_admin','principal','teacher'].includes(m.role)&&(!requestedSchool||m.institution_id===requestedSchool)):[];
   ensure(own.length===1,403,'Active Owner, Admin or Teacher school access is required.');
   const schools=await fetcher(schoolUrl+'/rest/v1/institutions?'+new URLSearchParams({select:'id,status',id:'eq.'+own[0].institution_id}),{headers,cache:'no-store'});
   ensure(schools.ok,403,'School status cannot be verified.');
@@ -386,27 +386,89 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
    throw err;
   }
  }
+ async function generateStructured(staff,prompt,validate){
+  const key=staff.institution_id+':'+staff.id;
+  const current=(usage.get(key)||[]).filter(t=>now()-t<60*60*1000);
+  ensure(current.length<30,429,'Smart Tools hourly limit reached for this account.');
+  const geminiKey=env.GEMINI_API_KEY,groqKey=env.GROQ_API_KEY;
+  ensure(geminiKey||groqKey,503,'AI is not configured on the school server.');
+  current.push(now());usage.set(key,current);
+  if(geminiKey){
+   try{return validate(await gemini(geminiKey,prompt));}catch(err){
+    if(!groqKey||![404,429,502,504].includes(err.status))throw err;
+   }
+  }
+  return validate(await groq(groqKey,prompt));
+ }
  async function generate(input,token){
   const req=validateInput(input);
   const staff=await authorized(token);
-  const key=staff.institution_id+':'+staff.id;
-  const hit=usage.get(key)||[];
-  const current=hit.filter(t=>now()-t<60*60*1000);
-  ensure(current.length<30,429,'Smart Tools hourly limit reached for this account.');
-  const geminiKey=env.GEMINI_API_KEY,groqKey=env.GROQ_API_KEY;
-  ensure(geminiKey||groqKey,503,'AI is not configured on the school server. Add GEMINI_API_KEY or GROQ_API_KEY to the backend environment.');
   const blueprint=ASSESSMENTS.has(req.tool)?planAssessment(req):null;
-  const prompt=promptFor(req,blueprint);
-  current.push(now());usage.set(key,current);
-  let result;
-  if(geminiKey){
-   try{result=await gemini(geminiKey,prompt);validateOutput(req,result,blueprint)}catch(err){
-    if(!groqKey||![404,429,502,504].includes(err.status))throw err;
-    result=await groq(groqKey,prompt);
-   }
-  }else result=await groq(groqKey,prompt);
-  return {content:validateOutput(req,result,blueprint),tool:req.tool,subject:req.subject,className:req.className,language:req.language,source:'AI / teacher-review-required'};
+  const content=await generateStructured(staff,promptFor(req,blueprint),result=>validateOutput(req,result,blueprint));
+  return {content,tool:req.tool,subject:req.subject,className:req.className,language:req.language,source:'AI / teacher-review-required'};
  }
- return {generate};
+ async function planTeacherCover(input,token){
+  const uuid=/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+  ensure(input && uuid.test(input.school) && uuid.test(input.leave) && /^\d{4}-\d{2}-\d{2}$/.test(input.day||''),
+    400,'Select an approved leave and a cover date.');
+  const history=input.instructions;
+  ensure(Array.isArray(history)&&history.length>=1&&history.length<=8
+    &&history.every(line=>typeof line==='string'&&line.trim()&&line.length<=400),400,'Enter up to 8 short cover instructions.');
+  const staff=await authorized(token,input.school);
+  ensure(staff.role==='school_admin',403,'School admin access is required to draft cover.');
+  const response=await fetcher(schoolUrl+'/rest/v1/rpc/bn_teacher_leave_cover_plan',{method:'POST',
+   headers:{apikey:pubKey,Authorization:'Bearer '+token,'Content-Type':'application/json'},
+   body:JSON.stringify({p_school:staff.institution_id,p_leave:input.leave,p_day:input.day}),cache:'no-store'});
+  ensure(response.ok,400,'Approved leave or cover periods could not be verified.');
+  const rows=await readJson(response);
+  ensure(Array.isArray(rows)&&rows.length<=16,400,'Select one school day before drafting a cover plan.');
+  const teachers=new Map(), byRef=new Map();
+  for(const row of rows.filter(r=>Date.parse(input.day+'T'+r.ends_at.slice(0,5)+':00+05:30')>now())){
+   const ref='p'+(byRef.size+1);
+   const candidates=new Map();
+   for(const candidate of row.candidates){
+    if(!teachers.has(candidate.teacher_id))teachers.set(candidate.teacher_id,'t'+(teachers.size+1));
+    candidates.set(teachers.get(candidate.teacher_id),candidate);
+   }
+   byRef.set(ref,{row,candidates});
+  }
+  if(!byRef.size)return {choices:[],summary:'No remaining periods need cover on this date.',question:''};
+  const periods=[...byRef].map(([period,{row,candidates}])=>({
+   period,class:row.class_name,subject:row.subject,start:row.starts_at,end:row.ends_at,
+   current:teachers.get(row.teacher_id)||null,
+   candidates:[...candidates].map(([teacher,c])=>({teacher,name:c.teacher_name,subjectMatch:c.subject_match,scheduled:c.periods}))
+  }));
+  const prompt={
+   system:[
+    'Draft a school substitution plan using only the eligible teacher references supplied for each period.',
+    'Read Hindi, Hinglish and English instructions by meaning. Apply messages in order, keeping earlier instructions unless the latest message changes them.',
+    'Number of EXTRA periods means newly assigned cover duties. Respect explicit workload limits and named teacher requests. Do not move any regular periods.',
+    'Keep a current confirmed cover unless the instructions explicitly change it. Use null where no suitable candidate meets the instructions.',
+    'If a name, timing, or instruction is ambiguous, ask one short question and return no choices. Never invent a name, teacher, period or fact.',
+    'Return one JSON object with choices (array of objects containing period, teacher or null, and reason), summary (short string), and question (string or empty).'
+   ].join('\n'),
+   user:JSON.stringify({date:input.day,periods,instructions:history})
+  };
+  return generateStructured(staff,prompt,result=>{
+   ensure(result&&Array.isArray(result.choices)&&result.choices.length<=byRef.size&&typeof result.summary==='string'&&typeof result.question==='string',
+    502,'School AI returned an invalid cover draft.');
+   const seen=new Set(), booked=new Set(), choices=[];
+   if(!result.question.trim()){
+    for(const item of result.choices){
+     const entry=byRef.get(item?.period);
+     ensure(entry&&!seen.has(item.period)&&(item.teacher===null||entry.candidates.has(item.teacher)),502,'School AI suggested an unavailable cover.');
+     seen.add(item.period);
+     const teacher=entry.candidates.get(item.teacher)?.teacher_id||null;
+     const assignment=entry.row.slot_id+'|'+teacher;
+     ensure(!teacher||!booked.has(assignment),502,'School AI suggested overlapping cover duties.');
+     if(teacher)booked.add(assignment);
+     choices.push({slot_id:entry.row.slot_id,class_id:entry.row.class_id,teacher_id:teacher,
+      reason:typeof item.reason==='string'?item.reason.slice(0,240):''});
+    }
+   }
+   return {choices,summary:result.summary.slice(0,500),question:result.question.slice(0,350)};
+  });
+ }
+ return {generate,planTeacherCover};
 }
 module.exports={TOOLS,SmartToolsError,contractFor,validateInput,planAssessment,validateOutput,promptFor,createService};

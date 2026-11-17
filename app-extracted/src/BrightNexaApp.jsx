@@ -24337,6 +24337,32 @@ function Hr({ data: e, students: t, onUpdate: n }) {
   let [i, a] = (0, w.useState)(`students`);
   let [o, s] = (0, w.useState)(r);
   let [c, l] = (0, w.useState)(r.slice(0, 7));
+  const leaveMonth = i===`reports` ? c : i===`teaching` ? o.slice(0,7) : '';
+  const leaveSchool = followUpActor?.cloudVerified ? followUpActor.institutionId : null;
+  const [leaveLedger,setLeaveLedger] = (0,w.useState)(null);
+  const leaveKey = leaveSchool && leaveMonth ? leaveSchool+'|'+leaveMonth : '';
+  (0,w.useEffect)(()=>{
+    if (!leaveKey) return;
+    let alive=true, request=0;
+    const load=async()=>{
+      const attempt=++request;
+      try {
+        const rows=await window.BNWorkspaceCloud.create().teacherAttendanceMonth(leaveSchool,leaveMonth);
+        if (alive&&attempt===request) setLeaveLedger({key:leaveKey,rows,error:''});
+      } catch(error) {
+        if (alive&&attempt===request) setLeaveLedger({key:leaveKey,rows:[],error:error.message||'Approved leave is unavailable.'});
+      }
+    };
+    const onFocus=()=>void load();
+    onFocus();
+    window.addEventListener('focus',onFocus);
+    return ()=>{ alive=false; window.removeEventListener('focus',onFocus); };
+  },[leaveKey]);
+  const approvedLeaves = leaveLedger?.key===leaveKey ? leaveLedger.rows : [];
+  const leaveWarning = leaveKey && (leaveLedger?.key!==leaveKey ? 'Loading approved teacher leave…' :
+    leaveLedger.error || (approvedLeaves.some(row=>!row.faculty_id)
+      ? 'Link the Teacher App account to its ERP faculty profile to include all approved leave in payroll.' : ''));
+
 
   // Build merged class list: configured classes PLUS virtual classes from students who have no matching class record
   let allClassesForAttendance = (0, w.useMemo)(() => {
@@ -24398,7 +24424,8 @@ function Hr({ data: e, students: t, onUpdate: n }) {
           i === `reports` ? (
             <Component398
               className={`secondary-button`}
-              onClick={() => void ci(e, t, f, c)}
+              disabled={Boolean(leaveWarning)}
+              onClick={() => void ci(e, t, f, c, approvedLeaves)}
             >
               <_Component size={16} />
               {`Export Monthly Workbook`}
@@ -24460,11 +24487,18 @@ function Hr({ data: e, students: t, onUpdate: n }) {
         />
       )}
       {` `}
+      {i === `teaching` && leaveSchool && (
+        <div className="inline-message">
+          <a href="./teacher-access.html?view=leave">Review teacher leave and cover</a>
+          {leaveWarning && <p role="status">{leaveWarning}</p>}
+        </div>
+      )}
       {i === `teaching` && (
         <Wr
           data={e}
           staff={e.teachers}
           staffType={`Teaching`}
+          approvedLeaves={approvedLeaves.filter(row=>row.date===o)}
           date={o}
           setDate={s}
           holiday={m}
@@ -24495,6 +24529,8 @@ function Hr({ data: e, students: t, onUpdate: n }) {
           setClassId={d}
           month={c}
           setMonth={l}
+          approvedLeaves={approvedLeaves}
+          leaveWarning={leaveWarning}
         />
       )}
     </Component400>
@@ -24889,6 +24925,7 @@ function Wr({
   setDate: i,
   holiday: a,
   onUpdate: o,
+  approvedLeaves = [],
 }) {
   let s = t.filter((e) => e.status !== `Inactive`);
   let [c, l] = (0, w.useState)({});
@@ -24896,8 +24933,10 @@ function Wr({
   const [attendanceSaving,setAttendanceSaving]=(0,w.useState)(false);
   const [attendanceSaveMessage,setAttendanceSaveMessage]=(0,w.useState)('');
   let f = e.staffAttendance.filter((e) => e.date === r && e.staffType === n);
-  let p = (e) => c[e] || f.find((t) => t.staffId === e)?.status;
-  let m = (e) => l(Object.fromEntries(s.map((t) => [t.id, e])));
+  const leaveByStaff = new Map(approvedLeaves.map(row=>[row.faculty_id,row]));
+  const recorded = id => c[id] || f.find(row=>row.staffId===id)?.status;
+  const p = id => leaveByStaff.get(id)?.full_day ? `Paid Leave` : recorded(id);
+  let m = (e) => l(Object.fromEntries(s.filter(staff=>!leaveByStaff.get(staff.id)?.full_day).map(staff=>[staff.id,e])));
   const Component425 = `input`;
   const Component426 = `strong`;
   const Component427 = `span`;
@@ -24965,7 +25004,7 @@ function Wr({
           disabled={!s.length || !!a || attendanceSaving}
           onClick={async () => {
             if (a || attendanceSaving) return;
-            if (!s.some(staff=>p(staff.id))) {
+            if (!s.some(staff=>recorded(staff.id))) {
               setAttendanceSaveMessage('Mark at least one staff member before saving. Missing marks are not absences.');
               return;
             }
@@ -24977,13 +25016,13 @@ function Wr({
               (e) => e.date !== r || e.staffType !== n || !t.has(e.staffId),
             );
             let c = s
-              .filter((e) => p(e.id))
+              .filter((e) => recorded(e.id))
               .map((e) => ({
                 id: f.find(previous=>previous.staffId===e.id)?.id || crypto.randomUUID(),
                 date: r,
                 staffType: n,
                 staffId: e.id,
-                status: p(e.id),
+                status: recorded(e.id),
                 markedAt: new Date().toISOString(),
               }));
             const result=await o(
@@ -25072,12 +25111,13 @@ function Wr({
                   {[e.employeeCode, e.designation, e.category]
                     .filter(Boolean)
                     .join(` • `)}
+                  {leaveByStaff.has(e.id) && <span>{` · ${leaveByStaff.get(e.id).status}`}</span>}
                 </Component445>
               </Component446>
               <Xr
                 statuses={[`Present`, `Absent`, `Paid Leave`]}
                 value={p(e.id)}
-                disabled={!!a}
+                disabled={!!a || leaveByStaff.get(e.id)?.full_day===true}
                 setValue={(t) =>
                   l((n) => ({
                     ...n,
@@ -25287,6 +25327,8 @@ function Kr({
   setClassId: i,
   month: a,
   setMonth: o,
+  approvedLeaves = [],
+  leaveWarning,
 }) {
   let s = t
     .filter((e) => ti(e, n))
@@ -25305,7 +25347,7 @@ function Kr({
         percent: n.length ? (r / n.length) * 100 : 0,
       };
     });
-  let c = qr(e, e.teachers, `Teaching`, a);
+  let c = qr(e, e.teachers, `Teaching`, a, approvedLeaves);
   let l = qr(e, e.nonTeachingStaff, `Non-Teaching`, a);
   const Component479 = `input`;
   const Component480 = `div`;
@@ -25412,7 +25454,8 @@ function Kr({
           </Component503>
         </Component504>
       </Component505>
-      <Jr title={`Teaching Staff Salary Statement`} rows={c} />
+      {leaveWarning && <p role="status">{leaveWarning}</p>}
+      <Jr title={`Teaching Staff Salary Statement`} rows={c} leaveWarning={leaveWarning} />
       <Jr title={`Non-Teaching Staff Salary Statement`} rows={l} />
       <Component507 className={`inline-message`}>
         <Component506>{`Salary policy:`}</Component506>
@@ -25421,37 +25464,39 @@ function Kr({
     </P.Fragment>
   );
 }
-function qr(e, t, n, r) {
-  let i = ai(r, e.holidays, n);
-  return t
-    .filter((e) => e.status !== `Inactive`)
-    .map((t) => {
-      let a = e.staffAttendance.filter(
-        (e) => e.staffType === n && e.staffId === t.id && e.date.startsWith(r),
-      );
-      let o = a.filter((e) => e.status === `Present`).length;
-      let s = a.filter((e) => e.status === `Absent`).length;
-      let c = a.filter((e) => e.status === `Paid Leave`).length;
-      let l = Math.max(0, Number(t.paidLeaveAllowedPerMonth || 0));
-      let u = s + Math.max(0, c - l);
-      let d = t.salaryFrequency === `Monthly` ? t.salary : undefined;
-      let f = d !== undefined && i ? Math.max(0, d - (d / i) * u) : undefined;
-      return {
-        id: t.id,
-        name: ri(t),
-        monthlySalary: d,
-        scheduled: i,
-        present: o,
-        absent: s,
-        paidLeave: c,
-        allowance: l,
-        deductible: u,
-        pending: Math.max(0, i - a.length),
-        net: f,
-      };
-    });
+function qr(e, t, n, r, approvedLeaves = []) {
+  const scheduled = ai(r,e.holidays,n);
+  const category = n === `Teaching` ? `Teaching Staff` : `Non-Teaching Staff`;
+  const workingDay = date => date.startsWith(r) && new Date(date+'T00:00:00Z').getUTCDay()!==0 && !ii(e.holidays,date,category);
+  return t.filter(staff=>staff.status!==`Inactive`).map(staff=>{
+    const marks = new Map(e.staffAttendance.filter(row=>row.staffType===n && row.staffId===staff.id && workingDay(row.date))
+      .map(row=>[row.date,row.status]));
+    const leave = new Map(approvedLeaves.filter(row=>row.approved_leave && row.faculty_id===staff.id && workingDay(row.date))
+      .map(row=>[row.date,row.units]));
+    const dates = new Set([...marks.keys(),...leave.keys()]);
+    let present=0, absent=0, paidLeave=0, markedDays=0, unresolved=false;
+    for (const date of dates) {
+      const mark=marks.get(date);
+      const units=leave.get(date);
+      if (units===null && mark!==`Paid Leave`) unresolved=true;
+      const paid=mark===`Paid Leave` ? 1 : Number(units||0);
+      paidLeave+=paid;
+      if (mark===`Present`) present+=1-paid;
+      if (mark===`Absent`) absent+=1-paid;
+      if (mark || paid===1) markedDays++;
+    }
+    const allowance=Math.max(0,Number(staff.paidLeaveAllowedPerMonth||0));
+    const deductible=absent+Math.max(0,paidLeave-allowance);
+    const monthlySalary=staff.salaryFrequency===`Monthly` ? staff.salary : undefined;
+    return {
+      id:staff.id,name:ri(staff),monthlySalary,scheduled,
+      present,absent,paidLeave,allowance,deductible,
+      pending:Math.max(0,scheduled-markedDays),unresolved,
+      net:monthlySalary!==undefined && scheduled && !unresolved ? Math.max(0,monthlySalary-(monthlySalary/scheduled)*deductible) : undefined,
+    };
+  });
 }
-function Jr({ title: e, rows: t }) {
+function Jr({ title: e, rows: t, leaveWarning }) {
   const Component508 = `th`;
   const Component509 = `th`;
   const Component510 = `th`;
@@ -25509,18 +25554,18 @@ function Jr({ title: e, rows: t }) {
                   </Component520>
                   <Component521>{si(e.monthlySalary)}</Component521>
                   <Component522>{e.scheduled}</Component522>
-                  <Component523>{e.present}</Component523>
-                  <Component524>{e.absent}</Component524>
+                  <Component523>{Number(e.present.toFixed(2))}</Component523>
+                  <Component524>{Number(e.absent.toFixed(2))}</Component524>
                   <Component525>
-                    {e.paidLeave}
+                    {Number(e.paidLeave.toFixed(2))}
                     {` / `}
                     {e.allowance}
                   </Component525>
-                  <Component526>{e.deductible}</Component526>
+                  <Component526>{Number(e.deductible.toFixed(2))}</Component526>
                   <Component527>{e.pending}</Component527>
                   <Component529>
                     <Component528>
-                      {e.net === undefined
+                      {leaveWarning ? `Awaiting confirmed leave` : e.unresolved ? `Set bell timings to calculate partial leave` : e.net === undefined
                         ? `Monthly salary not configured`
                         : si(Math.round(e.net))}
                     </Component528>
@@ -25687,7 +25732,7 @@ function si(e) {
     return `₹${e.toLocaleString(`en-IN`)}`;
   }
 }
-async function ci(e, t, n, r) {
+async function ci(e, t, n, r, approvedLeaves = []) {
   let i = new (
     await cr(
       () => import(`./exceljs.min-DxrGf88e.js`).then((e) => c(e.default, 1)),
@@ -25770,8 +25815,18 @@ async function ci(e, t, n, r) {
       width: 16,
     },
   ];
-  e.staffAttendance
-    .filter((e) => e.date.startsWith(r))
+  const staffAttendance = e.staffAttendance.filter(row=>row.date.startsWith(r));
+  const approvedByDate = new Map(approvedLeaves.filter(row=>row.faculty_id).map(row=>[row.faculty_id+'|'+row.date,row]));
+  const attendanceExport = staffAttendance.map(row=>{
+    if(row.staffType!==`Teaching`)return row;
+    const key=row.staffId+'|'+row.date, leave=approvedByDate.get(key);
+    approvedByDate.delete(key);
+    return leave ? {...row,status:leave.full_day ? `Approved leave` : row.status+` · Approved partial leave`} : row;
+  });
+  for(const leave of approvedByDate.values())attendanceExport.push({
+    staffType:`Teaching`,staffId:leave.faculty_id,date:leave.date,status:leave.status
+  });
+  attendanceExport
     .forEach((t) => {
       let n = (
         t.staffType === `Teaching` ? e.teachers : e.nonTeachingStaff

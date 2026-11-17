@@ -355,13 +355,15 @@ const server = http.createServer(async (req, res) => {
 
   // Private AI generation. Supabase JWT and tenant membership are verified
   // server-side before any paid provider request; never accept a browser role.
-  if (pathname === '/api/smart-tools/generate') {
+  if (pathname === '/api/smart-tools/generate' || pathname === '/api/timetable/cover-ai') {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'POST required.' });
     try {
       const auth = String(req.headers.authorization || '');
       const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
       const payload = await parseJsonBody(req);
-      const generated = await smartToolsAI.generate(payload, token);
+      const generated = pathname === '/api/timetable/cover-ai'
+        ? await smartToolsAI.planTeacherCover(payload, token)
+        : await smartToolsAI.generate(payload, token);
       return sendJson(res, 200, generated);
     } catch (err) {
       const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 502;
