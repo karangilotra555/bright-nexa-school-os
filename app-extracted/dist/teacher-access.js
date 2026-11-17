@@ -83,7 +83,7 @@
     sendAlertAction('clear');
     const revoke=()=>device?.installation&&jwt&&timedCloudFetch(BASE+'/rest/v1/rpc/bn_disable_teacher_period_alerts',{
       method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt,'Content-Type':'application/json'},
-      body:JSON.stringify({p_school:previous.institution_id,p_installation:device.installation})
+      body:JSON.stringify({p_school:previous.institution_id,p_installation:device.installation}),keepalive:true
     }).catch(()=>{});
     return revoke();
   }
@@ -481,6 +481,11 @@
     if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
     if(name==='leave'&&$('teacherLeaveWorkspace'))window.BNTeacherDuty?.show($('teacherLeaveWorkspace'),dutyScope());
     if(name==='staff-attendance'&&$('teacherPersonalAttendance'))window.BNTeacherDuty?.attendance($('teacherPersonalAttendance'),dutyScope());
+    if(name==='account'&&mobileTeacher()&&$('teacherSwitchParent')){
+      void window.BNMobileSession?.createStore('parent')?.read().then(token=>{
+        if(mobileTeacher())display('teacherSwitchParent',Boolean(token));
+      });
+    }
     if(name==='timetable'){
       if($('schoolLeaveShortcut'))display('schoolLeaveShortcut',isAdmin());
       if($('teacherAlertControls')){
@@ -737,9 +742,10 @@
     const teacherApp=me.role==='teacher'&&isMobileAppContext();
     if(teacherApp&&teacherDeviceSession&&!rememberingTeacher){
       rememberingTeacher=true;
-      await teacherDeviceSession.write(session.refresh_token);
+      await teacherDeviceSession.write(session.refresh_token,true);
       if(thisLoad!==schoolLoadEpoch)return;
     }
+    if(teacherApp)teacherDeviceSession?.activate?.();
     document.body.classList.toggle('bn-teacher-app',teacherApp);
     document.title=teacherApp?'Bright Nexa | Teacher Workspace':staffPageTitle;
     put('staffPortalTitle',teacherApp?'Teacher App':'Staff Portal');
@@ -1797,8 +1803,10 @@
   $('createSchoolChangeAccount').addEventListener('click',()=>run(switchToDifferentAccount));
   $('loginForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=e.submitter;btn.disabled=true;
+    const marker=teacherDeviceSession?.marker?.();
     try{
       const tokens=await authRequest('token?grant_type=password',{email:$('loginEmail').value.trim(),password:$('loginPassword').value});
+      if(marker!==teacherDeviceSession?.marker?.())throw Error('Please log in again.');
       rememberingTeacher=false;
       await teacherDeviceSession?.clear();
       $('loginPassword').value='';
@@ -1965,6 +1973,7 @@
       button.disabled=false;
     }
   })});
+  document.addEventListener?.('bn-before-signout',()=>{dropSession();});
   $('logout').addEventListener('click',()=>{run(async()=>{
     const alerts=clearPeriodAlerts(),jwt=session?.access_token;
     await dropSession();
@@ -2619,6 +2628,13 @@
   }
   // Only Supabase-issued authenticated invite fragments are processed; tokens
   // are immediately removed from address bar after parsing.
+  const launchParams=new URLSearchParams(location.search);
+  const finishingLogout=launchParams.get('loggedOut')==='1';
+  if(finishingLogout&&teacherDeviceSession){
+    void teacherDeviceSession.clear();
+    launchParams.delete('loggedOut');
+    history.replaceState(null,'',location.pathname+(launchParams.size?'?'+launchParams:'')+location.hash);
+  }
   let confirmedByEmailLink=false;
   let authLinkExpired=false;
   let adminActivationHash=null;
@@ -2681,7 +2697,7 @@
   if(session&&!$('activation').classList.contains('hidden')){
     notify(recoveryMode?'Secure recovery link verified. Set your new password.':'Invitation verified. Set your new password to continue.');
   }else {
-    if(teacherDeviceSession&&!openingActivation&&!authLinkExpired&&!confirmedByEmailLink){
+    if(teacherDeviceSession&&!finishingLogout&&!openingActivation&&!authLinkExpired&&!confirmedByEmailLink){
       const saved=await teacherDeviceSession.read();
       if(saved){await run(()=>restoreTeacherLogin(saved));return;}
     }

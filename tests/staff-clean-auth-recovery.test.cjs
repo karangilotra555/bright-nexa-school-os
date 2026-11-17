@@ -46,7 +46,7 @@ test('A verified teacher has no Parent Portal or school-wide Smart Tools links w
   assert.equal(links.length,4);
   w.showStaffMenu('teacher');
   for(const link of links)assert.ok(link.classList.contains('hidden'),link.textContent.trim());
-  assert.equal(doc.querySelector('#mobileParentLogin').getAttribute('href'),'./parents.html');
+  assert.equal(doc.querySelector('#mobileParentLogin').getAttribute('href'),'./parents.html?portal=parent');
   w.showStaffMenu('school_admin');
   for(const link of links)assert.ok(!link.classList.contains('hidden'),link.textContent.trim());
  }finally{dom.window.close();}

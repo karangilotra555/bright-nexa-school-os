@@ -2,6 +2,8 @@
 (function (root) {
   'use strict';
 
+  const lastPortalKey = 'bright-nexa/mobile-last-portal/v1';
+
   function createStore(portal, device = root) {
     const agent = device.navigator?.userAgent || '';
     const installed = device.matchMedia?.('(display-mode: standalone)')?.matches
@@ -12,7 +14,13 @@
     const crypto = device.crypto;
     const scope = 'bright-nexa/mobile-session/v1/' + portal;
     const context = new TextEncoder().encode(scope);
-    let pending = Promise.resolve();
+    let pending = Promise.resolve(), generation = 0;
+    const logoutKey = scope + '/logged-out';
+    const pref = {
+      get(key) { try { return device.localStorage?.getItem(key) ?? null; } catch (_) { return null; } },
+      set(key, value) { try { device.localStorage?.setItem(key, value); } catch (_) {} },
+      clear(key) { try { device.localStorage?.removeItem(key); } catch (_) {} }
+    };
 
     function transaction(mode, action) {
       return new Promise((resolve, reject) => {
@@ -52,25 +60,49 @@
 
     return {
       read: () => ordered(async () => {
+        if (pref.get(logoutKey)) return null;
         const record = await transaction('readonly', store => store.get(scope));
         if (!record) return null;
         const bytes = await crypto.subtle.decrypt({
           name: 'AES-GCM', iv: record.iv, additionalData: context
         }, record.key, record.ciphertext);
-        return new TextDecoder().decode(bytes) || null;
+        return pref.get(logoutKey) ? null : new TextDecoder().decode(bytes) || null;
       }),
-      write: token => ordered(async () => {
-        if (typeof token !== 'string' || !token) return;
-        const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: context },
-          key, new TextEncoder().encode(token));
-        await transaction('readwrite', store => store.put({ key, iv, ciphertext }, scope));
-      }),
-      clear: () => ordered(() => transaction('readwrite', store => store.delete(scope)))
+      marker: () => pref.get(logoutKey),
+      write(token, newLogin = false, marker = pref.get(logoutKey)) {
+        const current = generation;
+        return ordered(async () => {
+          if (typeof token !== 'string' || !token || (marker && !newLogin)) return;
+          const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: context },
+            key, new TextEncoder().encode(token));
+          if (current !== generation || marker !== pref.get(logoutKey)) return false;
+          await transaction('readwrite', store => store.put({ key, iv, ciphertext }, scope));
+          if (current !== generation || marker !== pref.get(logoutKey)) return false;
+          if (newLogin) pref.clear(logoutKey);
+          return true;
+        });
+      },
+      activate() { if (!pref.get(logoutKey)) pref.set(lastPortalKey, portal); },
+      clear() {
+        generation++;
+        // Write the logout intent before a redirect can interrupt IndexedDB.
+        pref.set(logoutKey, Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-'));
+        if (pref.get(lastPortalKey) === portal) pref.clear(lastPortalKey);
+        return ordered(() => transaction('readwrite', store => store.delete(scope)));
+      }
     };
   }
 
-  if (typeof module !== 'undefined') module.exports = { createStore };
-  else root.BNMobileSession = { createStore };
+  async function opensTeacherOnLaunch(device = root) {
+    if (device.location?.search || !/Android.*\bwv\b/i.test(device.navigator?.userAgent || '')) return false;
+    try {
+      if (device.localStorage?.getItem(lastPortalKey) !== 'teacher') return false;
+    } catch (_) { return false; }
+    return Boolean(await createStore('teacher', device)?.read());
+  }
+
+  if (typeof module !== 'undefined') module.exports = { createStore, opensTeacherOnLaunch };
+  else root.BNMobileSession = { createStore, opensTeacherOnLaunch };
 })(typeof window === 'undefined' ? globalThis : window);

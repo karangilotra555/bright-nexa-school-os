@@ -80,3 +80,92 @@ test('Teacher App refreshes a saved token on launch before querying verified tea
     window.close();
   }
 });
+
+test('canonical Teacher logout blocks remembered login even while IndexedDB deletion is pending', async () => {
+  const { readFileSync } = require('node:fs');
+  const { JSDOM, VirtualConsole } = require('jsdom');
+  const { createStore } = require('../school-mobile-session.js');
+  const dom = new JSDOM(readFileSync('teacher-access.html','utf8'),{
+    url:'https://school.example/teacher-access.html',runScripts:'outside-only',virtualConsole:new VirtualConsole()
+  });
+  const { window } = dom;
+  try {
+    const device = { indexedDB:new IDBFactory(),crypto:webcrypto,localStorage:window.localStorage,
+      navigator:{userAgent:'Android; wv)'},matchMedia:()=>({matches:false}) };
+    const saved = createStore('teacher',device);
+    await saved.write('remembered-teacher');
+    window.BNMobileSession={createStore:()=>saved};
+    window.BNHomeworkFiles={create:()=>({links(){}})};
+    window.fetch=async()=>{throw Error('Offline');};
+    window.history.replaceState(null,'','/teacher-access.html?view=timetable');
+    await window.eval(readFileSync('teacher-access.js','utf8'));
+    window.eval(readFileSync('school-auth-signout.js','utf8'));
+    await window.BNSchoolLogout.signOut();
+    assert.equal(await createStore('teacher',device).read(),null);
+  } finally {
+    window.close();
+  }
+});
+
+test('a delayed Parent password change cannot restore a session after explicit logout', async () => {
+  let saved=null,resolveUpdate;
+  const store={async read(){return saved;},async write(v){saved=v;},async clear(){saved=null;}};
+  const pending=new Promise(resolve=>{resolveUpdate=resolve;});
+  const response=body=>({ok:true,status:200,text:async()=>JSON.stringify(body)});
+  const session={access_token:'jwt',refresh_token:'first-refresh',user:{id:'parent'}};
+  const api=create(async (url,options)=>{
+    if(url.includes('/logout'))return response(null);
+    if(JSON.parse(options.body).action==='change-password')return pending;
+    return response({session,mustChangePassword:true,links:[]});
+  },store);
+  await api.login('ADM001','temporary');
+  const change=api.changePassword('NewPassword1');
+  await new Promise(resolve=>setImmediate(resolve));
+  await api.logout();
+  resolveUpdate(response({session:{...session,refresh_token:'late-refresh'},links:[{student_id:'child',institution_id:'school'}]}));
+  await assert.rejects(change,/log in again/i);
+  assert.equal(saved,null);
+});
+
+test('the shared Android launcher resumes a remembered teacher and honors an explicit Parent entry', async () => {
+  const { createStore, opensTeacherOnLaunch } = require('../school-mobile-session.js');
+  const preferences=new Map();
+  const device={indexedDB:new IDBFactory(),crypto:webcrypto,navigator:{userAgent:'Android; wv)'},location:{search:''},
+    localStorage:{getItem:key=>preferences.get(key)??null,setItem:(key,value)=>preferences.set(key,value),removeItem:key=>preferences.delete(key)}};
+  const teacher=createStore('teacher',device),parent=createStore('parent',device);
+  await teacher.write('teacher-refresh',true);
+  teacher.activate();
+  assert.equal(await opensTeacherOnLaunch(device),true);
+  assert.equal(await opensTeacherOnLaunch({...device,location:{search:'?school=example'}}),false);
+  await parent.write('parent-refresh',true);
+  parent.activate();
+  assert.equal(await opensTeacherOnLaunch(device),false);
+  teacher.activate();
+  const clearing=teacher.clear();
+  assert.equal(await opensTeacherOnLaunch(device),false);
+  await clearing;
+});
+
+test('logout from another Parent window cannot be undone by a pending password response', async () => {
+  const { createStore } = require('../school-mobile-session.js');
+  const preferences=new Map();
+  const device={indexedDB:new IDBFactory(),crypto:webcrypto,navigator:{userAgent:'Android; wv)'},
+    localStorage:{getItem:k=>preferences.get(k)??null,setItem:(k,v)=>preferences.set(k,v),removeItem:k=>preferences.delete(k)}};
+  const store=createStore('parent',device);
+  let resolveUpdate,requestStarted;
+  const pending=new Promise(resolve=>{resolveUpdate=resolve;});
+  const started=new Promise(resolve=>{requestStarted=resolve;});
+  const response=body=>({ok:true,status:200,text:async()=>JSON.stringify(body)});
+  const session={access_token:'jwt',refresh_token:'old-refresh',user:{id:'parent'}};
+  const api=create(async (url,options)=>{
+    if(JSON.parse(options.body).action==='change-password'){requestStarted();return pending;}
+    return response({session,mustChangePassword:true,links:[]});
+  },store);
+  await api.login('ADM001','temporary');
+  const change=api.changePassword('NewPassword1');
+  await started;
+  await createStore('parent',device).clear();
+  resolveUpdate(response({session:{...session,refresh_token:'late-refresh'},links:[{student_id:'child',institution_id:'school'}]}));
+  await assert.rejects(change,/log in again/i);
+  assert.equal(await createStore('parent',device).read(),null);
+});

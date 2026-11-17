@@ -12,10 +12,10 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
  function setSession(next){
   session={...next,expires_at:Number(next.expires_at)||(next.expires_in?Date.now()/1000+Number(next.expires_in):null)};
  }
- async function refreshSession(refreshToken){
-  if(refreshing?.token===refreshToken)return refreshing.promise;
+ async function refreshSession(refreshToken,expectedSchool){
+  if(refreshing?.token===refreshToken&&refreshing.school===expectedSchool)return refreshing.promise;
   const revision=authRevision;
-  const current={token:refreshToken,promise:null};
+  const current={token:refreshToken,school:expectedSchool,promise:null};
   current.promise=(async()=>{
    try{
     const response=await timedFetch(BASE+'/auth/v1/token?grant_type=refresh_token',{
@@ -32,8 +32,10 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
        ||!meta.bn_institution_id||meta.bn_password_pending===true){
      await endSession();return null;
     }
-    setSession(next);
+    const matches=!expectedSchool||meta.bn_institution_id===expectedSchool;
+    if(matches)setSession(next);
     await deviceStore?.write(next.refresh_token);
+    if(!matches)return null;
     return revision===authRevision?{links:[{institution_id:meta.bn_institution_id,student_id:meta.bn_student_id}]}:null;
    }finally{if(refreshing===current)refreshing=null;}
   })();
@@ -43,10 +45,8 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
  async function restore(){
   const revision=authRevision,token=await deviceStore?.read();
   if(!token||revision!==authRevision)return null;
-  const result=await refreshSession(token);
   const schoolId=new URLSearchParams(typeof location==='undefined'?'':location.search).get('school');
-  if(result&&schoolId&&result.links[0].institution_id!==schoolId)return null;
-  return result;
+  return refreshSession(token,schoolId||undefined);
  }
  async function ensureFresh(){
   if(session?.expires_at&&session.expires_at<=Date.now()/1000+90&&session.refresh_token){
@@ -83,12 +83,14 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
  async function rows(table,filters){const all=[];for(let offset=0;;offset+=1000){const page=await request('/rest/v1/'+table+'?'+new URLSearchParams({select:'*',order:'id.asc',...filters,limit:'1000',offset:String(offset)}));all.push(...page);if(page.length<1000)return all;}}
  async function login(admissionNumber,password){
   await endSession();
-  const revision=authRevision;
+  const revision=authRevision,marker=deviceStore?.marker?.();
   const next=await request('/functions/v1/school-student-login',{method:'POST',body:JSON.stringify({action:'login',admissionNumber,password,schoolId:new URLSearchParams(typeof location==='undefined'?'':location.search).get('school')||undefined})});
   if(!next.session?.access_token||!next.session?.user?.id)throw Error('Unable to verify student account');
-  if(revision!==authRevision)throw Error('Please log in again');
+  if(revision!==authRevision||marker!==deviceStore?.marker?.())throw Error('Please log in again');
+  const saved=!next.mustChangePassword&&next.links?.length
+   ? await deviceStore?.write(next.session.refresh_token,true,marker):null;
+  if(revision!==authRevision||saved===false)throw Error('Please log in again');
   setSession(next.session);
-  if(!next.mustChangePassword&&next.links?.length)await deviceStore?.write(next.session.refresh_token);
   return {mustChangePassword:next.mustChangePassword===true,links:next.links||[]};
  }
  async function requestPasswordReset(admissionNumber,guardianEmail){
@@ -99,10 +101,12 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
  }
  async function changePassword(newPassword){
   if(!session)throw Error('Please log in again');
+  const revision=authRevision,marker=deviceStore?.marker?.();
   const next=await request('/functions/v1/school-student-login',{method:'POST',body:JSON.stringify({action:'change-password',newPassword})});
-  if(!next.session?.access_token)throw Error('Password changed. Please log in again.');
+  if(revision!==authRevision||marker!==deviceStore?.marker?.()||!next.session?.access_token)throw Error('Please log in again.');
+  const saved=next.links?.length?await deviceStore?.write(next.session.refresh_token,true,marker):null;
+  if(revision!==authRevision||saved===false)throw Error('Please log in again.');
   setSession(next.session);selected=null;dashboardGeneration++;
-  if(next.links?.length)await deviceStore?.write(next.session.refresh_token);
   return next.links||[];
  }
  // A narrowly scoped RPC returns names/subjects ONLY for teachers assigned
@@ -154,7 +158,8 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
   const filter={institution_id:'eq.'+link.institution_id,student_id:'eq.'+link.student_id};
   const students=await rows('school_students',{id:'eq.'+link.student_id,institution_id:filter.institution_id,status:'eq.active'});
   if(session!==activeSession)throw Error('Please log in again');
-  const student=students[0];if(!student)throw Error('Student access is unavailable. Contact the school office.');
+  const student=students[0];
+  if(!student){await endSession();throw Error('Student access is unavailable. Contact the school office.');}
   const [schools,classes,attendance,fees,homework,notices,leaves,profiles]=await Promise.all([
    rows('institutions',{id:filter.institution_id}),
    student.class_id?rows('school_classes',{id:'eq.'+student.class_id,institution_id:filter.institution_id}):[],
@@ -207,7 +212,7 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
    method:'POST',cache:'no-store',headers:{apikey:KEY,Authorization:'Bearer '+jwt,'Content-Type':'application/json'}
   });
  }
- return {login,restore,requestPasswordReset,changePassword,dashboard,inboxReads,markInboxRead,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
+ return {login,restore,activate:()=>deviceStore?.activate?.(),requestPasswordReset,changePassword,dashboard,inboxReads,markInboxRead,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
 }
 if(typeof module!=='undefined')module.exports={create};else root.BNParentsCloud=create(root.fetch.bind(root));
 })(typeof window!=='undefined'?window:globalThis);

@@ -21,6 +21,8 @@ function signOut(opts){
   if(busy)return Promise.resolve(false);
   busy=true;
   const token=currentToken();
+  if(typeof root.CustomEvent==='function')
+    root.document?.dispatchEvent?.(new root.CustomEvent('bn-before-signout'));
   clearSessions(); // Prevent silent re-login even if network request fails.
   if(opts?.broadcast!==false&&channel){try{channel.postMessage({type:'signed-out'});}catch(_){}}
   // Keep the revocation request alive during navigation. Local logout is immediate.

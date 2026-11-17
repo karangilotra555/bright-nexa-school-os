@@ -133,5 +133,5 @@ test('Live, published and PWA files use matching logout code and cache fingerpri
   assert.ok(sw.includes('"url":"school-auth-signout.js?v=20261115-logout-v1","revision":"'+sha(script)+'"'));
   assert.ok(sw.includes('"url":"index.html","revision":"'+sha(read(prefix+'index.html'))+'"'));
  }
- for(const prefix of ['', 'docs/'])assert.match(read(prefix+'teacher-access.html'),/school-auth-signout\.js\?v=20261115-logout-v1/);
+ for(const prefix of ['', 'docs/'])assert.match(read(prefix+'teacher-access.html'),/school-auth-signout\.js\?v=20261117-mobile-login/);
 });

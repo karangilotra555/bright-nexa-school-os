@@ -138,6 +138,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
     <h2>Student profile</h2><div id="studentProfileSections"></div>
     <div class="panel"><h2>Published marksheets</h2><div id="publishedMarksheets" aria-live="polite"></div></div>
     <div class="panel"><p class="notice">Only school-published records are displayed. If details are incorrect, contact your school's administration.</p><button class="secondary wide" id="changePassword" type="button">Change password</button><button class="secondary wide" id="refresh" type="button">↻ Refresh from school</button></div>
+    <a class="secondary wide hidden" id="openSavedTeacher" href="./teacher-access.html?view=attendance">Open saved Teacher App</a>
     <button class="secondary wide" id="logout" type="button">Log out</button>
   </div>
  </main>
@@ -281,7 +282,10 @@ function item(root,title,body,meta){const e=document.createElement('div');e.clas
 function items(target,rows,empty,make){const root=$(target);root.replaceChildren();if(!rows.length){const p=document.createElement('p');p.className='empty';p.textContent=empty;root.append(p);return}rows.forEach(r=>make(root,r))}
 function authHeader(){return {Authorization:'Bearer '+token}}
 async function json(res){const p=await res.json().catch(()=>({}));if(!res.ok)throw Error(p.error||'Request failed');return p}
-function setTab(tab){document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('hidden',el.dataset.view!==tab));document.querySelectorAll('[data-tab]').forEach(el=>{el.classList.toggle('active',el.dataset.tab===tab);el.setAttribute('aria-current',el.dataset.tab===tab?'page':'false')});window.scrollTo(0,0)}
+function setTab(tab){
+ if(tab==='profile'&&$('openSavedTeacher'))void window.BNMobileSession?.createStore('teacher')?.read()
+  .then(saved=>$('openSavedTeacher')?.classList.toggle('hidden',!saved));
+ document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('hidden',el.dataset.view!==tab));document.querySelectorAll('[data-tab]').forEach(el=>{el.classList.toggle('active',el.dataset.tab===tab);el.setAttribute('aria-current',el.dataset.tab===tab?'page':'false')});window.scrollTo(0,0)}
 function render(p){
  data=p;const s=p.student||{},a=p.attendance||{},f=p.fees||{};
  setText('schoolShort',p.school?.name||'School portal');
@@ -311,7 +315,7 @@ function render(p){
   (root,m)=>item(root,m.examName,m.subjects.map(s=>s.subject+' '+s.obtained+' / '+s.maximum).join(' · '),
    m.publishedAt?'Published '+day(m.publishedAt):''));
 }
-async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0),link=links[index];$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(link);if(generation!==loadGeneration)return;render(p);setInbox(p,link);$('childPicker').options[index].textContent=p.student.name;show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;data=null;resetInbox();show('gate');$('loginError').textContent=e.message}}
+async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0),link=links[index];$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(link);if(generation!==loadGeneration)return;render(p);setInbox(p,link);$('childPicker').options[index].textContent=p.student.name;cloud.activate?.();show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;token=null;data=null;resetInbox();show('gate');$('loginError').textContent=e.message}}
 function logout(){resetInbox();$('attendanceList').replaceChildren();$('studentProfileSections').replaceChildren();$('publishedMarksheets').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
 async function openLinked(nextLinks){resetInbox();links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childSwitcher').hidden=links.length===1;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();}
 $('studentForgotToggle').addEventListener('click',()=>{
@@ -328,7 +332,7 @@ $('forgotStudentForm').addEventListener('submit',async e=>{
  finally{button.disabled=false;}
 });
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;$('loginError').textContent='';try{const result=await cloud.login($('adm').value.trim(),$('dob').value);$('dob').value='';if(result.mustChangePassword){show('passwordGate');$('passwordHeading').textContent='Set your password';$('newPassword').focus();return}await openLinked(result.links)}catch(err){token=null;$('loginError').textContent=err.message;show('gate')}finally{button.disabled=false}});
-$('passwordForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');$('passwordError').textContent='';if($('newPassword').value!==$('confirmPassword').value){$('passwordError').textContent='Passwords do not match.';return}button.disabled=true;try{const nextLinks=await cloud.changePassword($('newPassword').value);e.target.reset();await openLinked(nextLinks)}catch(err){$('passwordError').textContent=err.message}finally{button.disabled=false}});
+$('passwordForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');$('passwordError').textContent='';if($('newPassword').value!==$('confirmPassword').value){$('passwordError').textContent='Passwords do not match.';return}button.disabled=true;const revision=loadGeneration;try{const nextLinks=await cloud.changePassword($('newPassword').value);if(revision!==loadGeneration)return;e.target.reset();await openLinked(nextLinks)}catch(err){if(revision===loadGeneration)$('passwordError').textContent=err.message}finally{button.disabled=false}});
 $('changePassword').addEventListener('click',()=>{show('passwordGate');$('passwordHeading').textContent='Change your password';$('passwordError').textContent='';});
 $('passwordCancel').addEventListener('click',()=>{ $('passwordForm').reset();logout(); });
 $('childPicker').addEventListener('change',()=>{data=null;resetInbox();$('attendanceList').replaceChildren();show('gate');refresh()});
@@ -342,7 +346,10 @@ async function restoreLogin(){
  if(token||restoringLogin)return;
  restoringLogin=true;
  try{
-  const result=await cloud.restore();
+  if(await window.BNMobileSession?.opensTeacherOnLaunch()){
+   location.replace('./teacher-access.html?view=attendance');return;
+  }
+  const result=await cloud.restore?.();
   if(result&&!token)await openLinked(result.links);
   else if(!token)show('gate');
  }catch(error){if(!token){show('gate');$('loginError').textContent=error.message;}}
