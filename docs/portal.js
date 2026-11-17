@@ -95,9 +95,9 @@ function loginStudent(student, demo = false) {
   $('dobInput').value = '';
   $('cardStatus').textContent = demo ? 'Demo — not an official credential' : 'Enrollment: ' + value(student.enrollmentStatus);
   const identity = {
-    dashStudentName:value(student.name).toUpperCase(), dashClassSec:[student.className,student.section].filter(Boolean).join(' — ') || 'Not available',
+    dashStudentName:value(student.name).toUpperCase(), dashClassSec:[student.className,student.section,student.academicStream].filter(Boolean).join(' — ') || 'Not available',
     dashRoll:'Roll No: ' + value(student.rollNumber),dashAdm:'Adm: ' + value(student.admissionNumber),dashBlood:'Blood: ' + value(student.bloodGroup),
-    cardName:value(student.name).toUpperCase(),cardBadge:[student.className,student.section].filter(Boolean).join(' — ') || 'Not available',
+    cardName:value(student.name).toUpperCase(),cardBadge:[student.className,student.section,student.academicStream].filter(Boolean).join(' — ') || 'Not available',
     cardFather:value(student.fatherName),cardPhone:value(student.contactNumber),cardBus:value(student.busStop),cardBlood:value(student.bloodGroup)
   };
   for (const [id,text] of Object.entries(identity)) $(id).textContent = text;
