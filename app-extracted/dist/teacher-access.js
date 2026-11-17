@@ -54,7 +54,9 @@
       coverAi:async body=>{
         await ensureToken();
         if(me!==member)throw Error('School account changed. Open the cover plan again.');
-        return responseJson(await timedCloudFetch('./api/timetable/cover-ai',{
+        const coverApi = ['bright-nexa-school-os.onrender.com','karangilotra555.github.io'].includes(location.hostname)
+          ? 'https://bright-nexa-school-os-api.onrender.com/api/timetable/cover-ai' : './api/timetable/cover-ai';
+        return responseJson(await timedCloudFetch(coverApi,{
           method:'POST',headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
           body:JSON.stringify({school:member.institution_id,...body}),cache:'no-store'
         }));
