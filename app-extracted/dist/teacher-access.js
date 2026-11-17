@@ -7,6 +7,8 @@
   const APIKEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
   const TOKEN_KEY='bn_school_staff_session_v1';
   const SELECTED_SCHOOL_KEY='bn_school_staff_selected_school_v1';
+  const teacherDeviceSession=window.BNMobileSession?.createStore('teacher');
+  let rememberingTeacher=false,tokenRefresh=null,restoringTeacher=false;
   const staffPageTitle=document.title;
   const FROM_LOCAL=(()=>{
     const fromLink=new URLSearchParams(typeof location==='undefined'?'':location.search).get('fromLocal')==='1';
@@ -81,7 +83,7 @@
     sendAlertAction('clear');
     const revoke=()=>device?.installation&&jwt&&timedCloudFetch(BASE+'/rest/v1/rpc/bn_disable_teacher_period_alerts',{
       method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt,'Content-Type':'application/json'},
-      body:JSON.stringify({p_school:previous.institution_id,p_installation:device.installation})
+      body:JSON.stringify({p_school:previous.institution_id,p_installation:device.installation}),keepalive:true
     }).catch(()=>{});
     return revoke();
   }
@@ -307,6 +309,7 @@
   function saveSession(next){
     session={access_token:next.access_token,refresh_token:next.refresh_token,expires_at:Math.floor(Date.now()/1000)+(Number(next.expires_in)||3600)};
     sessionStorage.setItem(TOKEN_KEY,JSON.stringify(session));
+    if(rememberingTeacher)return teacherDeviceSession?.write(session.refresh_token);
   }
   async function timedCloudFetch(url,options={}){
     // Isolated Node/VM fixtures omit timers; browsers always provide them.
@@ -328,7 +331,7 @@
   }
   async function responseJson(res){
     const data=await res.json().catch(()=>({}));
-    if(!res.ok)throw new Error(data.message||data.msg||data.error_description||data.error||'Request denied by server');
+    if(!res.ok)throw Object.assign(new Error(data.message||data.msg||data.error_description||data.error||'Request denied by server'),{status:res.status});
     return data;
   }
   async function authRequest(path,body,method='POST'){
@@ -338,11 +341,22 @@
     }));
   }
   async function ensureToken(){
-    if(!session||!session.access_token)throw new Error('Please log in.');
-    if(session.expires_at>Date.now()/1000+90)return;
+    if(!session||(!session.access_token&&!session.refresh_token))throw new Error('Please log in.');
+    if(session.access_token&&session.expires_at>Date.now()/1000+90)return;
     if(!session.refresh_token){dropSession();throw new Error('Session expired. Log in again.');}
-    const p=await authRequest('token?grant_type=refresh_token',{refresh_token:session.refresh_token});
-    saveSession(p);
+    if(tokenRefresh)return tokenRefresh;
+    const active=session;
+    tokenRefresh=(async()=>{
+      try{
+        const tokens=await authRequest('token?grant_type=refresh_token',{refresh_token:active.refresh_token});
+        if(session!==active)throw Error('Please log in.');
+        await saveSession(tokens);
+      }catch(error){
+        if(session===active&&[400,401,403].includes(error.status))dropSession();
+        throw error;
+      }
+    })();
+    try{await tokenRefresh;}finally{tokenRefresh=null;}
   }
   async function api(table,query='',method='GET',body=null,prefer='return=representation'){
     await ensureToken();
@@ -399,6 +413,8 @@
   function dropSession(){
     ++schoolLoadEpoch;
     clearPeriodAlerts();
+    rememberingTeacher=false;
+    const cleared=teacherDeviceSession?.clear();
     session=null;me=null;identity=null;rolePermissions=null;feeStudentRoster=[];recoveryMode=false;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(SELECTED_SCHOOL_KEY);
@@ -416,6 +432,7 @@
     document.title=staffPageTitle;
     put('staffPortalTitle','Staff Portal');
     put('schoolLabel','Cloud-based school access');document.querySelector('#loginPassword').value='';
+    return cleared;
   }
   async function switchToDifferentAccount(){
     const jwt=session?.access_token;
@@ -464,9 +481,20 @@
     if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
     if(name==='leave'&&$('teacherLeaveWorkspace'))window.BNTeacherDuty?.show($('teacherLeaveWorkspace'),dutyScope());
     if(name==='staff-attendance'&&$('teacherPersonalAttendance'))window.BNTeacherDuty?.attendance($('teacherPersonalAttendance'),dutyScope());
+    if(name==='account'&&mobileTeacher()&&$('teacherSwitchParent')){
+      void window.BNMobileSession?.createStore('parent')?.read().then(token=>{
+        if(mobileTeacher())display('teacherSwitchParent',Boolean(token));
+      });
+    }
     if(name==='timetable'){
       if($('schoolLeaveShortcut'))display('schoolLeaveShortcut',isAdmin());
-      if($('teacherAlertControls'))display('teacherAlertControls',mobileTeacher()&&Boolean(nativeAlerts));
+      if($('teacherAlertControls')){
+        display('teacherAlertControls',mobileTeacher());
+        if(mobileTeacher()&&!nativeAlerts){
+          $('teacherAlertToggle').disabled=true;
+          put('teacherAlertStatus','Period alerts require the updated Bright Nexa Android app.');
+        }
+      }
       if(mobileTeacher())openTeacherSchedule('today');
       else{display('schoolTimetableRoot',true);activateClassTimetable();}
     }
@@ -661,11 +689,14 @@
     panel.append(heading,desc,input,button,details);
     host.prepend(panel);
   }
-  async function load(requestedSchoolId){
+  async function load(requestedSchoolId,teacherResume=false){
     const thisLoad=++schoolLoadEpoch;
     await ensureToken();
-    identity=await responseJson(await timedCloudFetch(BASE+'/auth/v1/user',{headers:{
-      apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'}));
+    const userResponse=await timedCloudFetch(BASE+'/auth/v1/user',{headers:{
+      apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'});
+    if(thisLoad!==schoolLoadEpoch)return;
+    if(teacherResume&&[401,403].includes(userResponse.status))dropSession();
+    identity=await responseJson(userResponse);
     if(identity.app_metadata?.bn_teacher_mobile_pending===true){
       display('portalSection',false);display('loginSection',true);display('logout',true);
       showAuthView('teacher-first-password');
@@ -675,6 +706,10 @@
     const memberships=await api('school_users',query({select:'id,institution_id,auth_user_id,email,role,status,display_name',auth_user_id:eq(identity.id)}));
     if(thisLoad!==schoolLoadEpoch)return;
     const active=memberships.filter(x=>x.auth_user_id===identity.id&&x.status==='active');
+    const eligible=teacherResume?active.filter(x=>x.role==='teacher'):active;
+    if(teacherResume&&!eligible.length){
+      dropSession();notify('Teacher App access is unavailable. Contact the school administrator.',true);return;
+    }
     if(!active.length){
       // No school membership: keep the verified Auth session so the first-school
       // RPC can securely create the new owner/school, never a sample tenant.
@@ -690,7 +725,7 @@
     // School names become visible ONLY after a verified Supabase Auth session,
     // and only for institutions having an active membership for this account.
     const permitted=[];
-    for(const member of active){
+    for(const member of eligible){
       const schoolRows=await api('institutions',query({select:'id,name,status',id:eq(member.institution_id)}));
       if(thisLoad!==schoolLoadEpoch)return;
       const school=schoolRows.find(s=>s.id===member.institution_id&&['active','trial'].includes(s.status));
@@ -705,6 +740,12 @@
     me=chosen.member;
     const school=chosen.school;
     const teacherApp=me.role==='teacher'&&isMobileAppContext();
+    if(teacherApp&&teacherDeviceSession&&!rememberingTeacher){
+      rememberingTeacher=true;
+      await teacherDeviceSession.write(session.refresh_token,true);
+      if(thisLoad!==schoolLoadEpoch)return;
+    }
+    if(teacherApp)teacherDeviceSession?.activate?.();
     document.body.classList.toggle('bn-teacher-app',teacherApp);
     document.title=teacherApp?'Bright Nexa | Teacher Workspace':staffPageTitle;
     put('staffPortalTitle',teacherApp?'Teacher App':'Staff Portal');
@@ -1639,9 +1680,29 @@
       else notify(e.message||'Operation could not be completed.',true);
     }
   }
+  async function restoreTeacherLogin(refreshToken){
+    if(restoringTeacher)return;
+    restoringTeacher=true;
+    rememberingTeacher=true;
+    const startEpoch=schoolLoadEpoch;
+    try{
+      session={access_token:'',refresh_token:refreshToken,expires_at:0};
+      await load(undefined,true);
+    }catch(error){
+      if(!session)throw error;
+      if(schoolLoadEpoch===startEpoch+1){
+        session=null;
+        display('savedSessionPanel',true);
+      }
+      throw error;
+    }finally{restoringTeacher=false;}
+  }
   $('continuePreviousSession').addEventListener('click',()=>run(async()=>{
     display('savedSessionPanel',false);
-    await load();
+    if(!session&&teacherDeviceSession){
+      const saved=await teacherDeviceSession.read();
+      if(saved)await restoreTeacherLogin(saved);
+    }else await load();
   }));
   $('differentSchoolLogin').addEventListener('click',()=>run(switchToDifferentAccount));
   $('switchSchoolAccount').addEventListener('click',()=>run(switchToDifferentAccount));
@@ -1742,7 +1803,15 @@
   $('createSchoolChangeAccount').addEventListener('click',()=>run(switchToDifferentAccount));
   $('loginForm').addEventListener('submit',e=>{e.preventDefault();run(async()=>{
     const btn=e.submitter;btn.disabled=true;
-    try{const tokens=await authRequest('token?grant_type=password',{email:$('loginEmail').value.trim(),password:$('loginPassword').value});saveSession(tokens);await load()}
+    const marker=teacherDeviceSession?.marker?.();
+    try{
+      const tokens=await authRequest('token?grant_type=password',{email:$('loginEmail').value.trim(),password:$('loginPassword').value});
+      if(marker!==teacherDeviceSession?.marker?.())throw Error('Please log in again.');
+      rememberingTeacher=false;
+      await teacherDeviceSession?.clear();
+      $('loginPassword').value='';
+      saveSession(tokens);await load();
+    }
     finally{btn.disabled=false}
   })});
   $('forgotPasswordLink').addEventListener('click',()=>{
@@ -1904,11 +1973,13 @@
       button.disabled=false;
     }
   })});
+  document.addEventListener?.('bn-before-signout',()=>{dropSession();});
   $('logout').addEventListener('click',()=>{run(async()=>{
-    const alerts=clearPeriodAlerts();
+    const alerts=clearPeriodAlerts(),jwt=session?.access_token;
+    await dropSession();
     if(alerts)await alerts;
-    if(session?.access_token)await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
-    dropSession();notify('Signed out.');
+    if(jwt)await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt}}).catch(()=>{});
+    notify('Signed out.');
   })});
   $('reload').addEventListener('click',()=>run(async()=>{await reload();notify('Updated from cloud.')}));
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
@@ -2557,6 +2628,13 @@
   }
   // Only Supabase-issued authenticated invite fragments are processed; tokens
   // are immediately removed from address bar after parsing.
+  const launchParams=new URLSearchParams(location.search);
+  const finishingLogout=launchParams.get('loggedOut')==='1';
+  if(finishingLogout&&teacherDeviceSession){
+    void teacherDeviceSession.clear();
+    launchParams.delete('loggedOut');
+    history.replaceState(null,'',location.pathname+(launchParams.size?'?'+launchParams:'')+location.hash);
+  }
   let confirmedByEmailLink=false;
   let authLinkExpired=false;
   let adminActivationHash=null;
@@ -2593,6 +2671,7 @@
       if(saved)session=JSON.parse(saved);
     }
   }catch{dropSession()}
+  const openingActivation=Boolean(adminActivationHash)||!$('activation').classList.contains('hidden');
   if(adminActivationHash){
     const oneTimeHash=adminActivationHash;adminActivationHash=null;
     run(async()=>{
@@ -2617,18 +2696,24 @@
   }
   if(session&&!$('activation').classList.contains('hidden')){
     notify(recoveryMode?'Secure recovery link verified. Set your new password.':'Invitation verified. Set your new password to continue.');
-  }else if(session){
-    const requested=new URLSearchParams(location.search).get('view');
-    let verifiedErp=null;
-    try{verifiedErp=JSON.parse(sessionStorage.getItem('bright-nexa-school-os:session:v2')||'null');}catch(_){}
-    // Only owner navigation from an already-verified ERP may auto-resume.
-    // load() ALWAYS rechecks the token, active school membership and role
-    // through Supabase; no browser-stored flag can grant data access.
-    if(requested==='timetable'&&verifiedErp?.cloudVerified===true
-      &&verifiedErp?.role==='OWNER'&&verifiedErp?.cloudUserId){
-      run(()=>load());
-    }else{
-      display('savedSessionPanel',true);
+  }else {
+    if(teacherDeviceSession&&!finishingLogout&&!openingActivation&&!authLinkExpired&&!confirmedByEmailLink){
+      const saved=await teacherDeviceSession.read();
+      if(saved){await run(()=>restoreTeacherLogin(saved));return;}
+    }
+    if(session){
+      const requested=new URLSearchParams(location.search).get('view');
+      let verifiedErp=null;
+      try{verifiedErp=JSON.parse(sessionStorage.getItem('bright-nexa-school-os:session:v2')||'null');}catch(_){}
+      // Only owner navigation from an already-verified ERP may auto-resume.
+      // load() ALWAYS rechecks the token, active school membership and role
+      // through Supabase; no browser-stored flag can grant data access.
+      if(requested==='timetable'&&verifiedErp?.cloudVerified===true
+        &&verifiedErp?.role==='OWNER'&&verifiedErp?.cloudUserId){
+        run(()=>load());
+      }else{
+        display('savedSessionPanel',true);
+      }
     }
   }
 })();

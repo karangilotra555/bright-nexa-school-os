@@ -10,7 +10,7 @@ const hash=p=>crypto.createHash('sha256').update(read(p)).digest('hex');
 const mirrors=[
  'index.html','sw.js','school-erp-entry.js','school-dashboard-integrity.js','school-workspace-controller.js',
  'school-workspace-cloud.js','school-online-guard.js','school-role-entry.js',
- 'teacher-access.html','teacher-access.js','parents.html','parents-cloud.js',
+ 'teacher-access.html','teacher-access.js','parents.html','parents-cloud.js','school-mobile-session.js',
  'assets/index-brightnexa-v2.js','school-private-cache.js','school-workspace-persistence.js',
  'school-auth-signout.js','portal.js','marksheet.html'
 ];
@@ -91,7 +91,7 @@ precache('school-private-cache.js?v='+cacheVersion[1],'school-private-cache.js')
 // Executable regressions: no disclosure without a valid QR signature, no DOB
 // sessions, recovery navigation, encrypted storage/migration/queue and hydration.
 const security=require('node:child_process').spawnSync(process.execPath,['--test',
- 'tests/precache-assets.test.cjs','tests/server.test.cjs','tests/recovery-navigation.test.cjs','tests/private-cache.test.cjs','tests/workspace-persistence.test.cjs','tests/teacher-mobile-workspace.test.cjs',
+ 'tests/precache-assets.test.cjs','tests/mobile-portal-session.test.cjs','tests/server.test.cjs','tests/recovery-navigation.test.cjs','tests/private-cache.test.cjs','tests/workspace-persistence.test.cjs','tests/teacher-mobile-workspace.test.cjs',
  'tests/workspace-cloud.test.cjs','tests/student-email-recovery.test.cjs',
  'tests/marksheet-component-integrity.test.cjs','tests/print-documents-cloud-verification.test.cjs'],
  {cwd:root,stdio:'inherit'});

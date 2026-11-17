@@ -46,7 +46,7 @@ test('A verified teacher has no Parent Portal or school-wide Smart Tools links w
   assert.equal(links.length,4);
   w.showStaffMenu('teacher');
   for(const link of links)assert.ok(link.classList.contains('hidden'),link.textContent.trim());
-  assert.equal(doc.querySelector('#mobileParentLogin').getAttribute('href'),'./parents.html');
+  assert.equal(doc.querySelector('#mobileParentLogin').getAttribute('href'),'./parents.html?portal=parent');
   w.showStaffMenu('school_admin');
   for(const link of links)assert.ok(!link.classList.contains('hidden'),link.textContent.trim());
  }finally{dom.window.close();}
@@ -71,7 +71,7 @@ test('public login and recovery have branding and hide extra pre-login navigatio
  assert.match(html,/body:has\(#loginSection:not\(\.hidden\)\)>header\{display:none\}/);
  assert.match(html,/id="staffSmartToolsLink"/,'protected menu is preserved for logged-in staff');
  assert.match(html,/id="forgotFeedback"/);
- assert.match(html,/teacher-access\.js\?v=20261117-teacher-duty/);
+ assert.match(html,/teacher-access\.js\?v=20261117-mobile-login/);
  assert.match(script,/const redirect=emailReturnUrl\(\);/);
  assert.match(script,/response\.status===429/);
  assert.match(script,/resetFeedback\(/);
