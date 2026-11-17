@@ -72,8 +72,9 @@ test('Leadership DB aggregates verified marks, limits fee access and publishes i
   await assert.rejects(rpc('bn_leadership_publish_urgent_notice',school,id(13),title,body),/Owner or Principal/);
   await as(outside);
   await assert.rejects(rpc('bn_leadership_fee_snapshot',school,day),/Owner or Principal/);
-  await as(principal);
+  await db.exec('reset role'); // Fixture owner simulates a new mark state; client never edits attendance.
   await sql('delete from school_attendance where id=$1',[id(15)]);
+  await as(principal);
   const incomplete=await rpc('bn_leadership_school_pulse',school,day);
   assert.equal(incomplete.students_marked,1);
   assert.equal(incomplete.student_percent,null,'Partial attendance must not be misreported as a school-wide percentage');
