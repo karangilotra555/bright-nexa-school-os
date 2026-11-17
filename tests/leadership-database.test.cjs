@@ -61,8 +61,10 @@ test('Leadership DB aggregates verified marks, limits fee access and publishes i
   const title='Emergency school closure',body='School will close earlier today due to severe rainfall.';
   assert.equal(await rpc('bn_leadership_publish_urgent_notice',school,n1,title,body),n1);
   assert.equal(await rpc('bn_leadership_publish_urgent_notice',school,n1,title,body),n1);
+  await db.exec('reset role'); // Inspect fixture totals as test owner; no general table grant is added.
   assert.equal(Number((await sql('select count(*) n from school_notices')).rows[0].n),1);
   assert.equal(Number((await sql('select count(*) n from school_audit_events')).rows[0].n),1);
+  await as(principal);
   await assert.rejects(rpc('bn_leadership_publish_urgent_notice',school,n1,title,'A different official message that is not the same.'),/conflict/i);
   await assert.rejects(rpc('bn_leadership_fee_snapshot',other,day),/Owner or Principal/);
   await as(teacher);
