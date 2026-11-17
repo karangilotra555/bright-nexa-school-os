@@ -39,6 +39,11 @@ jobs:
             yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.0'
           fi
       - name: Build School APK
+        env:
+          FCM_APP_ID: ${{ vars.FCM_APP_ID }}
+          FCM_API_KEY: ${{ vars.FCM_API_KEY }}
+          FCM_SENDER_ID: ${{ vars.FCM_SENDER_ID }}
+          FCM_PROJECT_ID: ${{ vars.FCM_PROJECT_ID }}
         working-directory: android-parents
         run: gradle --no-daemon :app:assembleDebug
       - name: Upload installable School APK
@@ -52,11 +57,21 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          FCM_APP_ID: ${{ vars.FCM_APP_ID }}
+          FCM_API_KEY: ${{ vars.FCM_API_KEY }}
+          FCM_SENDER_ID: ${{ vars.FCM_SENDER_ID }}
+          FCM_PROJECT_ID: ${{ vars.FCM_PROJECT_ID }}
         run: |
-          tag='school-app-v0.5.1'
-          cp android-parents/app/build/outputs/apk/debug/app-debug.apk Bright-Nexa-School-v0.5.1.apk
+          tag='school-app-v0.5.2'
+          for key in FCM_APP_ID FCM_API_KEY FCM_SENDER_ID FCM_PROJECT_ID; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Configure repository variable $key before publishing the push-capable APK."
+              exit 1
+            fi
+          done
+          cp android-parents/app/build/outputs/apk/debug/app-debug.apk Bright-Nexa-School-v0.5.2.apk
           if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload "$tag" Bright-Nexa-School-v0.5.1.apk --clobber --repo "${{ github.repository }}"
+            gh release upload "$tag" Bright-Nexa-School-v0.5.2.apk --clobber --repo "${{ github.repository }}"
           else
-            gh release create "$tag" Bright-Nexa-School-v0.5.1.apk --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease --title 'Bright Nexa School App v0.5.1' --notes 'Compact Teacher App layout and school connection in the settings menu. Teacher and student logins, homework photo/PDF file picker, in-app PDF and image viewer, and attendance calendar. Uses the dedicated com.brightnexa.school package to avoid conflicts with older Parents/demo installations. Cloud records and passwords are preserved.'
+            gh release create "$tag" Bright-Nexa-School-v0.5.2.apk --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease --title 'Bright Nexa School App v0.5.2' --notes 'Adds Teacher App period alerts and notifications for published cover and reviewed leave. Enable period alerts in Teacher App Timetable.'
           fi

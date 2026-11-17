@@ -44,6 +44,90 @@
       api,query,eq,notify:mobileTeacher()?undefined:notify,openAssignments:()=>tab('admin')
     });
   }
+  const nativeAlerts=window.BrightNexaPeriodAlerts;
+  let alertDevice=null, alertPending=null, enabledAlertOwner=null;
+  function dutyScope(){
+    const member=me;
+    return {
+      admin:member.role==='school_admin',
+      rpc:(name,args={})=>api('rpc/'+name,'','POST',{p_school:member.institution_id,...args}),
+      coverAi:async body=>{
+        await ensureToken();
+        if(me!==member)throw Error('School account changed. Open the cover plan again.');
+        return responseJson(await timedCloudFetch('./api/timetable/cover-ai',{
+          method:'POST',headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+          body:JSON.stringify({school:member.institution_id,...body}),cache:'no-store'
+        }));
+      },
+      active:()=>me===member
+    };
+  }
+  function sendAlertAction(action,extra={}){
+    if(!nativeAlerts||me?.role!=='teacher')return;
+    nativeAlerts.postMessage(JSON.stringify({action,school:me.institution_id,member:me.id,...extra}));
+  }
+  function enablePeriodAlerts(action){
+    if(!nativeAlerts||alertPending||me?.role!=='teacher')return;
+    alertPending={owner:me,nonce:crypto.randomUUID()};
+    sendAlertAction(action,{nonce:alertPending.nonce});
+  }
+  function clearPeriodAlerts(){
+    const previous=me, device=alertDevice;
+    const jwt=session?.access_token;
+    if(previous?.role!=='teacher'||!nativeAlerts)return;
+    alertPending=null;alertDevice=null;enabledAlertOwner=null;
+    sendAlertAction('clear');
+    const revoke=()=>device?.installation&&jwt&&timedCloudFetch(BASE+'/rest/v1/rpc/bn_disable_teacher_period_alerts',{
+      method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+jwt,'Content-Type':'application/json'},
+      body:JSON.stringify({p_school:previous.institution_id,p_installation:device.installation})
+    }).catch(()=>{});
+    return revoke();
+  }
+  if(nativeAlerts){
+    const button=$('teacherAlertToggle');
+    const setAlertStatus=message=>put('teacherAlertStatus',message);
+    nativeAlerts.onmessage=async event=>{
+      let result;
+      try{result=JSON.parse(event.data)}catch(_){return;}
+      const pending=alertPending;
+      if(!pending||result.nonce!==pending.nonce)return;
+      alertPending=null;
+      const owner=pending.owner;
+      if(owner!==me)return;
+      alertDevice=result;
+      if(result.status!=='ready'){
+        if(result.status!=='off')setAlertStatus(({
+          denied:'Allow notifications for Bright Nexa in Android settings.',
+          unconfigured:'Period alerts are unavailable in this school app build.',
+          error:'Could not connect to notifications. Try again.'
+        })[result.status]||'Could not enable alerts.');
+        return;
+      }
+      try{
+        const binding=await dutyScope().rpc('bn_enable_teacher_period_alerts',{p_installation:result.installation,p_token:result.token});
+        if(me!==owner)return;
+        sendAlertAction('bind',{binding});
+        enabledAlertOwner=owner;
+        button.textContent='Turn off period alerts';
+        setAlertStatus('Period alerts are on for this phone.');
+      }catch(_){if(me===owner)setAlertStatus('The school did not confirm alerts. Try again.');}
+    };
+    button?.addEventListener('click',()=>{
+      if(enabledAlertOwner===me){
+        clearPeriodAlerts();
+        button.textContent='Enable period alerts';
+        setAlertStatus('Period alerts are off on this phone.');
+      }else enablePeriodAlerts('enable');
+    });
+    window.addEventListener('bright-nexa-open-timetable',()=>{ if(mobileTeacher())tab('timetable'); });
+    document.addEventListener('visibilitychange',()=>{
+      if(document.hidden||!mobileTeacher())return;
+      if(enabledAlertOwner===me)enablePeriodAlerts('resume');
+      if($('teacherPeriods')?.closest?.('[data-view]:not(.hidden)') && teacherScheduleMode==='today')
+        openTeacherSchedule('today');
+    });
+  }
+
   let teacherScheduleRequest=0,teacherScheduleMode='today';
   async function openTeacherSchedule(mode){
     teacherScheduleMode=mode;
@@ -57,6 +141,31 @@
       button.setAttribute('aria-pressed',String(button.dataset.teacherSchedule===mode)));
     periodList.replaceChildren();
     if(isClassView){put('teacherTimetableStatus','');activateClassTimetable();return;}
+    const stillCurrent=()=>request===teacherScheduleRequest&&me?.institution_id===school&&me.id===teacherId;
+    const drawPeriod=(slot,lesson,classLabel)=>{
+      const row=dom('div',undefined,'teacher-period'),detail=dom('div');
+      detail.append(dom('strong',lesson.subject),dom('small',
+        [classLabel,slot.label,lesson.room_number?'Room '+lesson.room_number:null,lesson.is_cover?'Cover period':null].filter(Boolean).join(' · '),'muted'));
+      row.append(dom('span',slot.starts_at.slice(0,5)+'–'+slot.ends_at.slice(0,5),'teacher-period-time'),detail);
+      periodList.append(row);
+    };
+    if(mode==='today'&&window.BNTeacherDuty){
+      put('teacherTimetableStatus','Loading today’s published periods…');
+      try{
+        const periods=await dutyScope().rpc('bn_teacher_day',{p_day:window.BNTeacherDuty.schoolDate()});
+        if(!stillCurrent())return;
+        for(const period of periods)drawPeriod(period,period,period.class_name);
+        put('teacherTimetableStatus',periods.length?'':'No published periods for you today.');
+        return;
+      }catch(error){
+        if(!stillCurrent())return;
+        if(!/schema cache|function.*not found/i.test(error.message)){
+          put('teacherTimetableStatus',"Couldn't load your timetable. Try again.");
+          display('retryTeacherTimetable',true);
+          return;
+        }
+      }
+    }
     const year=[...new Set(allClasses.map(cls=>cls.academic_year).filter(Boolean))].sort().at(-1);
     if(!year){put('teacherTimetableStatus','No classes are assigned yet.');return;}
     put('teacherTimetableStatus','Loading published periods…');
@@ -64,7 +173,7 @@
       const scope={institution_id:eq(school),academic_year:eq(year)};
       const [slots,lessons]=await Promise.all([
         api('school_timetable_slots',query({...scope,select:'id,weekday,slot_index,label,starts_at,ends_at,kind',order:'weekday.asc,slot_index.asc',limit:'1000'})),
-        api('school_timetable_published',query({...scope,teacher_user_id:eq(teacherId),select:'slot_id,class_id,subject,teacher_user_id',limit:'1000'}))
+        api('school_timetable_published',query({...scope,teacher_user_id:eq(teacherId),limit:'1000'}))
       ]);
       if(request!==teacherScheduleRequest||me?.institution_id!==school||me.id!==teacherId)return;
       const bySlot=new Map(lessons.filter(lesson=>lesson.teacher_user_id===teacherId).map(lesson=>[lesson.slot_id,lesson]));
@@ -79,10 +188,7 @@
           periodList.append(dom('h3',weekdays[slot.weekday]));
           priorDay=slot.weekday;
         }
-        const row=dom('div',undefined,'teacher-period'),detail=dom('div');
-        detail.append(dom('strong',lesson.subject),dom('small',[classLabels.get(lesson.class_id),slot.label].filter(Boolean).join(' · '),'muted'));
-        row.append(dom('span',slot.starts_at.slice(0,5)+'–'+slot.ends_at.slice(0,5),'teacher-period-time'),detail);
-        periodList.append(row);
+        drawPeriod(slot,lesson,classLabels.get(lesson.class_id));
       }
       put('teacherTimetableStatus',periodList.childElementCount?'':mode==='today'?'No published periods for you today.':'No periods have been published for your account.');
     }catch(error){
@@ -290,6 +396,7 @@
   }
   function dropSession(){
     ++schoolLoadEpoch;
+    clearPeriodAlerts();
     session=null;me=null;identity=null;rolePermissions=null;feeStudentRoster=[];recoveryMode=false;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(SELECTED_SCHOOL_KEY);
@@ -325,6 +432,8 @@
   function tab(name){
     if(name==='dashboard'&&isAdmin()){location.assign('./index.html?openSchool=true&tab=Dashboard');return;}
     if(name==='admin'&&!isAdmin())return;
+    if(name==='leave'&&!isAdmin()&&!mobileTeacher())return;
+    if(name==='staff-attendance'&&!mobileTeacher())return;
     if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
     // Owner timetable deep-links retain the main School OS context without
     // spawning a second, duplicated staff/ERP sidebar.
@@ -351,7 +460,11 @@
     }
     if(name==='marks'&&!teacherMarksLoading&&(!mobileTeacher()||!teacherMarksRows.length))run(loadTeacherMarks);
     if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
+    if(name==='leave'&&$('teacherLeaveWorkspace'))window.BNTeacherDuty?.show($('teacherLeaveWorkspace'),dutyScope());
+    if(name==='staff-attendance'&&$('teacherPersonalAttendance'))window.BNTeacherDuty?.attendance($('teacherPersonalAttendance'),dutyScope());
     if(name==='timetable'){
+      if($('schoolLeaveShortcut'))display('schoolLeaveShortcut',isAdmin());
+      if($('teacherAlertControls'))display('teacherAlertControls',mobileTeacher()&&Boolean(nativeAlerts));
       if(mobileTeacher())openTeacherSchedule('today');
       else{display('schoolTimetableRoot',true);activateClassTimetable();}
     }
@@ -586,6 +699,7 @@
     if(requestedSchoolId&&!permitted.some(x=>x.school.id===requestedSchoolId))
       throw Error('This account is not authorized for that school.');
     const chosen=permitted.find(x=>x.school.id===preferred)||permitted[0];
+    if(me?.id!==chosen.member.id&&me?.role==='teacher')clearPeriodAlerts();
     me=chosen.member;
     const school=chosen.school;
     const teacherApp=me.role==='teacher'&&isMobileAppContext();
@@ -642,12 +756,13 @@
     installOwnerRecoveryControl();
     await reload();
     const requested=new URLSearchParams(location.search).get('view');
-    const allowedViews=['dashboard','classes','timetable','attendance','homework','marks','notices','profiles','fees','admin','account'];
+    const allowedViews=['dashboard','classes','timetable','attendance','homework','marks','notices','profiles','fees','admin','account','leave','staff-attendance'];
     const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
     const deepLink=allowedViews.includes(requested)&&isTabVisibleForRole(requested,me.role)?requested:null;
     const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
     const openingView=deepLink||(preferredLandingView&&isTabVisibleForRole(preferredLandingView,me.role)?preferredLandingView:null)||landing||'account';
     tab(openingView);clearNotice();
+    if(teacherApp)enablePeriodAlerts('resume');
     if(openingView==='attendance'&&!teacherApp){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
   async function renderMobileReadiness(){
@@ -1104,6 +1219,8 @@
   function isTabVisibleForRole(tabName,role){
     if(tabName==='dashboard')return role==='school_admin';
     if(tabName==='admin')return role==='school_admin';
+    if(tabName==='leave')return role==='teacher'||role==='school_admin';
+    if(tabName==='staff-attendance')return role==='teacher';
     if(tabName==='fees')return role==='school_admin'||role==='accountant';
     if(tabName==='marks')return role==='teacher'&&allAssignments.some(a=>a.school_user_id===me?.id&&a.active&&a.can_enter_marks);
     if(role==='school_admin'||role==='principal')return true;
@@ -1786,6 +1903,8 @@
     }
   })});
   $('logout').addEventListener('click',()=>{run(async()=>{
+    const alerts=clearPeriodAlerts();
+    if(alerts)await alerts;
     if(session?.access_token)await timedCloudFetch(BASE+'/auth/v1/logout',{method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token}}).catch(()=>{});
     dropSession();notify('Signed out.');
   })});

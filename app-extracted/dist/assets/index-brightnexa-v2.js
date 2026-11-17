@@ -19048,54 +19048,50 @@ function Xn(e2, t2, n2, r2, i2) {
   let o2 = /* @__PURE__ */ new Map();
   const allPayments = Array.isArray(e2.feePayments) ? [...e2.feePayments] : [];
   if (Array.isArray(e2.externalFeeLedger)) {
-    const byId = new Map(e2.externalFeeLedger.map(entry => [entry.id, entry]));
-    const reversals = new Set();
+    const byId = new Map(e2.externalFeeLedger.map((entry) => [entry.id, entry]));
+    const reversals = /* @__PURE__ */ new Set();
     for (const entry of e2.externalFeeLedger) {
-      const match = String(entry.reference || '').match(/^REV-([a-f0-9-]{36})$/i);
+      const match = String(entry.reference || "").match(/^REV-([a-f0-9-]{36})$/i);
       if (match) {
         const revId = match[1];
         const orig = byId.get(revId);
-        if (orig && entry.description === 'Correction reversal of ' + revId &&
-            orig.studentId === entry.studentId && orig.kind !== entry.kind &&
-            Number(orig.amountRupees) === Number(entry.amountRupees)) {
+        if (orig && entry.description === "Correction reversal of " + revId && orig.studentId === entry.studentId && orig.kind !== entry.kind && Number(orig.amountRupees) === Number(entry.amountRupees)) {
           reversals.add(revId);
         }
       }
     }
     const studentId = t2?.id;
     for (const entry of e2.externalFeeLedger) {
-      const revOf = String(entry.reference || '').slice(4);
-      if (entry.kind !== 'payment' || reversals.has(entry.id) ||
-          (entry.reference === 'REV-' + revOf && reversals.has(revOf))) continue;
-      if (entry.studentId === studentId || entry.studentId === 'cloud:' + studentId) {
-        const matchedCategory = (e2.feeStructures || []).find(s => s.category === entry.description)?.category ||
-          entry.description || (e2.feeStructures?.[0]?.category || 'Tuition Fee');
+      const revOf = String(entry.reference || "").slice(4);
+      if (entry.kind !== "payment" || reversals.has(entry.id) || entry.reference === "REV-" + revOf && reversals.has(revOf)) continue;
+      if (entry.studentId === studentId || entry.studentId === "cloud:" + studentId) {
+        const matchedCategory = (e2.feeStructures || []).find((s2) => s2.category === entry.description)?.category || entry.description || (e2.feeStructures?.[0]?.category || "Tuition Fee");
         allPayments.push({
           id: entry.id,
-          receiptNumber: entry.reference || '',
+          receiptNumber: entry.reference || "",
           studentId,
           category: matchedCategory,
           amount: Number(entry.amountRupees) || 0,
           baseAmountReceived: Number(entry.amountRupees) || 0,
           paymentDate: entry.date,
-          billingMonth: entry.date ? Number(entry.date.slice(5, 7)) : undefined,
-          billingYear: entry.date ? Number(entry.date.slice(0, 4)) : undefined,
-          status: 'Posted',
-          method: 'Staff Portal',
+          billingMonth: entry.date ? Number(entry.date.slice(5, 7)) : void 0,
+          billingYear: entry.date ? Number(entry.date.slice(0, 4)) : void 0,
+          status: "Posted",
+          method: "Staff Portal",
           external: true
         });
       }
     }
   }
   for (let t3 of allPayments) {
-    let e3 = `${t3.studentId}|${t3.category}`;
-    let n3 = o2.get(e3) || [];
+    let key = `${t3.studentId}|${t3.category}`;
+    let n3 = o2.get(key) || [];
     n3.push(t3);
-    o2.set(e3, n3);
+    o2.set(key, n3);
     if (t3.obligationKey) {
-      let e4 = a2.get(t3.obligationKey) || [];
-      e4.push(t3);
-      a2.set(t3.obligationKey, e4);
+      let e3 = a2.get(t3.obligationKey) || [];
+      e3.push(t3);
+      a2.set(t3.obligationKey, e3);
     }
   }
   return Jn(e2.feeStructures, t2, n2).flatMap(
@@ -19541,12 +19537,11 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
       }
       return att;
     });
-    const oldStream = oldClass.academicStream || '';
-    const newStream = newClass.academicStream || '';
+    const oldStream = oldClass.academicStream || "";
+    const newStream = newClass.academicStream || "";
     const oldKey = oldStream ? `${oldClass.name}-${oldClass.section} (${oldStream})` : `${oldClass.name}-${oldClass.section}`;
     const newKey = newStream ? `${newClass.name}-${newClass.section} (${newStream})` : `${newClass.name}-${newClass.section}`;
     const oldBaseKey = `${oldClass.name}-${oldClass.section}`;
-
     updatedTeachers = updatedTeachers.map((teacher) => {
       if (Array.isArray(teacher.assignedClasses) && teacher.assignedClasses.length > 0) {
         const hasOld = teacher.assignedClasses.some((ac) => {
@@ -19554,7 +19549,7 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
           if (!oldStream && ac === oldBaseKey) return true;
           const match = /^([^(]+?)-([^(]+?)(?:\s*\(([^)]+)\))?$/.exec(ac);
           if (match) {
-            const [, acName, acSec, acStream = ''] = match;
+            const [, acName, acSec, acStream = ""] = match;
             if (oldStream && acStream && oldStream.toLowerCase() !== acStream.trim().toLowerCase()) return false;
             if (oldStream && !acStream) return false;
             return isClassMatch(acName, oldClass.name) && isSectionMatch(acSec, oldClass.section);
@@ -19563,12 +19558,12 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
         });
         if (hasOld) {
           const newAssigned = teacher.assignedClasses.map((ac) => {
-            if (ac === oldKey || (!oldStream && ac === oldBaseKey)) {
+            if (ac === oldKey || !oldStream && ac === oldBaseKey) {
               return newKey;
             }
             const match = /^([^(]+?)-([^(]+?)(?:\s*\(([^)]+)\))?$/.exec(ac);
             if (match) {
-              const [, acName, acSec, acStream = ''] = match;
+              const [, acName, acSec, acStream = ""] = match;
               if (oldStream && acStream && oldStream.toLowerCase() !== acStream.trim().toLowerCase()) return ac;
               if (oldStream && !acStream) return ac;
               if (isClassMatch(acName, oldClass.name) && isSectionMatch(acSec, oldClass.section)) {
@@ -19584,14 +19579,12 @@ function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = 
     });
     if (updatedTimetable.length > 0) {
       updatedTimetable = updatedTimetable.map((item) => {
-        if (isClassMatch(item.className, oldClass.name) &&
-            (!oldClass.section || isSectionMatch(item.section, oldClass.section)) &&
-            (!oldClass.academicStream || !item.academicStream || item.academicStream.toLowerCase() === oldClass.academicStream.toLowerCase())) {
+        if (isClassMatch(item.className, oldClass.name) && (!oldClass.section || isSectionMatch(item.section, oldClass.section)) && (!oldClass.academicStream || !item.academicStream || item.academicStream.toLowerCase() === oldClass.academicStream.toLowerCase())) {
           return {
             ...item,
             className: newClass.name,
             section: newClass.section || item.section,
-            ...(Object.hasOwn(item, 'academicStream') ? { academicStream: newClass.academicStream || '' } : {})
+            ...Object.hasOwn(item, "academicStream") ? { academicStream: newClass.academicStream || "" } : {}
           };
         }
         return item;
@@ -21630,15 +21623,15 @@ function Cr({
         const Component248 = `input`;
         const Component249 = `span`;
         const Component250 = `label`;
-        const isChecked = a2.assignedClasses.includes(t3) || (!e3.academicStream && a2.assignedClasses.includes(`${e3.name}-${e3.section}`));
+        const isChecked = a2.assignedClasses.includes(t3) || !e3.academicStream && a2.assignedClasses.includes(`${e3.name}-${e3.section}`);
         return /* @__PURE__ */ w.createElement(Component250, { key: e3.id }, /* @__PURE__ */ w.createElement(
           Component248,
           {
             type: `checkbox`,
             checked: isChecked,
-            onChange: (e4) => m2(
+            onChange: (ev) => m2(
               `assignedClasses`,
-              e4.target.checked ? [...a2.assignedClasses.filter((x) => x !== t3 && x !== `${e3.name}-${e3.section}`), t3] : a2.assignedClasses.filter((x) => x !== t3 && x !== `${e3.name}-${e3.section}`)
+              ev.target.checked ? [...a2.assignedClasses.filter((x2) => x2 !== t3 && x2 !== `${e3.name}-${e3.section}`), t3] : a2.assignedClasses.filter((x2) => x2 !== t3 && x2 !== `${e3.name}-${e3.section}`)
             )
           }
         ), /* @__PURE__ */ w.createElement(Component249, null, t3));
@@ -22987,6 +22980,32 @@ function Hr({ data: e2, students: t2, onUpdate: n2 }) {
   let [i2, a2] = (0, w.useState)(`students`);
   let [o2, s2] = (0, w.useState)(r2);
   let [c2, l2] = (0, w.useState)(r2.slice(0, 7));
+  const leaveMonth = i2 === `reports` ? c2 : i2 === `teaching` ? o2.slice(0, 7) : "";
+  const leaveSchool = followUpActor?.cloudVerified ? followUpActor.institutionId : null;
+  const [leaveLedger, setLeaveLedger] = (0, w.useState)(null);
+  const leaveKey = leaveSchool && leaveMonth ? leaveSchool + "|" + leaveMonth : "";
+  (0, w.useEffect)(() => {
+    if (!leaveKey) return;
+    let alive = true, request = 0;
+    const load = async () => {
+      const attempt = ++request;
+      try {
+        const rows = await window.BNWorkspaceCloud.create().teacherAttendanceMonth(leaveSchool, leaveMonth);
+        if (alive && attempt === request) setLeaveLedger({ key: leaveKey, rows, error: "" });
+      } catch (error) {
+        if (alive && attempt === request) setLeaveLedger({ key: leaveKey, rows: [], error: error.message || "Approved leave is unavailable." });
+      }
+    };
+    const onFocus = () => void load();
+    onFocus();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [leaveKey]);
+  const approvedLeaves = leaveLedger?.key === leaveKey ? leaveLedger.rows : [];
+  const leaveWarning = leaveKey && (leaveLedger?.key !== leaveKey ? "Loading approved teacher leave\u2026" : leaveLedger.error || (approvedLeaves.some((row) => !row.faculty_id) ? "Link the Teacher App account to its ERP faculty profile to include all approved leave in payroll." : ""));
   let allClassesForAttendance = (0, w.useMemo)(() => {
     const configured = (e2.classes || []).filter((cl) => cl.status !== "Inactive");
     const configuredKeys = new Set(configured.map((cl) => normalizeClassName(cl.name) + "|" + normalizeSection(cl.section || "")));
@@ -23036,7 +23055,8 @@ function Hr({ data: e2, students: t2, onUpdate: n2 }) {
         Component398,
         {
           className: `secondary-button`,
-          onClick: () => void ci(e2, t2, f2, c2)
+          disabled: Boolean(leaveWarning),
+          onClick: () => void ci(e2, t2, f2, c2, approvedLeaves)
         },
         /* @__PURE__ */ w.createElement(_Component, { size: 16 }),
         `Export Monthly Workbook`
@@ -23112,12 +23132,13 @@ function Hr({ data: e2, students: t2, onUpdate: n2 }) {
       onUpdate: n2,
       allClasses: allClassesForAttendance
     }
-  ), ` `, i2 === `teaching` && /* @__PURE__ */ w.createElement(
+  ), ` `, i2 === `teaching` && leaveSchool && /* @__PURE__ */ w.createElement("div", { className: "inline-message" }, /* @__PURE__ */ w.createElement("a", { href: "./teacher-access.html?view=leave" }, "Review teacher leave and cover"), leaveWarning && /* @__PURE__ */ w.createElement("p", { role: "status" }, leaveWarning)), i2 === `teaching` && /* @__PURE__ */ w.createElement(
     Wr,
     {
       data: e2,
       staff: e2.teachers,
       staffType: `Teaching`,
+      approvedLeaves: approvedLeaves.filter((row) => row.date === o2),
       date: o2,
       setDate: s2,
       holiday: m2,
@@ -23143,7 +23164,9 @@ function Hr({ data: e2, students: t2, onUpdate: n2 }) {
       classId: u2,
       setClassId: d2,
       month: c2,
-      setMonth: l2
+      setMonth: l2,
+      approvedLeaves,
+      leaveWarning
     }
   ));
 }
@@ -23454,7 +23477,8 @@ function Wr({
   date: r2,
   setDate: i2,
   holiday: a2,
-  onUpdate: o2
+  onUpdate: o2,
+  approvedLeaves = []
 }) {
   let s2 = t2.filter((e3) => e3.status !== `Inactive`);
   let [c2, l2] = (0, w.useState)({});
@@ -23462,8 +23486,10 @@ function Wr({
   const [attendanceSaving, setAttendanceSaving] = (0, w.useState)(false);
   const [attendanceSaveMessage, setAttendanceSaveMessage] = (0, w.useState)("");
   let f2 = e2.staffAttendance.filter((e3) => e3.date === r2 && e3.staffType === n2);
-  let p2 = (e3) => c2[e3] || f2.find((t3) => t3.staffId === e3)?.status;
-  let m2 = (e3) => l2(Object.fromEntries(s2.map((t3) => [t3.id, e3])));
+  const leaveByStaff = new Map(approvedLeaves.map((row) => [row.faculty_id, row]));
+  const recorded = (id) => c2[id] || f2.find((row) => row.staffId === id)?.status;
+  const p2 = (id) => leaveByStaff.get(id)?.full_day ? `Paid Leave` : recorded(id);
+  let m2 = (e3) => l2(Object.fromEntries(s2.filter((staff) => !leaveByStaff.get(staff.id)?.full_day).map((staff) => [staff.id, e3])));
   const Component425 = `input`;
   const Component426 = `strong`;
   const Component427 = `span`;
@@ -23506,7 +23532,7 @@ function Wr({
       disabled: !s2.length || !!a2 || attendanceSaving,
       onClick: async () => {
         if (a2 || attendanceSaving) return;
-        if (!s2.some((staff) => p2(staff.id))) {
+        if (!s2.some((staff) => recorded(staff.id))) {
           setAttendanceSaveMessage("Mark at least one staff member before saving. Missing marks are not absences.");
           return;
         }
@@ -23517,12 +23543,12 @@ function Wr({
           let i3 = e2.staffAttendance.filter(
             (e3) => e3.date !== r2 || e3.staffType !== n2 || !t3.has(e3.staffId)
           );
-          let c3 = s2.filter((e3) => p2(e3.id)).map((e3) => ({
+          let c3 = s2.filter((e3) => recorded(e3.id)).map((e3) => ({
             id: f2.find((previous) => previous.staffId === e3.id)?.id || crypto.randomUUID(),
             date: r2,
             staffType: n2,
             staffId: e3.id,
-            status: p2(e3.id),
+            status: recorded(e3.id),
             markedAt: (/* @__PURE__ */ new Date()).toISOString()
           }));
           const result = await o2(
@@ -23591,12 +23617,12 @@ function Wr({
       onClick: () => m2(`Absent`)
     },
     `Mark All Absent`
-  ), /* @__PURE__ */ w.createElement(Component441, null, `Use Paid Leave for an approved leave day. Only marked records affect reports.`)), s2.length ? /* @__PURE__ */ w.createElement(Component448, { className: `attendance-list` }, s2.map((e3, t3) => /* @__PURE__ */ w.createElement(Component447, { className: `attendance-student`, key: e3.id }, /* @__PURE__ */ w.createElement(Component443, { className: `roll-circle` }, t3 + 1), /* @__PURE__ */ w.createElement(Component446, null, /* @__PURE__ */ w.createElement(Component444, null, ri(e3)), /* @__PURE__ */ w.createElement(Component445, null, [e3.employeeCode, e3.designation, e3.category].filter(Boolean).join(` \u2022 `))), /* @__PURE__ */ w.createElement(
+  ), /* @__PURE__ */ w.createElement(Component441, null, `Use Paid Leave for an approved leave day. Only marked records affect reports.`)), s2.length ? /* @__PURE__ */ w.createElement(Component448, { className: `attendance-list` }, s2.map((e3, t3) => /* @__PURE__ */ w.createElement(Component447, { className: `attendance-student`, key: e3.id }, /* @__PURE__ */ w.createElement(Component443, { className: `roll-circle` }, t3 + 1), /* @__PURE__ */ w.createElement(Component446, null, /* @__PURE__ */ w.createElement(Component444, null, ri(e3)), /* @__PURE__ */ w.createElement(Component445, null, [e3.employeeCode, e3.designation, e3.category].filter(Boolean).join(` \u2022 `), leaveByStaff.has(e3.id) && /* @__PURE__ */ w.createElement("span", null, ` \xB7 ${leaveByStaff.get(e3.id).status}`))), /* @__PURE__ */ w.createElement(
     Xr,
     {
       statuses: [`Present`, `Absent`, `Paid Leave`],
       value: p2(e3.id),
-      disabled: !!a2,
+      disabled: !!a2 || leaveByStaff.get(e3.id)?.full_day === true,
       setValue: (t4) => l2((n3) => ({
         ...n3,
         [e3.id]: t4
@@ -23748,7 +23774,9 @@ function Kr({
   classId: r2,
   setClassId: i2,
   month: a2,
-  setMonth: o2
+  setMonth: o2,
+  approvedLeaves = [],
+  leaveWarning
 }) {
   let s2 = t2.filter((e3) => ti(e3, n2)).map((t3) => {
     let n3 = e2.attendance.filter(
@@ -23765,7 +23793,7 @@ function Kr({
       percent: n3.length ? r3 / n3.length * 100 : 0
     };
   });
-  let c2 = qr(e2, e2.teachers, `Teaching`, a2);
+  let c2 = qr(e2, e2.teachers, `Teaching`, a2, approvedLeaves);
   let l2 = qr(e2, e2.nonTeachingStaff, `Non-Teaching`, a2);
   const Component479 = `input`;
   const Component480 = `div`;
@@ -23833,37 +23861,47 @@ function Kr({
       className: `status-badge ${e3.records.length && e3.percent < 75 ? `inactive` : `active`}`
     },
     e3.records.length ? `${e3.percent.toFixed(1)}%` : `No data`
-  )))))))), /* @__PURE__ */ w.createElement(Jr, { title: `Teaching Staff Salary Statement`, rows: c2 }), /* @__PURE__ */ w.createElement(Jr, { title: `Non-Teaching Staff Salary Statement`, rows: l2 }), /* @__PURE__ */ w.createElement(Component507, { className: `inline-message` }, /* @__PURE__ */ w.createElement(Component506, null, `Salary policy:`), ` Sundays and applicable holidays are excluded from scheduled working days. Approved paid leave is covered up to the monthly allowance. Explicit absences and excess paid leave are deducted. Unmarked dates are shown as pending and are not silently treated as absence.`));
+  )))))))), leaveWarning && /* @__PURE__ */ w.createElement("p", { role: "status" }, leaveWarning), /* @__PURE__ */ w.createElement(Jr, { title: `Teaching Staff Salary Statement`, rows: c2, leaveWarning }), /* @__PURE__ */ w.createElement(Jr, { title: `Non-Teaching Staff Salary Statement`, rows: l2 }), /* @__PURE__ */ w.createElement(Component507, { className: `inline-message` }, /* @__PURE__ */ w.createElement(Component506, null, `Salary policy:`), ` Sundays and applicable holidays are excluded from scheduled working days. Approved paid leave is covered up to the monthly allowance. Explicit absences and excess paid leave are deducted. Unmarked dates are shown as pending and are not silently treated as absence.`));
 }
-function qr(e2, t2, n2, r2) {
-  let i2 = ai(r2, e2.holidays, n2);
-  return t2.filter((e3) => e3.status !== `Inactive`).map((t3) => {
-    let a2 = e2.staffAttendance.filter(
-      (e3) => e3.staffType === n2 && e3.staffId === t3.id && e3.date.startsWith(r2)
-    );
-    let o2 = a2.filter((e3) => e3.status === `Present`).length;
-    let s2 = a2.filter((e3) => e3.status === `Absent`).length;
-    let c2 = a2.filter((e3) => e3.status === `Paid Leave`).length;
-    let l2 = Math.max(0, Number(t3.paidLeaveAllowedPerMonth || 0));
-    let u2 = s2 + Math.max(0, c2 - l2);
-    let d2 = t3.salaryFrequency === `Monthly` ? t3.salary : void 0;
-    let f2 = d2 !== void 0 && i2 ? Math.max(0, d2 - d2 / i2 * u2) : void 0;
+function qr(e2, t2, n2, r2, approvedLeaves = []) {
+  const scheduled = ai(r2, e2.holidays, n2);
+  const category = n2 === `Teaching` ? `Teaching Staff` : `Non-Teaching Staff`;
+  const workingDay = (date) => date.startsWith(r2) && (/* @__PURE__ */ new Date(date + "T00:00:00Z")).getUTCDay() !== 0 && !ii(e2.holidays, date, category);
+  return t2.filter((staff) => staff.status !== `Inactive`).map((staff) => {
+    const marks = new Map(e2.staffAttendance.filter((row) => row.staffType === n2 && row.staffId === staff.id && workingDay(row.date)).map((row) => [row.date, row.status]));
+    const leave = new Map(approvedLeaves.filter((row) => row.approved_leave && row.faculty_id === staff.id && workingDay(row.date)).map((row) => [row.date, row.units]));
+    const dates = /* @__PURE__ */ new Set([...marks.keys(), ...leave.keys()]);
+    let present = 0, absent = 0, paidLeave = 0, markedDays = 0, unresolved = false;
+    for (const date of dates) {
+      const mark = marks.get(date);
+      const units = leave.get(date);
+      if (units === null && mark !== `Paid Leave`) unresolved = true;
+      const paid = mark === `Paid Leave` ? 1 : Number(units || 0);
+      paidLeave += paid;
+      if (mark === `Present`) present += 1 - paid;
+      if (mark === `Absent`) absent += 1 - paid;
+      if (mark || paid === 1) markedDays++;
+    }
+    const allowance = Math.max(0, Number(staff.paidLeaveAllowedPerMonth || 0));
+    const deductible = absent + Math.max(0, paidLeave - allowance);
+    const monthlySalary = staff.salaryFrequency === `Monthly` ? staff.salary : void 0;
     return {
-      id: t3.id,
-      name: ri(t3),
-      monthlySalary: d2,
-      scheduled: i2,
-      present: o2,
-      absent: s2,
-      paidLeave: c2,
-      allowance: l2,
-      deductible: u2,
-      pending: Math.max(0, i2 - a2.length),
-      net: f2
+      id: staff.id,
+      name: ri(staff),
+      monthlySalary,
+      scheduled,
+      present,
+      absent,
+      paidLeave,
+      allowance,
+      deductible,
+      pending: Math.max(0, scheduled - markedDays),
+      unresolved,
+      net: monthlySalary !== void 0 && scheduled && !unresolved ? Math.max(0, monthlySalary - monthlySalary / scheduled * deductible) : void 0
     };
   });
 }
-function Jr({ title: e2, rows: t2 }) {
+function Jr({ title: e2, rows: t2, leaveWarning }) {
   const Component508 = `th`;
   const Component509 = `th`;
   const Component510 = `th`;
@@ -23897,7 +23935,7 @@ function Jr({ title: e2, rows: t2 }) {
       title: e2,
       note: `Provisional attendance-based calculation`
     }
-  ), /* @__PURE__ */ w.createElement(Component534, { className: `table-panel` }, /* @__PURE__ */ w.createElement(Component533, { className: `table-scroll` }, /* @__PURE__ */ w.createElement(Component532, null, /* @__PURE__ */ w.createElement(Component518, null, /* @__PURE__ */ w.createElement(Component517, null, /* @__PURE__ */ w.createElement(Component508, null, `Staff Member`), /* @__PURE__ */ w.createElement(Component509, null, `Monthly Salary`), /* @__PURE__ */ w.createElement(Component510, null, `Scheduled Days`), /* @__PURE__ */ w.createElement(Component511, null, `Present`), /* @__PURE__ */ w.createElement(Component512, null, `Absent`), /* @__PURE__ */ w.createElement(Component513, null, `Paid Leave / Allowance`), /* @__PURE__ */ w.createElement(Component514, null, `Deductible Days`), /* @__PURE__ */ w.createElement(Component515, null, `Pending Marks`), /* @__PURE__ */ w.createElement(Component516, null, `Estimated Payable`))), /* @__PURE__ */ w.createElement(Component531, null, t2.map((e3) => /* @__PURE__ */ w.createElement(Component530, { key: e3.id }, /* @__PURE__ */ w.createElement(Component520, null, /* @__PURE__ */ w.createElement(Component519, null, e3.name)), /* @__PURE__ */ w.createElement(Component521, null, si(e3.monthlySalary)), /* @__PURE__ */ w.createElement(Component522, null, e3.scheduled), /* @__PURE__ */ w.createElement(Component523, null, e3.present), /* @__PURE__ */ w.createElement(Component524, null, e3.absent), /* @__PURE__ */ w.createElement(Component525, null, e3.paidLeave, ` / `, e3.allowance), /* @__PURE__ */ w.createElement(Component526, null, e3.deductible), /* @__PURE__ */ w.createElement(Component527, null, e3.pending), /* @__PURE__ */ w.createElement(Component529, null, /* @__PURE__ */ w.createElement(Component528, null, e3.net === void 0 ? `Monthly salary not configured` : si(Math.round(e3.net))))))))), !t2.length && /* @__PURE__ */ w.createElement(
+  ), /* @__PURE__ */ w.createElement(Component534, { className: `table-panel` }, /* @__PURE__ */ w.createElement(Component533, { className: `table-scroll` }, /* @__PURE__ */ w.createElement(Component532, null, /* @__PURE__ */ w.createElement(Component518, null, /* @__PURE__ */ w.createElement(Component517, null, /* @__PURE__ */ w.createElement(Component508, null, `Staff Member`), /* @__PURE__ */ w.createElement(Component509, null, `Monthly Salary`), /* @__PURE__ */ w.createElement(Component510, null, `Scheduled Days`), /* @__PURE__ */ w.createElement(Component511, null, `Present`), /* @__PURE__ */ w.createElement(Component512, null, `Absent`), /* @__PURE__ */ w.createElement(Component513, null, `Paid Leave / Allowance`), /* @__PURE__ */ w.createElement(Component514, null, `Deductible Days`), /* @__PURE__ */ w.createElement(Component515, null, `Pending Marks`), /* @__PURE__ */ w.createElement(Component516, null, `Estimated Payable`))), /* @__PURE__ */ w.createElement(Component531, null, t2.map((e3) => /* @__PURE__ */ w.createElement(Component530, { key: e3.id }, /* @__PURE__ */ w.createElement(Component520, null, /* @__PURE__ */ w.createElement(Component519, null, e3.name)), /* @__PURE__ */ w.createElement(Component521, null, si(e3.monthlySalary)), /* @__PURE__ */ w.createElement(Component522, null, e3.scheduled), /* @__PURE__ */ w.createElement(Component523, null, Number(e3.present.toFixed(2))), /* @__PURE__ */ w.createElement(Component524, null, Number(e3.absent.toFixed(2))), /* @__PURE__ */ w.createElement(Component525, null, Number(e3.paidLeave.toFixed(2)), ` / `, e3.allowance), /* @__PURE__ */ w.createElement(Component526, null, Number(e3.deductible.toFixed(2))), /* @__PURE__ */ w.createElement(Component527, null, e3.pending), /* @__PURE__ */ w.createElement(Component529, null, /* @__PURE__ */ w.createElement(Component528, null, leaveWarning ? `Awaiting confirmed leave` : e3.unresolved ? `Set bell timings to calculate partial leave` : e3.net === void 0 ? `Monthly salary not configured` : si(Math.round(e3.net))))))))), !t2.length && /* @__PURE__ */ w.createElement(
     $r,
     {
       text: `No active staff profiles are available for this category.`
@@ -24003,7 +24041,7 @@ function si(e2) {
     return `\u20B9${e2.toLocaleString(`en-IN`)}`;
   }
 }
-async function ci(e2, t2, n2, r2) {
+async function ci(e2, t2, n2, r2, approvedLeaves = []) {
   let i2 = new (await cr(
     () => import("./exceljs.min-DxrGf88e.js").then((e3) => c(e3.default, 1)),
     [],
@@ -24077,7 +24115,21 @@ async function ci(e2, t2, n2, r2) {
       width: 16
     }
   ];
-  e2.staffAttendance.filter((e3) => e3.date.startsWith(r2)).forEach((t3) => {
+  const staffAttendance = e2.staffAttendance.filter((row) => row.date.startsWith(r2));
+  const approvedByDate = new Map(approvedLeaves.filter((row) => row.faculty_id).map((row) => [row.faculty_id + "|" + row.date, row]));
+  const attendanceExport = staffAttendance.map((row) => {
+    if (row.staffType !== `Teaching`) return row;
+    const key = row.staffId + "|" + row.date, leave = approvedByDate.get(key);
+    approvedByDate.delete(key);
+    return leave ? { ...row, status: leave.full_day ? `Approved leave` : row.status + ` \xB7 Approved partial leave` } : row;
+  });
+  for (const leave of approvedByDate.values()) attendanceExport.push({
+    staffType: `Teaching`,
+    staffId: leave.faculty_id,
+    date: leave.date,
+    status: leave.status
+  });
+  attendanceExport.forEach((t3) => {
     let n3 = (t3.staffType === `Teaching` ? e2.teachers : e2.nonTeachingStaff).find((e3) => e3.id === t3.staffId);
     o2.addRow({
       category: t3.staffType,
@@ -24171,34 +24223,31 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
   let ue = (0, w.useMemo)(() => {
     const list = Array.isArray(e2.feePayments) ? [...e2.feePayments.filter(Kn)] : [];
     if (Array.isArray(e2.externalFeeLedger)) {
-      const byId = new Map(e2.externalFeeLedger.map(entry => [entry.id, entry]));
-      const reversals = new Set();
+      const byId = new Map(e2.externalFeeLedger.map((entry) => [entry.id, entry]));
+      const reversals = /* @__PURE__ */ new Set();
       for (const entry of e2.externalFeeLedger) {
-        const match = String(entry.reference || '').match(/^REV-([a-f0-9-]{36})$/i);
+        const match = String(entry.reference || "").match(/^REV-([a-f0-9-]{36})$/i);
         if (match) {
           const revId = match[1];
           const orig = byId.get(revId);
-          if (orig && entry.description === 'Correction reversal of ' + revId &&
-              orig.studentId === entry.studentId && orig.kind !== entry.kind &&
-              Number(orig.amountRupees) === Number(entry.amountRupees)) {
+          if (orig && entry.description === "Correction reversal of " + revId && orig.studentId === entry.studentId && orig.kind !== entry.kind && Number(orig.amountRupees) === Number(entry.amountRupees)) {
             reversals.add(revId);
           }
         }
       }
       for (const entry of e2.externalFeeLedger) {
-        const revOf = String(entry.reference || '').slice(4);
-        if (entry.kind !== 'payment' || reversals.has(entry.id) ||
-            (entry.reference === 'REV-' + revOf && reversals.has(revOf))) continue;
+        const revOf = String(entry.reference || "").slice(4);
+        if (entry.kind !== "payment" || reversals.has(entry.id) || entry.reference === "REV-" + revOf && reversals.has(revOf)) continue;
         list.push({
           id: entry.id,
-          receiptNumber: entry.reference || '',
+          receiptNumber: entry.reference || "",
           studentId: entry.studentId,
-          category: entry.description || 'Staff Portal payment',
+          category: entry.description || "Staff Portal payment",
           amount: Number(entry.amountRupees) || 0,
           baseAmountReceived: Number(entry.amountRupees) || 0,
           paymentDate: entry.date,
-          status: 'Posted',
-          method: 'Staff Portal',
+          status: "Posted",
+          method: "Staff Portal",
           external: true
         });
       }
@@ -24301,8 +24350,8 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
     d2(`9`);
   };
   let M2 = (t3) => {
-    if (Array.isArray(e2.externalFeeLedger) && e2.externalFeeLedger.some(x => (x.studentId === t3.studentId || x.studentId === 'cloud:' + t3.studentId))) {
-      window.alert('Accountant ledger entries already exist in Supabase for this student. Use Staff Portal > Fees & Payments to record or correct fee entries.');
+    if (Array.isArray(e2.externalFeeLedger) && e2.externalFeeLedger.some((x3) => x3.studentId === t3.studentId || x3.studentId === "cloud:" + t3.studentId)) {
+      window.alert("Accountant ledger entries already exist in Supabase for this student. Use Staff Portal > Fees & Payments to record or correct fee entries.");
       return;
     }
     r2(
@@ -24319,8 +24368,8 @@ function _Component93({ data: e2, students: t2, institution: n2, onUpdate: r2 })
   };
   let Se2 = (t3) => {
     if (!!j && !(t3.balance <= 0)) {
-      if (Array.isArray(e2.externalFeeLedger) && e2.externalFeeLedger.some(x => (x.studentId === j.id || x.studentId === 'cloud:' + j.id))) {
-        window.alert('Accountant ledger entries already exist in Supabase for this student. Use Staff Portal > Fees & Payments to review or waive fee entries.');
+      if (Array.isArray(e2.externalFeeLedger) && e2.externalFeeLedger.some((x3) => x3.studentId === j.id || x3.studentId === "cloud:" + j.id)) {
+        window.alert("Accountant ledger entries already exist in Supabase for this student. Use Staff Portal > Fees & Payments to review or waive fee entries.");
         return;
       }
       if (window.confirm(

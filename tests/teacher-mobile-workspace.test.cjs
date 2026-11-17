@@ -97,7 +97,7 @@ test('teacher navigation retains access to Marks, Notices, Classes and Account',
   const f=fixture(()=>[]);
   f.api.applyNavigationVisibility();
   const menu=f.id('teacherMore');
-  assert.deepEqual([...menu.querySelectorAll('[data-tab]')].map(button=>button.dataset.tab),['marks','notices','classes','profiles','account']);
+  assert.deepEqual([...menu.querySelectorAll('[data-tab]')].map(button=>button.dataset.tab),['leave','staff-attendance','marks','notices','classes','profiles','account']);
   f.window.close();
 });
 test('personal timetable displays only published lessons assigned to the signed-in teacher',async()=>{

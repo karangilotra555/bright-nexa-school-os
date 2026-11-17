@@ -127,12 +127,13 @@ function activate(ctx){
      if(sl.kind==='period'){
       td.append(node('div',p?.subject||'—'));
       const teacher=ctx.staff.find(u=>u.id===p?.teacher_user_id);
+      if(p?.room_number)td.append(node('small','Room '+p.room_number));
       if(teacher)td.append(node('small',teacher.display_name||teacher.email||'Assigned teacher'));
       if(admin&&p&&!published)td.append(node('small','Draft'));
       if(admin&&!p&&published)td.append(node('small','Published; unsaved draft'));
       if(admin){
        td.style.cursor='pointer';td.title='Click to edit this period';
-       td.addEventListener('click',()=>{$('bnTimeSlot').value=sl.id;$('bnTimeSubject').value=p?.subject||'';$('bnTimeTeacher').value=p?.teacher_user_id||'';$('bnTimeSubject').focus();});
+       td.addEventListener('click',()=>{$('bnTimeSlot').value=sl.id;$('bnTimeSubject').value=p?.subject||'';$('bnTimeTeacher').value=p?.teacher_user_id||'';$('bnTimeRoom').value=p?.room_number||'';$('bnTimeSubject').focus();});
       }
      }else{td.append(node('strong',sl.label));td.style.background='#f1f5f9';}
     }else td.textContent='—';
@@ -242,6 +243,17 @@ function activate(ctx){
    const matches=teacherAssignments.filter(a=>a.school_user_id===teacherPick.value&&a.subject);
    if(matches.length===1)subjectInput.value=matches[0].subject;
   });
+  const roomWrap=node('div'),roomLabel=node('label','Room number'),roomInput=node('input');
+  roomLabel.htmlFor='bnTimeRoom';roomInput.id='bnTimeRoom';roomInput.maxLength=40;
+  roomWrap.append(roomLabel,roomInput);lesson.append(roomWrap);
+  const loadExistingDraft=()=>{
+    const saved=st.drafts.find(d=>d.class_id===st.classId&&d.slot_id===slotPick.value);
+    subjectInput.value=saved?.subject||'';
+    teacherPick.value=saved?.teacher_user_id||'';
+    roomInput.value=saved?.room_number||'';
+  };
+  slotPick.addEventListener('change',loadExistingDraft);
+  loadExistingDraft();
   const button=node('button','Save draft period');button.type='submit';button.className='primary';lesson.append(button);
   lesson.addEventListener('submit',e=>{e.preventDefault();return run(async()=>{const slot=st.slots.find(x=>x.id===slotPick.value);
    if(!slot)throw Error('Select a teaching period.');
@@ -252,7 +264,7 @@ function activate(ctx){
    if(teacher&&!teacherAssignments.some(a=>a.school_user_id===teacher&&
       (a.assignment_type==='class_teacher'||a.subject.toLowerCase()===subject.toLowerCase())))
      throw Error('This teacher is not assigned to that subject and class.');
-   const record={institution_id:id,class_id:st.classId,slot_id:slot.id,academic_year:st.year,subject,teacher_user_id:teacher};
+   const record={institution_id:id,class_id:st.classId,slot_id:slot.id,academic_year:st.year,subject,teacher_user_id:teacher,...(roomInput.value.trim()||st.drafts.some(d=>d.room_number!==undefined)||st.published.some(d=>d.room_number!==undefined)?{room_number:roomInput.value.trim()}:{})};
    await api('school_timetable_drafts',qry({on_conflict:'institution_id,class_id,slot_id'}),'POST',[record],'resolution=merge-duplicates,return=representation');
    await fetchAll();
   });});

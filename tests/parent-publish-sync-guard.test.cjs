@@ -11,12 +11,12 @@ test('all three served entrypoints load the synced cloud guard before controller
    const html=read(prefix+'index.html');
    const guard=html.indexOf('school-online-guard.js?v=20261113-safe-multitab-recheck-v1');
    const controller=html.indexOf('school-workspace-controller.js?v=20261113-private-device-v1');
-   const entry=html.indexOf('school-erp-entry.js?v=20261116-teacher-app-setup-v1');
+   const entry=html.indexOf('school-erp-entry.js?v=20261117-teacher-duty');
    assert.ok(guard>0&&controller>guard&&entry>controller, prefix+' order');
    assert.match(html,/CACHE_VERSION = '20261113-private-device-v1'/);
    const sw=read(prefix+'sw.js');
    assert.match(sw,/school-online-guard.js\?v=20261113-safe-multitab-recheck-v1/);
-   assert.match(sw,/school-erp-entry.js\?v=20261116-teacher-app-setup-v1/);
+   assert.match(sw,/school-erp-entry.js\?v=20261117-teacher-duty/);
    assert.match(sw,/school-workspace-controller.js\?v=20261113-private-device-v1/);
  }
 });
@@ -82,8 +82,8 @@ test('PWA precaches new school cloud adapter and no longer serves 20261106 revis
  for(const prefix of ['','docs/','app-extracted/dist/']){
   const html=read(prefix+'index.html');
   const sw=read(prefix+'sw.js');
-  assert.match(html,/school-workspace-cloud\.js\?v=20261116-school-sync-v1/);
-  assert.match(sw,/school-workspace-cloud\.js\?v=20261116-school-sync-v1/);
+  assert.match(html,/school-workspace-cloud\.js\?v=20261117-teacher-duty/);
+  assert.match(sw,/school-workspace-cloud\.js\?v=20261117-teacher-duty/);
   assert.match(sw,/school-online-guard\.js\?v=20261113-safe-multitab-recheck-v1/);
  }
 });

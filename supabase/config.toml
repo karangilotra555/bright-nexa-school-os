@@ -1,3 +1,7 @@
 # This function validates Supabase user auth itself; Meta webhooks use HMAC.
 [functions.school-whatsapp]
 verify_jwt = false
+
+# Cron authenticates with its dedicated Vault secret inside the function.
+[functions.school-teacher-period-alerts]
+verify_jwt = false
