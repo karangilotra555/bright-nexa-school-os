@@ -3,8 +3,56 @@
 'use strict';
 const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
 const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
-function create(fetcher){
- let session=null,selected=null,dashboardGeneration=0;
+function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')){
+ let session=null,selected=null,dashboardGeneration=0,authRevision=0,refreshing=null;
+ function endSession(){
+  authRevision++;session=null;selected=null;dashboardGeneration++;
+  return deviceStore?.clear();
+ }
+ function setSession(next){
+  session={...next,expires_at:Number(next.expires_at)||(next.expires_in?Date.now()/1000+Number(next.expires_in):null)};
+ }
+ async function refreshSession(refreshToken){
+  if(refreshing?.token===refreshToken)return refreshing.promise;
+  const revision=authRevision;
+  const current={token:refreshToken,promise:null};
+  current.promise=(async()=>{
+   try{
+    const response=await timedFetch(BASE+'/auth/v1/token?grant_type=refresh_token',{
+     method:'POST',cache:'no-store',headers:{apikey:KEY,'Content-Type':'application/json'},
+     body:JSON.stringify({refresh_token:refreshToken})
+    });
+    if(revision!==authRevision)return null;
+    if([400,401,403].includes(response.status)){await endSession();return null;}
+    if(!response.ok)throw Error('Could not verify saved login. Check your connection and try again.');
+    const next=JSON.parse(await response.text());
+    if(revision!==authRevision)return null;
+    const meta=next.user?.app_metadata;
+    if(!next.access_token||!next.refresh_token||!next.user?.id||!meta?.bn_student_id
+       ||!meta.bn_institution_id||meta.bn_password_pending===true){
+     await endSession();return null;
+    }
+    setSession(next);
+    await deviceStore?.write(next.refresh_token);
+    return revision===authRevision?{links:[{institution_id:meta.bn_institution_id,student_id:meta.bn_student_id}]}:null;
+   }finally{if(refreshing===current)refreshing=null;}
+  })();
+  refreshing=current;
+  return current.promise;
+ }
+ async function restore(){
+  const revision=authRevision,token=await deviceStore?.read();
+  if(!token||revision!==authRevision)return null;
+  const result=await refreshSession(token);
+  const schoolId=new URLSearchParams(typeof location==='undefined'?'':location.search).get('school');
+  if(result&&schoolId&&result.links[0].institution_id!==schoolId)return null;
+  return result;
+ }
+ async function ensureFresh(){
+  if(session?.expires_at&&session.expires_at<=Date.now()/1000+90&&session.refresh_token){
+   if(!await refreshSession(session.refresh_token))throw Error('Please log in again');
+  }
+ }
  const filesClient=typeof root.BNHomeworkFiles!=='undefined'?root.BNHomeworkFiles.create({base:BASE,key:KEY,token:async()=>session?.access_token,fetcher}):null;
  const photoClient=typeof root.BNStudentPhotos!=='undefined'?root.BNStudentPhotos.create({base:BASE,key:KEY,token:async()=>session?.access_token,fetcher}):null;
  async function timedFetch(url,options={}){
@@ -24,19 +72,23 @@ function create(fetcher){
   }finally{clearTimeout(timer);}
  }
  async function request(path,options={}){
+  await ensureFresh();
   const activeSession=session;
   const res=await timedFetch(BASE+path,{...options,cache:'no-store',headers:{apikey:KEY,...(activeSession?{Authorization:'Bearer '+activeSession.access_token}:{}),'Content-Type':'application/json',...options.headers}});
   const raw=await res.text();
   let body;try{body=raw?JSON.parse(raw):null;}catch(_){throw Error('Invalid response from school service');}
-  if(!res.ok){if(res.status===401&&session===activeSession){session=null;selected=null;dashboardGeneration++;}throw Error(body?.error||body?.msg||body?.message||body?.error_description||'School connection unavailable');}
+  if(!res.ok){if(res.status===401&&session===activeSession){await endSession();}throw Error(body?.error||body?.msg||body?.message||body?.error_description||'School connection unavailable');}
   return body;
  }
  async function rows(table,filters){const all=[];for(let offset=0;;offset+=1000){const page=await request('/rest/v1/'+table+'?'+new URLSearchParams({select:'*',order:'id.asc',...filters,limit:'1000',offset:String(offset)}));all.push(...page);if(page.length<1000)return all;}}
  async function login(admissionNumber,password){
-  session=null;selected=null;dashboardGeneration++;
+  await endSession();
+  const revision=authRevision;
   const next=await request('/functions/v1/school-student-login',{method:'POST',body:JSON.stringify({action:'login',admissionNumber,password,schoolId:new URLSearchParams(typeof location==='undefined'?'':location.search).get('school')||undefined})});
   if(!next.session?.access_token||!next.session?.user?.id)throw Error('Unable to verify student account');
-  session=next.session;
+  if(revision!==authRevision)throw Error('Please log in again');
+  setSession(next.session);
+  if(!next.mustChangePassword&&next.links?.length)await deviceStore?.write(next.session.refresh_token);
   return {mustChangePassword:next.mustChangePassword===true,links:next.links||[]};
  }
  async function requestPasswordReset(admissionNumber,guardianEmail){
@@ -49,7 +101,8 @@ function create(fetcher){
   if(!session)throw Error('Please log in again');
   const next=await request('/functions/v1/school-student-login',{method:'POST',body:JSON.stringify({action:'change-password',newPassword})});
   if(!next.session?.access_token)throw Error('Password changed. Please log in again.');
-  session=next.session;selected=null;dashboardGeneration++;
+  setSession(next.session);selected=null;dashboardGeneration++;
+  if(next.links?.length)await deviceStore?.write(next.session.refresh_token);
   return next.links||[];
  }
  // A narrowly scoped RPC returns names/subjects ONLY for teachers assigned
@@ -94,6 +147,7 @@ function create(fetcher){
   try{return await photoClient.signedUrl(link.institution_id,link.student_id,path);}catch(_){return null;}
  }
  async function dashboard(link){
+  await ensureFresh();
   if(!session)throw Error('Please log in again');
   const generation=++dashboardGeneration,activeSession=session;
   selected=null;
@@ -147,11 +201,13 @@ function create(fetcher){
   if(!confirmed.length)throw Error('Read receipt was not confirmed');
  }
  async function logout(){
-  const activeSession=session;
-  try{if(activeSession)await request('/auth/v1/logout',{method:'POST'});}
-  finally{if(session===activeSession){session=null;selected=null;dashboardGeneration++;}}
+  const jwt=session?.access_token;
+  await endSession();
+  if(jwt)await timedFetch(BASE+'/auth/v1/logout?scope=local',{
+   method:'POST',cache:'no-store',headers:{apikey:KEY,Authorization:'Bearer '+jwt,'Content-Type':'application/json'}
+  });
  }
- return {login,requestPasswordReset,changePassword,dashboard,inboxReads,markInboxRead,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
+ return {login,restore,requestPasswordReset,changePassword,dashboard,inboxReads,markInboxRead,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
 }
 if(typeof module!=='undefined')module.exports={create};else root.BNParentsCloud=create(root.fetch.bind(root));
 })(typeof window!=='undefined'?window:globalThis);

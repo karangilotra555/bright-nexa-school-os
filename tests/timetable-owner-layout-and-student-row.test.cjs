@@ -23,9 +23,10 @@ test('owner remembered login re-verifies Supabase on timetable navigation',()=>{
  assert.match(js,/requested==='timetable'&&verifiedErp\?\.cloudVerified===true/);
  assert.match(js,/verifiedErp\?\.role==='OWNER'&&verifiedErp\?\.cloudUserId/);
  assert.match(js,/run\(\(\)=>load\(\)\)/);
- const authCheck=js.indexOf("identity=await responseJson(await timedCloudFetch(BASE+'/auth/v1/user'");
+ const userRequest=js.indexOf("const userResponse=await timedCloudFetch(BASE+'/auth/v1/user'");
+ const authCheck=js.indexOf("identity=await responseJson(userResponse)");
  const membershipCheck=js.indexOf("const memberships=await api('school_users'");
- assert.ok(authCheck>=0 && membershipCheck>authCheck);
+ assert.ok(userRequest>=0 && authCheck>userRequest && membershipCheck>authCheck);
  assert.match(js,/if\(me\.role==='teacher'&&!isMobileAppContext\(\)\)/);
 });
 test('student list photo and name never overlay',()=>{

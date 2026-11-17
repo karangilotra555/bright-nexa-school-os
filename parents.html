@@ -144,7 +144,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages" aria-label="Messages"><span aria-hidden="true">✉</span><span id="inboxUnread" aria-hidden="true" hidden></span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261116-attendance-month"></script><script src="parents-cloud.js?v=20261116-parent-inbox-v1"></script>
+<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261116-attendance-month"></script><script src="./school-mobile-session.js?v=20261117-mobile-login"></script><script src="parents-cloud.js?v=20261117-mobile-login"></script>
 <script>
 (() => {
 'use strict';
@@ -337,10 +337,21 @@ $('inboxFilter').addEventListener('change',renderInbox);
 $('leaveForm').addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button');button.disabled=true;try{await cloud.leave($('leaveFrom').value,$('leaveTo').value,$('leaveReason').value);$('leaveResult').textContent='Request submitted to school.';e.target.reset();await refresh();setTab('activity')}catch(err){$('leaveResult').textContent=err.message}finally{button.disabled=false}});
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
 $('logout').addEventListener('click',logout);$('refresh').addEventListener('click',refresh);
+let restoringLogin=false;
+async function restoreLogin(){
+ if(token||restoringLogin)return;
+ restoringLogin=true;
+ try{
+  const result=await cloud.restore();
+  if(result&&!token)await openLinked(result.links);
+  else if(!token)show('gate');
+ }catch(error){if(!token){show('gate');$('loginError').textContent=error.message;}}
+ finally{restoringLogin=false;}
+}
 function refreshVisiblePortal(){if(token&&!document.hidden&&!$('app').classList.contains('hidden'))refresh();}
 document.addEventListener('visibilitychange',refreshVisiblePortal);
-window.addEventListener('online',refreshVisiblePortal);
-refresh();
+window.addEventListener('online',()=>{if(token)refreshVisiblePortal();else if(!$('gate').classList.contains('hidden'))restoreLogin();});
+restoreLogin();
 })();
 </script>
 </body></html>
