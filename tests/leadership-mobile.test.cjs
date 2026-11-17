@@ -19,6 +19,10 @@ function backend(role='principal'){
   if(path==='/rest/v1/institutions')return response([{id:school,name:'Verified school',status:'active'}]);
   if(path==='/rest/v1/school_users')return response([{id:person}],{'content-range':'0-0/7'});
   if(path==='/rest/v1/school_students')return response([{id:'student'}],{'content-range':'0-0/30'});
+  if(path==='/rest/v1/rpc/bn_leadership_school_pulse')return response({students:30,teachers:7,students_marked:30,students_present:27,student_percent:90,teachers_marked:3,teachers_present:null,teachers_on_leave:1,scheduled_periods:40,uncovered_periods:2,day:'2026-11-18'});
+  if(path==='/rest/v1/rpc/bn_leadership_fee_snapshot')return response({total:18000,cash:7000,online:8000,unclassified:3000,receipt_count:12,day:'2026-11-18'});
+  if(path==='/rest/v1/rpc/bn_leadership_publish_urgent_notice')return response(request.body.p_request_id);
+  if(path==='/api/timetable/cover-ai')return response({choices:[],summary:'Review qualified candidates',question:''});
   if(path==='/rest/v1/rpc/bn_list_teacher_leaves')return response([
    {id:leave,teacher_name:'Teacher A',status:'pending',kind:'emergency'},
    {id:leave.replace(/3$/,'4'),teacher_name:'Teacher B',status:'approved',kind:'planned'}
@@ -40,8 +44,14 @@ test('Owner and Principal enter only through live verified Supabase memberships'
   assert.equal(stats.students,30);
   assert.equal(stats.teachers,7);
   assert.equal(stats.pending,1);
+  assert.equal(stats.pulse.student_percent,90);
+  assert.equal(stats.pulse.teachers_present,null);
+  assert.equal(stats.pulse.uncovered_periods,2);
+  assert.equal(stats.fees.unclassified,3000);
   assert.equal(stats.emergency,1);
   await client.review(leave,'approved');
+  await client.publishUrgent('Urgent notice','School will close early today due to weather.',leave);
+  assert.deepEqual(mock.calls.find(x=>x.path.endsWith('bn_leadership_publish_urgent_notice')).body,{p_school:school,p_request_id:leave,p_title:'Urgent notice',p_body:'School will close early today due to weather.'});
   assert.deepEqual(mock.calls.find(x=>x.path.endsWith('bn_review_teacher_leave')).body,
     {p_school:school,p_leave:leave,p_status:'approved'});
   await assert.rejects(client.review(leave,'cancelled'),/Invalid leave decision/);
@@ -65,6 +75,9 @@ test('Leadership mobile assets are mirrored and preserve ERP navigation',()=>{
  assert.match(html,/id="metricPending"/);
  assert.match(html,/id="leaveList"/);
  assert.match(html,/id="coverRows"/);
+ assert.match(html,/id="feeTotal"/);
+ assert.match(html,/id="noticeBody"/);
+ assert.match(html,/id="metricStudents"/);
  assert.match(html,/school-mobile-session\.js/);
  for(const path of ['sw.js','docs/sw.js','app-extracted/dist/sw.js'])
    assert.match(read(path),/leadership\\\.html/);
@@ -76,4 +89,24 @@ test('Principal approval migration is narrowly scoped to leave and cover RPCs',(
  assert.equal((sql.match(/array\['school_admin','principal'\]/g)||[]).length,4);
  assert.doesNotMatch(sql,/grant .*all|drop table|truncate|school_fee_entries/i);
  assert.doesNotMatch(sql,/delete from public\.(?!school_teacher_covers\b)/i);
+});
+
+test('Proactive preview is allowed before leave approval but cover publication stays gated',()=>{
+ const migration=read('supabase/migrations/20261118093000_principal_leave_approvals.sql');
+ const preview=migration.slice(migration.indexOf('create or replace function public.bn_teacher_leave_cover_plan'),migration.indexOf('create or replace function public.bn_publish_teacher_covers'));
+ const publish=migration.slice(migration.indexOf('create or replace function public.bn_publish_teacher_covers'));
+ assert.match(preview,/l.status in \('pending','approved'\)/);
+ assert.match(publish,/l.status='approved'/);
+ assert.match(read('src/smart-tools/teacher-ai.cjs'),/\['school_admin','principal'\]\.includes\(staff.role\)/);
+});
+test('Daily pulse and finance are read-only and missing attendance is not guessed',()=>{
+ const sql=read('supabase/migrations/20261118100000_leadership_pulse_notice_finance.sql');
+ for(const name of ['bn_leadership_school_pulse','bn_leadership_fee_snapshot','bn_leadership_publish_urgent_notice'])
+  assert.match(sql,new RegExp('create or replace function public\\.'+name+'\\('));
+ assert.match(sql,/marked_students=active_students/);
+ assert.match(sql,/marked_teachers=active_teachers/);
+ assert.match(sql,/unclassified/);
+ assert.match(sql,/revoke all on function/);
+ assert.match(sql,/school_private.has_role\(p_school,array\['school_admin','principal'\]\)/);
+ assert.doesNotMatch(sql,/grant (?:all|select|update|insert) on (?:public\.)?(?:school_fee_entries|school_students)/i);
 });
