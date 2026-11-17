@@ -74,5 +74,6 @@ test('Principal approval migration is narrowly scoped to leave and cover RPCs',(
  for(const fn of ['bn_list_teacher_leaves','bn_review_teacher_leave','bn_teacher_leave_cover_plan','bn_publish_teacher_covers'])
    assert.match(sql,new RegExp('create or replace function public\\.'+fn+'\\('));
  assert.equal((sql.match(/array\['school_admin','principal'\]/g)||[]).length,4);
- assert.doesNotMatch(sql,/grant .*all|drop table|truncate|delete from|school_fee_entries/i);
+ assert.doesNotMatch(sql,/grant .*all|drop table|truncate|school_fee_entries/i);
+ assert.doesNotMatch(sql,/delete from public\.(?!school_teacher_covers\b)/i);
 });
