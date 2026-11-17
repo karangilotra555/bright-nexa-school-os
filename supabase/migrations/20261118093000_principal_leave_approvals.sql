@@ -42,8 +42,8 @@ declare request public.school_teacher_leave_requests%rowtype;
 begin
   if not school_private.has_role(p_school,array['school_admin','principal']) then raise exception 'Owner or Principal required' using errcode='42501'; end if;
   select * into request from public.school_teacher_leave_requests l where l.institution_id=p_school
-    and l.id=p_leave and l.status='approved' and p_day between l.starts_on and l.ends_on;
-  if not found then raise exception 'Choose a date within the approved leave'; end if;
+    and l.id=p_leave and l.status in ('pending','approved') and p_day between l.starts_on and l.ends_on;
+  if not found then raise exception 'Choose a date within the requested leave'; end if;
   return coalesce((select jsonb_agg(to_jsonb(d)||jsonb_build_object('cover_needs_review',
     d.teacher_id is null and exists(select 1 from public.school_teacher_covers c
       where c.institution_id=p_school and c.day=p_day and c.slot_id=d.slot_id and c.class_id=d.class_id), 'candidates',(
