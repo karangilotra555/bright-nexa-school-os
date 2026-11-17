@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071d3a"><meta name="description" content="Bright Nexa Owner & Principal mobile school operations app.">
+<link rel="manifest" href="./leadership.webmanifest">
+<title>Bright Nexa · Owner & Principal</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#122742;background:#edf3f9;font-synthesis:none}*{box-sizing:border-box}
+body{margin:0}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:wait}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #28aee6;outline-offset:3px}
+[hidden]{display:none!important}.phone{max-width:530px;margin:0 auto;min-height:100dvh;background:#f4f7fc;padding-bottom:90px;box-shadow:0 4px 30px #0a2c5015}
+.header{background:radial-gradient(circle at right top,#167baa77,transparent 63%),linear-gradient(130deg,#061931,#0a3763);color:#fff;border-radius:0 0 28px 28px;padding:26px 19px 29px}
+.brand{display:flex;align-items:center;gap:10px}.brand img{width:44px;height:44px;border-radius:13px;background:white;object-fit:cover}.brand small{display:block;color:#c6e2fb;font-size:11px}.brand strong{font-size:16px}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.topline select{max-width:195px;background:#ffffff22;color:#fff;border:1px solid #ffffff77;border-radius:11px;padding:8px}.topline select option{color:#122742}
+.header h1{font-size:25px;letter-spacing:-.5px;margin:27px 0 8px}.header p{font-size:13px;color:#d6edff;margin:0;line-height:1.6}
+main{padding:18px}.eyebrow{font-size:11px;font-weight:800;color:#0877b2;text-transform:uppercase;letter-spacing:1px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0 25px}
+.metric{background:#fff;border:1px solid #e0e9f3;box-shadow:0 5px 18px #0c2e5010;padding:17px 15px;border-radius:17px;min-height:125px}
+.metric b{display:block;font-size:29px;letter-spacing:-1px;margin:10px 0 1px}.metric small{font-size:12px;color:#637891}.metric .symbol{font-size:21px}
+.panel{background:#fff;border:1px solid #e0e9f3;box-shadow:0 5px 15px #0c2e500b;border-radius:18px;padding:16px;margin:12px 0}
+.panel h2{font-size:17px;margin:0 0 10px}.line{padding:12px 0;border-top:1px solid #eaf0f6;display:flex;flex-direction:column;gap:4px}.line:first-child{border:0}.line strong{font-size:13px}.line span,.muted{font-size:13px;color:#60768b;line-height:1.6}
+button.primary{background:#087db7;color:#fff;border:0;border-radius:12px;padding:11px 15px;font-weight:800}
+button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;border-radius:12px;padding:10px 13px;font-weight:700}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0 0}.actions button{flex:1}
+.itemhead{display:flex;align-items:center;justify-content:space-between;gap:10px}.itemhead strong{font-size:15px}
+.tag{font-size:11px;background:#fff0dd;border-radius:20px;color:#91540b;padding:5px 9px}
+.sub{font-size:12px;color:#6a7d90;line-height:1.5}.bodytext{font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.warning{font-size:12px;color:#a44821;background:#fff5e7;padding:9px;border-radius:9px}
+.field{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#455f77;font-weight:700;margin:12px 0}
+.field input,.field select{width:100%;background:#fff;border:1px solid #cddbe8;border-radius:12px;padding:12px 13px;color:#163450}
+#loginPage{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:28px 24px;background:radial-gradient(circle at 50% 5%,#d7eeff,transparent 60%),#f3f7fb}
+#loginPage img{width:65px;height:65px;border-radius:18px;object-fit:cover;margin-bottom:13px}
+#loginPage h1{font-size:29px;margin:2px 0 7px}#loginPage p{font-size:14px;color:#526982;line-height:1.6}
+#loginPage form{margin-top:14px}#loginPage form button{width:100%;margin-top:10px;padding:14px}
+.notice{margin:7px 18px;font-size:13px;color:#0d628e;line-height:1.5;min-height:18px}
+.notice.error{color:#a7263c}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(530px,100%);background:#fffffff2;backdrop-filter:blur(12px);border-top:1px solid #dce6f0;display:flex;align-items:center;justify-content:space-around;padding:8px 5px calc(9px + env(safe-area-inset-bottom));z-index:3}
+.nav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#657b91;padding:5px 12px}.nav button span{font-size:22px}.nav button.selected{color:#007fb9;font-weight:800}
+.screenTitle{font-size:20px;margin:0 0 9px}.logout{width:100%}.muted.end{margin:20px 0 0}
+@media(min-width:700px){.phone{margin-top:14px;margin-bottom:14px;min-height:calc(100dvh - 28px);border-radius:24px;overflow:hidden}.nav{border-radius:0 0 24px 24px}}
+</style></head>
+<body>
+<div class="phone">
+<section id="loginPage" aria-label="Owner and Principal login">
+  <img src="./app-icon-512.png" alt="Bright Nexa logo">
+  <span class="eyebrow">School leadership</span><h1>Run your school,<br>from anywhere.</h1>
+  <p>Bright Nexa Owner & Principal. Use your verified school staff email and password.</p>
+  <form id="loginForm">
+    <label class="field" for="email">School email<input id="email" type="email" autocomplete="username" required></label>
+    <label class="field" for="password">Password<input id="password" type="password" autocomplete="current-password" required></label>
+    <button data-action="login" class="primary" type="submit">Secure sign in</button>
+  </form>
+  <p class="muted">Only accounts with verified Owner/Admin or Principal membership can enter. School data is never stored offline.</p>
+</section>
+<div id="mainApp" hidden>
+  <header class="header">
+    <div class="topline"><div class="brand"><img src="./app-icon-512.png" alt=""><div><strong>Bright Nexa</strong><small>Leadership App</small></div></div><select id="schoolPicker" aria-label="Choose verified school"></select></div>
+    <h1 id="welcomeName">School leadership</h1><p><span id="schoolName">Verified school</span> · <span id="roleLabel">School</span></p>
+  </header>
+  <main>
+    <section data-page="home">
+      <span class="eyebrow">Daily school overview</span><p id="lastSync" class="sub"></p>
+      <div class="grid">
+        <div class="metric"><span class="symbol">🎓</span><b id="metricStudents">—</b><small>Students (verified)</small></div>
+        <div class="metric"><span class="symbol">👩‍🏫</span><b id="metricTeachers">—</b><small>Active teachers</small></div>
+        <div class="metric"><span class="symbol">📋</span><b id="metricPending">—</b><small>Pending leave</small></div>
+        <div class="metric"><span class="symbol">⚡</span><b id="metricUrgent">—</b><small>Emergency requests</small></div>
+      </div>
+      <article class="panel"><h2>School Operations Brief</h2><div id="dailyBrief"></div></article>
+      <button id="refreshBtn" data-action="refresh" type="button" class="secondary">Refresh live status</button>
+    </section>
+    <section data-page="leaves" hidden>
+      <h2 class="screenTitle">Teacher Leave Approvals</h2><p class="sub">Requests are verified against the selected school. Approval updates Supabase immediately.</p>
+      <div id="leaveList"></div>
+    </section>
+    <section data-page="cover" hidden>
+      <h2 id="coverHeading" class="screenTitle">Substitute planner</h2>
+      <p class="sub">The first eligible candidate is suggested, never automatically published. Admin confirms every duty.</p>
+      <label class="field" for="coverDate">Cover date<input id="coverDate" type="date"></label>
+      <div id="coverRows"></div><button id="publishCover" data-action="publish" type="button" class="primary">Publish selected covers</button>
+    </section>
+    <section data-page="account" hidden>
+      <h2 class="screenTitle">Leadership account</h2>
+      <article class="panel"><h2>Verified access only</h2><p class="muted">School roles and access come from Supabase. Student records and school reports are not cached on the phone. Changes are audited by the server.</p></article>
+      <button id="logoutBtn" data-action="logout" type="button" class="secondary logout">Sign out securely</button>
+    </section>
+  </main>
+  <nav class="nav" aria-label="App navigation">
+    <button class="selected" data-nav="home" type="button"><span>⌂</span>Home</button>
+    <button data-nav="leaves" type="button"><span>☷</span>Leaves</button>
+    <button data-nav="cover" type="button"><span>⇄</span>Covers</button>
+    <button data-nav="account" type="button"><span>⚙</span>Account</button>
+  </nav>
+</div>
+<div id="notice" class="notice" role="status" aria-live="polite"></div>
+</div>
+<script src="./school-mobile-session.js?v=20261117-mobile-login"></script>
+<script src="./leadership-app.js?v=20261118-leadership-v1"></script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
+</body></html>
