@@ -20215,23 +20215,21 @@ function isSectionMatch(secA, secB) {
 
 function isStudentInClass(student, classRecord) {
   if (!student || !classRecord) return false;
-  const classMatches = isClassMatch(student.className, classRecord.name);
-  if (!classMatches) return false;
+  if (!isClassMatch(student.className, classRecord.name)) return false;
   if (classRecord.section) {
-    const secA = normalizeSection(student.section);
-    const secB = normalizeSection(classRecord.section);
-    if (secA && secB && secA !== secB) {
-      return false;
-    }
+    const a = normalizeSection(student.section);
+    const b = normalizeSection(classRecord.section);
+    if (a && b && a !== b) return false;
   }
-  if (classRecord.academicStream && student.academicStream) {
-    if (classRecord.academicStream.toLowerCase() !== student.academicStream.toLowerCase()) {
-      return false;
-    }
+  // Missing stream is not a wildcard in senior secondary attendance.
+  if (['11', '12', 'xi', 'xii'].includes(String(normalizeClassName(classRecord.name)).toLowerCase())) {
+    return String(student.academicStream || '').trim().toLowerCase() ===
+      String(classRecord.academicStream || '').trim().toLowerCase();
   }
+  if (classRecord.academicStream && student.academicStream &&
+      String(classRecord.academicStream).trim().toLowerCase() !== String(student.academicStream).trim().toLowerCase()) return false;
   return true;
 }
-
 function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = [], operations = {}) {
   const oldMap = new Map((oldClasses || []).map(c => [c.id, c]));
   let updatedStudents = [...(students || [])];
@@ -20477,29 +20475,27 @@ function buildDynamicClassList(configuredClasses = [], studentList = [], include
   return result;
 }
 
-function buildDynamicSectionList(selectedClass, configuredClasses = [], studentList = []) {
-  const set = new Set();
-  const normSelected = normalizeClassName(selectedClass);
-
-  (configuredClasses || []).forEach(c => {
-    if (c.section && normalizeClassName(c.name) === normSelected) {
-      set.add(c.section.trim());
-    }
-  });
-
-  (studentList || []).forEach(s => {
-    if (s.section && normalizeClassName(s.className) === normSelected) {
-      set.add(s.section.trim());
-    }
-  });
-
-  if (set.size === 0) {
-    return ['A'];
+function buildDynamicSectionList(selectedClass, configuredClasses = [], studentList = [], academicStream) {
+  const sections = new Set();
+  const selected = normalizeClassName(selectedClass);
+  const senior = ['11', '12', 'xi', 'xii'].includes(String(selected).toLowerCase());
+  const scoped = senior && academicStream !== undefined;
+  const stream = String(academicStream || '').trim().toLowerCase();
+  // Admission must never offer another stream's section or a phantom fallback.
+  if (scoped && !stream) return [];
+  for (const cl of configuredClasses || []) {
+    if (!cl.section || cl.status === 'Inactive' || normalizeClassName(cl.name) !== selected) continue;
+    if (scoped && String(cl.academicStream || '').trim().toLowerCase() !== stream) continue;
+    sections.add(String(cl.section).trim());
   }
-
-  return Array.from(set).sort();
+  if (scoped) return Array.from(sections).sort();
+  for (const student of studentList || []) {
+    if (student.section && normalizeClassName(student.className) === selected) {
+      sections.add(String(student.section).trim());
+    }
+  }
+  return sections.size ? Array.from(sections).sort() : ['A'];
 }
-
 function bnGetApiBase() {
   if (typeof window === 'undefined') return '';
   if (window.location.hostname.includes('bright-nexa-school-os-api')) return '';
@@ -21233,7 +21229,7 @@ function _Component6({
     // Admit students only to classes actually configured by this school.
     return configured.length ? buildDynamicClassList(configured, [], false) : [];
   }, [classes]);
-  let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i.className, classes, e), [i.className, classes, e]);
+  let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i.className, classes, e, i.academicStream || ''), [i.className, i.academicStream, classes, e]);
   let [o, s] = (0, w.useState)({});
   let [c, l] = (0, w.useState)(``);
   const [photoProcessing,setPhotoProcessing] = (0,w.useState)(false);
@@ -21445,7 +21441,7 @@ function _Component6({
                 >
                   <Component82
                     value={i.academicStream || ``}
-                    onChange={(e) => p(`academicStream`, gr(e.target.value))}
+                    onChange={(e) => { p(`academicStream`, gr(e.target.value)); p(`section`, ``); }}
                   >
                     <Component80 value={``}>{`Select Stream`}</Component80>
                     {Bn.map((e) => (
@@ -24367,15 +24363,14 @@ function Hr({ data: e, students: t, onUpdate: n }) {
   // Build merged class list: configured classes PLUS virtual classes from students who have no matching class record
   let allClassesForAttendance = (0, w.useMemo)(() => {
     const configured = (e.classes || []).filter(cl => cl.status !== 'Inactive');
-    const configuredKeys = new Set(configured.map(cl => normalizeClassName(cl.name) + '|' + normalizeSection(cl.section || '')));
+    const classKey = (name, section, stream) => JSON.stringify([normalizeClassName(name), normalizeSection(section || ''), String(stream || '').trim().toLowerCase()]);
+    const configuredKeys = new Set(configured.map(cl => classKey(cl.name, cl.section, cl.academicStream)));
 
     // Find students whose class is NOT covered by any configured class
     const uncoveredMap = new Map();
     for (const stu of (t || [])) {
       if (!stu.className) continue;
-      const nClass = normalizeClassName(stu.className);
-      const nSec = normalizeSection(stu.section || '');
-      const key = nClass + '|' + nSec;
+      const key = classKey(stu.className, stu.section, stu.academicStream);
       if (!configuredKeys.has(key) && !uncoveredMap.has(key)) {
         uncoveredMap.set(key, {
           id: 'virtual-' + key,
@@ -28650,20 +28645,22 @@ function Ii({ initial: e, onClose: t, onSave: n, classes = [] }) {
   let [r, i] = (0, w.useState)(e?.title || ``);
   let [a, o] = (0, w.useState)(e?.className || (classList.includes('6') ? '6' : classList[0]));
 
-  const currentSections = (configuredClasses.length > 0)
-    ? Array.from(new Set(configuredClasses.filter(c => c.name === a).map(c => c.section).filter(Boolean)))
-    : ['A', 'B', 'C', 'D'];
-  const safeSections = currentSections.length > 0 ? currentSections : ['A'];
-
-  let [s, c] = (0, w.useState)(e?.section || safeSections[0]);
   let [l, u] = (0, w.useState)(e?.academicStream);
-
-  const currentClassObj = configuredClasses.find(c => c.name === a && (!s || c.section === s)) || configuredClasses.find(c => c.name === a);
-  const subjectList = (currentClassObj?.subjects && currentClassObj.subjects.length > 0)
-    ? currentClassObj.subjects
-    : ['Mathematics', 'Science', 'English', 'Hindi', 'Social Science', 'Sanskrit', 'Computer Science'];
-
+  const seniorHomework = a === '11' || a === '12';
+  const currentSections = configuredClasses.length > 0
+    ? Array.from(new Set(configuredClasses.filter(c => c.name === a && (!seniorHomework || (l && String(c.academicStream || '').toLowerCase() === String(l).toLowerCase()))).map(c => c.section).filter(Boolean)))
+    : (seniorHomework ? [] : ['A', 'B', 'C', 'D']);
+  const safeSections = currentSections.length > 0 ? currentSections : (seniorHomework ? [] : ['A']);
+  let [s, c] = (0, w.useState)(e?.section || safeSections[0] || '');
+  const selectedSection = safeSections.includes(s) ? s : (safeSections[0] || '');
+  const currentClassObj = configuredClasses.find(c => c.name === a && (!selectedSection || c.section === selectedSection) &&
+    (!seniorHomework || (l && String(c.academicStream || '').toLowerCase() === String(l).toLowerCase())))
+    || (seniorHomework ? undefined : configuredClasses.find(c => c.name === a));
+  const subjectList = currentClassObj?.subjects?.length ? currentClassObj.subjects
+    : (seniorHomework ? [] : ['Mathematics', 'Science', 'English', 'Hindi', 'Social Science', 'Sanskrit', 'Computer Science']);
   let [d, f] = (0, w.useState)(e?.subject || (subjectList.includes('Mathematics') ? 'Mathematics' : subjectList[0]));
+  const selectedSubject = subjectList.includes(d) ? d : (subjectList[0] || '');
+
   let [p, m] = (0, w.useState)(
     e?.dueDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10),
   );
@@ -28688,14 +28685,18 @@ function Ii({ initial: e, onClose: t, onSave: n, classes = [] }) {
       <Component848
         onSubmit={(t) => {
           t.preventDefault();
-          if (!!r.trim() && !!h.trim() && ((a !== `11` && a !== `12`) || !!l)) {
+          if (seniorHomework && (!l || !currentClassObj || !selectedSection || !selectedSubject)) {
+            window.alert('Select a configured stream, section and subject before publishing homework.');
+            return;
+          }
+          if (!!r.trim() && !!h.trim() && (!seniorHomework || !!l)) {
             n({
               id: e?.id || crypto.randomUUID(),
               title: r.trim(),
               className: a,
-              section: s,
+              section: selectedSection,
               academicStream: a === `11` || a === `12` ? l : undefined,
-              subject: d,
+              subject: selectedSubject,
               assignedDate:
                 e?.assignedDate || new Date().toISOString().slice(0, 10),
               dueDate: p,
@@ -28739,7 +28740,7 @@ function Ii({ initial: e, onClose: t, onSave: n, classes = [] }) {
             </select>
           </R>
           <R label={`Section`}>
-            <select value={s} onChange={(e) => c(e.target.value)}>
+            <select value={selectedSection} onChange={(e) => c(e.target.value)}>
               {safeSections.map((sec) => (
                 <option key={sec} value={sec}>{`Section ${sec}`}</option>
               ))}
@@ -28747,7 +28748,7 @@ function Ii({ initial: e, onClose: t, onSave: n, classes = [] }) {
           </R>
           {(a === `11` || a === `12`) && (
             <R label={`Academic Stream *`}>
-              <Component843 value={l || ``} onChange={(e) => u(e.target.value)}>
+              <Component843 value={l || ``} onChange={(e) => { u(e.target.value); c(''); }}>
                 <Component841 value={``}>{`Select Stream`}</Component841>
                 {Bn.map((e) => (
                   <Component842 key={e}>{e}</Component842>
@@ -28756,7 +28757,7 @@ function Ii({ initial: e, onClose: t, onSave: n, classes = [] }) {
             </R>
           )}
           <R label={`Subject`}>
-            <select value={d} onChange={(e) => f(e.target.value)}>
+            <select value={selectedSubject} onChange={(e) => f(e.target.value)}>
               {subjectList.map((sub) => (
                 <option key={sub} value={sub}>{sub}</option>
               ))}
