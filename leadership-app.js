@@ -90,27 +90,20 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   }
   function school(){if(!selected)throw Error('Select a verified school.');return selected;}
   async function rpc(name,args={}){
-    if(!/^bn_(?:list_teacher_leaves|review_teacher_leave|teacher_leave_cover_plan|publish_teacher_covers)$/.test(name))throw Error('Unsupported leadership operation.');
+    if(!/^bn_(?:list_teacher_leaves|review_teacher_leave|teacher_leave_cover_plan|publish_teacher_covers|leadership_school_pulse|leadership_fee_snapshot|leadership_publish_urgent_notice)$/.test(name))throw Error('Unsupported leadership operation.');
     const owner=school();
     return (await send('/rest/v1/rpc/'+name,{method:'POST',body:JSON.stringify({p_school:owner.id,...args})})).data;
   }
-  async function count(table,filters={}){
-    const owner=school(),params=new URLSearchParams({select:'id',institution_id:'eq.'+escapeFilter(owner.id),limit:'1',...filters});
-    try{
-      const reply=await send('/rest/v1/'+table+'?'+params,{headers:{Prefer:'count=exact'}});
-      const contentRange=reply.response.headers.get('content-range')||'';
-      const match=contentRange.match(/\/(\d+)$/);
-      return match?Number(match[1]):null;
-    }catch(_){return null;}
-  }
   async function overview(){
-    const owner=school();const epoch=version;
-    const [leaves,students,teachers]=await Promise.all([
-      rpc('bn_list_teacher_leaves'),count('school_students'),count('school_users',{role:'eq.teacher',status:'eq.active'})
+    const owner=school(),epoch=version,day=today();
+    const [leaves,pulse,fees]=await Promise.all([
+      rpc('bn_list_teacher_leaves'),
+      rpc('bn_leadership_school_pulse',{p_day:day}),
+      rpc('bn_leadership_fee_snapshot',{p_day:day})
     ]);
     if(epoch!==version||owner.id!==selected?.id)throw Error('School changed. Reload the dashboard.');
-    if(!Array.isArray(leaves))throw Error('Leave records are not available.');
-    return {school:owner,leaves,students,teachers,
+    if(!Array.isArray(leaves)||!pulse||!fees)throw Error('School reports could not be verified.');
+    return {school:owner,leaves,pulse,fees,students:pulse.students,teachers:pulse.teachers,
       pending:leaves.filter(x=>x.status==='pending').length,
       emergency:leaves.filter(x=>x.status==='pending'&&x.kind==='emergency').length,
       approved:leaves.filter(x=>x.status==='approved').length};
@@ -125,17 +118,45 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     if(!Array.isArray(entries)||!entries.length)throw Error('Choose at least one valid substitute.');
     return rpc('bn_publish_teacher_covers',{p_leave:id,p_day:day,p_covers:entries});
   }
+  async function publishUrgent(title,body,requestId){
+    if(!/^[0-9a-f-]{36}$/i.test(String(requestId||'')))throw Error('Secure notice request ID required.');
+    if(String(title||'').trim().length<8||String(title).trim().length>120||
+       String(body||'').trim().length<15||String(body).trim().length>1500)
+      throw Error('Notice title must be 8–120 characters and message 15–1500 characters.');
+    return rpc('bn_leadership_publish_urgent_notice',{
+      p_request_id:requestId,p_title:title.trim(),p_body:body.trim()
+    });
+  }
+  async function suggestCover(id,day){
+    const current=school();await fresh();
+    const endpoint='https://bright-nexa-school-os-api.onrender.com/api/timetable/cover-ai';
+    const controller=typeof AbortController!=='undefined'?new AbortController():null;
+    let timeout;
+    try{
+      const response=await Promise.race([
+        fetcher(endpoint,{method:'POST',cache:'no-store',...(controller?{signal:controller.signal}:{}),
+          headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+          body:JSON.stringify({school:current.id,leave:id,day,
+            instructions:['Suggest free, subject-qualified substitutes with balanced daily load. Do not move original periods or invent staff.']})}),
+        new Promise((_,reject)=>{timeout=setTimeout(()=>{controller?.abort();reject(Error('AI suggestion timed out. Existing qualified candidates remain available.'));},20000);})
+      ]);
+      const data=await response.json();
+      if(!response.ok)throw Error(data?.error||data?.message||'AI cover suggestion unavailable. Manual eligible list remains available.');
+      if(current.id!==selected?.id)throw Error('School changed. Reload the cover plan.');
+      return data;
+    }finally{clearTimeout(timeout);}
+  }
   async function logout(){
     const token=session?.access_token;
     session=null;schools=[];selected=null;version++;
     await storage?.clear();
     if(token)send('/auth/v1/logout',{method:'POST',headers:{Authorization:'Bearer '+token}},false).catch(()=>{});
   }
-  return {login,restore,verify,choose,school,overview,review,covers,publish,logout,today};
+  return {login,restore,verify,choose,school,overview,review,covers,publish,publishUrgent,suggestCover,logout,today};
 }
 function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
   const $=id=>doc.getElementById(id), client=create(fetcher);
-  let snapshot=null,coverLeave=null,view='home',busy=false;
+  let snapshot=null,coverLeave=null,view='home',busy=false,pendingNoticeId=null;
   const elt=(tag,label,cls)=>{const e=doc.createElement(tag);if(label!==undefined)e.textContent=String(label);if(cls)e.className=cls;return e;};
   const note=(text,error=false)=>{const e=$('notice');e.textContent=text||'';e.classList.toggle('error',error);};
   const status=busyValue=>{busy=busyValue;doc.querySelectorAll('button[data-action]').forEach(btn=>btn.disabled=busyValue);};
@@ -160,14 +181,32 @@ function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
     $('schoolName').textContent=data.school.name;
     $('roleLabel').textContent=data.school.role==='principal'?'Principal':'Owner / Admin';
     $('welcomeName').textContent='Hello, '+data.school.displayName;
-    const values=[label(data.students),label(data.teachers),label(data.pending),label(data.emergency)];
+    const values=[
+      data.pulse.student_percent===null?'—':data.pulse.student_percent+'%',
+      label(data.pulse.teachers_present),
+      label(data.pending),
+      label(data.pulse.uncovered_periods)
+    ];
     ['metricStudents','metricTeachers','metricPending','metricUrgent'].forEach((id,i)=>$(id).textContent=values[i]);
     const insights=$('dailyBrief');insights.replaceChildren();
+    const pulse=data.pulse,fees=data.fees;
+    $('attendanceCoverage').textContent=pulse.students_marked+' / '+pulse.students+' students marked · '+pulse.students_present+' attending';
+    $('teacherCoverage').textContent=pulse.teachers_marked+' / '+pulse.teachers+' teacher attendance marks linked';
+    $('periodCoverage').textContent=pulse.scheduled_periods+' published periods for '+pulse.day;
+    $('feeTotal').textContent='₹'+Number(fees.total||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+    $('feeCash').textContent='₹'+Number(fees.cash||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+    $('feeOnline').textContent='₹'+Number(fees.online||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+    $('feeUnknown').textContent='₹'+Number(fees.unclassified||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+    $('feeReceipts').textContent=fees.receipt_count+' posted fee entries · '+fees.day+' · provisional until reconciliation';
     if(data.emergency)row(insights,'Urgent leave',data.emergency+' emergency request(s) need immediate review.');
     if(data.pending)row(insights,'Approval queue',data.pending+' pending leave request(s); check teaching cover before approving.');
     if(data.approved)row(insights,'Cover reminder',data.approved+' approved leave request(s); verify all affected periods have cover.');
     if(!data.pending&&!data.approved)row(insights,'No leave backlog','Leave queue has no pending or approved requests in the current results.');
-    if(data.students===null||data.teachers===null)row(insights,'Data visibility','Some counts were unavailable under this school role. No values were estimated.');
+    if(pulse.student_percent===null)row(insights,'Attendance incomplete','Present percentage is hidden until attendance for all active students is marked.');
+    if(pulse.teachers_present===null)row(insights,'Teacher roll incomplete','Teacher present count is unavailable until all teacher records are linked and marked.');
+    if(pulse.uncovered_periods>0)row(insights,'Uncovered classes',pulse.uncovered_periods+' published periods currently have no valid teacher assigned.');
+    if(pulse.uncovered_periods===null)row(insights,'Timetable not published','No scheduled periods verified for today.');
+    if(Number(fees.unclassified)>0)row(insights,'Fee payment modes',fees.unclassified+' rupees cannot be classified as cash/online from saved records.');
     $('lastSync').textContent='Verified live from Supabase · '+new Date().toLocaleString('en-IN');
   }
   const leaveDescriptor=x=>x.starts_on+(x.starts_on!==x.ends_on?' to '+x.ends_on:'')+(x.starts_at?' · '+x.starts_at.slice(0,5)+'–'+x.ends_at.slice(0,5):' · Full day');
@@ -197,6 +236,11 @@ function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
         btn.addEventListener('click',()=>run(async()=>{coverLeave=leave;await loadCover();}));
         actions.append(btn);
       }
+      if(leave.status==='pending'){
+        const preview=elt('button','Preview affected periods','secondary');preview.dataset.action='preview';
+        preview.addEventListener('click',()=>run(async()=>{coverLeave=leave;await loadCover();}));
+        actions.append(preview);
+      }
       card.append(actions);target.append(card);
     }
   }
@@ -204,6 +248,9 @@ function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
     if(!coverLeave)return;
     showPage('cover');
     $('coverHeading').textContent='Cover · '+(coverLeave.teacher_name||'Teacher');
+    $('coverReviewStatus').textContent=coverLeave.status==='pending'?'Preview only — approve leave before publishing any substitute.':'Approved leave — review and publish eligible covers.';
+    $('approveFromCover').hidden=coverLeave.status!=='pending';
+    $('publishCover').hidden=coverLeave.status==='pending';
     const date=$('coverDate');date.min=coverLeave.starts_on;date.max=coverLeave.ends_on;
     if(!date.value||date.value<date.min||date.value>date.max)date.value=today()<date.min?date.min:today()>date.max?date.max:today();
     const rows=await client.covers(coverLeave.id,date.value);
@@ -247,6 +294,45 @@ function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
   $('logoutBtn').addEventListener('click',()=>run(async()=>{await client.logout();snapshot=null;coverLeave=null;gate(true);}));
   $('schoolPicker').addEventListener('change',()=>run(async()=>{client.choose($('schoolPicker').value);coverLeave=null;await refresh();showPage('home');}));
   $('refreshBtn').addEventListener('click',()=>run(refresh));
+  $('approveFromCover').addEventListener('click',()=>run(async()=>{
+    if(!coverLeave||coverLeave.status!=='pending')throw Error('Select a pending leave.');
+    if(!root.confirm('Approve leave for '+coverLeave.teacher_name+'? Covers will still require separate publication.'))return;
+    await client.review(coverLeave.id,'approved');coverLeave={...coverLeave,status:'approved'};
+    await refresh();await loadCover();
+  }));
+  $('aiSuggest').addEventListener('click',()=>run(async()=>{
+    if(!coverLeave)throw Error('Choose a leave first.');
+    const answer=await client.suggestCover(coverLeave.id,$('coverDate').value);
+    const picks=[...$('coverRows').querySelectorAll('select[data-slot]')];
+    for(const choice of answer.choices||[]){
+      const input=picks.find(e=>e.dataset.slot===choice.slot_id&&e.dataset.classid===choice.class_id);
+      if(input&&[...input.options].some(x=>x.value===choice.teacher_id))input.value=choice.teacher_id;
+    }
+    $('aiCoverReason').textContent=answer.question||answer.summary||'AI suggestions require review before approval.';
+  }));
+  $('noticeTemplate').addEventListener('change',()=>{
+    const v=$('noticeTemplate').value;
+    if(v==='weather'){
+      $('noticeTitle').value='Urgent: Weather-related School Update';
+      $('noticeBody').value='Due to severe weather conditions, school timings are being reviewed. Please follow the verified notice from school administration for the confirmed dismissal schedule.';
+    }else if(v==='closure'){
+      $('noticeTitle').value='Urgent: Change in School Dispersal Time';
+      $('noticeBody').value='School will close earlier than usual today. Parents should follow the official transport and pickup instructions issued by the school.';
+    }
+    pendingNoticeId=null;
+  });
+  for(const id of ['noticeTitle','noticeBody'])$(id).addEventListener('input',()=>{pendingNoticeId=null;});
+  $('sendNotice').addEventListener('click',()=>run(async()=>{
+    const title=$('noticeTitle').value.trim(),body=$('noticeBody').value.trim();
+    if(title.length<8||body.length<15)throw Error('Enter a complete official notice.');
+    if(!root.confirm('Publish this official notice to the school feed?\\n\\n'+title+'\\n\\n'+body+'\\n\\nPush/SMS delivery is NOT confirmed.'))return;
+    if(!pendingNoticeId){
+      if(!root.crypto?.randomUUID)throw Error('Secure notice ID generation is not available on this device.');
+      pendingNoticeId=root.crypto.randomUUID();
+    }
+    await client.publishUrgent(title,body,pendingNoticeId);
+    $('noticePublishStatus').textContent='Official notice published to school feed. Parent/Teacher push or SMS delivery is NOT verified.';
+  }));
   doc.querySelectorAll('[data-nav]').forEach(button=>button.addEventListener('click',()=>{
     const destination=button.dataset.nav;
     if(destination==='cover'&&!coverLeave){note('Choose an approved leave under Leave requests to plan cover.');showPage('leaves');return;}
