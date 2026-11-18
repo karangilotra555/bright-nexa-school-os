@@ -145,7 +145,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages" aria-label="Messages"><span aria-hidden="true">✉</span><span id="inboxUnread" aria-hidden="true" hidden></span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261116-attendance-month"></script><script src="./school-mobile-session.js?v=20261117-mobile-login"></script><script src="parents-cloud.js?v=20261117-senior-stream-v1"></script>
+<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261116-attendance-month"></script><script src="./school-mobile-session.js?v=20261118-shared-leadership"></script><script src="parents-cloud.js?v=20261117-senior-stream-v1"></script>
 <script>
 (() => {
 'use strict';
@@ -346,6 +346,9 @@ async function restoreLogin(){
  if(token||restoringLogin)return;
  restoringLogin=true;
  try{
+  if(await window.BNMobileSession?.opensLeadershipOnLaunch()){
+   location.replace('./leadership.html?entry=launcher');return;
+  }
   if(await window.BNMobileSession?.opensTeacherOnLaunch()){
    location.replace('./teacher-access.html?view=attendance');return;
   }

@@ -51,6 +51,7 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     <label class="field" for="password">Password<input id="password" type="password" autocomplete="current-password" required></label>
     <button data-action="login" class="primary" type="submit">Secure sign in</button>
   </form>
+  <p class="sub"><a href="./teacher-access.html?view=attendance">Teacher / Staff Login</a> · <a href="./parents.html?portal=parent">Student / Parent Login</a></p>
   <p class="muted">Only accounts with verified Owner/Admin or Principal membership can enter. School data is never stored offline.</p>
 </section>
 <div id="mainApp" hidden>
@@ -117,6 +118,7 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     <section data-page="account" hidden>
       <h2 class="screenTitle">Leadership account</h2>
       <article class="panel"><h2>Verified access only</h2><p class="muted">School roles and access come from Supabase. Student records and school reports are not cached on the phone. Changes are audited by the server.</p></article>
+      <p class="sub"><a href="./teacher-access.html?view=attendance">Teacher / Staff Login</a> · <a href="./parents.html?portal=parent">Student / Parent Login</a></p>
       <button id="logoutBtn" data-action="logout" type="button" class="secondary logout">Sign out securely</button>
     </section>
   </main>
@@ -130,7 +132,7 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
 </div>
 <div id="notice" class="notice" role="status" aria-live="polite"></div>
 </div>
-<script src="./school-mobile-session.js?v=20261117-mobile-login"></script>
-<script src="./leadership-app.js?v=20261118-leadership-v2"></script>
+<script src="./school-mobile-session.js?v=20261118-shared-leadership"></script>
+<script src="./leadership-app.js?v=20261118-shared-leadership"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
 </body></html>

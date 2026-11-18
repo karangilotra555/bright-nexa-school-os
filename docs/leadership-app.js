@@ -4,6 +4,10 @@
 const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
 const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 const allowedRoles=new Set(['school_admin','principal']);
+const staffSessionKey='bn_school_staff_session_v1';
+const staffEntry='./teacher-access.html?view=attendance';
+const denied=error=>[401,403].includes(error.status);
+const schoolAccessError=()=>Object.assign(Error('Active Owner or Principal school access is required.'),{status:403});
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const escapeFilter=value=>String(value).replace(/[^a-zA-Z0-9_-]/g,'');
 function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.createStore('leadership')){
@@ -21,7 +25,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
       ]);
       const raw=await response.text();
       let data;try{data=raw?JSON.parse(raw):null;}catch(_){data=raw;}
-      if(!response.ok)throw Error(data?.message||data?.msg||data?.error_description||data?.error||'School service unavailable ('+response.status+').');
+      if(!response.ok)throw Object.assign(Error(data?.message||data?.msg||data?.error_description||data?.error||'School service unavailable ('+response.status+').'),{status:response.status});
       return {data,response};
     }finally{clearTimeout(timer);}
   }
@@ -30,63 +34,100 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     session={...value,expires_at:Number(value.expires_at)||(Date.now()/1000+Number(value.expires_in||3600))};
   }
   async function refresh(token){
-    const answer=await send('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:token})},false);
-    installSession(answer.data);
-    return answer.data;
+    try{
+      return (await send('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:token})},false)).data;
+    }catch(error){
+      if(error.status===400)error.status=401;
+      throw error;
+    }
+  }
+  function remember(newLogin,marker){
+    return storage?.write(JSON.stringify({token:session.refresh_token,schoolId:selected.id}),newLogin,marker);
   }
   async function fresh(){
     if(session?.expires_at>Date.now()/1000+90)return;
     if(!session?.refresh_token)throw Error('Your session has expired. Sign in again.');
     if(!refreshing)refreshing=(async()=>{
-      const data=await refresh(session.refresh_token);
-      await storage?.write(data.refresh_token);
+      const previous=session;
+      const marker=storage?.marker?.();
+      const data=await refresh(previous.refresh_token);
+      if(session!==previous||marker!==storage?.marker?.())throw Error('Your session has expired. Sign in again.');
+      installSession(data);
+      if(selected)await remember(false,marker);
     })().finally(()=>{refreshing=null;});
     await refreshing;
   }
-  async function verify(){
+  async function verify(requestedSchool,requireSchool=false){
     const user=(await send('/auth/v1/user')).data;
     if(!user?.id)throw Error('School identity could not be verified.');
-    const query=new URLSearchParams({select:'id,institution_id,role,status,display_name',auth_user_id:'eq.'+escapeFilter(user.id),status:'eq.active',limit:'100'});
+    if(user.app_metadata?.bn_teacher_mobile_pending===true)throw Object.assign(Error('Finish setting your school password in Staff sign-in.'),{status:403});
+    const query=new URLSearchParams({select:'id,institution_id,auth_user_id,role,status,display_name',auth_user_id:'eq.'+escapeFilter(user.id),status:'eq.active',limit:'100'});
     const rows=(await send('/rest/v1/school_users?'+query)).data;
     if(!Array.isArray(rows))throw Error('School memberships could not be verified.');
     const verified=[];
     for(const member of rows){
-      if(!allowedRoles.has(member.role)||!member.institution_id)continue;
+      if(member.auth_user_id!==user.id||member.status!=='active'||!allowedRoles.has(member.role)||!member.institution_id)continue;
       try{
         const params=new URLSearchParams({select:'id,name,status',id:'eq.'+escapeFilter(member.institution_id),limit:'1'});
         const institutions=(await send('/rest/v1/institutions?'+params)).data;
         const school=institutions?.[0];
-        if(school&&['active','trial'].includes(school.status)){
+        if(school?.id===member.institution_id&&['active','trial'].includes(school.status)){
           verified.push({id:school.id,name:school.name||'Verified school',role:member.role,displayName:member.display_name||'School leadership'});
         }
-      }catch(_){/* A non-readable institution is never treated as verified. */}
+      }catch(error){if(!denied(error))throw error;}
     }
-    if(!verified.length)throw Error('Active Owner or Principal school access is required.');
+    const preferred=verified.find(x=>x.id===(requestedSchool||selected?.id));
+    if(!verified.length||(requireSchool&&requestedSchool&&!preferred))throw schoolAccessError();
     schools=verified;
-    if(!schools.some(x=>x.id===selected?.id))selected=schools[0];
+    selected=preferred||verified[0];
     return {schools:[...schools],selected};
   }
+  async function openSession(tokens,requestedSchool,newLogin,marker){
+    try{
+      if(marker!==storage?.marker?.())throw Error('Please sign in again.');
+      installSession(tokens);
+      const verified=await verify(requestedSchool,newLogin);
+      if(marker!==storage?.marker?.()||!session)throw Error('Please sign in again.');
+      const activeSession=session;
+      const saved=await remember(newLogin,marker);
+      const expectedMarker=newLogin&&saved===true?null:marker;
+      if(saved===false||session!==activeSession||(storage?.marker&&storage.marker()!==expectedMarker))throw Error('Please sign in again.');
+      if(saved)storage.activate?.();
+      return verified;
+    }catch(error){session=null;schools=[];selected=null;throw error;}
+  }
   async function login(email,password){
+    const marker=storage?.marker?.();
     const result=await send('/auth/v1/token?grant_type=password',{method:'POST',
       body:JSON.stringify({email:String(email).trim(),password})},false);
-    const previous=session;installSession(result.data);
-    try{
-      await verify();
-      await storage?.write(session.refresh_token,true);
-      storage?.activate?.();
-      return {schools:[...schools],selected};
-    }catch(error){session=previous;schools=[];selected=null;throw error;}
+    return openSession(result.data,null,true,marker);
+  }
+  async function resumeStaff(tokens,schoolId){
+    if(!schoolId)throw Error('Select a verified school.');
+    return openSession(tokens,schoolId,true,storage?.marker?.());
   }
   async function restore(){
-    const token=await storage?.read();
-    if(!token)return null;
-    try{await refresh(token);return await verify();}
-    catch(error){session=null;schools=[];selected=null;throw error;}
+    const marker=storage?.marker?.();
+    const saved=await storage?.read();
+    if(!saved)return null;
+    let record={token:saved}; // Accept older installs that kept only the token.
+    if(saved.startsWith('{')){
+      try{record=JSON.parse(saved);}catch(_){record=null;}
+      if(!record?.token){await storage.clear();return null;}
+    }
+    try{return await openSession(await refresh(record.token),record.schoolId,false,marker);}
+    catch(error){
+      if(!denied(error))throw error;
+      await storage?.clear();
+      return null;
+    }
   }
-  function choose(id){
+  async function choose(id){
     const match=schools.find(x=>x.id===id);
     if(!match)throw Error('Select a verified school.');
-    selected=match;version++;return selected;
+    selected=match;version++;
+    await remember(false,storage?.marker?.());
+    return match;
   }
   function school(){if(!selected)throw Error('Select a verified school.');return selected;}
   async function rpc(name,args={}){
@@ -150,16 +191,19 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     const token=session?.access_token;
     session=null;schools=[];selected=null;version++;
     await storage?.clear();
-    if(token)send('/auth/v1/logout',{method:'POST',headers:{Authorization:'Bearer '+token}},false).catch(()=>{});
+    if(token)send('/auth/v1/logout?scope=local',{method:'POST',keepalive:true,headers:{Authorization:'Bearer '+token}},false).catch(()=>{});
   }
-  return {login,restore,verify,choose,school,overview,review,covers,publish,publishUrgent,suggestCover,logout,today};
+  return {login,resumeStaff,restore,verify,choose,school,overview,review,covers,publish,publishUrgent,suggestCover,logout,today};
 }
 function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
   const $=id=>doc.getElementById(id), client=create(fetcher);
+  const params=new URLSearchParams(root.location?.search||'');
+  const entry=params.get('entry');
+  const fromSharedApp=entry==='staff'||entry==='launcher';
   let snapshot=null,coverLeave=null,view='home',busy=false,pendingNoticeId=null;
   const elt=(tag,label,cls)=>{const e=doc.createElement(tag);if(label!==undefined)e.textContent=String(label);if(cls)e.className=cls;return e;};
   const note=(text,error=false)=>{const e=$('notice');e.textContent=text||'';e.classList.toggle('error',error);};
-  const status=busyValue=>{busy=busyValue;doc.querySelectorAll('button[data-action]').forEach(btn=>btn.disabled=busyValue);};
+  const status=busyValue=>{busy=busyValue;$('schoolPicker').disabled=busyValue;doc.querySelectorAll('button[data-action]').forEach(btn=>btn.disabled=busyValue);};
   async function run(task){
     if(busy)return;
     status(true);note('');
@@ -284,15 +328,32 @@ function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
     }
     picker.value=data.selected.id;picker.hidden=data.schools.length===1;
   }
+  function clearDashboard(school){
+    snapshot=null;coverLeave=null;pendingNoticeId=null;
+    $('schoolName').textContent=school?.name||'';
+    $('roleLabel').textContent=school?(school.role==='principal'?'Principal':'Owner / Admin'):'';
+    $('welcomeName').textContent=school?'Hello, '+school.displayName:'School leadership';
+    for(const id of ['metricStudents','metricTeachers','metricPending','metricUrgent','feeTotal','feeCash','feeOnline','feeUnknown'])$(id).textContent='—';
+    for(const id of ['lastSync','attendanceCoverage','teacherCoverage','periodCoverage','feeReceipts','coverReviewStatus','aiCoverReason','noticePublishStatus'])$(id).textContent='';
+    for(const id of ['dailyBrief','leaveList','coverRows'])$(id).replaceChildren();
+    for(const id of ['noticeTemplate','noticeTitle','noticeBody'])$(id).value='';
+  }
   async function showAuthenticated(data){
-    chooseSchools(data);gate(false);showPage('home');await refresh();
+    chooseSchools(data);clearDashboard(data.selected);gate(false);showPage('home');await refresh();
   }
   $('loginForm').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
     const data=await client.login($('email').value,$('password').value);
     $('password').value='';await showAuthenticated(data);
   });});
-  $('logoutBtn').addEventListener('click',()=>run(async()=>{await client.logout();snapshot=null;coverLeave=null;gate(true);}));
-  $('schoolPicker').addEventListener('change',()=>run(async()=>{client.choose($('schoolPicker').value);coverLeave=null;await refresh();showPage('home');}));
+  $('logoutBtn').addEventListener('click',()=>run(async()=>{
+    await client.logout();clearDashboard(null);
+    if(fromSharedApp){root.location.replace(staffEntry);return;}
+    gate(true);
+  }));
+  $('schoolPicker').addEventListener('change',()=>run(async()=>{
+    const school=await client.choose($('schoolPicker').value);
+    clearDashboard(school);showPage('home');await refresh();
+  }));
   $('refreshBtn').addEventListener('click',()=>run(refresh));
   $('approveFromCover').addEventListener('click',()=>run(async()=>{
     if(!coverLeave||coverLeave.status!=='pending')throw Error('Select a pending leave.');
@@ -349,8 +410,20 @@ function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
     note('Cover published. Verify delivery in Teacher App.');await loadCover();
   }));
   gate(true);
-  run(async()=>{const restored=await client.restore();if(restored)await showAuthenticated(restored);})
-    .catch(()=>{});
+  run(async()=>{
+    let staffSession;
+    if(entry==='staff'){
+      try{
+        staffSession=JSON.parse(root.sessionStorage?.getItem(staffSessionKey)||'null');
+        root.sessionStorage?.removeItem(staffSessionKey);
+      }catch(_){}
+    }
+    const restored=staffSession
+      ?await client.resumeStaff(staffSession,params.get('school'))
+      :await client.restore();
+    if(restored)await showAuthenticated(restored);
+    else if(fromSharedApp)root.location.replace(staffEntry);
+  });
   return client;
 }
 const api={create,mount,today};

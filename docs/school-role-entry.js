@@ -2,8 +2,12 @@
 (function(root){
  'use strict';
  function roleDestination(input){
-  const {role,verified=false,membershipCount=0,search=''}=input||{};
-  if(!verified || membershipCount!==1)return null;
+  const {role,verified=false,membershipCount=0,search='',mobile=false,schoolId}=input||{};
+  if(!verified)return null;
+  if(mobile&&schoolId&&(role==='school_admin'||role==='principal')){
+   return './leadership.html?'+new URLSearchParams({entry:'staff',school:schoolId});
+  }
+  if(membershipCount!==1)return null;
   const params=new URLSearchParams(search);
   // Explicit module links from the full ERP must keep working. A bare
   // "staffPortal=1" is only an entry hint, never a reason to display a second,

@@ -739,6 +739,17 @@
     if(me?.id!==chosen.member.id&&me?.role==='teacher')clearPeriodAlerts();
     me=chosen.member;
     const school=chosen.school;
+    const mobile=isMobileAppContext();
+    // The selected membership and institution above were verified by Supabase.
+    const next=window.BNSchoolRoleEntry?.roleDestination({
+      role:me.role,verified:me.status==='active'&&me.auth_user_id===identity.id,
+      membershipCount:permitted.length,search:location.search,mobile,schoolId:school.id
+    });
+    if(next&&mobile&&(me.role==='school_admin'||me.role==='principal')){
+      sessionStorage.setItem(SELECTED_SCHOOL_KEY,school.id);
+      location.replace(new URL(next,location.href).href);
+      return;
+    }
     const teacherApp=me.role==='teacher'&&isMobileAppContext();
     if(teacherApp&&teacherDeviceSession&&!rememberingTeacher){
       rememberingTeacher=true;
@@ -787,11 +798,6 @@
       return;
     }
     await loadRolePermissions();
-    // Route only after Supabase Auth + tenant membership were verified above.
-    const next=window.BNSchoolRoleEntry?.roleDestination({
-      role:me.role,verified:me.status==='active'&&me.auth_user_id===identity.id,
-      membershipCount:permitted.length,search:location.search
-    });
     if(next){location.replace(new URL(next,location.href).href);return;}
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
