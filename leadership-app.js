@@ -170,7 +170,10 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   }
   async function suggestCover(id,day){
     const current=school();await fresh();
-    const endpoint='https://bright-nexa-school-os-api.onrender.com/api/timetable/cover-ai';
+    const host=root.location?.hostname||'';
+    const endpoint=['bright-nexa-school-os.onrender.com','karangilotra555.github.io'].includes(host)
+      ?'https://bright-nexa-school-os-api.onrender.com/api/timetable/cover-ai'
+      :(root.location?.origin?root.location.origin+'/api/timetable/cover-ai':'https://bright-nexa-school-os-api.onrender.com/api/timetable/cover-ai');
     const controller=typeof AbortController!=='undefined'?new AbortController():null;
     let timeout;
     try{
@@ -195,7 +198,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   }
   return {login,resumeStaff,restore,verify,choose,school,overview,review,covers,publish,publishUrgent,suggestCover,logout,today};
 }
-function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
+function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)){
   const $=id=>doc.getElementById(id), client=create(fetcher);
   const params=new URLSearchParams(root.location?.search||'');
   const entry=params.get('entry');
@@ -367,7 +370,8 @@ function mount(doc=root.document,fetcher=root.fetch?.bind(root)){
     const picks=[...$('coverRows').querySelectorAll('select[data-slot]')];
     for(const choice of answer.choices||[]){
       const input=picks.find(e=>e.dataset.slot===choice.slot_id&&e.dataset.classid===choice.class_id);
-      if(input&&[...input.options].some(x=>x.value===choice.teacher_id))input.value=choice.teacher_id;
+      const targetId=choice.teacher_id||'';
+      if(input&&[...input.options].some(x=>x.value===targetId))input.value=targetId;
     }
     $('aiCoverReason').textContent=answer.question||answer.summary||'AI suggestions require review before approval.';
   }));

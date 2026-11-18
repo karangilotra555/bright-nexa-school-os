@@ -11,7 +11,7 @@ function backend(role='principal'){
  const token={access_token:'test-access',refresh_token:'test-refresh',expires_in:3600};
  const response=(data,headers={})=>new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json',...headers}});
  const fetcher=async(url,request={})=>{
-  const path=new URL(url).pathname;
+  const path=new URL(url,'https://school.example').pathname;
   calls.push({path,body:request.body?JSON.parse(request.body):null,headers:request.headers});
   if(path==='/auth/v1/token')return response(token);
   if(path==='/auth/v1/user')return response({id:person});
@@ -24,11 +24,13 @@ function backend(role='principal'){
   if(path==='/rest/v1/rpc/bn_leadership_publish_urgent_notice')return response(request.body.p_request_id);
   if(path==='/api/timetable/cover-ai')return response({choices:[],summary:'Review qualified candidates',question:''});
   if(path==='/rest/v1/rpc/bn_list_teacher_leaves')return response([
-   {id:leave,teacher_name:'Teacher A',status:'pending',kind:'emergency'},
-   {id:leave.replace(/3$/,'4'),teacher_name:'Teacher B',status:'approved',kind:'planned'}
+   {id:leave,teacher_name:'Teacher A',status:'pending',kind:'emergency',starts_on:'2026-11-18',ends_on:'2026-11-18'},
+   {id:leave.replace(/3$/,'4'),teacher_name:'Teacher B',status:'approved',kind:'planned',starts_on:'2026-11-18',ends_on:'2026-11-18'}
   ]);
   if(path==='/rest/v1/rpc/bn_review_teacher_leave')return response(null);
-  if(path==='/rest/v1/rpc/bn_teacher_leave_cover_plan')return response([{slot_id:'slot',class_id:'class',candidates:[]}]);
+  if(path==='/rest/v1/rpc/bn_teacher_leave_cover_plan')return response([
+   {slot_id:'slot',class_id:'class',class_name:'10 A',subject:'Math',starts_at:'09:00:00',ends_at:'09:45:00',candidates:[{teacher_id:'t1',teacher_name:'Teacher C',subject_match:true,periods:2}]}
+  ]);
   if(path==='/rest/v1/rpc/bn_publish_teacher_covers')return response(null);
   throw Error('Unexpected request: '+url);
  };
@@ -199,3 +201,59 @@ test('the shared Staff handoff opens the Principal dashboard in the actual Leade
   assert.equal(mock.calls.some(call=>call.path==='/auth/v1/token'),false);
  }finally{dom.window.close();}
 });
+
+test('AI cover suggestions support null choices and use local API fallback when not on production host',async()=>{
+ const mock=backend();
+ const client=create(mock.fetcher,null);
+ await client.login('leader@example.com','password');
+ const suggestions=await client.suggestCover(leave,'2026-11-18');
+ assert.deepEqual(suggestions,{choices:[],summary:'Review qualified candidates',question:''});
+ const aiCall=mock.calls.find(call=>call.path==='/api/timetable/cover-ai');
+ assert.ok(aiCall,'cover-ai endpoint must be queried');
+ assert.equal(aiCall.body.school,school);
+ assert.equal(aiCall.body.leave,leave);
+ assert.equal(aiCall.body.day,'2026-11-18');
+});
+
+test('AI cover suggestion with null teacher_id unassigns the slot to empty choice in UI',async()=>{
+ const {JSDOM}=require('jsdom');
+ const mock=backend();
+ const dom=new JSDOM(read('leadership.html'),{runScripts:'outside-only',url:'https://school.example/leadership.html'});
+ try{
+  const win=dom.window;
+  win.fetch=mock.fetcher;
+  win.eval(read('leadership-app.js'));
+  win.dispatchEvent(new win.Event('DOMContentLoaded'));
+  await new Promise(resolve=>setImmediate(resolve));
+  win.document.getElementById('email').value='leader@example.com';
+  win.document.getElementById('password').value='password';
+  win.document.getElementById('loginForm').dispatchEvent(new win.Event('submit'));
+  for(let i=0;i<20&&win.document.getElementById('metricStudents').textContent==='—';i++){
+   await new Promise(resolve=>setImmediate(resolve));
+  }
+  // Open leaves tab and click preview for pending leave
+  const previewBtn=win.document.querySelector('button[data-action="preview"]');
+  assert.ok(previewBtn,'preview button must exist');
+  previewBtn.click();
+  for(let i=0;i<20&&win.document.getElementById('coverRows').childElementCount===0;i++){
+   await new Promise(resolve=>setImmediate(resolve));
+  }
+  const select=win.document.querySelector('select[data-slot="slot"]');
+  assert.ok(select,'period select must exist');
+  // Mock AI returning null for teacher_id (unassigned)
+  const originalFetcher=win.fetch;
+  win.fetch=async(url,opts)=>{
+   if(url.includes('/api/timetable/cover-ai')){
+    return new Response(JSON.stringify({choices:[{slot_id:'slot',class_id:'class',teacher_id:null}],summary:'Unassigned',question:''}),{status:200,headers:{'Content-Type':'application/json'}});
+   }
+   return originalFetcher(url,opts);
+  };
+  win.document.getElementById('aiSuggest').click();
+  for(let i=0;i<20&&win.document.getElementById('aiCoverReason').textContent==='';i++){
+   await new Promise(resolve=>setImmediate(resolve));
+  }
+  assert.equal(select.value,'','AI suggesting null teacher_id must select empty option');
+ }finally{dom.window.close();}
+});
+
+
