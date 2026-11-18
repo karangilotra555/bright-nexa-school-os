@@ -205,6 +205,21 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
   const confirmed=await rows('school_parent_inbox_reads',{...filters,select:'item_kind,item_id',order:'item_kind.asc,item_id.asc'});
   if(!confirmed.length)throw Error('Read receipt was not confirmed');
  }
+ async function enableUrgentAlerts(scope,device,registration){
+  await ensureFresh();
+  if(!session||session.user?.id!==scope.member)throw Error('Please log in again');
+  const jwt=session.access_token;
+  const fields={p_school:scope.school,p_portal:'parent',p_installation:device.installation,p_registration:registration};
+  const headers={Authorization:'Bearer '+jwt};
+  const binding=await request('/rest/v1/rpc/bn_enable_urgent_circular_alerts',{
+   method:'POST',headers,body:JSON.stringify({...fields,p_token:device.token})
+  });
+  return {binding,revoke:()=>timedFetch(BASE+'/rest/v1/rpc/bn_disable_urgent_circular_alerts',{
+   method:'POST',keepalive:true,headers:{apikey:KEY,'Content-Type':'application/json',
+    Authorization:'Bearer '+(session?.user?.id===scope.member?session.access_token:jwt)},
+   body:JSON.stringify({...fields,p_binding:binding})
+  })};
+ }
  async function logout(){
   const jwt=session?.access_token;
   await endSession();
@@ -212,7 +227,7 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
    method:'POST',cache:'no-store',headers:{apikey:KEY,Authorization:'Bearer '+jwt,'Content-Type':'application/json'}
   });
  }
- return {login,restore,activate:()=>deviceStore?.activate?.(),requestPasswordReset,changePassword,dashboard,inboxReads,markInboxRead,leave,logout,fileLinks:(container,files)=>filesClient?.links(container,files)};
+ return {login,restore,activate:()=>deviceStore?.activate?.(),requestPasswordReset,changePassword,dashboard,inboxReads,markInboxRead,leave,logout,enableUrgentAlerts,alertIdentity:()=>session?.user?.id,fileLinks:(container,files)=>filesClient?.links(container,files)};
 }
 if(typeof module!=='undefined')module.exports={create};else root.BNParentsCloud=create(root.fetch.bind(root));
 })(typeof window!=='undefined'?window:globalThis);

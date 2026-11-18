@@ -8,6 +8,7 @@ const cls='22222222-2222-2222-2222-222222222222';
 const otherClass='55555555-5555-5555-5555-555555555555';
 const teacher='33333333-3333-3333-3333-333333333333';
 const slot='44444444-4444-4444-4444-444444444444';
+const substitute='66666666-6666-6666-6666-666666666666';
 
 async function mount(role='school_admin',initial={}){
  const dom=new JSDOM('<div id="schoolTimetableRoot"></div>',{url:'https://school.invalid/teacher-access.html'});
@@ -15,7 +16,7 @@ async function mount(role='school_admin',initial={}){
  global.document=dom.window.document;global.confirm=()=>true;
  const state={
   slots:[{id:slot,institution_id:school,academic_year:'2026',weekday:1,slot_index:1,kind:'period',label:'Period 1',starts_at:'08:00:00',ends_at:'08:40:00'}],
-  drafts:[],published:[],loads:[],calls:[],...initial
+  drafts:[],published:[],loads:[],dated:[],calls:[],...initial
  };
  const ctx={
   me:{role,institution_id:school},
@@ -35,6 +36,9 @@ async function mount(role='school_admin',initial={}){
     if(method==='POST'&&table==='rpc/bn_publish_class_timetable'){
       state.published=state.drafts.map(x=>({id:'published-1',...x}));
       return state.published.length;
+    }
+    if(method==='POST'&&table==='rpc/bn_school_dated_timetable'){
+      return typeof state.dated==='function'?state.dated(body):state.dated;
     }
     if(method==='GET'){
       if(table==='school_timetable_slots')return [...state.slots];
@@ -86,6 +90,78 @@ test('teacher timetable view remains read-only and loads published lessons',asyn
   assert.equal(d.getElementById('bnTimeSubject'),null,'staff cannot see draft editor');
   assert.equal(f.state.calls.filter(c=>c.table==='school_timetable_drafts').length,0);
   assert.equal(f.state.calls.filter(c=>c.method!=='GET').length,0);
+ }finally{f.restore();}
+});
+
+test('dated view and print use the verified class and date range without modifying weekly assignments',async()=>{
+ const day='2026-11-16', later='2026-11-23';
+ const weekly={class_id:cls,slot_id:slot,subject:'Mathematics',teacher_user_id:teacher,room_number:'04'};
+ const dated={day,class_id:cls,slot_id:slot,label:'Period 1',subject:'Mathematics',room_number:'04',
+   starts_at:'08:00:00',ends_at:'08:40:00',regular_id:teacher,teacher_id:substitute,
+   regular_name:'Teacher Example',teacher_name:'Substitute Example',is_cover:true};
+ const f=await mount('school_admin',{drafts:[weekly],published:[weekly],dated:[dated,
+   {...dated,day:later,is_cover:false,teacher_id:teacher,teacher_name:'Teacher Example'}]});
+ try{
+  const d=f.dom.window.document;
+  const view=d.getElementById('bnDatedTimetable');
+  assert.ok(view,'date-specific view is available from the desktop timetable');
+  view.open=true;await f.tick();
+  d.getElementById('bnDatedFrom').value=day;
+  d.getElementById('bnDatedTo').value=later;
+  d.getElementById('bnDatedLoad').click();
+  await f.tick();
+  assert.deepEqual(f.state.calls.at(-1).body,{p_school:school,p_class:cls,p_from:day,p_to:later});
+  assert.match(view.textContent,/Substitute Example.*cover/i);
+  assert.match(view.textContent,/2026-11-23.*Teacher Example/);
+  const grid=d.querySelector('#schoolTimetableRoot .data-table');
+  assert.match(grid.textContent,/Teacher Example/);
+  assert.doesNotMatch(grid.textContent,/Substitute Example/);
+  let print='';
+  f.dom.window.print=()=>{
+   print=d.querySelector('.bn-timetable-print').textContent;
+   f.dom.window.dispatchEvent(new f.dom.window.Event('afterprint'));
+  };
+  f.state.dated[0]={...dated,teacher_name:'Updated Substitute'};
+  d.getElementById('bnDatedPrint').click();await f.tick();
+  assert.match(print,/2026-11-16.*2026-11-23.*Updated Substitute.*cover/i);
+  assert.equal(d.querySelector('.bn-timetable-print'),null);
+  assert.deepEqual(f.state.published,[weekly]);
+  assert.equal(f.state.calls.filter(c=>c.method==='POST').every(c=>c.table==='rpc/bn_school_dated_timetable'),true);
+ }finally{f.restore();}
+});
+
+test('a pending dated response is discarded when the signed-in school changes',async()=>{
+ const day='2026-11-16';
+ const f=await mount('school_admin');
+ try{
+  let stillSelected=true, finish;
+  f.ctx.active=()=>stillSelected;
+  f.state.dated=({p_from})=>p_from===day?new Promise(resolve=>{finish=resolve;}):[];
+  engine.activate(f.ctx);
+  const d=f.dom.window.document,view=d.getElementById('bnDatedTimetable');
+  view.open=true;await f.tick();
+  d.getElementById('bnDatedFrom').value=day;
+  d.getElementById('bnDatedTo').value=day;
+  d.getElementById('bnDatedLoad').click();await f.tick();
+  stillSelected=false;
+  finish([{day,class_id:cls,slot_id:slot,label:'Period 1',subject:'Private period',starts_at:'08:00',ends_at:'08:40'}]);
+  await f.tick();
+  assert.doesNotMatch(view.textContent,/Private period/);
+  assert.equal(d.getElementById('bnDatedPrint').disabled,true);
+ }finally{f.restore();}
+});
+
+test('dated view rejects a mismatched cloud response and never prints an unverified timetable',async()=>{
+ const day='2026-11-16';
+ const f=await mount('school_admin',{dated:[{day,class_id:otherClass,slot_id:slot}]});
+ try{
+  const d=f.dom.window.document;
+  const view=d.getElementById('bnDatedTimetable');view.open=true;await f.tick();
+  d.getElementById('bnDatedFrom').value=day;
+  d.getElementById('bnDatedTo').value=day;
+  d.getElementById('bnDatedLoad').click();await f.tick();
+  assert.match(view.querySelector('[role=status]').textContent,/could not verify/i);
+  assert.equal(d.getElementById('bnDatedPrint').disabled,true);
  }finally{f.restore();}
 });
 

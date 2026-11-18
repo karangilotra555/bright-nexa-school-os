@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
-const link='https://github.com/karangilotra555/bright-nexa-school-os/releases/download/school-app-v0.5.1/Bright-Nexa-School-v0.5.1.apk';
+const link='https://github.com/karangilotra555/bright-nexa-school-os/releases/download/school-app-v0.5.3/Bright-Nexa-School-v0.5.3.apk';
 
 test('School OS has parents download entry on app server and static docs',()=>{
  for(const root of ['', 'docs/']){
@@ -34,5 +34,5 @@ test('Android parents app has no fictional demo data or offline preview',()=>{
  const wf=read('.github/workflows/build-parents-apk.yml');
  assert.match(wf,/gh release create/);
  assert.match(wf,/--prerelease/);
- assert.match(wf,/school-app-v0\.5\.2/);
+ assert.match(wf,/school-app-v0\.5\.3/);
 });

@@ -1,13 +1,21 @@
-# Bright Nexa Leadership Mobile — release note (draft PR)
+# Bright Nexa Leadership Mobile
 
-This is a new Owner + Principal mobile portal, not a replacement for the existing ERP or Teacher/Parent App.
+In the shared Bright Nexa Android app, use Teacher / Staff Login with the existing school staff email and password. The app uses the verified school membership to open the Owner, Principal or Teacher workspace. The same Android app also provides Student / Parent Login.
 
-- Open leadership.html (HTTPS), or install the standalone PWA from the browser menu. Uses the shared Bright Nexa Supabase identity with verified active school_admin or principal membership.
-- Home: live student/teacher counts where RLS permits; pending/emergency leave queue; rule-based operations brief. Missing data displays a dash, never an invented count.
-- Leaves: approval and decline after explicit confirmation. Cover planner: candidate eligibility comes from Supabase; nothing publishes without manual confirmation.
-- Session: existing encrypted installed-device refresh-token store; no school data cache. Principal cannot enter the full ERP, finance or owner-only settings through this portal.
-- Deployment prerequisite: apply supabase/migrations/20261118093000_principal_leave_approvals.sql after the November 17 teacher-leave migrations. This changes only four security-definer RPC permissions, allowing Principal to review and plan teacher leave and covers.
-- Principal UI is not enough without database migration. Live verification requires real Principal login, leave review and approval, cross-tenant denial, and Teacher App cover refresh.
-- Existing sw.js is shared; keep the Leadership route in its NavigationRoute denylist or it may redirect to the ERP index.
-- Not included in v1: Play Store APK build, background push notifications, full payroll, autonomous AI decision-making, read/write offline records or live deployment.
-- Rollback: revert the app and SW PR commit; for database permissions restore the four original November 17 function definitions. Do not roll back/drop leave data.
+- **Home** shows recorded attendance, timetable coverage, the leave queue and a read-only summary of posted fee payments. Missing or incomplete data stays blank.
+- **Leave and covers** uses Supabase to find eligible substitutes. Review the proposal before approving leave or publishing covers. Open the School Timetable from the desktop ERP and choose a date range to see or print the effective published schedule, including substitutes.
+- **Urgent circulars** save an official notice to the school feed. Eligible Parent and Teacher installations that enable school alerts can receive an Android notification. The lock-screen notification directs the recipient to the authenticated notice.
+
+## Release order
+
+1. Confirm the target is the Bright Nexa School OS Supabase project and that its November 17 teacher leave and attendance functions are present.
+2. Apply these migrations in order.
+   - `20261118093000_principal_leave_approvals.sql`
+   - `20261118100000_leadership_pulse_notice_finance.sql`
+   - `20261118102000_school_dated_timetable.sql`
+   - `20261118110000_urgent_circular_android_alerts.sql`
+3. Configure and deploy the school alert sender for the same Firebase project as the shared APK. Follow [Teacher leave and alerts](teacher-leave-and-alerts.md) for the credentials, worker, scheduler and APK requirements.
+4. Verify production functions and school-scoped permissions. Validate on disposable fixtures that a teacher and parent receive their own school's notification on locked devices, that a second school receives nothing, and that a published cover appears on the desktop dated schedule and printout.
+5. Publish the hosted app and shared Android APK from the verified release commit. Check the hosted Android entry with both a verified Owner and a verified Principal.
+
+The previous app release can be restored independently of the database. Preserve leave, cover and notice records when changing a release. If the alert worker needs to be paused, use the scheduler controls in the alert setup guide.

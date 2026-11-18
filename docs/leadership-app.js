@@ -131,7 +131,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   }
   function school(){if(!selected)throw Error('Select a verified school.');return selected;}
   async function rpc(name,args={}){
-    if(!/^bn_(?:list_teacher_leaves|review_teacher_leave|teacher_leave_cover_plan|publish_teacher_covers|leadership_school_pulse|leadership_fee_snapshot|leadership_publish_urgent_notice)$/.test(name))throw Error('Unsupported leadership operation.');
+    if(!/^bn_(?:list_teacher_leaves|review_teacher_leave|teacher_leave_cover_plan|publish_teacher_covers|leadership_school_pulse|leadership_fee_snapshot|leadership_publish_urgent_notice|leadership_urgent_delivery_status)$/.test(name))throw Error('Unsupported leadership operation.');
     const owner=school();
     return (await send('/rest/v1/rpc/'+name,{method:'POST',body:JSON.stringify({p_school:owner.id,...args})})).data;
   }
@@ -168,6 +168,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
       p_request_id:requestId,p_title:title.trim(),p_body:body.trim()
     });
   }
+  const urgentDeliveryStatus=id=>rpc('bn_leadership_urgent_delivery_status',{p_notice:id});
   async function suggestCover(id,day){
     const current=school();await fresh();
     const host=root.location?.hostname||'';
@@ -196,7 +197,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     await storage?.clear();
     if(token)send('/auth/v1/logout?scope=local',{method:'POST',keepalive:true,headers:{Authorization:'Bearer '+token}},false).catch(()=>{});
   }
-  return {login,resumeStaff,restore,verify,choose,school,overview,review,covers,publish,publishUrgent,suggestCover,logout,today};
+  return {login,resumeStaff,restore,verify,choose,school,overview,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today};
 }
 function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)){
   const $=id=>doc.getElementById(id), client=create(fetcher);
@@ -390,13 +391,21 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   $('sendNotice').addEventListener('click',()=>run(async()=>{
     const title=$('noticeTitle').value.trim(),body=$('noticeBody').value.trim();
     if(title.length<8||body.length<15)throw Error('Enter a complete official notice.');
-    if(!root.confirm('Publish this official notice to the school feed?\\n\\n'+title+'\\n\\n'+body+'\\n\\nPush/SMS delivery is NOT confirmed.'))return;
+    if(!root.confirm('Publish this official notice to the school feed?\\n\\n'+title+'\\n\\n'+body+'\\n\\nAndroid alerts will be queued for eligible phones.'))return;
     if(!pendingNoticeId){
       if(!root.crypto?.randomUUID)throw Error('Secure notice ID generation is not available on this device.');
       pendingNoticeId=root.crypto.randomUUID();
     }
-    await client.publishUrgent(title,body,pendingNoticeId);
-    $('noticePublishStatus').textContent='Official notice published to school feed. Parent/Teacher push or SMS delivery is NOT verified.';
+    const notice=await client.publishUrgent(title,body,pendingNoticeId);
+    const status=$('noticePublishStatus');
+    status.textContent='Circular published to school feed. Checking Android alert status…';
+    const delivery=await client.urgentDeliveryStatus(notice).catch(()=>null);
+    const android=delivery
+      ? (delivery.waiting||delivery.accepted||delivery.expired||delivery.unavailable
+        ? 'Android alerts: '+delivery.waiting+' waiting, '+delivery.accepted+' accepted by Firebase, '+delivery.expired+' expired, '+delivery.unavailable+' unavailable. Phone receipt is unconfirmed.'
+        : 'No Android alert registrations matched this circular.')
+      : 'Android alert status is unavailable.';
+    status.textContent='Circular published to school feed. '+android;
   }));
   doc.querySelectorAll('[data-nav]').forEach(button=>button.addEventListener('click',()=>{
     const destination=button.dataset.nav;

@@ -40,9 +40,12 @@ public final class MainActivity extends Activity {
     private static final int FILE_REQUEST = 407;
     private static final int ALERT_PERMISSION = 408;
     private static final String ALERT_BRIDGE = "BrightNexaPeriodAlerts";
+    private static final String URGENT_BRIDGE = "BrightNexaUrgentCirculars";
+    private static final String SCHOOL_APP_HOST = "bright-nexa-school-os.onrender.com";
     private JavaScriptReplyProxy permissionReply;
     private String permissionNonce;
     private boolean alertBridgeAdded;
+    private boolean urgentBridgeAdded;
     private ValueCallback<Uri[]> fileCallback;
     private WebView web;
     private LinearLayout toolbar;
@@ -193,9 +196,14 @@ public final class MainActivity extends Activity {
             return;
         }
         // Do not load arbitrary subpaths or parameters.
-        if (!liveHost.isEmpty() && !liveHost.equalsIgnoreCase(parsed.getHost())) TeacherPeriodMessages.clear(this);
+        if (!liveHost.isEmpty() && !liveHost.equalsIgnoreCase(parsed.getHost())) {
+            TeacherPeriodMessages.clear(this);
+            UrgentCircularMessages.clear(this, "parent");
+            UrgentCircularMessages.clear(this, "teacher");
+        }
         liveHost = parsed.getHost();
         installAlertBridge();
+        installUrgentCircularBridge();
         String base = "https://" + liveHost + (parsed.getPath()==null?"":parsed.getPath());
         String path = base.endsWith("/") ? base : base + "/";
         if (base.endsWith("/parents.html")) path = base;
@@ -204,15 +212,29 @@ public final class MainActivity extends Activity {
         getSharedPreferences(STORAGE, MODE_PRIVATE).edit().putString(KEY_URL, configuredUrl).apply();
         updateToolbar(path, "");
         web.clearCache(true);
-        web.loadUrl(TeacherPeriodMessages.OPEN_TIMETABLE.equals(getIntent().getAction()) ? teacherTimetableUrl() : path);
+        String urgent = urgentCircularUrl(getIntent());
+        web.loadUrl(urgent != null ? urgent : TeacherPeriodMessages.OPEN_TIMETABLE.equals(getIntent().getAction()) ? teacherTimetableUrl() : path);
         getIntent().setAction(null);
     }
     private String teacherTimetableUrl() {
         return "https://" + liveHost + "/teacher-access.html?view=timetable";
     }
 
+    private String urgentCircularUrl(Intent intent) {
+        if (!SCHOOL_APP_HOST.equalsIgnoreCase(liveHost)) return null;
+        String portal = UrgentCircularMessages.openPortal(this, intent);
+        if ("parent".equals(portal)) return "https://" + liveHost + "/parents.html?portal=parent&view=messages";
+        if ("teacher".equals(portal)) return "https://" + liveHost + "/teacher-access.html?view=notices";
+        return null;
+    }
+
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        String urgent = urgentCircularUrl(intent);
+        if (urgent != null) {
+            web.loadUrl(urgent);
+            return;
+        }
         if (TeacherPeriodMessages.OPEN_TIMETABLE.equals(intent.getAction()) && !liveHost.isEmpty()) {
             URI page = parse(web.getUrl());
             if (page != null && "/teacher-access.html".equals(page.getPath()) && liveHost.equalsIgnoreCase(page.getHost())) {
@@ -274,6 +296,63 @@ public final class MainActivity extends Activity {
                 }
             });
         alertBridgeAdded = true;
+    }
+
+    private void installUrgentCircularBridge() {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return;
+        if (urgentBridgeAdded) WebViewCompat.removeWebMessageListener(web, URGENT_BRIDGE);
+        urgentBridgeAdded = false;
+        if (!SCHOOL_APP_HOST.equalsIgnoreCase(liveHost)) return;
+        WebViewCompat.addWebMessageListener(web, URGENT_BRIDGE, Collections.singleton("https://" + SCHOOL_APP_HOST),
+            (view, message, origin, isMainFrame, reply) -> {
+                URI page = parse(view.getUrl());
+                if (!isMainFrame || page == null || !"https".equals(page.getScheme()) || !"https".equals(origin.getScheme())
+                    || !SCHOOL_APP_HOST.equalsIgnoreCase(origin.getHost()) || !SCHOOL_APP_HOST.equalsIgnoreCase(page.getHost())) return;
+                String portal;
+                if ("/parents.html".equals(page.getPath())) portal = "parent";
+                else if ("/teacher-access.html".equals(page.getPath())) portal = "teacher";
+                else return;
+                String nonce = "";
+                try {
+                    JSONObject request = new JSONObject(message.getData());
+                    String action = request.getString("action");
+                    if ("clear".equals(action)) {
+                        UrgentCircularMessages.clear(this, portal);
+                        return;
+                    }
+                    String school = request.optString("school");
+                    String member = request.optString("member");
+                    if (!UrgentCircularMessages.isId(school) || !UrgentCircularMessages.isId(member)) return;
+                    if ("bind".equals(action)) {
+                        String binding = request.optString("binding");
+                        if (UrgentCircularMessages.isId(binding)) UrgentCircularMessages.enroll(this, portal, school, member, binding);
+                        return;
+                    }
+                    nonce = request.optString("nonce");
+                    if (!UrgentCircularMessages.isId(nonce) || !("enable".equals(action) || "resume".equals(action))) return;
+                    if ("resume".equals(action) && !UrgentCircularMessages.enrolled(this, portal, school, member)) {
+                        UrgentCircularMessages.clear(this, portal);
+                        replyAlert(reply, nonce, "off", "");
+                        return;
+                    }
+                    if (FirebaseApp.getApps(this).isEmpty()) {
+                        replyAlert(reply, nonce, "unconfigured", "");
+                        return;
+                    }
+                    if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        if ("enable".equals(action) && permissionReply == null) {
+                            permissionReply = reply;
+                            permissionNonce = nonce;
+                            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, ALERT_PERMISSION);
+                        } else replyAlert(reply, nonce, "denied", "");
+                        return;
+                    }
+                    sendAlertToken(reply, nonce);
+                } catch (Exception ignored) {
+                    replyAlert(reply, nonce, "error", "");
+                }
+            });
+        urgentBridgeAdded = true;
     }
 
     private void sendAlertToken(JavaScriptReplyProxy reply, String nonce) {
