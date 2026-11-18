@@ -415,7 +415,7 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
   ensure(Array.isArray(history)&&history.length>=1&&history.length<=8
     &&history.every(line=>typeof line==='string'&&line.trim()&&line.length<=400),400,'Enter up to 8 short cover instructions.');
   const staff=await authorized(token,input.school);
-  ensure(staff.role==='school_admin',403,'School admin access is required to draft cover.');
+  ensure(['school_admin','principal'].includes(staff.role),403,'Owner or Principal access is required to draft cover.');
   const response=await fetcher(schoolUrl+'/rest/v1/rpc/bn_teacher_leave_cover_plan',{method:'POST',
    headers:{apikey:pubKey,Authorization:'Bearer '+token,'Content-Type':'application/json'},
    body:JSON.stringify({p_school:staff.institution_id,p_leave:input.leave,p_day:input.day}),cache:'no-store'});

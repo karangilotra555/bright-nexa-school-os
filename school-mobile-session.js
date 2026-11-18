@@ -95,14 +95,17 @@
     };
   }
 
-  async function opensTeacherOnLaunch(device = root) {
+  async function opensPortalOnLaunch(portal, device) {
     if (device.location?.search || !/Android.*\bwv\b/i.test(device.navigator?.userAgent || '')) return false;
     try {
-      if (device.localStorage?.getItem(lastPortalKey) !== 'teacher') return false;
+      if (device.localStorage?.getItem(lastPortalKey) !== portal) return false;
     } catch (_) { return false; }
-    return Boolean(await createStore('teacher', device)?.read());
+    return Boolean(await createStore(portal, device)?.read());
   }
 
-  if (typeof module !== 'undefined') module.exports = { createStore, opensTeacherOnLaunch };
-  else root.BNMobileSession = { createStore, opensTeacherOnLaunch };
+  const opensTeacherOnLaunch = (device = root) => opensPortalOnLaunch('teacher', device);
+  const opensLeadershipOnLaunch = (device = root) => opensPortalOnLaunch('leadership', device);
+  const api = { createStore, opensTeacherOnLaunch, opensLeadershipOnLaunch };
+  if (typeof module !== 'undefined') module.exports = api;
+  else root.BNMobileSession = api;
 })(typeof window === 'undefined' ? globalThis : window);

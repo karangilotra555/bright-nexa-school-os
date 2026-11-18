@@ -1,15 +1,14 @@
 // Supabase Cron calls this function. FCM sends data only, so the installed
-// app can reject stale deliveries after a teacher signs out or switches school.
+// shared app can reject stale deliveries after a recipient signs out or switches school.
 type ServiceAccount = { project_id: string; client_email: string; private_key: string };
 type Alert = {
   installation: string;
   token: string;
   binding: string;
   event_id: string;
-  title: string;
-  body: string;
   expires: string;
-};
+} & ({ title: string; body: string; portal?: never }
+  | { portal: "parent" | "teacher"; claim_until: string });
 
 const url = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -73,6 +72,10 @@ async function rpc(name: string, args: Record<string, unknown>) {
 }
 
 async function deliver(alert: Alert, project: string, token: string) {
+  const delivery = { p_installation: alert.installation, p_binding: alert.binding, p_token: alert.token };
+  if (alert.portal && !await rpc("bn_urgent_circular_alert_still_allowed", {
+    ...delivery, p_portal: alert.portal, p_notice: alert.event_id, p_claim_until: alert.claim_until,
+  })) return false;
   const expires = Date.parse(alert.expires);
   const ttl = Math.ceil((expires - Date.now()) / 1000);
   if (ttl <= 0) return false;
@@ -84,8 +87,8 @@ async function deliver(alert: Alert, project: string, token: string) {
         token: alert.token,
         android: { priority: "high", ttl: ttl + "s" },
         data: {
-          binding: alert.binding, event: alert.event_id, title: alert.title, body: alert.body,
-          expires: String(expires),
+          binding: alert.binding, event: alert.event_id, expires: String(expires),
+          ...(alert.portal ? { kind: "urgent-circular", portal: alert.portal } : { title: alert.title, body: alert.body }),
         },
       },
     }),
@@ -94,11 +97,31 @@ async function deliver(alert: Alert, project: string, token: string) {
   const result = await response.json().catch(() => ({}));
   const invalid = result?.error?.details?.some((detail: { errorCode?: string }) => detail.errorCode === "UNREGISTERED") === true;
   if (response.ok || invalid) {
-    await rpc("bn_finish_teacher_period_alert", {
-      p_installation: alert.installation, p_binding: alert.binding, p_token: alert.token, p_event: alert.event_id, p_invalid: invalid,
-    });
+    const device = { ...delivery, p_invalid: invalid };
+    if (alert.portal) {
+      await rpc("bn_finish_urgent_circular_alert", { ...device, p_portal: alert.portal, p_notice: alert.event_id });
+    } else {
+      await rpc("bn_finish_teacher_period_alert", { ...device, p_event: alert.event_id });
+    }
   }
   return response.ok;
+}
+
+async function dispatch(name: string, at: string, account: ServiceAccount, token: string) {
+  const alerts: Alert[] = await rpc(name, { p_at: at });
+  let index = 0;
+  let sent = 0;
+  await Promise.all(Array.from({ length: Math.min(alerts.length, 12) }, async () => {
+    while (index < alerts.length) {
+      const alert = alerts[index++];
+      try {
+        if (await deliver(alert, account.project_id, token)) sent++;
+      } catch (_) {
+        // Leave the claim retryable. Never write device tokens to logs.
+      }
+    }
+  }));
+  return { claimed: alerts.length, sent };
 }
 
 Deno.serve(async (request) => {
@@ -108,20 +131,18 @@ Deno.serve(async (request) => {
   try {
     const account: ServiceAccount = JSON.parse(serviceAccount);
     const token = await googleToken(account);
-    const alerts: Alert[] = await rpc("bn_claim_teacher_period_alerts", { p_at: new Date().toISOString() });
-    let index = 0;
-    let sent = 0;
-    await Promise.all(Array.from({ length: Math.min(alerts.length, 12) }, async () => {
-      while (index < alerts.length) {
-        const alert = alerts[index++];
-        try {
-          if (await deliver(alert, account.project_id, token)) sent++;
-        } catch (_) {
-          // Leave the claim retryable. Never write device tokens to logs.
-        }
-      }
-    }));
-    return json({ claimed: alerts.length, sent });
+    const at = new Date().toISOString();
+    const [period, urgent] = await Promise.allSettled([
+      dispatch("bn_claim_teacher_period_alerts", at, account, token),
+      dispatch("bn_claim_urgent_circular_alerts", at, account, token),
+    ]);
+    if (period.status === "rejected") console.error("Teacher period claim failed");
+    if (urgent.status === "rejected") console.error("Urgent circular claim failed");
+    return json({
+      ...(period.status === "fulfilled" ? period.value : { error: "Teacher period dispatch unavailable" }),
+      urgent: urgent.status === "fulfilled" ? { claimed: urgent.value.claimed, accepted: urgent.value.sent }
+        : { error: "Urgent circular dispatch unavailable" },
+    }, period.status === "rejected" || urgent.status === "rejected" ? 503 : 200);
   } catch (error) {
     console.error("Teacher alert dispatch failed", error instanceof Error ? error.message : String(error));
     return json({ error: "Teacher alert dispatch failed" }, 503);

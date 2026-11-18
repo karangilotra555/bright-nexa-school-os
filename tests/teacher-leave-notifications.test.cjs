@@ -15,6 +15,8 @@ async function as(id) {
 const call = async (fn, ...args) => (await sql('select public.' + fn + '(' + args.map((_,i)=>'$'+(i+1)).join(',') + ') result', args)).rows[0].result;
 const timestamp = '2099-11-17 04:05:00+00';
 const day = '2099-11-17';
+const nextWeek = '2099-11-24';
+const principal = uuid(14), accountant = uuid(15), otherClass = uuid(16);
 test('approved partial emergency leave replans only affected periods and alerts active devices once', async () => {
   try {
     await db.exec(`
@@ -39,9 +41,11 @@ test('approved partial emergency leave replans only affected periods and alerts 
       insert into school_users values('${admin}','${school}','${admin}','school_admin','active','Admin'),
        ('${teacher}','${school}','${teacher}','teacher','active','Monika'),
        ('${cover}','${school}','${cover}','teacher','active','Neha'),
+       ('${principal}','${school}','${principal}','principal','active','Principal'),
+       ('${accountant}','${school}','${accountant}','accountant','active','Accountant'),
        ('${otherTeacher}','${otherSchool}','${otherTeacher}','teacher','active','Other');
       insert into school_classes values('${cls}','${school}','LKG','A','','2099'),
-       ('${nextClass}','${school}','UKG','B','','2099');
+       ('${nextClass}','${school}','UKG','B','','2099'),('${otherClass}','${otherSchool}','LKG','A','','2099');
       insert into school_teacher_assignments values
        ('${school}','${cls}','${teacher}',true,'subject_teacher','English'),
        ('${school}','${nextClass}','${teacher}',true,'subject_teacher','Science'),
@@ -52,6 +56,7 @@ test('approved partial emergency leave replans only affected periods and alerts 
     assert.ok(fs.existsSync(migration), 'teacher leave and notification migration is installed');
     await db.exec(fs.readFileSync(migration,'utf8'));
     await db.exec(fs.readFileSync('supabase/migrations/20261117100100_teacher_leave_attendance.sql','utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20261118102000_school_dated_timetable.sql','utf8'));
     await db.exec(`
       insert into school_staff_profiles values('${school}','${teacher}','ERP faculty ref: faculty-a');
       insert into school_workspaces values('${school}','{"operations":{"staffAttendance":[{"staffId":"faculty-a","staffType":"Teaching","date":"${day}","status":"Present"}]}}');
@@ -90,7 +95,26 @@ test('approved partial emergency leave replans only affected periods and alerts 
     assert.equal(plan.length, 1);
     assert.equal(plan[0].candidates[0].teacher_id, cover);
     await call('bn_publish_teacher_covers', school, request, day, JSON.stringify([{slot_id:firstSlot,class_id:cls,teacher_id:cover}]));
+    const dated = await call('bn_school_dated_timetable', school, cls, day, nextWeek);
+    assert.deepEqual(dated.map(x=>[x.day,x.class_id,x.slot_id,x.regular_id,x.teacher_id,x.is_cover,x.teacher_name]),[
+      [day,cls,firstSlot,teacher,cover,true,'Neha'],[nextWeek,cls,firstSlot,teacher,teacher,false,'Monika']
+    ]);
+    assert.equal(dated[0].room_number,'04');
+    assert.equal('reason' in dated[0] || 'leave_id' in dated[0],false);
+    await db.exec('reset role');
+    assert.equal((await sql('select teacher_user_id from public.school_timetable_published where class_id=$1',[cls])).rows[0].teacher_user_id,teacher);
+    await as(admin);
+    await assert.rejects(call('bn_school_dated_timetable',school,otherClass,day,day),/verified class/i);
+    await assert.rejects(call('bn_school_dated_timetable',otherSchool,otherClass,day,day),/Owner or Principal/i);
+    await assert.rejects(call('bn_school_dated_timetable',school,cls,day,'2099-12-18'),/31 days/i);
+    await as(principal);
+    assert.deepEqual(await call('bn_school_dated_timetable',school,cls,day,nextWeek),dated);
+    await as(accountant);
+    await assert.rejects(call('bn_school_dated_timetable',school,cls,day,day),/Owner or Principal/i);
+    await db.exec('reset role; set role anon');
+    await assert.rejects(call('bn_school_dated_timetable',school,cls,day,day),/permission denied/i);
     await as(cover);
+    await assert.rejects(call('bn_school_dated_timetable',school,cls,day,day),/Owner or Principal/i);
     const coverDay = await call('bn_teacher_day', school, day);
     assert.equal(coverDay[0].room_number,'04');
     assert.equal(coverDay[0].is_cover,true);
@@ -111,6 +135,9 @@ test('approved partial emergency leave replans only affected periods and alerts 
     assert.ok(confirmed.some(alert=>alert.installation===install && alert.title==='Leave approved'));
     await as(admin);
     await call('bn_publish_teacher_covers', school, request, day, JSON.stringify([{slot_id:firstSlot,class_id:cls,teacher_id:null}]));
+    const uncovered = await call('bn_school_dated_timetable',school,cls,day,day);
+    assert.equal(uncovered[0].is_cover,false);
+    assert.equal(uncovered[0].teacher_id,null);
     await as(cover);
     assert.deepEqual(await call('bn_teacher_day',school,day),[]);
   } finally {

@@ -1,0 +1,19 @@
+{
+  "name": "Bright Nexa Owner & Principal",
+  "short_name": "BN Leadership",
+  "description": "School leadership dashboard, leave approvals and cover planner",
+  "id": "./leadership.html",
+  "start_url": "./leadership.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fc",
+  "theme_color": "#071d3a",
+  "icons": [
+    {
+      "src": "./app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -122,6 +122,8 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
   </div>
   <div data-view="messages" class="hidden">
     <h2>School messages</h2>
+    <button id="parentUrgentAlertToggle" class="secondary" type="button" hidden>Enable urgent alerts</button>
+    <p id="parentUrgentAlertStatus" class="sub" role="status"></p>
     <div class="inboxTools">
       <input id="inboxSearch" type="search" aria-label="Search school messages" placeholder="Search messages">
       <select id="inboxFilter" aria-label="Filter school messages">
@@ -145,7 +147,7 @@ textarea{min-height:110px;resize:vertical}.error{color:#b22c44;font-size:12px;mi
  <nav class="nav" aria-label="Bottom navigation"><button class="active" data-tab="home"><span>⌂</span>Home</button><button data-tab="activity"><span>▦</span>Activity</button><button data-tab="messages" aria-label="Messages"><span aria-hidden="true">✉</span><span id="inboxUnread" aria-hidden="true" hidden></span>Messages</button><button data-tab="profile"><span>◉</span>Profile</button></nav>
 </div>
 </div>
-<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261116-attendance-month"></script><script src="./school-mobile-session.js?v=20261117-mobile-login"></script><script src="parents-cloud.js?v=20261117-senior-stream-v1"></script>
+<script src="school-student-photo-cloud.js?v=20261111-sync-audit-v1"></script><script src="school-student-profile.js?v=20261107-timetable-photo-v1"></script><script src="school-homework-files.js?v=20261111-sync-audit-v1"></script><script src="school-attendance-calendar.js?v=20261116-attendance-month"></script><script src="./school-mobile-session.js?v=20261118-shared-leadership"></script><script src="parents-cloud.js?v=20261118-urgent-alerts-v1"></script><script src="./school-urgent-circular-alerts.js?v=20261118-v1"></script>
 <script>
 (() => {
 'use strict';
@@ -173,6 +175,11 @@ const $=id=>document.getElementById(id);
 const find=s=>document.querySelector(s);
 const TOKEN_KEY='bn_parents_session';
 const cloud=window.BNParentsCloud;
+const urgentAlerts=window.BNUrgentCircularAlerts?.create({
+ bridge:window.BrightNexaUrgentCirculars,register:cloud.enableUrgentAlerts,
+ button:$('parentUrgentAlertToggle'),status:$('parentUrgentAlertStatus')
+});
+const openMessages=new URLSearchParams(location.search).get('view')==='messages';
 let token=null, data=null,links=[],loadGeneration=0;
 let inbox=null;
 
@@ -315,9 +322,9 @@ function render(p){
   (root,m)=>item(root,m.examName,m.subjects.map(s=>s.subject+' '+s.obtained+' / '+s.maximum).join(' · '),
    m.publishedAt?'Published '+day(m.publishedAt):''));
 }
-async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0),link=links[index];$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(link);if(generation!==loadGeneration)return;render(p);setInbox(p,link);$('childPicker').options[index].textContent=p.student.name;cloud.activate?.();show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;token=null;data=null;resetInbox();show('gate');$('loginError').textContent=e.message}}
-function logout(){resetInbox();$('attendanceList').replaceChildren();$('studentProfileSections').replaceChildren();$('publishedMarksheets').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
-async function openLinked(nextLinks){resetInbox();links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childSwitcher').hidden=links.length===1;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();}
+async function refresh(){if(!token){show('gate');return}const generation=++loadGeneration;const index=Number($('childPicker').value||0),link=links[index];$('syncStatus').textContent='Loading school records…';try{const p=await cloud.dashboard(link);if(generation!==loadGeneration)return;render(p);setInbox(p,link);$('childPicker').options[index].textContent=p.student.name;cloud.activate?.();urgentAlerts?.setScope({school:link.institution_id,member:cloud.alertIdentity()});show('app');$('syncStatus').textContent='Updated from school · '+new Date().toLocaleTimeString()}catch(e){if(generation!==loadGeneration)return;token=null;data=null;if(!cloud.alertIdentity?.())urgentAlerts?.clear();resetInbox();show('gate');$('loginError').textContent=e.message}}
+function logout(){urgentAlerts?.clear();resetInbox();$('attendanceList').replaceChildren();$('studentProfileSections').replaceChildren();$('publishedMarksheets').replaceChildren();loadGeneration++;token=null;data=null;links=[];cloud.logout().catch(()=>{});$('loginForm').reset();show('gate')}
+async function openLinked(nextLinks){resetInbox();links=nextLinks;if(!links.length)throw Error('Student link is unavailable. Contact the school office.');token=true;$('childSwitcher').hidden=links.length===1;$('childPicker').replaceChildren();for(let i=0;i<links.length;i++){const o=document.createElement('option');o.value=i;o.textContent='Child '+(i+1);$('childPicker').append(o)}await refresh();if(token&&openMessages)setTab('messages');}
 $('studentForgotToggle').addEventListener('click',()=>{
  const form=$('forgotStudentForm'),visible=form.classList.contains('hidden');
  form.classList.toggle('hidden',!visible);
@@ -346,16 +353,19 @@ async function restoreLogin(){
  if(token||restoringLogin)return;
  restoringLogin=true;
  try{
+  if(await window.BNMobileSession?.opensLeadershipOnLaunch()){
+   location.replace('./leadership.html?entry=launcher');return;
+  }
   if(await window.BNMobileSession?.opensTeacherOnLaunch()){
    location.replace('./teacher-access.html?view=attendance');return;
   }
   const result=await cloud.restore?.();
   if(result&&!token)await openLinked(result.links);
-  else if(!token)show('gate');
+  else if(!token){urgentAlerts?.clear();show('gate');}
  }catch(error){if(!token){show('gate');$('loginError').textContent=error.message;}}
  finally{restoringLogin=false;}
 }
-function refreshVisiblePortal(){if(token&&!document.hidden&&!$('app').classList.contains('hidden'))refresh();}
+function refreshVisiblePortal(){if(token&&!document.hidden&&!$('app').classList.contains('hidden')){urgentAlerts?.resume();refresh();}}
 document.addEventListener('visibilitychange',refreshVisiblePortal);
 window.addEventListener('online',()=>{if(token)refreshVisiblePortal();else if(!$('gate').classList.contains('hidden'))restoreLogin();});
 restoreLogin();

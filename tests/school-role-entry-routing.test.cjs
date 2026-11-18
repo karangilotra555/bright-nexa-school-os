@@ -54,7 +54,7 @@ test('Render and root staff assets remain mirrored and role logic is wired',()=>
  assert.equal(read('school-role-entry.js'),read('docs/school-role-entry.js'));
  for(const html of ['teacher-access.html','docs/teacher-access.html']){
   const source=read(html);
-  assert.match(source,/school-role-entry\.js\?v=20261111-direct-admin-erp-v1/);
+  assert.match(source,/school-role-entry\.js\?v=20261118-shared-leadership/);
   assert.match(source,/id="feesTab"/);
   assert.match(source,/id="feeEntryForm"/);
   assert.match(source,/id="staffDesktopShortcut"/);
@@ -90,4 +90,16 @@ test('empty-school re-registration is gated by a verified login and opens the da
  assert.match(js,/await load\(String\(schoolId\)\)/);
  assert.match(js,/const allowedViews=\['dashboard'/);
  assert.match(read('school-role-entry.js'),/school_admin:'classes'/);
+});
+
+test('installed mobile staff sign-in opens Leadership for the verified selected school',()=>{
+ const selected={verified:true,membershipCount:2,search:'?view=attendance',mobile:true,schoolId:'school-a'};
+ for(const role of ['school_admin','principal']){
+  assert.equal(roleDestination({...selected,role}),'./leadership.html?entry=staff&school=school-a');
+ }
+ for(const role of ['teacher','accountant','librarian']){
+  assert.equal(roleDestination({...selected,role}),null);
+ }
+ assert.equal(roleDestination({...selected,role:'school_admin',verified:false}),null);
+ assert.equal(roleDestination({...selected,role:'school_admin',mobile:false}),null);
 });

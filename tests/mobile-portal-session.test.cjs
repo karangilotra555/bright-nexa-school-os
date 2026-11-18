@@ -189,3 +189,17 @@ test('Parent restore does not reopen a session after another window signs out', 
   assert.equal(await restore,null);
   assert.equal(await store.read(),null);
 });
+
+test('the shared Android launcher resumes Leadership after reopening and clears the route on sign-out',async()=>{
+ const {createStore,opensLeadershipOnLaunch}=require('../school-mobile-session.js');
+ const preferences=new Map();
+ const device={indexedDB:new IDBFactory(),crypto:webcrypto,navigator:{userAgent:'Android; wv)'},location:{search:''},
+   localStorage:{getItem:key=>preferences.get(key)??null,setItem:(key,value)=>preferences.set(key,value),removeItem:key=>preferences.delete(key)}};
+ const leadership=createStore('leadership',device);
+ await leadership.write('leadership-refresh',true);
+ leadership.activate();
+ assert.equal(await opensLeadershipOnLaunch(device),true);
+ assert.equal(await opensLeadershipOnLaunch({...device,location:{search:'?portal=parent'}}),false);
+ await leadership.clear();
+ assert.equal(await opensLeadershipOnLaunch(device),false);
+});

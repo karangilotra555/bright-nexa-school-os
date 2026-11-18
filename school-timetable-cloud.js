@@ -63,6 +63,109 @@ const text=(el,value)=>{el.textContent=String(value??'');return el;};
 function node(tag,value){const el=document.createElement(tag);if(value!==undefined)text(el,value);return el;}
 function opt(select,value,label){const e=node('option',label);e.value=value;select.append(e);}
 function title(sl){return sl.label+' · '+sl.starts_at.slice(0,5)+'–'+sl.ends_at.slice(0,5);}
+const classLabel=c=>[c.name,c.section,c.academic_stream].filter(Boolean).join(' ');
+
+function printDatedTimetable(sheet){
+ const {ownerDocument:doc}=sheet;
+ const win=doc.defaultView;
+ if(doc.body.classList.contains('bn-timetable-printing'))throw Error('Close the open print preview first.');
+ const printSheet=sheet.cloneNode(true);
+ printSheet.className='bn-timetable-print';
+ doc.body.append(printSheet);
+ doc.body.classList.add('bn-timetable-printing');
+ function cleanup(){
+  printSheet.remove();
+  doc.body.classList.remove('bn-timetable-printing');
+  win.removeEventListener('afterprint',cleanup);
+  win.clearTimeout(timer);
+ }
+ const timer=win.setTimeout(cleanup,120000);
+ win.addEventListener('afterprint',cleanup,{once:true});
+ try{win.print();}catch(error){cleanup();throw error;}
+}
+
+function datedTimetable(host,{api,schoolId,schoolName,getClass,current}){
+ const view=node('details');view.id='bnDatedTimetable';view.className='panel';
+ view.append(node('summary','Published timetable by date'));
+ const guide=node('p','Includes published substitute covers for the selected class and dates in the active academic session.');
+ guide.className='muted';view.append(guide);
+ const form=node('form');form.className='formgrid two';
+ const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format();
+ function dateField(id,label){
+  const field=node('label',label),input=node('input');
+  input.type='date';input.id=id;input.required=true;input.value=today;
+  field.append(input);form.append(field);return input;
+ }
+ const from=dateField('bnDatedFrom','From'),to=dateField('bnDatedTo','Through');
+ const loadButton=node('button','Load published timetable');
+ loadButton.id='bnDatedLoad';loadButton.type='submit';loadButton.className='primary';
+ const printButton=node('button','Print dated timetable');
+ printButton.id='bnDatedPrint';printButton.type='button';printButton.className='ghost';printButton.disabled=true;
+ form.append(loadButton,printButton);view.append(form);
+ const status=node('p');status.setAttribute('role','status');status.className='muted';
+ const content=node('div');content.className='table-scroll';
+ view.append(status,content);host.append(view);
+ let generation=0;
+ function clear(){
+  ++generation;
+  printButton.disabled=true;
+  content.replaceChildren();
+  status.textContent='';
+ }
+ async function load(print=false){
+  if(!current()||!view.open)return;
+  clear();
+  const request=generation, first=from.value, last=to.value, chosen=getClass();
+  const sameScope=()=>current()&&view.open&&request===generation&&getClass()?.id===chosen?.id&&
+    first===from.value&&last===to.value;
+  const days=(Date.parse(last)-Date.parse(first))/86400000;
+  if(!chosen||!Number.isInteger(days)||days<0||days>30){
+   status.textContent='Select a class and a date range of up to 31 days.';return;
+  }
+  status.textContent='Loading published periods and covers…';
+  try{
+   const lessons=await api('rpc/bn_school_dated_timetable','','POST',{
+    p_school:schoolId,p_class:chosen.id,p_from:first,p_to:last
+   });
+   if(!sameScope())return;
+   if(!Array.isArray(lessons)||lessons.some(lesson=>!lesson||lesson.class_id!==chosen.id||!lesson.slot_id||
+     !/^\d{4}-\d{2}-\d{2}$/.test(lesson.day)||lesson.day<first||lesson.day>last||
+     !/^\d{2}:\d{2}/.test(lesson.starts_at)||!/^\d{2}:\d{2}/.test(lesson.ends_at)))
+    throw Error('Could not verify the selected class and dates.');
+   if(!lessons.length){status.textContent='No published periods for this class in the selected dates.';return;}
+
+   const sheet=node('article');
+   sheet.append(node('h3','Dated timetable · '+classLabel(chosen)),
+    node('p',[schoolName,chosen.academic_year,first===last?first:first+' to '+last].filter(Boolean).join(' · ')));
+   const table=node('table');table.className='data-table';
+   const head=node('thead'),heading=node('tr');
+   for(const title of ['Date','Period','Time','Subject','Room','Assigned teacher']) heading.append(node('th',title));
+   head.append(heading);table.append(head);
+   const body=node('tbody');
+   for(const lesson of lessons){
+    const row=node('tr');
+    const baseName=lesson.regular_name||'Regular teacher';
+    const assignedName=lesson.teacher_id?(lesson.teacher_name||'Assigned teacher'):'Unassigned';
+    const assigned=lesson.is_cover?(assignedName+' (cover for '+baseName+')'):assignedName;
+    for(const detail of [lesson.day,lesson.label,lesson.starts_at.slice(0,5)+'–'+lesson.ends_at.slice(0,5),
+     lesson.subject,lesson.room_number||'—',assigned]) row.append(node('td',detail));
+    body.append(row);
+   }
+   table.append(body);sheet.append(table);content.append(sheet);
+   printButton.disabled=false;
+   status.textContent='';
+   if(print)printDatedTimetable(sheet);
+  }catch(error){
+   if(sameScope())status.textContent=error.message||'Could not verify the published timetable.';
+  }
+ }
+ form.addEventListener('submit',event=>{event.preventDefault();void load();});
+ printButton.addEventListener('click',()=>void load(true));
+ for(const field of [from,to])field.addEventListener('input',clear);
+ view.addEventListener('toggle',()=>{if(view.open)void load();else clear();});
+ return {load};
+}
+
 function activate(ctx){
  const host=document.getElementById('schoolTimetableRoot');
  if(!host||!ctx?.me)return;
@@ -81,7 +184,7 @@ function activate(ctx){
  const controls=node('div');controls.className='formgrid two';
  const classWrap=node('div'),yearWrap=node('div');
  classWrap.append(node('label','Class / Section'));const classPick=node('select');classPick.id='bnTimeClass';
- ctx.classes.filter(c=>c.academic_year===st.year).forEach(c=>opt(classPick,c.id,c.name+' '+(c.section||'')+' ('+c.academic_year+')'));
+ ctx.classes.filter(c=>c.academic_year===st.year).forEach(c=>opt(classPick,c.id,classLabel(c)+' ('+c.academic_year+')'));
  if(ctx.classes.some(c=>c.id===st.classId&&c.academic_year===st.year))classPick.value=st.classId;
  else st.classId=classPick.value;
  classWrap.append(classPick);
@@ -89,11 +192,13 @@ function activate(ctx){
  controls.append(classWrap,yearWrap);host.append(controls);
  const status=node('p','Loading Supabase timetable…');status.className='muted';status.setAttribute('role','status');host.append(status);
  const grid=node('div');grid.style.cssText='overflow:auto;max-width:100%;margin:12px 0';host.append(grid);
- const editor=node('div');editor.className='panel';host.append(editor);
- const current=()=>ctx.me.institution_id===id&&host.__bnState===st;
+ const current=()=>ctx.me.institution_id===id&&host.__bnState===st&&(ctx.active?.()??true);
  const setStatus=(message,error=false)=>{status.textContent=message;status.style.color=error?'#b42337':'';if(ctx.notify)ctx.notify(message,error);};
  const qry=values=>ctx.query(values);
  const api=(table,q='',method='GET',body=null,prefer)=>ctx.api(table,q,method,body,prefer);
+ const dated=(admin||ctx.me.role==='principal')?datedTimetable(host,{api,schoolId:id,schoolName:ctx.schoolName,
+  getClass:()=>ctx.classes.find(c=>c.id===st.classId),current}):null;
+ const editor=node('div');editor.className='panel';host.append(editor);
  async function fetchAll(){
   const filter={institution_id:ctx.eq(id),academic_year:ctx.eq(st.year),limit:'1000'};
   const [slots,published,drafts,loads]=await Promise.all([
@@ -105,6 +210,7 @@ function activate(ctx){
   if(!current())return;
   st.slots=slots;st.published=published;st.drafts=drafts;st.loads=loads;
   render();
+  void dated?.load();
  }
  function render(){
   if(!current())return;
@@ -317,7 +423,7 @@ function activate(ctx){
   }));editor.append(publish);
  }
  async function run(task){try{await task()}catch(e){setStatus(e.message||'Could not update timetable',true);}}
- classPick.addEventListener('change',()=>{st.classId=classPick.value;render()});
+ classPick.addEventListener('change',()=>{st.classId=classPick.value;render();void dated?.load();});
  yearPick.addEventListener('change',()=>{st.year=yearPick.value;activate({...ctx,year:st.year})});
  run(fetchAll);
 }

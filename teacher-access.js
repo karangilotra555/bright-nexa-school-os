@@ -41,9 +41,11 @@
 
   function activateClassTimetable(){
     if(!window.BNTimetable)return;
+    const member=me, epoch=schoolLoadEpoch;
     window.BNTimetable.activate({
-      me,classes:allClasses,assignments:allAssignments,staff:allStaff,
-      api,query,eq,notify:mobileTeacher()?undefined:notify,openAssignments:()=>tab('admin')
+      me:member,classes:allClasses,assignments:allAssignments,staff:allStaff,
+      api,query,eq,notify:mobileTeacher()?undefined:notify,openAssignments:()=>tab('admin'),
+      schoolName:$('schoolLabel')?.textContent,active:()=>me===member&&schoolLoadEpoch===epoch
     });
   }
   const nativeAlerts=window.BrightNexaPeriodAlerts;
@@ -131,6 +133,27 @@
         openTeacherSchedule('today');
     });
   }
+
+  const urgentAlerts=window.BNUrgentCircularAlerts?.create({
+    bridge:window.BrightNexaUrgentCirculars,button:$('teacherUrgentAlertToggle'),status:$('teacherUrgentAlertStatus'),
+    register:async (scope,device,registration)=>{
+      await ensureToken();
+      if(me?.id!==scope.member||me.institution_id!==scope.school)throw Error('School account changed');
+      const headers={apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'};
+      const fields={p_school:scope.school,p_portal:'teacher',p_installation:device.installation,p_registration:registration};
+      const binding=await responseJson(await timedCloudFetch(BASE+'/rest/v1/rpc/bn_enable_urgent_circular_alerts',{
+        method:'POST',headers,body:JSON.stringify({...fields,p_token:device.token})
+      }));
+      return {binding,revoke:()=>timedCloudFetch(BASE+'/rest/v1/rpc/bn_disable_urgent_circular_alerts',{
+        method:'POST',headers:me?.id===scope.member&&session?.access_token
+          ? {...headers,Authorization:'Bearer '+session.access_token}:headers,
+        keepalive:true,body:JSON.stringify({...fields,p_binding:binding})
+      })};
+    }
+  });
+  if(urgentAlerts)document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&mobileTeacher())urgentAlerts.resume();
+  });
 
   let teacherScheduleRequest=0,teacherScheduleMode='today';
   async function openTeacherSchedule(mode){
@@ -413,6 +436,7 @@
   function dropSession(){
     ++schoolLoadEpoch;
     clearPeriodAlerts();
+    urgentAlerts?.clear();
     rememberingTeacher=false;
     const cleared=teacherDeviceSession?.clear();
     session=null;me=null;identity=null;rolePermissions=null;feeStudentRoster=[];recoveryMode=false;allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];
@@ -739,6 +763,17 @@
     if(me?.id!==chosen.member.id&&me?.role==='teacher')clearPeriodAlerts();
     me=chosen.member;
     const school=chosen.school;
+    const mobile=isMobileAppContext();
+    // The selected membership and institution above were verified by Supabase.
+    const next=window.BNSchoolRoleEntry?.roleDestination({
+      role:me.role,verified:me.status==='active'&&me.auth_user_id===identity.id,
+      membershipCount:permitted.length,search:location.search,mobile,schoolId:school.id
+    });
+    if(next&&mobile&&(me.role==='school_admin'||me.role==='principal')){
+      sessionStorage.setItem(SELECTED_SCHOOL_KEY,school.id);
+      location.replace(new URL(next,location.href).href);
+      return;
+    }
     const teacherApp=me.role==='teacher'&&isMobileAppContext();
     if(teacherApp&&teacherDeviceSession&&!rememberingTeacher){
       rememberingTeacher=true;
@@ -787,11 +822,6 @@
       return;
     }
     await loadRolePermissions();
-    // Route only after Supabase Auth + tenant membership were verified above.
-    const next=window.BNSchoolRoleEntry?.roleDestination({
-      role:me.role,verified:me.status==='active'&&me.auth_user_id===identity.id,
-      membershipCount:permitted.length,search:location.search
-    });
     if(next){location.replace(new URL(next,location.href).href);return;}
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
@@ -805,7 +835,10 @@
     const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
     const openingView=deepLink||(preferredLandingView&&isTabVisibleForRole(preferredLandingView,me.role)?preferredLandingView:null)||landing||'account';
     tab(openingView);clearNotice();
-    if(teacherApp)enablePeriodAlerts('resume');
+    if(teacherApp){
+      enablePeriodAlerts('resume');
+      urgentAlerts?.setScope({school:me.institution_id,member:me.id});
+    }else urgentAlerts?.clear();
     if(openingView==='attendance'&&!teacherApp){if(writableClasses('can_take_attendance').length)await loadAttendance();else notify('No attendance class is assigned yet. Ask your school admin to assign your class in Roles & Permissions.');}
   }
   async function renderMobileReadiness(){

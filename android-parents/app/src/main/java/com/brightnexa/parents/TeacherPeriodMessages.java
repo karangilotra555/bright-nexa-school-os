@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.service.notification.StatusBarNotification;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import java.util.Map;
@@ -31,7 +32,7 @@ public final class TeacherPeriodMessages extends FirebaseMessagingService {
         return context.getSharedPreferences(STORAGE, MODE_PRIVATE);
     }
 
-    static String installation(Context context) {
+    static synchronized String installation(Context context) {
         SharedPreferences store = preferences(context);
         String value = store.getString(INSTALLATION, "");
         if (value.isEmpty()) {
@@ -53,17 +54,28 @@ public final class TeacherPeriodMessages extends FirebaseMessagingService {
 
     static void clear(Context context) {
         preferences(context).edit().remove(BINDING).remove(SCHOOL).remove(MEMBER).apply();
-        context.getSystemService(NotificationManager.class).cancelAll();
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        for (StatusBarNotification shown : manager.getActiveNotifications()) {
+            if (CHANNEL.equals(shown.getNotification().getChannelId())) manager.cancel(shown.getTag(), shown.getId());
+        }
     }
 
     @Override public void onNewToken(String token) {
+        UrgentCircularMessages.onNewToken(this, token);
         SharedPreferences store = preferences(this);
         String binding = store.getString(BINDING, "");
         String installation = store.getString(INSTALLATION, "");
         if (binding.isEmpty() || installation.isEmpty()) return;
+        try {
+            JSONObject body = new JSONObject().put("p_installation", installation).put("p_binding", binding).put("p_token", token);
+            rotateToken("bn_rotate_teacher_period_alert_token", body);
+        } catch (Exception ignored) { }
+    }
+
+    static void rotateToken(String rpc, JSONObject body) {
         HttpsURLConnection connection = null;
         try {
-            URL endpoint = new URL("https://mrfvbwmyxndrakskqyas.supabase.co/rest/v1/rpc/bn_rotate_teacher_period_alert_token");
+            URL endpoint = new URL("https://mrfvbwmyxndrakskqyas.supabase.co/rest/v1/rpc/" + rpc);
             connection = (HttpsURLConnection)endpoint.openConnection();
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(5000);
@@ -72,10 +84,8 @@ public final class TeacherPeriodMessages extends FirebaseMessagingService {
             connection.setDoOutput(true);
             connection.setRequestProperty("apikey", "sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT");
             connection.setRequestProperty("Content-Type", "application/json");
-            String body = new JSONObject().put("p_installation", installation).put("p_binding", binding)
-                .put("p_token", token).toString();
             try (java.io.OutputStream output = connection.getOutputStream()) {
-                output.write(body.getBytes(StandardCharsets.UTF_8));
+                output.write(body.toString().getBytes(StandardCharsets.UTF_8));
             }
             connection.getResponseCode();
         } catch (Exception ignored) {
@@ -87,6 +97,10 @@ public final class TeacherPeriodMessages extends FirebaseMessagingService {
 
     @Override public void onMessageReceived(RemoteMessage message) {
         Map<String, String> data = message.getData();
+        if ("urgent-circular".equals(data.get("kind"))) {
+            UrgentCircularMessages.receive(this, data);
+            return;
+        }
         String binding = data.get("binding");
         String event = data.get("event");
         String title = data.get("title");
