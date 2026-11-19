@@ -18,6 +18,7 @@ import java.net.URL;
 import javax.net.ssl.HttpsURLConnection;
 import java.nio.charset.StandardCharsets;
 import org.json.JSONObject;
+import com.brightnexa.school.LeadershipLeaveAlerts;
 
 public final class TeacherPeriodMessages extends FirebaseMessagingService {
     static final String OPEN_TIMETABLE = "com.brightnexa.school.OPEN_TIMETABLE";
@@ -62,6 +63,7 @@ public final class TeacherPeriodMessages extends FirebaseMessagingService {
 
     @Override public void onNewToken(String token) {
         UrgentCircularMessages.onNewToken(this, token);
+        LeadershipLeaveAlerts.rotateToken(this, token);
         SharedPreferences store = preferences(this);
         String binding = store.getString(BINDING, "");
         String installation = store.getString(INSTALLATION, "");
@@ -97,6 +99,10 @@ public final class TeacherPeriodMessages extends FirebaseMessagingService {
 
     @Override public void onMessageReceived(RemoteMessage message) {
         Map<String, String> data = message.getData();
+        if (LeadershipLeaveAlerts.KIND.equals(data.get("kind"))) {
+            LeadershipLeaveAlerts.receive(this, data, MainActivity.class);
+            return;
+        }
         if ("urgent-circular".equals(data.get("kind"))) {
             UrgentCircularMessages.receive(this, data);
             return;

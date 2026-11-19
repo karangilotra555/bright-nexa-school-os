@@ -15,7 +15,7 @@ test('every PWA asset has the exact shipped bytes and all current entrypoint dep
    assert.ok(fs.existsSync(file),prefix+' missing '+entry.url);
    assert.equal(entry.revision,crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),prefix+' stale '+entry.url);
   }
-  for(const page of ['index.html','teacher-access.html','smart-tools.html']){
+  for(const page of ['index.html','teacher-access.html','smart-tools.html','leadership.html']){
    if(!fs.existsSync(path.join(dir,page)))continue;
    for(const ref of read(page).matchAll(/(?:src|href)="\.\/([^"?#]+\.(?:js|css)(?:\?v=[^"#]+)?)"/g))assert.ok(urls.has(ref[1]),prefix+' uncached dependency '+ref[1]);
   }

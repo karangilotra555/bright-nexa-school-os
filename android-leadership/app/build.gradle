@@ -8,10 +8,20 @@ android {
    targetSdk 35
    versionCode 1
    versionName '0.1.0'
+   ['FCM_APP_ID','FCM_API_KEY','FCM_SENDER_ID','FCM_PROJECT_ID'].each { key ->
+     buildConfigField 'String', key, groovy.json.JsonOutput.toJson(providers.environmentVariable(key).orElse('').get())
+   }
  }
+ sourceSets.main.java.srcDir '../../android-shared/src/main/java'
+ buildFeatures { buildConfig true }
  buildTypes {
    debug { debuggable false }
    release { minifyEnabled false }
  }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+dependencies {
+ implementation 'androidx.webkit:webkit:1.12.1'
+ implementation 'com.google.firebase:firebase-messaging:24.1.2'
 }

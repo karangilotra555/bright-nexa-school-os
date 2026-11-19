@@ -33,6 +33,7 @@ import androidx.webkit.WebViewFeature;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import org.json.JSONObject;
+import com.brightnexa.school.LeadershipLeaveAlerts;
 
 public final class MainActivity extends Activity {
     private static final String STORAGE = "bn_parents_settings";
@@ -48,6 +49,7 @@ public final class MainActivity extends Activity {
     private boolean urgentBridgeAdded;
     private ValueCallback<Uri[]> fileCallback;
     private WebView web;
+    private LeadershipLeaveAlerts leaveAlerts;
     private LinearLayout toolbar;
     private String liveHost = "";
     private String configuredUrl = "";
@@ -161,6 +163,7 @@ public final class MainActivity extends Activity {
         });
         root.addView(web, new LinearLayout.LayoutParams(-1,0,1));
         setContentView(root);
+        leaveAlerts = new LeadershipLeaveAlerts(this, web);
 
         preview.setOnClickListener(v -> openSchool(configuredUrl));
         settings.setOnClickListener(v -> {
@@ -200,6 +203,7 @@ public final class MainActivity extends Activity {
             TeacherPeriodMessages.clear(this);
             UrgentCircularMessages.clear(this, "parent");
             UrgentCircularMessages.clear(this, "teacher");
+            LeadershipLeaveAlerts.clear(this);
         }
         liveHost = parsed.getHost();
         installAlertBridge();
@@ -222,6 +226,8 @@ public final class MainActivity extends Activity {
 
     private String urgentCircularUrl(Intent intent) {
         if (!SCHOOL_APP_HOST.equalsIgnoreCase(liveHost)) return null;
+        String leave = LeadershipLeaveAlerts.openUrl(this, intent, true);
+        if (leave != null) return leave;
         String portal = UrgentCircularMessages.openPortal(this, intent);
         if ("parent".equals(portal)) return "https://" + liveHost + "/parents.html?portal=parent&view=messages";
         if ("teacher".equals(portal)) return "https://" + liveHost + "/teacher-access.html?view=notices";
@@ -381,6 +387,7 @@ public final class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(code, permissions, results);
+        if (leaveAlerts != null) leaveAlerts.permissionResult(code, results);
         if (code == ALERT_PERMISSION && permissionReply != null) {
             JavaScriptReplyProxy reply = permissionReply;
             String nonce = permissionNonce;

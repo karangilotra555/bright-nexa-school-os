@@ -140,6 +140,11 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     <section data-page="account" hidden>
       <h2 class="screenTitle">Leadership account</h2>
       <article class="panel"><h2>Verified access only</h2><p class="muted">School roles and access come from Supabase. Student records and school reports are not cached on the phone. Changes are audited by the server.</p></article>
+      <article id="emergencyAlertSettings" class="panel" hidden>
+        <h2>Emergency leave alerts</h2>
+        <button id="emergencyAlertToggle" class="secondary" type="button" hidden>Enable urgent alerts</button>
+        <p id="emergencyAlertStatus" class="sub" role="status"></p>
+      </article>
       <p class="sub"><a href="./teacher-access.html?view=attendance">Teacher / Staff Login</a> · <a href="./parents.html?portal=parent">Student / Parent Login</a></p>
       <button id="logoutBtn" data-action="logout" type="button" class="secondary logout">Sign out securely</button>
     </section>
@@ -155,6 +160,7 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
 <div id="notice" class="notice" role="status" aria-live="polite"></div>
 </div>
 <script src="./school-mobile-session.js?v=20261118-shared-leadership"></script>
-<script src="./leadership-app.js?v=20261119-cover-unassigned"></script>
+<script src="./school-urgent-circular-alerts.js?v=20261118-v1"></script>
+<script src="./leadership-app.js?v=20261119-emergency-leave"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
 </body></html>

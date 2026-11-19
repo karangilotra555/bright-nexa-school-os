@@ -12,10 +12,12 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import com.brightnexa.school.LeadershipLeaveAlerts;
 
 public final class MainActivity extends Activity {
   private static final String HOST="bright-nexa-school-os.onrender.com";
   private WebView web;
+  private LeadershipLeaveAlerts leaveAlerts;
   private static boolean trusted(Uri uri){
     return "https".equals(uri.getScheme()) && HOST.equals(uri.getHost());
   }
@@ -59,7 +61,18 @@ public final class MainActivity extends Activity {
         return true;
       }
     });
-    web.loadUrl("https://"+HOST+"/leadership.html");
+    leaveAlerts=new LeadershipLeaveAlerts(this,web);
+    String leaveUrl=LeadershipLeaveAlerts.openUrl(this,getIntent(),false);
+    web.loadUrl(leaveUrl==null?"https://"+HOST+"/leadership.html":leaveUrl);
+  }
+  @Override protected void onNewIntent(Intent intent){
+    super.onNewIntent(intent);
+    String leaveUrl=LeadershipLeaveAlerts.openUrl(this,intent,false);
+    if(leaveUrl!=null&&web!=null)web.loadUrl(leaveUrl);
+  }
+  @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){
+    super.onRequestPermissionsResult(code,permissions,results);
+    if(leaveAlerts!=null)leaveAlerts.permissionResult(code,results);
   }
   @Override public void onBackPressed(){
     if(web!=null&&web.canGoBack())web.goBack();else super.onBackPressed();

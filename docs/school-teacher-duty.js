@@ -1,7 +1,6 @@
 (function (root) {
   'use strict';
   const schoolDate = () => new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format();
-  const schoolTime = () => new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hour12:false}).format();
   const clock = time => String(time || '').slice(0,5);
   const room = record => record.room_number ? 'Room '+record.room_number : 'Room pending';
   function element(tag, text, className) {
@@ -166,17 +165,12 @@
             if (value==='approved') await openPlan(row);
           }),value==='approved'?'primary':'ghost');
           if (admin) { decide('Approve','approved'); decide('Decline','declined'); }
-          else decide('Withdraw request','cancelled');
+          decide(admin?'Cancel request':'Withdraw request','cancelled');
           card.append(controls);
         } else if (row.status==='approved') {
           const controls = element('div',undefined,'row');
-          const notStarted = row.starts_on > schoolDate() || (
-            row.starts_on === schoolDate() && (
-              row.starts_at ? clock(row.starts_at) > schoolTime() : schoolTime() < '08:00'
-            )
-          );
           if (admin) action(controls,'Plan cover',e=>run(e.currentTarget,()=>openPlan(row)));
-          if (notStarted) {
+          if (row.can_cancel === true) {
             action(controls, admin ? 'Cancel leave' : 'Withdraw leave', e => run(e.currentTarget, async () => {
               const confirmMsg = admin
                 ? 'Cancel this approved leave? Any published substitute covers will be revoked.'

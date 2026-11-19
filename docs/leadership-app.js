@@ -134,9 +134,24 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   }
   function school(){if(!selected)throw Error('Select a verified school.');return selected;}
   async function rpc(name,args={}){
-    if(!/^bn_(?:list_teacher_leaves|review_teacher_leave|school_dated_timetable|teacher_leave_cover_plan|publish_teacher_covers|leadership_school_pulse|leadership_fee_snapshot|leadership_publish_urgent_notice|leadership_urgent_delivery_status)$/.test(name))throw Error('Unsupported leadership operation.');
+    if(!/^bn_(?:list_teacher_leaves|review_teacher_leave|school_dated_timetable|teacher_leave_cover_plan|publish_teacher_covers|leadership_school_pulse|leadership_fee_snapshot|leadership_publish_urgent_notice|leadership_urgent_delivery_status|leadership_emergency_leave)$/.test(name))throw Error('Unsupported leadership operation.');
     const owner=school();
     return (await send('/rest/v1/rpc/'+name,{method:'POST',body:JSON.stringify({p_school:owner.id,...args})})).data;
+  }
+  async function registerEmergencyAlerts(scope,device,registration){
+    await fresh();
+    if(selected?.id!==scope.school||selected?.memberId!==scope.member)throw schoolAccessError();
+    const headers={Authorization:'Bearer '+session.access_token};
+    const fields={p_school:scope.school,p_portal:'leadership',p_installation:device.installation,p_registration:registration};
+    const binding=(await send('/rest/v1/rpc/bn_enable_urgent_circular_alerts',{
+      method:'POST',headers,body:JSON.stringify({...fields,p_token:device.token})
+    },false)).data;
+    return {binding,revoke:()=>send('/rest/v1/rpc/bn_disable_urgent_circular_alerts',{
+      method:'POST',headers,keepalive:true,body:JSON.stringify({...fields,p_binding:binding})
+    },false)};
+  }
+  async function emergencyLeave(id){
+    return rpc('bn_leadership_emergency_leave',{p_leave:id});
   }
   async function overview(){
     const owner=school(),epoch=version,day=today();
@@ -171,7 +186,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     return rpc('bn_school_dated_timetable',{p_class:classId,p_from:day,p_to:day});
   }
   async function review(id,decision){
-    if(!['approved','declined'].includes(decision))throw Error('Invalid leave decision.');
+    if(!['approved','declined','cancelled'].includes(decision))throw Error('Invalid leave decision.');
     const target=String(id||'');if(!/^[0-9a-f-]{36}$/i.test(target))throw Error('Invalid leave request.');
     return rpc('bn_review_teacher_leave',{p_leave:target,p_status:decision});
   }
@@ -219,7 +234,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     await storage?.clear();
     if(token)send('/auth/v1/logout?scope=local',{method:'POST',keepalive:true,headers:{Authorization:'Bearer '+token}},false).catch(()=>{});
   }
-  return {login,resumeStaff,restore,verify,choose,school,overview,attendanceEntry,timetableClasses,datedTimetable,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today};
+  return {login,resumeStaff,restore,verify,choose,school,overview,registerEmergencyAlerts,emergencyLeave,attendanceEntry,timetableClasses,datedTimetable,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today};
 }
 function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)){
   const $=id=>doc.getElementById(id), client=create(fetcher);
@@ -227,6 +242,15 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   const entry=params.get('entry');
   const fromSharedApp=entry==='staff'||entry==='launcher';
   let snapshot=null,coverLeave=null,busy=false,page='home',pendingNotice=null,publishedNotice=null;
+  const idPattern=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+  const requestedLeave=params.get('leave'), requestedSchool=params.get('school');
+  let openAlert=idPattern.test(requestedLeave)&&idPattern.test(requestedSchool);
+  const emergencyAlerts=root.BNUrgentCircularAlerts?.create({
+    bridge:root.BrightNexaLeadershipAlerts,button:$('emergencyAlertToggle'),status:$('emergencyAlertStatus'),
+    register:client.registerEmergencyAlerts
+  });
+  if(emergencyAlerts)$('emergencyAlertSettings').hidden=false;
+  const bindAlerts=school=>emergencyAlerts?.setScope({school:school.id,member:school.memberId});
   const elt=(tag,label,cls)=>{const e=doc.createElement(tag);if(label!==undefined)e.textContent=String(label);if(cls)e.className=cls;return e;};
   const note=(text,error=false)=>{const e=$('notice');e.textContent=text||'';e.classList.toggle('error',error);};
   const status=busyValue=>{
@@ -336,13 +360,20 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     }finally{picker.disabled=false;}
   }
   const leaveDescriptor=x=>x.starts_on+(x.starts_on!==x.ends_on?' to '+x.ends_on:'')+(x.starts_at?' · '+x.starts_at.slice(0,5)+'–'+x.ends_at.slice(0,5):' · Full day');
-  function drawLeaves(leaves){
+  function drawLeaves(leaves,focusedLeave){
     const target=$('leaveList');target.replaceChildren();
     const filtered=leaves.filter(x=>['pending','approved'].includes(x.status)).sort((a,b)=>
       Number(b.status==='pending')-Number(a.status==='pending')||Number(b.kind==='emergency')-Number(a.kind==='emergency'));
+    if(focusedLeave) {
+      const index=filtered.findIndex(leave=>leave.id===focusedLeave.id);
+      if(index>=0)filtered.splice(index,1);
+      filtered.unshift(focusedLeave);
+    }
     if(!filtered.length){target.append(elt('p','No pending or approved leave requests.','muted'));return;}
     for(const leave of filtered){
       const card=elt('article',undefined,'panel');
+      card.dataset.leave=leave.id;
+      if(leave.id===focusedLeave?.id)card.tabIndex=-1;
       const h=elt('div',undefined,'itemhead');
       h.append(elt('strong',leave.teacher_name||'Verified teacher'),elt('span',leave.kind==='emergency'?'Emergency':'Planned','tag'));
       card.append(h,elt('p',leaveDescriptor(leave),'sub'),elt('p',leave.reason||'No reason provided','bodytext'),elt('p','Status: '+leave.status,'sub'));
@@ -357,7 +388,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
           }));
           actions.append(button);
         }
-      }else{
+      }else if(leave.status==='approved'){
         const btn=elt('button','Plan substitute','secondary');btn.dataset.action='cover';
         btn.addEventListener('click',()=>run(async()=>{coverLeave=leave;await loadCover();}));
         actions.append(btn);
@@ -366,6 +397,19 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
         const preview=elt('button','Preview affected periods','secondary');preview.dataset.action='preview';
         preview.addEventListener('click',()=>run(async()=>{coverLeave=leave;await loadCover();}));
         actions.append(preview);
+      }
+      if(leave.can_cancel===true){
+        const cancel=elt('button',leave.status==='pending'?'Cancel request':'Cancel leave','secondary');
+        cancel.dataset.action='cancelled';
+        cancel.addEventListener('click',()=>run(async()=>{
+          const message=leave.status==='approved'?'Cancel this leave and revoke its published substitute covers?':'Cancel this pending leave request?';
+          if(!root.confirm(message))return;
+          await client.review(leave.id,'cancelled');
+          if(coverLeave?.id===leave.id)coverLeave=null;
+          await refresh();
+          note('Leave cancelled.');
+        }));
+        actions.append(cancel);
       }
       card.append(actions);target.append(card);
     }
@@ -440,23 +484,39 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     for(const id of ['noticeTemplate','noticeTitle','noticeBody'])$(id).value='';
   }
   async function showAuthenticated(data){
-    chooseSchools(data);clearDashboard(data.selected);gate(false);showPage('home');await refresh();
+    const alert=openAlert;
+    openAlert=false;
+    if(alert&&requestedSchool!==data.selected.id&&data.schools.some(school=>school.id===requestedSchool)){
+      data={...data,selected:await client.choose(requestedSchool)};
+    }
+    chooseSchools(data);clearDashboard(data.selected);bindAlerts(data.selected);gate(false);
+    showPage(alert?'leaves':'home');
+    await refresh();
+    if(!alert)return;
+    if(requestedSchool!==data.selected.id){note('This alert belongs to a different school.',true);return;}
+    const leave=await client.emergencyLeave(requestedLeave);
+    if(!leave){note('This emergency leave request is unavailable.',true);return;}
+    drawLeaves(snapshot?.leaves||[],leave);
+    $('leaveList').querySelector('[data-leave="'+requestedLeave+'"]')?.focus();
   }
   $('loginForm').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
     const data=await client.login($('email').value,$('password').value);
     $('password').value='';await showAuthenticated(data);
   });});
   $('logoutBtn').addEventListener('click',()=>run(async()=>{
-    await client.logout();clearDashboard(null);
+    emergencyAlerts?.clear();await client.logout();clearDashboard(null);
     if(fromSharedApp){root.location.replace(staffEntry);return;}
     gate(true);
   }));
   $('schoolPicker').addEventListener('change',()=>run(async()=>{
     const school=await client.choose($('schoolPicker').value);
-    clearDashboard(school);showPage('home');await refresh();
+    clearDashboard(school);bindAlerts(school);showPage('home');await refresh();
   }));
   $('refreshBtn').addEventListener('click',()=>run(refresh));
-  doc.addEventListener('visibilitychange',resumeDashboard);
+  doc.addEventListener('visibilitychange',()=>{
+    if(!doc.hidden&&!$('mainApp').hidden)emergencyAlerts?.resume();
+    resumeDashboard();
+  });
   root.addEventListener('online',resumeDashboard);
   doc.querySelectorAll('[data-metric-page]').forEach(card=>card.addEventListener('click',()=>openMetric(card.dataset.metricPage)));
   $('uncoveredClass').addEventListener('change',()=>run(loadUncoveredClass));
@@ -605,7 +665,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
       ?await client.resumeStaff(staffSession,params.get('school'))
       :await client.restore();
     if(restored)await showAuthenticated(restored);
-    else if(fromSharedApp)root.location.replace(staffEntry);
+    else if(fromSharedApp&&!openAlert)root.location.replace(staffEntry);
   });
   return client;
 }

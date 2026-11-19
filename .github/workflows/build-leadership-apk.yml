@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'android-leadership/**'
+      - 'android-shared/**'
       - '.github/workflows/build-leadership-apk.yml'
       - 'leadership.html'
       - 'leadership-app.js'
@@ -30,6 +31,11 @@ jobs:
             yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.0'
           fi
       - name: Build installable review APK
+        env:
+          FCM_APP_ID: ${{ vars.FCM_LEADERSHIP_APP_ID }}
+          FCM_API_KEY: ${{ vars.FCM_LEADERSHIP_API_KEY || vars.FCM_API_KEY }}
+          FCM_SENDER_ID: ${{ vars.FCM_SENDER_ID }}
+          FCM_PROJECT_ID: ${{ vars.FCM_PROJECT_ID }}
         working-directory: android-leadership
         run: gradle --no-daemon :app:assembleDebug
       - name: Upload leadership review APK

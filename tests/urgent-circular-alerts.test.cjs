@@ -27,10 +27,16 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
    create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$;
    create table auth.users(id uuid primary key, raw_app_meta_data jsonb, email_confirmed_at timestamptz default now(), banned_until timestamptz, deleted_at timestamptz);
    create table public.institutions(id uuid primary key,status text);
-   create table public.school_users(id uuid primary key, institution_id uuid, auth_user_id uuid, role text, status text);
+   create table public.school_users(id uuid primary key, institution_id uuid, auth_user_id uuid, role text, status text, display_name text);
    create table public.school_students(id uuid primary key,institution_id uuid,status text);
    create table public.school_guardians(id uuid primary key,institution_id uuid,auth_user_id uuid,status text);
    create table public.school_guardian_students(institution_id uuid,guardian_id uuid,student_id uuid);
+   create table public.school_teacher_leave_requests(
+     id uuid primary key,institution_id uuid,teacher_id uuid,kind text,status text,reason text,
+     starts_on date,ends_on date,starts_at time,ends_at time,requested_at timestamptz not null default now()
+   );
+   create function school_private.bn_teacher_leave_starts_at(l public.school_teacher_leave_requests)
+   returns timestamp language sql stable as $$select l.starts_on+coalesce(l.starts_at,time '00:00')$$;
    create table public.school_notices(id uuid primary key,institution_id uuid,title text,body text,created_by uuid);
    create table public.school_audit_events(institution_id uuid,actor_id uuid,action text,entity text,entity_id uuid);
    create function school_private.has_role(s uuid,roles text[]) returns boolean language sql stable as $$
@@ -40,7 +46,7 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
   `);
   await sql("insert into institutions values ($1,'active'),($2,'active')",[school,outside]);
   await sql("insert into auth.users(id,raw_app_meta_data) values ($1,'{}'),($2,'{}'),($3,jsonb_build_object('bn_student_id',$5::text,'bn_institution_id',$7::text)),($4,jsonb_build_object('bn_student_id',$6::text,'bn_institution_id',$8::text))",[principal,teacher,parent,otherParent,student,otherStudent,school,outside]);
-  await sql("insert into school_users values ($1,$3,$1,'principal','active'),($2,$3,$2,'teacher','active')",[principal,teacher,school]);
+  await sql("insert into school_users values ($1,$3,$1,'principal','active','Principal'),($2,$3,$2,'teacher','active','Monika')",[principal,teacher,school]);
   await sql("insert into school_students values ($1,$3,'active'),($2,$4,'active')",[student,otherStudent,school,outside]);
   await sql("insert into school_guardians values ($1,$3,$1,'active'),($2,$4,$2,'active')",[parent,otherParent,school,outside]);
   await sql('insert into school_guardian_students values ($1,$2,$3),($4,$5,$6)',[school,parent,student,outside,otherParent,otherStudent]);
@@ -50,6 +56,7 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
   await db.exec(fs.readFileSync(acceptanceMigration,'utf8'));
   const retryMigration='supabase/migrations/20261119153000_defer_urgent_circular_provider_retries.sql';
   await db.exec(fs.readFileSync(retryMigration,'utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20261119182000_leadership_emergency_leave_alerts.sql','utf8'));
   const registration=id(15), oldRegistration=id(16);
   const enable=(s,p,d,t,r=registration)=>rpc('bn_enable_urgent_circular_alerts',s,p,d,t.repeat(30),r);
   await role('authenticated',teacher);
@@ -72,6 +79,9 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
   await role('authenticated',otherParent);
   await enable(outside,'parent',otherDevice,'u');
   await role('authenticated',principal);
+  const leaderDevice=id(30);
+  const leaderBinding=await enable(school,'leadership',leaderDevice,'l');
+  await assert.rejects(enable(outside,'leadership',leaderDevice,'l'),/access required/i);
   assert.equal(await rpc('bn_leadership_publish_urgent_notice',school,notice,title,body),notice);
   assert.equal(await rpc('bn_leadership_publish_urgent_notice',school,notice,title,body),notice);
   await assert.rejects(rpc('bn_leadership_publish_urgent_notice',school,notice,title,body+' Again.'),/conflict/i);
@@ -133,6 +143,44 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
   await role('authenticated',principal);
   assert.deepEqual(await rpc('bn_leadership_urgent_delivery_status',school,secondNotice),{waiting:0,accepted:1,expired:0,unavailable:0},
     'a provider acceptance already in flight survives later deregistration');
+
+  const emergency=id(31), planned=id(32), withdrawn=id(33);
+  await db.exec('reset role');
+  await sql(`insert into school_teacher_leave_requests
+    (id,institution_id,teacher_id,kind,status,reason,starts_on,ends_on)
+    values ($1,$4,$5,'emergency','pending','Private reason',current_date,current_date),
+      ($2,$4,$5,'planned','pending','Planned',current_date,current_date),
+      ($3,$4,$5,'emergency','pending','Another case',current_date,current_date)`,[emergency,planned,withdrawn,school,teacher]);
+  await sql("update school_teacher_leave_requests set status='cancelled' where id=$1",[withdrawn]);
+  await role('authenticated',teacher);
+  await assert.rejects(enable(school,'leadership',teacherDevice,'t'),/access required/i);
+  await assert.rejects(rpc('bn_leadership_emergency_leave',school,emergency),/Owner or Principal/);
+  await assert.rejects(rpc('bn_claim_emergency_leave_alerts',new Date().toISOString()),/permission denied/i);
+  await role('authenticated',principal);
+  assert.equal((await rpc('bn_leadership_emergency_leave',school,withdrawn)).status,'cancelled');
+  assert.equal(await rpc('bn_leadership_emergency_leave',school,planned),null);
+  await role('service_role');
+  const emergencyAt=new Date(Date.now()+1000).toISOString();
+  const [emergencyDelivery,...others]=await rpc('bn_claim_emergency_leave_alerts',emergencyAt);
+  assert.deepEqual(others,[]);
+  assert.equal(emergencyDelivery.event_id,emergency);
+  assert.equal(emergencyDelivery.installation,leaderDevice);
+  assert.equal(emergencyDelivery.binding,leaderBinding);
+  assert.equal(emergencyDelivery.school,school);
+  assert.match(emergencyDelivery.title,/Monika/);
+  assert.doesNotMatch(emergencyDelivery.body,/Private reason/);
+  assert.deepEqual(await rpc('bn_claim_emergency_leave_alerts',emergencyAt),[]);
+  const checkEmergency=()=>rpc('bn_emergency_leave_alert_still_allowed',leaderDevice,leaderBinding,'l'.repeat(30),emergency,emergencyDelivery.claim_until);
+  assert.equal(await checkEmergency(),true);
+  await db.exec('reset role');
+  await sql("update school_users set status='disabled' where id=$1",[principal]);
+  await role('service_role');
+  assert.equal(await checkEmergency(),false,'revoked leadership access stops an in-flight claim before send');
+  await db.exec('reset role');
+  await sql("update school_users set status='active' where id=$1",[principal]);
+  await sql("update school_teacher_leave_requests set status='cancelled' where id=$1",[emergency]);
+  await role('service_role');
+  assert.equal(await checkEmergency(),false,'a withdrawn request stops an in-flight claim before send');
 
   const delayedNotice=id(18);
   await role('authenticated',parent);
@@ -202,6 +250,9 @@ test('the worker rechecks each FCM recipient and reports sanitized sender failur
  const period={installation:teacherDevice,token:'unit-teacher-period',binding:nonce,event_id:'period-end',title:'Next class',body:'Room 2',expires};
  const allowed={installation:parentDevice,token:'unit-parent-allowed',binding:nonce,event_id:notice,portal:'parent',expires,claim_until:lease};
  const revoked={...allowed,installation:otherDevice,token:'unit-parent-revoked'};
+ const emergency={installation:id(31),token:'unit-leadership-emergency',binding:nonce,event_id:id(32),
+  school,title:'Emergency leave request: Teacher A',body:'19 Nov · Full day',expires,claim_until:lease};
+ let includeEmergency=true;
  const environment={SUPABASE_URL:'https://test.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test-service-role',
   TEACHER_PERIOD_SCHEDULER_SECRET:'test-scheduler-secret',TEACHER_PERIOD_FCM_SERVICE_ACCOUNT:JSON.stringify({
    project_id:'test-project',client_email:'worker@example.invalid',private_key:Buffer.from(privateKey).toString('base64')
@@ -218,6 +269,8 @@ test('the worker rechecks each FCM recipient and reports sanitized sender failur
    if(endpoint.hostname==='oauth2.googleapis.com')return Response.json({access_token:'test-oauth',expires_in:3600});
    if(action==='bn_claim_teacher_period_alerts')return Response.json([period]);
    if(action==='bn_claim_urgent_circular_alerts')return Response.json([allowed,revoked]);
+   if(action==='bn_claim_emergency_leave_alerts')return Response.json(includeEmergency?[emergency]:[]);
+   if(action==='bn_emergency_leave_alert_still_allowed')return Response.json(body.p_leave===emergency.event_id);
    if(action==='bn_urgent_circular_alert_still_allowed')return Response.json(body.p_installation===parentDevice);
    if(action==='messages:send'){
     if(retryResponse&&body.message.token===allowed.token)return Response.json({error:{status:'UNAVAILABLE'}},retryResponse);
@@ -237,7 +290,7 @@ test('the worker rechecks each FCM recipient and reports sanitized sender failur
  let result=await handler(new Request('https://test.supabase.co',{method:'POST',headers:{'x-scheduler-secret':'different'}}));
  assert.equal(result.status,401);assert.equal(calls.length,0);
  result=await handler(new Request('https://test.supabase.co',{method:'POST',headers:{'x-scheduler-secret':'test-scheduler-secret'}}));
- assert.equal(result.status,200);assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:1}});
+ assert.equal(result.status,200);assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:1},emergency:{claimed:1,accepted:1}});
  const urgent=calls.find(call=>call.action==='messages:send'&&call.body.message.token===allowed.token);
  const preflight=calls.find(call=>call.action==='bn_urgent_circular_alert_still_allowed'&&call.body.p_token===allowed.token);
  assert.equal(preflight.body.p_claim_until,lease);
@@ -250,6 +303,13 @@ test('the worker rechecks each FCM recipient and reports sanitized sender failur
  assert.equal(teacher.body.message.data.body,period.body);
  assert.equal(calls.filter(call=>call.action==='bn_finish_urgent_circular_alert').length,1);
 
+ const leavePush=calls.find(call=>call.action==='messages:send'&&call.body.message.token===emergency.token);
+ assert.equal(leavePush.body.message.data.kind,'emergency-leave');
+ assert.equal(leavePush.body.message.data.event,emergency.event_id);
+ assert.equal(leavePush.body.message.data.school,school);
+ assert.equal(calls.some(call=>call.action==='bn_finish_emergency_leave_alert'&&call.body.p_leave===emergency.event_id),true);
+ includeEmergency=false;
+
  const runWorker=()=>handler(new Request('https://test.supabase.co',{method:'POST',
   headers:{'x-scheduler-secret':'test-scheduler-secret'}}));
  calls.length=0;
@@ -261,7 +321,7 @@ test('the worker rechecks each FCM recipient and reports sanitized sender failur
  assert.equal(fullFailure.sent,0);
  assert.equal(fullFailure.urgent.accepted,0);
  assert.deepEqual(fullFailure.firebaseIssue,{
-  code:'SENDER_ID_MISMATCH',teacherPeriodAffected:1,urgentCircularAffected:1,
+  code:'SENDER_ID_MISMATCH',teacherPeriodAffected:1,urgentCircularAffected:1,emergencyLeaveAffected:0,
   message:'Check that the configured Firebase sender and the Android app use the same Firebase project.'
  });
  assert.equal(calls.some(call=>call.action.startsWith('bn_finish_')),false,'mismatch leaves the device and retry lease intact');
@@ -285,7 +345,7 @@ test('the worker rechecks each FCM recipient and reports sanitized sender failur
  unregisteredParent=true;
  result=await runWorker();
  assert.equal(result.status,200);
- assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:0}});
+ assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:0},emergency:{claimed:0,accepted:0}});
  const removal=calls.find(call=>call.action==='bn_finish_urgent_circular_alert'&&call.body.p_installation===parentDevice);
  assert.equal(removal.body.p_invalid,true,'FCM UNREGISTERED still retires the exact current binding');
 
@@ -295,7 +355,7 @@ test('the worker rechecks each FCM recipient and reports sanitized sender failur
  const started=Date.now();
  result=await runWorker();
  assert.equal(result.status,200,'the period queue still records its successful send');
- assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:0}});
+ assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:0},emergency:{claimed:0,accepted:0}});
  const deferred=calls.find(call=>call.action==='bn_defer_urgent_circular_alert');
  assert.ok(deferred,'FCM retry cooldown must be persisted');
  const {p_retry_at:retryAt,...claimKey}=deferred.body;

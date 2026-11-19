@@ -309,7 +309,7 @@ test('teacher can withdraw pending and future approved leaves, revoking covers a
       create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
       create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}')$$;
       create table auth.users(id uuid primary key,email_confirmed_at timestamptz,banned_until timestamptz,deleted_at timestamptz,raw_app_meta_data jsonb);
-      insert into auth.users(id,email_confirmed_at) values('${teacher}',now()),('${cover}',now()),('${admin}',now());
+      insert into auth.users(id,email_confirmed_at) values('${teacher}',now()),('${cover}',now()),('${admin}',now()),('${otherTeacher}',now()),('${accountant}',now());
       create table institutions(id uuid primary key,status text);
       create table school_users(id uuid primary key,institution_id uuid references institutions,auth_user_id uuid,role text,status text,display_name text,unique(id,institution_id));
       create function school_private.has_role(i uuid, roles text[]) returns boolean language sql stable as $$
@@ -321,10 +321,12 @@ test('teacher can withdraw pending and future approved leaves, revoking covers a
       create table school_workspaces(institution_id uuid primary key,snapshot jsonb);
       create table school_students(id uuid primary key,institution_id uuid,class_id uuid);
       create table school_teacher_assignments(institution_id uuid,class_id uuid,school_user_id uuid,active boolean,assignment_type text,subject text);
-      insert into institutions values('${school}','active');
+      insert into institutions values('${school}','active'),('${otherSchool}','active');
       insert into school_users values('${admin}','${school}','${admin}','school_admin','active','Admin'),
        ('${teacher}','${school}','${teacher}','teacher','active','Monika'),
-       ('${cover}','${school}','${cover}','teacher','active','Neha');
+       ('${cover}','${school}','${cover}','teacher','active','Neha'),
+       ('${accountant}','${school}','${accountant}','accountant','active','Accountant'),
+       ('${otherTeacher}','${otherSchool}','${otherTeacher}','teacher','active','Different school teacher');
       insert into school_classes values('${cls}','${school}','LKG','A','','2099');
       insert into school_teacher_assignments values
        ('${school}','${cls}','${teacher}',true,'subject_teacher','English'),
@@ -338,12 +340,12 @@ test('teacher can withdraw pending and future approved leaves, revoking covers a
     await db.exec(fs.readFileSync('supabase/migrations/20261118093000_principal_leave_approvals.sql','utf8'));
     await db.exec(fs.readFileSync('supabase/migrations/20261118102000_school_dated_timetable.sql','utf8'));
     const withdrawalMigration = 'supabase/migrations/20261119160000_teacher_leave_withdrawal_and_cover_revocation.sql';
-    if (fs.existsSync(withdrawalMigration)) {
-      await db.exec(fs.readFileSync(withdrawalMigration,'utf8'));
-    }
+    await db.exec(fs.readFileSync(withdrawalMigration,'utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20261119181000_guard_teacher_leave_withdrawal.sql','utf8'));
     await db.exec(`
       insert into school_timetable_slots(id,institution_id,academic_year,weekday,slot_index,label,kind,starts_at,ends_at) values
-       ('${firstSlot}','${school}','2099',extract(dow from date '${futureDay}'),1,'Period 1','period','09:00','09:35');
+       ('${firstSlot}','${school}','2099',extract(dow from date '${futureDay}'),1,'Period 1','period','09:00','09:35'),
+       ('${nextSlot}','${school}','2098',extract(dow from date '${futureDay}'),1,'Old schedule','period','07:00','07:35');
       insert into school_timetable_published(institution_id,class_id,academic_year,slot_id,subject,teacher_user_id,room_number) values
        ('${school}','${cls}','2099','${firstSlot}','English','${teacher}','04');
     `);
@@ -369,6 +371,16 @@ test('teacher can withdraw pending and future approved leaves, revoking covers a
     assert.equal(ledger.rows[0].status, 'Approved leave');
     assert.equal(ledger.rows[0].units, 1);
 
+    for (const unrelated of [accountant, otherTeacher, cover]) {
+      await as(unrelated);
+      await assert.rejects(call('bn_review_teacher_leave', school, req, 'cancelled'),
+        {code:'42501'}, 'only school leadership or the requesting teacher may cancel');
+    }
+    await as(admin);
+    assert.equal((await call('bn_school_dated_timetable', school, cls, futureDay, futureDay))[0].teacher_id, cover);
+    await db.exec('reset role');
+    const cutoff = await sql("select to_char(school_private.bn_teacher_leave_starts_at(l),'HH24:MI') as time from public.school_teacher_leave_requests l where id=$1",[req]);
+    assert.equal(cutoff.rows[0].time,'09:00','historical bell schedules must not affect the withdrawal cutoff');
     await as(teacher);
     await call('bn_review_teacher_leave', school, req, 'cancelled');
 
@@ -407,7 +419,7 @@ test('Teacher App allows withdrawing pending and future approved leave and refle
 
   let leaves = [
     {id:'l-pending',starts_on:'2099-12-01',ends_on:'2099-12-01',starts_at:null,ends_at:null,kind:'planned',status:'pending',reason:'Pending event'},
-    {id:'l-approved',starts_on:'2099-12-05',ends_on:'2099-12-05',starts_at:null,ends_at:null,kind:'planned',status:'approved',reason:'Future wedding'}
+    {id:'l-approved',starts_on:'2099-12-05',ends_on:'2099-12-05',starts_at:null,ends_at:null,kind:'planned',status:'approved',can_cancel:true,reason:'Future wedding'}
   ];
   let cancelledId = null;
 
