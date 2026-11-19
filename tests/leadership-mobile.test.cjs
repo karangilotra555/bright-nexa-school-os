@@ -21,7 +21,7 @@ function backend(role='principal'){
   if(path==='/rest/v1/school_students')return response([{id:'student'}],{'content-range':'0-0/30'});
   if(path==='/rest/v1/rpc/bn_leadership_school_pulse')return response({students:30,teachers:7,students_marked:30,students_present:27,student_percent:90,teachers_marked:3,teachers_present:null,teachers_on_leave:1,scheduled_periods:40,uncovered_periods:2,day:'2026-11-18'});
   if(path==='/rest/v1/rpc/bn_leadership_fee_snapshot')return response({total:18000,cash:7000,online:8000,unclassified:3000,receipt_count:12,day:'2026-11-18'});
-  if(path==='/rest/v1/rpc/bn_leadership_publish_urgent_notice')return response(request.body.p_request_id);
+  if(path==='/rest/v1/rpc/bn_leadership_publish_urgent_notice')return response(JSON.parse(request.body).p_request_id);
   if(path==='/api/timetable/cover-ai')return response({choices:[],summary:'Review qualified candidates',question:''});
   if(path==='/rest/v1/rpc/bn_list_teacher_leaves')return response([
    {id:leave,teacher_name:'Teacher A',status:'pending',kind:'emergency',starts_on:'2026-11-18',ends_on:'2026-11-18'},
@@ -321,4 +321,145 @@ test('Owner attendance card can hand the selected school to the normal ERP sign-
  const principal=create(backend().fetcher,null);
  await principal.login('principal@example.com','password');
  await assert.rejects(principal.attendanceEntry('teaching',{setItem:()=>assert.fail('Principal wrote an ERP session')}),/Owner or Admin/);
+});
+
+async function pilotLeadership(fetcher, initialStorage={}){
+ const {JSDOM}=require('jsdom');
+ const dom=new JSDOM(read('leadership.html'),{runScripts:'outside-only',url:'https://school.example/leadership.html',pretendToBeVisual:true});
+ const {window}=dom,doc=window.document;
+ Object.defineProperty(window,'crypto',{value:require('node:crypto').webcrypto});
+ window.TextEncoder=TextEncoder;
+ window.fetch=fetcher;
+ for(const [key,value] of Object.entries(initialStorage))window.sessionStorage.setItem(key,value);
+ window.eval(read('leadership-app.js'));
+ await new Promise(resolve=>setImmediate(resolve));
+ doc.getElementById('email').value='owner@example.com';
+ doc.getElementById('password').value='test password';
+ doc.getElementById('loginForm').dispatchEvent(new window.Event('submit'));
+ await waitForPilot(()=>doc.getElementById('metricStudents').textContent==='90%', 'initial daily overview');
+ return {dom,window,doc,el:id=>doc.getElementById(id)};
+}
+
+async function waitForPilot(condition,label){
+ for(let i=0;i<30&&!condition();i++)await new Promise(resolve=>setTimeout(resolve,5));
+ assert.ok(condition(),label);
+}
+
+test('Leadership refreshes previously opened attendance when returning to the foreground',async()=>{
+ const mock=backend();
+ let score=90;
+ const app=await pilotLeadership(async(url,options)=>{
+  const response=await mock.fetcher(url,options);
+  if(!url.endsWith('/bn_leadership_school_pulse'))return response;
+  return Response.json({...await response.json(),student_percent:score,students_present:score===90?27:30});
+ });
+ try{
+  app.el('metricStudents').closest('button').click();
+  score=100;
+  app.doc.dispatchEvent(new app.window.Event('visibilitychange'));
+  await waitForPilot(()=>app.el('studentAttendanceDetail').textContent.includes('30 students present'),'updated attendance from the second device');
+  assert.equal(app.el('metricStudents').textContent,'100%');
+ }finally{app.dom.window.close();}
+});
+
+test('Leadership removes attendance register handoff on sign-out even when revocation is offline',async()=>{
+ const mock=backend('school_admin');
+ const app=await pilotLeadership(mock.fetcher,{
+  'bn_school_staff_session_v1':'saved ERP handoff',
+  'bn_school_staff_selected_school_v1':school,
+  'bright-nexa-school-os:session:v2':'saved ERP workspace session',
+  'bn_parents_session':'separate guardian login'
+ });
+ try{
+  app.el('logoutBtn').click();
+  await waitForPilot(()=>!app.el('loginPage').hidden,'sign-out returns to the login');
+  for(const key of ['bn_school_staff_session_v1','bn_school_staff_selected_school_v1','bright-nexa-school-os:session:v2'])
+   assert.equal(app.window.sessionStorage.getItem(key),null,key+' must be removed locally');
+  assert.equal(app.window.sessionStorage.getItem('bn_parents_session'),'separate guardian login');
+ }finally{app.dom.window.close();}
+});
+
+test('a failed substitute date change clears the previous date’s choices',async()=>{
+ const mock=backend();
+ let fails=false;
+ const app=await pilotLeadership(async(url,options)=>{
+  if(url.endsWith('/bn_teacher_leave_cover_plan')&&fails)throw Error('Could not load this date');
+  const response=await mock.fetcher(url,options);
+  if(!url.endsWith('/bn_list_teacher_leaves'))return response;
+  const leaves=await response.json();
+  leaves[1].ends_on='2026-11-25';
+  return Response.json(leaves);
+ });
+ try{
+  app.doc.querySelector('button[data-action="cover"]').click();
+  await waitForPilot(()=>app.el('coverRows').querySelector('select'),'first date’s proposed cover');
+  fails=true;
+  app.el('coverDate').value='2026-11-25';
+  app.el('coverDate').dispatchEvent(new app.window.Event('change'));
+  await waitForPilot(()=>app.el('notice').textContent.includes('Could not load this date'),'date request failed');
+  assert.equal(app.el('coverRows').querySelector('select'),null,'old options cannot be submitted after a failed lookup');
+ }finally{app.dom.window.close();}
+});
+
+test('urgent delivery status can be checked again without publishing the circular again',async()=>{
+ const mock=backend('school_admin');
+ let statusReads=0;
+ const app=await pilotLeadership(async(url,options)=>{
+  if(url.endsWith('/bn_leadership_urgent_delivery_status')){
+   statusReads++;
+   return Response.json({waiting:statusReads===1?1:0,accepted:statusReads===1?0:1,expired:0,unavailable:0});
+  }
+  return mock.fetcher(url,options);
+ });
+ try{
+  let confirmation='';
+  app.window.confirm=text=>{confirmation=text;return true;};
+  app.el('noticeTitle').value='Emergency notice';
+  app.el('noticeBody').value='School will dismiss early today.';
+  app.el('sendNotice').click();
+  await waitForPilot(()=>app.el('noticePublishStatus').textContent.includes('1 waiting'),'initial queue status');
+  const refresh=app.el('refreshNoticeStatus');
+  assert.ok(refresh&&!refresh.hidden,'published notice has a status refresh action');
+  refresh.click();
+  await waitForPilot(()=>app.el('noticePublishStatus').textContent.includes('1 accepted by Firebase'),'later Firebase acceptance');
+  assert.match(confirmation,/\n\nEmergency notice\n\n/);
+  assert.equal(mock.calls.filter(call=>call.path.endsWith('/bn_leadership_publish_urgent_notice')).length,1);
+ }finally{app.dom.window.close();}
+});
+
+test('retrying an ambiguous notice publish after reload reuses the same request ID',async()=>{
+ const mock=backend('school_admin');
+ const ids=[];
+ const fetcher=async(url,options)=>{
+  if(url.endsWith('/bn_leadership_publish_urgent_notice')){
+   const id=JSON.parse(options.body).p_request_id;
+   ids.push(id);
+   if(ids.length===1)throw Error('Connection interrupted while confirming publication');
+   return Response.json(id);
+  }
+  if(url.endsWith('/bn_leadership_urgent_delivery_status'))
+   return Response.json({waiting:1,accepted:0,expired:0,unavailable:0});
+  return mock.fetcher(url,options);
+ };
+ const first=await pilotLeadership(fetcher);
+ let saved;
+ try{
+  first.window.confirm=()=>true;
+  first.el('noticeTitle').value='Emergency notice';
+  first.el('noticeBody').value='School will dismiss early today.';
+  first.el('sendNotice').click();
+  await waitForPilot(()=>first.el('notice').textContent.includes('Connection interrupted'),'response lost');
+  saved=Object.fromEntries(Object.keys(first.window.sessionStorage).map(key=>[key,first.window.sessionStorage.getItem(key)]));
+  assert.doesNotMatch(JSON.stringify(saved),/School will dismiss early today/);
+ }finally{first.dom.window.close();}
+ const second=await pilotLeadership(fetcher,saved);
+ try{
+  second.window.confirm=()=>true;
+  second.el('noticeTitle').value='  Emergency notice ';
+  second.el('noticeBody').value='School will dismiss early today.  ';
+  second.el('sendNotice').click();
+  await waitForPilot(()=>second.el('noticePublishStatus').textContent.includes('Circular published'),'retry acknowledged');
+  assert.equal(ids.length,2);
+  assert.equal(ids[0],ids[1],'server idempotency must cover retries after reload');
+ }finally{second.dom.window.close();}
 });

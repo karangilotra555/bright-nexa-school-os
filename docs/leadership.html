@@ -63,10 +63,10 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     <section data-page="home">
       <span class="eyebrow">Daily school overview</span><p id="lastSync" class="sub"></p>
       <div class="grid">
-        <button class="metric" type="button" data-metric-page="student-attendance"><span class="symbol" aria-hidden="true">🎓</span><b id="metricStudents">—</b><span class="metricTitle">Students present</span><span id="attendanceCoverage" class="detail">Awaiting marks</span></button>
-        <button class="metric" type="button" data-metric-page="teacher-attendance"><span class="symbol" aria-hidden="true">👩‍🏫</span><b id="metricTeachers">—</b><span class="metricTitle">Teachers present</span><span id="teacherCoverage" class="detail">Awaiting verified staff marks</span></button>
-        <button class="metric" type="button" data-metric-page="leaves"><span class="symbol" aria-hidden="true">📋</span><b id="metricPending">—</b><span class="metricTitle">Pending leave</span></button>
-        <button class="metric" type="button" data-metric-page="uncovered"><span class="symbol" aria-hidden="true">⚡</span><b id="metricUrgent">—</b><span class="metricTitle">Uncovered periods</span><span id="periodCoverage" class="detail">Published timetable only</span></button>
+        <button class="metric" type="button" data-action="metric" data-metric-page="student-attendance"><span class="symbol" aria-hidden="true">🎓</span><b id="metricStudents">—</b><span class="metricTitle">Students present</span><span id="attendanceCoverage" class="detail">Awaiting marks</span></button>
+        <button class="metric" type="button" data-action="metric" data-metric-page="teacher-attendance"><span class="symbol" aria-hidden="true">👩‍🏫</span><b id="metricTeachers">—</b><span class="metricTitle">Teachers present</span><span id="teacherCoverage" class="detail">Awaiting verified staff marks</span></button>
+        <button class="metric" type="button" data-action="metric" data-metric-page="leaves"><span class="symbol" aria-hidden="true">📋</span><b id="metricPending">—</b><span class="metricTitle">Pending leave</span></button>
+        <button class="metric" type="button" data-action="metric" data-metric-page="uncovered"><span class="symbol" aria-hidden="true">⚡</span><b id="metricUrgent">—</b><span class="metricTitle">Uncovered periods</span><span id="periodCoverage" class="detail">Published timetable only</span></button>
       </div>
       <article class="panel"><h2>School Operations Brief</h2><div id="dailyBrief"></div></article>
       <article class="panel" aria-label="Read-only school fee snapshot">
@@ -133,6 +133,7 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
         <textarea id="noticeBody" maxlength="1500" placeholder="Mention the confirmed date, timing, pickup instructions and helpline."></textarea>
       </label>
       <button id="sendNotice" data-action="notice" type="button" class="primary">Review &amp; publish official notice</button>
+      <button id="refreshNoticeStatus" data-action="notice-status" class="secondary" type="button" hidden>Refresh delivery status</button>
       <p id="noticePublishStatus" class="warning" role="status">No circular has been published from this screen.</p>
     </section>
     <section data-page="account" hidden>
@@ -153,6 +154,6 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
 <div id="notice" class="notice" role="status" aria-live="polite"></div>
 </div>
 <script src="./school-mobile-session.js?v=20261118-shared-leadership"></script>
-<script src="./leadership-app.js?v=20261119-dashboard-cards-v1"></script>
+<script src="./leadership-app.js?v=20261119-pilot-stability-v1"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
 </body></html>
