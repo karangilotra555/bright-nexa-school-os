@@ -7,7 +7,7 @@ const match=sw.match(/e\.precacheAndRoute\((\[[\s\S]*?\]),\{\}\)/);
 if(!match)throw Error('Missing Workbox precache manifest');
 const existing=vm.runInNewContext('('+match[1]+')',{}, {timeout:1000});
 const current=new Set();
-for(const html of ['index.html','teacher-access.html','smart-tools.html']){
+for(const html of ['index.html','teacher-access.html','smart-tools.html','leadership.html']){
  for(const m of read(html).matchAll(/(?:src|href)="\.\/([^"?#]+\.(?:js|css)(?:\?v=[^"#]+)?)"/g))current.add(m[1]);
 }
 for(const m of read('school-erp-entry.js').matchAll(/\.\/([^'"`]+\.js\?v=[^'"`]+)/g))current.add(m[1]);

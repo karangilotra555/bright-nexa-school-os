@@ -7,8 +7,9 @@ type Alert = {
   binding: string;
   event_id: string;
   expires: string;
-} & ({ title: string; body: string; portal?: never }
-  | { portal: "parent" | "teacher"; claim_until: string });
+} & ({ title: string; body: string; portal?: never; school?: never }
+  | { portal: "parent" | "teacher"; claim_until: string; school?: never }
+  | { school: string; title: string; body: string; claim_until: string; portal?: never });
 
 const url = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -79,6 +80,10 @@ async function deliver(alert: Alert, project: string, token: string): Promise<De
   if (alert.portal && !await rpc("bn_urgent_circular_alert_still_allowed", {
     ...delivery, p_portal: alert.portal, p_notice: alert.event_id, p_claim_until: alert.claim_until,
   })) return "not_sent";
+  const leaveClaim = alert.school ? {
+    ...delivery, p_leave: alert.event_id, p_claim_until: alert.claim_until,
+  } : undefined;
+  if (leaveClaim && !await rpc("bn_emergency_leave_alert_still_allowed", leaveClaim)) return "not_sent";
   const expires = Date.parse(alert.expires);
   const ttl = Math.ceil((expires - Date.now()) / 1000);
   if (ttl <= 0) return "not_sent";
@@ -91,23 +96,31 @@ async function deliver(alert: Alert, project: string, token: string): Promise<De
         android: { priority: "high", ttl: ttl + "s" },
         data: {
           binding: alert.binding, event: alert.event_id, expires: String(expires),
-          ...(alert.portal ? { kind: "urgent-circular", portal: alert.portal } : { title: alert.title, body: alert.body }),
+          ...(alert.portal ? { kind: "urgent-circular", portal: alert.portal } : {
+            title: alert.title, body: alert.body,
+            ...(alert.school ? { kind: "emergency-leave", school: alert.school } : {}),
+          }),
         },
       },
     }),
     signal: AbortSignal.timeout(8000),
   });
   const result = await response.json().catch(() => ({}));
-  if (alert.portal && (response.status === 429 || response.status === 503)) {
+  if ((alert.portal || alert.school) && (response.status === 429 || response.status === 503)) {
     const retryAfter = response.headers.get("Retry-After")?.trim();
     if (retryAfter) {
       const retryTime = /^\d+$/.test(retryAfter) ? Date.now() + Number(retryAfter) * 1000 : Date.parse(retryAfter);
       const retryUntil = Math.min(retryTime, expires);
       if (retryUntil > Date.parse(alert.claim_until)) {
-        await rpc("bn_defer_urgent_circular_alert", {
-          p_installation: alert.installation, p_portal: alert.portal, p_binding: alert.binding,
-          p_notice: alert.event_id, p_claim_until: alert.claim_until, p_retry_at: new Date(retryUntil).toISOString(),
-        });
+        const retryAt = new Date(retryUntil).toISOString();
+        if (leaveClaim) {
+          await rpc("bn_finish_emergency_leave_alert", { ...leaveClaim, p_invalid: false, p_retry_at: retryAt });
+        } else {
+          await rpc("bn_defer_urgent_circular_alert", {
+            p_installation: alert.installation, p_portal: alert.portal, p_binding: alert.binding,
+            p_notice: alert.event_id, p_claim_until: alert.claim_until, p_retry_at: retryAt,
+          });
+        }
       }
     }
     return "not_sent";
@@ -122,6 +135,8 @@ async function deliver(alert: Alert, project: string, token: string): Promise<De
     const device = { ...delivery, p_invalid: invalid };
     if (alert.portal) {
       await rpc("bn_finish_urgent_circular_alert", { ...device, p_portal: alert.portal, p_notice: alert.event_id });
+    } else if (leaveClaim) {
+      await rpc("bn_finish_emergency_leave_alert", { ...leaveClaim, p_invalid: invalid, p_retry_at: null });
     } else {
       await rpc("bn_finish_teacher_period_alert", { ...device, p_event: alert.event_id });
     }
@@ -157,29 +172,36 @@ Deno.serve(async (request) => {
     const account: ServiceAccount = JSON.parse(serviceAccount);
     const token = await googleToken(account);
     const at = new Date().toISOString();
-    const [period, urgent] = await Promise.allSettled([
+    const [period, urgent, emergency] = await Promise.allSettled([
       dispatch("bn_claim_teacher_period_alerts", at, account, token),
       dispatch("bn_claim_urgent_circular_alerts", at, account, token),
+      dispatch("bn_claim_emergency_leave_alerts", at, account, token),
     ]);
     const periodResult = period.status === "fulfilled" ? period.value : undefined;
     const urgentResult = urgent.status === "fulfilled" ? urgent.value : undefined;
+    const emergencyResult = emergency.status === "fulfilled" ? emergency.value : undefined;
+    if (!emergencyResult) console.error("Emergency leave claim failed");
     if (!periodResult) console.error("Teacher period claim failed");
     if (!urgentResult) console.error("Urgent circular claim failed");
     const teacherPeriodAffected = periodResult?.senderMismatches ?? 0;
     const urgentCircularAffected = urgentResult?.senderMismatches ?? 0;
-    const firebaseIssue = teacherPeriodAffected || urgentCircularAffected ? {
+    const emergencyLeaveAffected = emergencyResult?.senderMismatches ?? 0;
+    const firebaseIssue = teacherPeriodAffected || urgentCircularAffected || emergencyLeaveAffected ? {
       code: senderMismatch,
       teacherPeriodAffected,
       urgentCircularAffected,
+      emergencyLeaveAffected,
       message: "Check that the configured Firebase sender and the Android app use the same Firebase project.",
     } : undefined;
     if (firebaseIssue) console.warn("Firebase notification configuration issue", JSON.stringify(firebaseIssue));
-    const acceptedCount = (periodResult?.sent ?? 0) + (urgentResult?.sent ?? 0);
-    const unavailable = !periodResult || !urgentResult || (firebaseIssue && acceptedCount === 0);
+    const acceptedCount = (periodResult?.sent ?? 0) + (urgentResult?.sent ?? 0) + (emergencyResult?.sent ?? 0);
+    const unavailable = !periodResult || !urgentResult || !emergencyResult || (firebaseIssue && acceptedCount === 0);
     return json({
       ...(periodResult ? { claimed: periodResult.claimed, sent: periodResult.sent } : { error: "Teacher period dispatch unavailable" }),
       urgent: urgentResult ? { claimed: urgentResult.claimed, accepted: urgentResult.sent }
         : { error: "Urgent circular dispatch unavailable" },
+      emergency: emergencyResult ? { claimed: emergencyResult.claimed, accepted: emergencyResult.sent }
+        : { error: "Emergency leave dispatch unavailable" },
       ...(firebaseIssue ? { firebaseIssue } : {}),
     }, unavailable ? 503 : 200);
   } catch (_) {

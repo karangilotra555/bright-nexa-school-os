@@ -23,6 +23,8 @@ function signOut(opts){
   const token=currentToken();
   if(typeof root.CustomEvent==='function')
     root.document?.dispatchEvent?.(new root.CustomEvent('bn-before-signout'));
+  try{root.BrightNexaLeadershipAlerts?.postMessage(JSON.stringify({action:'clear'}));}catch(_){}
+  void root.BNMobileSession?.createStore('leadership')?.clear();
   clearSessions(); // Prevent silent re-login even if network request fails.
   if(opts?.broadcast!==false&&channel){try{channel.postMessage({type:'signed-out'});}catch(_){}}
   // Keep the revocation request alive during navigation. Local logout is immediate.

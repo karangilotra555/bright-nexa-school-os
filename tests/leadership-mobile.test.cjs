@@ -56,7 +56,7 @@ test('Owner and Principal enter only through live verified Supabase memberships'
   assert.deepEqual(mock.calls.find(x=>x.path.endsWith('bn_leadership_publish_urgent_notice')).body,{p_school:school,p_request_id:leave,p_title:'Urgent notice',p_body:'School will close early today due to weather.'});
   assert.deepEqual(mock.calls.find(x=>x.path.endsWith('bn_review_teacher_leave')).body,
     {p_school:school,p_leave:leave,p_status:'approved'});
-  await assert.rejects(client.review(leave,'cancelled'),/Invalid leave decision/);
+  await assert.rejects(client.review(leave,'deleted'),/Invalid leave decision/);
   await assert.rejects(()=>client.choose('other-school'),/verified school/);
   await client.logout();
   await assert.rejects(client.overview(),/verified school/);
@@ -324,9 +324,9 @@ test('Owner attendance card can hand the selected school to the normal ERP sign-
  await assert.rejects(principal.attendanceEntry('teaching',{setItem:()=>assert.fail('Principal wrote an ERP session')}),/Owner or Admin/);
 });
 
-async function pilotLeadership(fetcher, initialStorage={}){
+async function pilotLeadership(fetcher, initialStorage={}, url='https://school.example/leadership.html'){
  const {JSDOM}=require('jsdom');
- const dom=new JSDOM(read('leadership.html'),{runScripts:'outside-only',url:'https://school.example/leadership.html',pretendToBeVisual:true});
+ const dom=new JSDOM(read('leadership.html'),{runScripts:'outside-only',url,pretendToBeVisual:true});
  const {window}=dom,doc=window.document;
  Object.defineProperty(window,'crypto',{value:require('node:crypto').webcrypto});
  window.TextEncoder=TextEncoder;
@@ -670,3 +670,25 @@ test('withdrawn cancelled leaves are excluded from pending/approved counts and l
  }finally{app.dom.window.close();}
 });
 
+
+
+test('emergency alert opens its exact request after verified sign-in',async()=>{
+ const mock=backend();
+ const emergency={id:leave,teacher_name:'Direct emergency',status:'pending',kind:'emergency',
+  starts_on:'2099-11-18',ends_on:'2099-11-18',can_cancel:true};
+ const fetcher=async(url,options)=>{
+  if(new URL(url).pathname.endsWith('/bn_leadership_emergency_leave')){
+   assert.deepEqual(JSON.parse(options.body),{p_school:school,p_leave:leave});
+   return Response.json(emergency);
+  }
+  return mock.fetcher(url,options);
+ };
+ const app=await pilotLeadership(fetcher,{},'https://school.example/leadership.html?school='+school+'&leave='+leave);
+ try{
+  await waitForPilot(()=>app.doc.activeElement.dataset.leave===leave,'notification focuses the exact leave');
+  assert.equal(app.doc.querySelector('[data-page="leaves"]').hidden,false);
+  assert.match(app.doc.activeElement.textContent,/Direct emergency/);
+  assert.ok(app.doc.activeElement.querySelector('[data-action="approved"]'));
+  assert.ok(app.doc.activeElement.querySelector('[data-action="cancelled"]'));
+ }finally{app.dom.window.close();}
+});
