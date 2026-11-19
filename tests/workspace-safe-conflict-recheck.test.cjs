@@ -27,7 +27,7 @@ async function verifiedOwner(callback,owner=true){
   BNWorkspaceOnlineGuard:{update(){},setRetry(){},setRecover(){}}};
  try{return await callback();}finally{if(previous===undefined)delete global.window;else global.window=previous;}
 }
-test('clean stale checksum from another tab reconciles with raw Supabase data without changing school records',async()=>{
+test('clean stale checksum from another tab reconciles with hydrated Supabase data without changing school records',async()=>{
  await verifiedOwner(async()=>{
   const f=fixture(),c=f.make();
   await c.openSchool('school');
@@ -56,6 +56,34 @@ test('clean older tab updates from newer cloud after saving a verified device ba
   assert.equal(f.pushes.length,0);
  });
 });
+for(const entry of ['safe recheck','explicit owner reopen']){
+ test(entry+' hydrates newer Teacher attendance before acknowledging the workspace revision',async()=>{
+  await verifiedOwner(async()=>{
+   const f=fixture(),c=f.make();
+   const attendance=[{studentId:1,date:'2026-11-14',status:'absent'}];
+   const original={...snapshot(),operations:{attendance}};
+   f.cloud={revision:5,snapshot:original};
+   await c.openSchool('school');
+
+   // A Teacher App correction advances the revision while only the hydrated
+   // pull sees the updated relational row. The raw workspace JSON stays old.
+   f.cloud={revision:6,snapshot:original};
+   const latest={...original,operations:{attendance:[{...attendance[0],status:'present'}]}};
+   f.client.pull=async()=>({revision:6,snapshot:latest});
+   const key=f.recordKey(),prior=JSON.parse(f.values.get(key));
+   f.values.set(key,JSON.stringify({...prior,revision:6,fingerprint:'v2:another-tab-hydrated'}));
+
+   const app=entry==='safe recheck'?c:f.make();
+   const rechecked=entry==='safe recheck'?await app.sync():await app.initialize();
+   assert.equal(rechecked.status,'synced');
+   assert.equal(rechecked.revision,6);
+   assert.equal(f.current.operations.attendance[0].status,'present');
+   f.current={...f.current,students:[{id:1,name:'Corrected name'}]};
+   await app.autosave(f.current);
+   assert.equal(f.pushes[0].operations.attendance[0].status,'present');
+  });
+ });
+}
 test('actual unsaved edits in a stale tab never upload, overwrite, or clear pending data during safe recheck',async()=>{
  await verifiedOwner(async()=>{
   const f=fixture(),c=f.make();

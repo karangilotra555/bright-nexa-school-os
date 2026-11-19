@@ -258,12 +258,12 @@
         if(verifiedExplicitOpen()){
           // An older browser checksum can disagree even when the actual clean
           // local school is byte-for-byte equal to the cloud. Confirm that
-          // against the raw Supabase workspace before changing any metadata.
+          // against the hydrated Supabase workspace before changing metadata.
           // Never use this shortcut if an older pending edit is present.
           try{
-            if(record&&!record.pending&&!record.pendingRef&&typeof o.client.readback==='function'){
+            if(record&&!record.pending&&!record.pendingRef){
               var beforeFingerprint=fingerprint(o.getSnapshot()), b=binding, r=record, checkpoint=generation;
-              var confirmed=await o.client.readback(b.schoolId);
+              var confirmed=await o.client.pull(b.schoolId);
               if(confirmed?.snapshot&&Number.isSafeInteger(confirmed.revision)
                 &&String(institutionId(confirmed.snapshot))===b.localId
                 &&fingerprint(confirmed.snapshot)===beforeFingerprint
@@ -411,7 +411,7 @@
     async function recheckConflict(){
       if(disposed||status!=='conflict'||!binding||!record||
         missingPendingRecovery||record.pending||record.pendingRef||
-        !verifiedExplicitOpen()||typeof o.client.readback!=='function')
+        !verifiedExplicitOpen())
         return state();
       if(conflictRecheck)return conflictRecheck;
       conflictRecheck=(async function(){
@@ -424,7 +424,9 @@
         if(!newest||newest.pending||newest.pendingRef||
           !Number.isSafeInteger(newest.revision)||newest.revision<0)return state();
         try{
-          var remote=await o.client.readback(b.schoolId);
+          // Portal writes can advance the revision and leave raw JSON unchanged.
+          // Compare the hydrated records before accepting that revision.
+          var remote=await o.client.pull(b.schoolId);
           if(!remote?.snapshot||!Number.isSafeInteger(remote.revision)||
             String(institutionId(remote.snapshot))!==b.localId)
             throw error('Cloud school identity or readback could not be verified. No local records changed.');
@@ -436,7 +438,7 @@
           if(newest.revision>remote.revision)
             throw error('Another tab has newer recovery metadata than Supabase. No edits were replaced.');
           if(fingerprint(remote.snapshot)===localFingerprint){
-            // Byte-for-byte identical local and raw cloud snapshots: stale
+            // Byte-for-byte identical local and hydrated cloud snapshots: stale
             // checksum/revision metadata was the only problem.
             if(disk!==atStart){record=newest;disk=atStart;}
             await persist({...record,revision:remote.revision,fingerprint:localFingerprint,

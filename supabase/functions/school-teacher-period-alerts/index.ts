@@ -98,6 +98,20 @@ async function deliver(alert: Alert, project: string, token: string): Promise<De
     signal: AbortSignal.timeout(8000),
   });
   const result = await response.json().catch(() => ({}));
+  if (alert.portal && (response.status === 429 || response.status === 503)) {
+    const retryAfter = response.headers.get("Retry-After")?.trim();
+    if (retryAfter) {
+      const retryTime = /^\d+$/.test(retryAfter) ? Date.now() + Number(retryAfter) * 1000 : Date.parse(retryAfter);
+      const retryUntil = Math.min(retryTime, expires);
+      if (retryUntil > Date.parse(alert.claim_until)) {
+        await rpc("bn_defer_urgent_circular_alert", {
+          p_installation: alert.installation, p_portal: alert.portal, p_binding: alert.binding,
+          p_notice: alert.event_id, p_claim_until: alert.claim_until, p_retry_at: new Date(retryUntil).toISOString(),
+        });
+      }
+    }
+    return "not_sent";
+  }
   const details = Array.isArray(result?.error?.details) ? result.error.details : [];
   if (!response.ok && details.some((detail: { errorCode?: string }) => detail?.errorCode === senderMismatch)) {
     // Keep the registration and lease for a retry after the sender is corrected.
