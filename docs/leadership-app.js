@@ -177,7 +177,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   }
   async function covers(id,day){return rpc('bn_teacher_leave_cover_plan',{p_leave:id,p_day:day});}
   async function publish(id,day,entries){
-    if(!Array.isArray(entries)||!entries.length)throw Error('Choose at least one valid substitute.');
+    if(!Array.isArray(entries)||!entries.length)throw Error('Choose at least one period to update.');
     return rpc('bn_publish_teacher_covers',{p_leave:id,p_day:day,p_covers:entries});
   }
   async function publishUrgent(title,body,requestId){
@@ -544,14 +544,54 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   $('coverDate').addEventListener('change',()=>run(loadCover));
   $('publishCover').addEventListener('click',()=>run(async()=>{
     if(!coverLeave)throw Error('Choose approved leave first.');
-    const entries=[...$('coverRows').querySelectorAll('select[data-slot]')].filter(x=>x.value)
-      .map(x=>({slot_id:x.dataset.slot,class_id:x.dataset.classid,teacher_id:x.value}));
-    if(!entries.length)throw Error('There is no valid cover to publish.');
-    if(!root.confirm('Publish '+entries.length+' substitute assignment(s) to the teachers?'))return;
+    const rows=[...$('coverRows').querySelectorAll('select[data-slot]')];
+    if(!rows.length)throw Error('There are no affected periods for this date.');
+    const entries=rows.map(x=>({
+      slot_id:x.dataset.slot,class_id:x.dataset.classid,teacher_id:x.value||null
+    }));
+    const assignedCount=entries.filter(x=>x.teacher_id).length;
+    const confirmMessage=assignedCount>0
+      ? 'Publish '+assignedCount+' substitute assignment(s) to the teachers?'
+      : 'Clear all substitute assignments for this date?';
+    if(!root.confirm(confirmMessage))return;
     await client.publish(coverLeave.id,$('coverDate').value,entries);
-    note('Cover published. Verify delivery in Teacher App.');
+    note(assignedCount>0?'Cover published. Verify delivery in Teacher App.':'Cover cleared. Affected periods are now uncovered.');
     await loadCover();
     await refresh();
+  }));
+  $('copyWhatsAppCover').addEventListener('click',()=>run(async()=>{
+    if(!coverLeave)throw Error('Choose approved leave first.');
+    const rows=[...$('coverRows').querySelectorAll('article.panel')];
+    if(!rows.length)throw Error('No teaching periods affected for this date.');
+    const date=$('coverDate').value;
+    const teacher=coverLeave.teacher_name||'Teacher';
+    const lines=[
+      '📋 *Bright Nexa School OS · Teacher Substitution Slip*',
+      'School: '+(client.school?.()?.name||''),
+      'Date: '+date,
+      'Teacher on Leave: '+teacher+' ('+(coverLeave.kind==='emergency'?'Emergency':'Planned')+' Leave)',
+      '',
+      '*Period Arrangements:*'
+    ];
+    for(const row of rows){
+      const title=row.querySelector('strong')?.textContent||'Period';
+      const timeInfo=row.querySelector('p.sub')?.textContent||'';
+      const select=row.querySelector('select[data-slot]');
+      const chosenText=select?.options[select.selectedIndex]?.text||'';
+      const assigned=select?.value?chosenText:'No substitute (Self-study / Unassigned)';
+      lines.push('• '+title+' ('+timeInfo+')\n  ↳ Cover: '+assigned);
+    }
+    const text=lines.join('\n');
+    try{
+      if(root.navigator?.clipboard?.writeText){
+        await root.navigator.clipboard.writeText(text);
+        note('WhatsApp substitution slip copied to clipboard.');
+      }else{
+        note('Clipboard unavailable on this device.',true);
+      }
+    }catch(_){
+      note('Could not copy slip to clipboard.',true);
+    }
   }));
   gate(true);
   run(async()=>{

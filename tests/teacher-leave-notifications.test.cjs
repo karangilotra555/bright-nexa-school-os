@@ -265,3 +265,31 @@ test('an overlapping full-day leave stays in the form and has no success popup',
   assert.equal(reason.value,'Family event');
   assert.match(form.querySelector('[role="status"]')?.textContent||'',/Request not sent.*My requests/);
 });
+
+test('partial day leave requires start time earlier than end time',async t=>{
+  const {JSDOM} = require('jsdom');
+  const {window} = new JSDOM('<main id="duty"></main>',{runScripts:'outside-only'});
+  t.after(()=>window.close());
+  const pane = window.document.getElementById('duty');
+  window.eval(fs.readFileSync('school-teacher-duty.js','utf8'));
+  let requested=false;
+  await window.BNTeacherDuty.show(pane,{admin:false,active:()=>true,rpc:async name=>{
+    if(name==='bn_list_teacher_leaves')return [];
+    if(name==='bn_request_teacher_leave'){requested=true;return 'req-id';}
+    return null;
+  }});
+  const form=pane.querySelector('form');
+  const length=form.querySelectorAll('select')[1];
+  length.value='partial';
+  length.dispatchEvent(new window.Event('change'));
+  const times=form.querySelectorAll('input[type="time"]');
+  times[0].value='14:00';
+  times[1].value='11:00';
+  form.querySelector('textarea').value='Doctor appointment';
+  form.requestSubmit();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(requested,false,'Must not submit invalid partial times');
+  assert.equal(pane.querySelector('dialog[open]'),null);
+  assert.match(form.querySelector('[role="status"]')?.textContent||'',/Leave start time must be earlier than end time/i);
+});
+
