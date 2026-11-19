@@ -24330,7 +24330,11 @@ function Hr({ data: e, students: t, onUpdate: n }) {
   const [followUpOpen, setFollowUpOpen] = (0, w.useState)(false);
   const followUpActor = Qt();
   let r = new Date().toISOString().slice(0, 10);
-  let [i, a] = (0, w.useState)(`students`);
+  let [i, a] = (0, w.useState)(() => {
+    const entry = new URLSearchParams(window.location.search);
+    return entry.get('tab') === 'Attendance' && entry.get('attendance') === 'teaching'
+      && ['OWNER', 'ADMIN'].includes(followUpActor?.role) ? 'teaching' : 'students';
+  });
   let [o, s] = (0, w.useState)(r);
   let [c, l] = (0, w.useState)(r.slice(0, 7));
   const leaveMonth = i===`reports` ? c : i===`teaching` ? o.slice(0,7) : '';
