@@ -150,7 +150,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     return {school:owner,leaves,pulse,fees,students:pulse.students,teachers:pulse.teachers,
       pending:leaves.filter(x=>x.status==='pending').length,
       emergency:leaves.filter(x=>x.status==='pending'&&x.kind==='emergency').length,
-      approved:leaves.filter(x=>x.status==='approved').length};
+      approved:leaves.filter(x=>x.status==='approved'&&x.ends_on>=(pulse?.day||day)).length};
   }
   async function attendanceEntry(section,store=root.sessionStorage){
     if(school().role!=='school_admin')throw Object.assign(Error('Owner or Admin access is required for the ERP attendance register.'),{status:403});
@@ -393,8 +393,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
         const option=elt('option',candidate.teacher_name+' · '+(candidate.subject_match?'Subject match':'Class qualified')+' · '+candidate.periods+' periods');
         option.value=candidate.teacher_id;pick.append(option);
       }
-      if(rowData.teacher_id)pick.value=rowData.teacher_id;
-      else if(rowData.candidates?.length)pick.value=rowData.candidates[0].teacher_id;
+      pick.value=rowData.teacher_id||'';
       if(!rowData.candidates?.length)panel.append(elt('p','No eligible free teacher found. Requires manual school decision.','warning'));
       const lbl=elt('label','Proposed substitute','field');lbl.append(pick);panel.append(lbl);target.append(panel);
     }
