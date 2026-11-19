@@ -30,12 +30,12 @@ test('approved partial emergency leave replans only affected periods and alerts 
       create table school_users(id uuid primary key,institution_id uuid references institutions,auth_user_id uuid,role text,status text,display_name text,unique(id,institution_id));
       create function school_private.has_role(i uuid, roles text[]) returns boolean language sql stable as $$
        select exists(select 1 from public.school_users u where u.institution_id=i and u.auth_user_id=auth.uid() and u.status='active' and u.role=any(roles)) $$;
+      create function school_private.parent_of(uuid,uuid) returns boolean language sql as $$select false$$;
+      create function school_private.teacher_can(uuid,uuid,text,text) returns boolean language sql as $$select false$$;
       create table school_classes(id uuid primary key,institution_id uuid references institutions,name text,section text,academic_stream text,academic_year text,unique(id,institution_id));
       create table school_staff_profiles(institution_id uuid,school_user_id uuid,notes text);
       create table school_workspaces(institution_id uuid primary key,snapshot jsonb);
       create table school_students(id uuid primary key,institution_id uuid,class_id uuid);
-      create function school_private.parent_of(uuid,uuid) returns boolean language sql as $$select false$$;
-      create function school_private.teacher_can(uuid,uuid,text,text) returns boolean language sql as $$select false$$;
       create table school_teacher_assignments(institution_id uuid,class_id uuid,school_user_id uuid,active boolean,assignment_type text,subject text);
       insert into institutions values('${school}','active'),('${otherSchool}','active');
       insert into school_users values('${admin}','${school}','${admin}','school_admin','active','Admin'),
@@ -291,5 +291,156 @@ test('partial day leave requires start time earlier than end time',async t=>{
   assert.equal(requested,false,'Must not submit invalid partial times');
   assert.equal(pane.querySelector('dialog[open]'),null);
   assert.match(form.querySelector('[role="status"]')?.textContent||'',/Leave start time must be earlier than end time/i);
+});
+
+test('teacher can withdraw pending and future approved leaves, revoking covers and clearing attendance', async () => {
+  const db = new PGlite();
+  const sql = (statement, params) => db.query(statement, params);
+  const as = async id => {
+    await db.exec('reset role; set role authenticated');
+    await sql("select set_config('request.jwt.claim.sub',$1,false)", [id]);
+  };
+  const call = async (fn, ...args) => (await sql('select public.' + fn + '(' + args.map((_,i)=>'$'+(i+1)).join(',') + ') result', args)).rows[0].result;
+  const futureDay = '2099-11-20';
+  try {
+    await db.exec(`
+      create role anon; create role authenticated; create role service_role;
+      create schema auth; create schema school_private;
+      create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+      create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,'{}')$$;
+      create table auth.users(id uuid primary key,email_confirmed_at timestamptz,banned_until timestamptz,deleted_at timestamptz,raw_app_meta_data jsonb);
+      insert into auth.users(id,email_confirmed_at) values('${teacher}',now()),('${cover}',now()),('${admin}',now());
+      create table institutions(id uuid primary key,status text);
+      create table school_users(id uuid primary key,institution_id uuid references institutions,auth_user_id uuid,role text,status text,display_name text,unique(id,institution_id));
+      create function school_private.has_role(i uuid, roles text[]) returns boolean language sql stable as $$
+       select exists(select 1 from public.school_users u where u.institution_id=i and u.auth_user_id=auth.uid() and u.status='active' and u.role=any(roles)) $$;
+      create function school_private.parent_of(uuid,uuid) returns boolean language sql as $$select false$$;
+      create function school_private.teacher_can(uuid,uuid,text,text) returns boolean language sql as $$select false$$;
+      create table school_classes(id uuid primary key,institution_id uuid references institutions,name text,section text,academic_stream text,academic_year text,unique(id,institution_id));
+      create table school_staff_profiles(institution_id uuid,school_user_id uuid,notes text);
+      create table school_workspaces(institution_id uuid primary key,snapshot jsonb);
+      create table school_students(id uuid primary key,institution_id uuid,class_id uuid);
+      create table school_teacher_assignments(institution_id uuid,class_id uuid,school_user_id uuid,active boolean,assignment_type text,subject text);
+      insert into institutions values('${school}','active');
+      insert into school_users values('${admin}','${school}','${admin}','school_admin','active','Admin'),
+       ('${teacher}','${school}','${teacher}','teacher','active','Monika'),
+       ('${cover}','${school}','${cover}','teacher','active','Neha');
+      insert into school_classes values('${cls}','${school}','LKG','A','','2099');
+      insert into school_teacher_assignments values
+       ('${school}','${cls}','${teacher}',true,'subject_teacher','English'),
+       ('${school}','${cls}','${cover}',true,'subject_teacher','English');
+      insert into school_staff_profiles values('${school}','${teacher}','ERP faculty ref: faculty-a');
+      insert into school_workspaces values('${school}','{"operations":{"staffAttendance":[{"staffId":"faculty-a","staffType":"Teaching","date":"${futureDay}","status":"Present"}]}}');
+    `);
+    await db.exec(fs.readFileSync('supabase/migrations/20261107160000_bell_timetable_private_student_photos.sql','utf8').split('-- Parents see only')[0]+'COMMIT;');
+    await db.exec(fs.readFileSync('supabase/migrations/20261117100000_teacher_leave_notifications.sql','utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20261117100100_teacher_leave_attendance.sql','utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20261118093000_principal_leave_approvals.sql','utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20261118102000_school_dated_timetable.sql','utf8'));
+    const withdrawalMigration = 'supabase/migrations/20261119160000_teacher_leave_withdrawal_and_cover_revocation.sql';
+    if (fs.existsSync(withdrawalMigration)) {
+      await db.exec(fs.readFileSync(withdrawalMigration,'utf8'));
+    }
+    await db.exec(`
+      insert into school_timetable_slots(id,institution_id,academic_year,weekday,slot_index,label,kind,starts_at,ends_at) values
+       ('${firstSlot}','${school}','2099',extract(dow from date '${futureDay}'),1,'Period 1','period','09:00','09:35');
+      insert into school_timetable_published(institution_id,class_id,academic_year,slot_id,subject,teacher_user_id,room_number) values
+       ('${school}','${cls}','2099','${firstSlot}','English','${teacher}','04');
+    `);
+
+    // 1. Pending leave withdrawal
+    await as(teacher);
+    const pendingReq = await call('bn_request_teacher_leave', school, futureDay, futureDay, null, null, 'planned', 'Pending test');
+    assert.equal((await call('bn_list_teacher_leaves', school)).find(x=>x.id===pendingReq)?.status, 'pending');
+    await call('bn_review_teacher_leave', school, pendingReq, 'cancelled');
+    assert.equal((await call('bn_list_teacher_leaves', school)).find(x=>x.id===pendingReq)?.status, 'cancelled');
+
+    // 2. Future approved leave withdrawal
+    const req = await call('bn_request_teacher_leave', school, futureDay, futureDay, null, null, 'planned', 'Approved test');
+    await as(admin);
+    await call('bn_review_teacher_leave', school, req, 'approved');
+    await call('bn_publish_teacher_covers', school, req, futureDay, JSON.stringify([{slot_id:firstSlot,class_id:cls,teacher_id:cover}]));
+
+    let dated = await call('bn_school_dated_timetable', school, cls, futureDay, futureDay);
+    assert.equal(dated[0].teacher_id, cover);
+    assert.equal(dated[0].is_cover, true);
+
+    let ledger = await call('bn_teacher_attendance_month', school, futureDay);
+    assert.equal(ledger.rows[0].status, 'Approved leave');
+    assert.equal(ledger.rows[0].units, 1);
+
+    await as(teacher);
+    await call('bn_review_teacher_leave', school, req, 'cancelled');
+
+    assert.equal((await call('bn_list_teacher_leaves', school)).find(x=>x.id===req)?.status, 'cancelled');
+
+    await as(admin);
+    dated = await call('bn_school_dated_timetable', school, cls, futureDay, futureDay);
+    assert.equal(dated[0].teacher_id, teacher);
+    assert.equal(dated[0].is_cover, false);
+
+    ledger = await call('bn_teacher_attendance_month', school, futureDay);
+    assert.equal(ledger.rows[0].status, 'Present');
+    assert.equal(ledger.rows[0].approved_leave, false);
+
+    await db.exec('reset role');
+    await db.exec(`
+      insert into public.school_teacher_leave_requests(id,institution_id,teacher_id,starts_on,ends_on,kind,status,reason)
+      values('${uuid(99)}','${school}','${teacher}','2020-01-01','2020-01-01','planned','approved','Past leave');
+    `);
+    await as(teacher);
+    await assert.rejects(
+      call('bn_review_teacher_leave', school, uuid(99), 'cancelled'),
+      /already started/i
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test('Teacher App allows withdrawing pending and future approved leave and reflects cancelled status', async t => {
+  const {JSDOM} = require('jsdom');
+  const {window} = new JSDOM('<main id="duty"></main>', {runScripts:'outside-only'});
+  t.after(()=>window.close());
+  const pane = window.document.getElementById('duty');
+  window.eval(fs.readFileSync('school-teacher-duty.js','utf8'));
+
+  let leaves = [
+    {id:'l-pending',starts_on:'2099-12-01',ends_on:'2099-12-01',starts_at:null,ends_at:null,kind:'planned',status:'pending',reason:'Pending event'},
+    {id:'l-approved',starts_on:'2099-12-05',ends_on:'2099-12-05',starts_at:null,ends_at:null,kind:'planned',status:'approved',reason:'Future wedding'}
+  ];
+  let cancelledId = null;
+
+  window.confirm = () => true;
+
+  await window.BNTeacherDuty.show(pane,{
+    admin:false,
+    active:()=>true,
+    rpc:async(name,args)=>{
+      if(name==='bn_list_teacher_leaves') return leaves;
+      if(name==='bn_review_teacher_leave'){
+        cancelledId = args.p_leave;
+        leaves = leaves.map(l => l.id === args.p_leave ? {...l, status: 'cancelled'} : l);
+        return null;
+      }
+      return null;
+    }
+  });
+
+  const pendingCard = [...pane.querySelectorAll('.panel')].find(p => p.textContent.includes('Pending event'));
+  assert.ok(pendingCard, 'pending card must exist');
+  const withdrawPendingBtn = [...pendingCard.querySelectorAll('button')].find(b => b.textContent.includes('Withdraw request'));
+  assert.ok(withdrawPendingBtn, 'Withdraw request button must exist for pending leave');
+
+  const approvedCard = [...pane.querySelectorAll('.panel')].find(p => p.textContent.includes('Future wedding'));
+  assert.ok(approvedCard, 'approved card must exist');
+  const withdrawApprovedBtn = [...approvedCard.querySelectorAll('button')].find(b => b.textContent.includes('Withdraw leave'));
+  assert.ok(withdrawApprovedBtn, 'Withdraw leave button must exist for future approved leave');
+
+  withdrawApprovedBtn.click();
+  await new Promise(resolve => setTimeout(resolve, 50));
+
+  assert.equal(cancelledId, 'l-approved');
+  assert.match(pane.textContent, /cancelled/);
 });
 

@@ -648,3 +648,25 @@ test('unassigned cover plan defaults dropdown to empty choice and WhatsApp slip 
  }finally{app.dom.window.close();}
 });
 
+test('withdrawn cancelled leaves are excluded from pending/approved counts and leave list actions',async()=>{
+ const mock=backend();
+ const originalFetcher=mock.fetcher;
+ mock.fetcher=async(url,opts)=>{
+  const path=new URL(url,'https://school.example').pathname;
+  if(path==='/rest/v1/rpc/bn_list_teacher_leaves'){
+   return new Response(JSON.stringify([
+    {id:leave,teacher_name:'Teacher Withdrawn',status:'cancelled',kind:'emergency',starts_on:'2026-11-18',ends_on:'2026-11-18'}
+   ]),{status:200,headers:{'Content-Type':'application/json'}});
+  }
+  return originalFetcher(url,opts);
+ };
+ const app=await pilotLeadership(mock.fetcher);
+ try{
+  assert.equal(app.el('metricPending').textContent,'0');
+  assert.match(app.el('dailyBrief').textContent,/No leave backlog/);
+  app.doc.querySelector('[data-nav="leaves"]').click();
+  await waitForPilot(()=>!app.el('coverDate').disabled,'leaves view loaded');
+  assert.match(app.el('leaveList').textContent,/No pending or approved leave requests/);
+ }finally{app.dom.window.close();}
+});
+
