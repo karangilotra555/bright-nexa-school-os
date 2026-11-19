@@ -483,3 +483,55 @@ test('retrying an ambiguous notice publish after reload reuses the same request 
   assert.equal(ids[0],ids[1],'server idempotency must cover retries after reload');
  }finally{second.dom.window.close();}
 });
+
+test('publishing cover sends unassigned slots with teacher_id: null so revoked covers are cleared',async()=>{
+ const mock=backend();
+ const app=await pilotLeadership(mock.fetcher);
+ try{
+  app.window.confirm=()=>true;
+  app.doc.querySelector('[data-nav="leaves"]').click();
+  await waitForPilot(()=>app.el('leaveList').textContent.includes('Teacher B'),'approved leave visible');
+  await waitForPilot(()=>!app.el('coverDate').disabled,'leaves refresh finished');
+  const planBtn=app.doc.querySelector('button[data-action="cover"]');
+  assert.ok(planBtn,'plan substitute button must exist');
+  planBtn.click();
+  await waitForPilot(()=>app.el('coverRows').childElementCount>0,'cover rows loaded');
+  const select=app.doc.querySelector('select[data-slot="slot"]');
+  assert.ok(select,'period select exists');
+  select.value='';
+  await waitForPilot(()=>!app.el('coverDate').disabled,'cover plan load finished');
+  app.el('publishCover').click();
+  await waitForPilot(()=>{
+   const publishCall=mock.calls.find(c=>c.path.endsWith('/bn_publish_teacher_covers'));
+   return Boolean(publishCall);
+  },'publish cover call made');
+  const publishCall=mock.calls.find(c=>c.path.endsWith('/bn_publish_teacher_covers'));
+  assert.deepEqual(publishCall.body.p_covers,[{slot_id:'slot',class_id:'class',teacher_id:null}]);
+ }finally{app.dom.window.close();}
+});
+
+test('copyWhatsAppCover copies formatted plain-text substitution slip to clipboard',async()=>{
+ const mock=backend();
+ const app=await pilotLeadership(mock.fetcher);
+ try{
+  let copiedText='';
+  Object.defineProperty(app.window.navigator,'clipboard',{
+   value:{writeText:async text=>{copiedText=text;}},
+   configurable:true
+  });
+  app.doc.querySelector('[data-nav="leaves"]').click();
+  await waitForPilot(()=>app.el('leaveList').textContent.includes('Teacher B'),'approved leave visible');
+  await waitForPilot(()=>!app.el('coverDate').disabled,'leaves refresh finished');
+  const planBtn=app.doc.querySelector('button[data-action="cover"]');
+  planBtn.click();
+  await waitForPilot(()=>app.el('coverRows').childElementCount>0,'cover rows loaded');
+  app.el('copyWhatsAppCover').click();
+  await waitForPilot(()=>copiedText.includes('Teacher Substitution Slip'),'slip copied to clipboard');
+  await waitForPilot(()=>app.el('notice').textContent.includes('WhatsApp substitution slip copied'),'note updated');
+  assert.match(copiedText,/Bright Nexa.*Teacher Substitution Slip/);
+  assert.match(copiedText,/Teacher on Leave: Teacher B \(Planned Leave\)/);
+  assert.match(copiedText,/10 A · Math/);
+  assert.match(copiedText,/Cover: Teacher C/);
+ }finally{app.dom.window.close();}
+});
+

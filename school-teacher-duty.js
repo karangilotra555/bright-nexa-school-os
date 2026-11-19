@@ -108,6 +108,16 @@
         e.preventDefault();
         run(submit, async()=>{
           const partial = length.value === 'partial';
+          if (partial) {
+            if (!start.value || !end.value) {
+              if (visible()) message.textContent = 'Choose both start and end times for partial day leave.';
+              return;
+            }
+            if (start.value >= end.value) {
+              if (visible()) message.textContent = 'Leave start time must be earlier than end time.';
+              return;
+            }
+          }
           const leaveKind = kind.value;
           try {
             const id = await rpc('bn_request_teacher_leave',{
