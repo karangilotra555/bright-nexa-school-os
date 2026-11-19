@@ -210,7 +210,8 @@ end loop;end$$;
  for(const name of [
   '20261111092219_avoid_rewriting_unchanged_school_profiles_workspace_links.sql',
   '20261113035818_page5_reduce_workspace_pull_jsonb_rebuilds.sql',
-  ...fs.readdirSync(path.join(__dirname,'../supabase/migrations')).filter(name=>name.endsWith('_workspace_academic_streams.sql'))
+  ...fs.readdirSync(path.join(__dirname,'../supabase/migrations')).filter(name=>name.endsWith('_workspace_academic_streams.sql')),
+  '20261119152000_preserve_unchanged_workspace_attendance.sql'
  ]) await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations',name),'utf8'));
  await db.exec('set role authenticated');
  result=await pull();
@@ -315,6 +316,41 @@ end loop;end$$;
  const afterClears=await pull();
  assert.equal(afterClears.revision,beforeClear.revision+2);
  assert.deepEqual(afterClears.snapshot.operations.marks.filter(m=>m.examId==='term-11').map(m=>m.obtainedMarks).sort(),[0,79]);
+
+ // Exercise both portal writers against the same workspace revision and attendance record.
+ await db.exec('reset role');
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261119151000_class_attendance_compare_and_save.sql'),'utf8'));
+ await db.exec('set role authenticated');
+ await as(teacher);
+ const teacherMembership='eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+ const attendanceDay='2026-11-04';
+ await db.query('select bn_save_class_attendance($1,$2,$3,$4,$5)',[school,scienceId,attendanceDay,teacherMembership,
+  JSON.stringify([{student_id:scienceStudent,status:'absent',expected:null}])]);
+ await as(admin);
+ await assert.rejects(push(afterClears.revision),/revision conflict/i,
+  'an ERP revision captured before the Teacher App save must fail closed');
+ const afterTeacher=await pull();
+ const mark=async()=>(await db.query('select id,status,recorded_by,updated_at::text from school_attendance where student_id=$1 and day=$2',[scienceStudent,attendanceDay])).rows[0];
+ const savedByTeacher=await mark();
+ assert.equal(savedByTeacher.recorded_by,teacherMembership);
+ const attendanceEdit={localId:'cloud:'+savedByTeacher.id,studentLocalId:'science-student',classLocalId:'science',day:attendanceDay,status:'absent'};
+ projection.attendance.push(attendanceEdit);
+ snapshot.institution.institution.name='Updated after teacher attendance';
+ const unrelatedSave=await push(afterTeacher.revision);
+ assert.equal(unrelatedSave.school.name,'Updated after teacher attendance');
+ assert.deepEqual(await mark(),savedByTeacher,'an unrelated ERP save must preserve the attendance recorder and time');
+ attendanceEdit.status='excused';
+ await push(unrelatedSave.revision);
+ assert.equal((await mark()).status,'excused','an intentional ERP attendance correction still saves');
+ assert.equal((await mark()).recorded_by,user);
+ await as(teacher);
+ await assert.rejects(
+  db.query('select bn_save_class_attendance($1,$2,$3,$4,$5)',[school,scienceId,attendanceDay,teacherMembership,
+   JSON.stringify([{student_id:scienceStudent,status:'late',expected:'absent'}])]),
+  error=>error.code==='PT409','a stale Teacher App correction must preserve the newer ERP mark'
+ );
+ assert.equal((await mark()).status,'excused');
+
  await db.exec("select set_config('request.jwt.claim.sub','cccccccc-cccc-cccc-cccc-cccccccccccc',false)");
  await assert.rejects(pull(),/administrator required/); assert.equal((await db.query('select * from school_workspaces')).rows.length,0);
  await db.close(); console.log('workspace database: migration and behavioral assertions passed (isolated PGlite fixture)');

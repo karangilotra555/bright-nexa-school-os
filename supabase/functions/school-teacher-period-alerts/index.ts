@@ -71,14 +71,17 @@ async function rpc(name: string, args: Record<string, unknown>) {
   return response.json().catch(() => null);
 }
 
-async function deliver(alert: Alert, project: string, token: string) {
+const senderMismatch = "SENDER_ID_MISMATCH";
+type DeliveryOutcome = "accepted" | "not_sent" | typeof senderMismatch;
+
+async function deliver(alert: Alert, project: string, token: string): Promise<DeliveryOutcome> {
   const delivery = { p_installation: alert.installation, p_binding: alert.binding, p_token: alert.token };
   if (alert.portal && !await rpc("bn_urgent_circular_alert_still_allowed", {
     ...delivery, p_portal: alert.portal, p_notice: alert.event_id, p_claim_until: alert.claim_until,
-  })) return false;
+  })) return "not_sent";
   const expires = Date.parse(alert.expires);
   const ttl = Math.ceil((expires - Date.now()) / 1000);
-  if (ttl <= 0) return false;
+  if (ttl <= 0) return "not_sent";
   const response = await fetch("https://fcm.googleapis.com/v1/projects/" + encodeURIComponent(project) + "/messages:send", {
     method: "POST",
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
@@ -95,7 +98,26 @@ async function deliver(alert: Alert, project: string, token: string) {
     signal: AbortSignal.timeout(8000),
   });
   const result = await response.json().catch(() => ({}));
-  const invalid = result?.error?.details?.some((detail: { errorCode?: string }) => detail.errorCode === "UNREGISTERED") === true;
+  if (alert.portal && (response.status === 429 || response.status === 503)) {
+    const retryAfter = response.headers.get("Retry-After")?.trim();
+    if (retryAfter) {
+      const retryTime = /^\d+$/.test(retryAfter) ? Date.now() + Number(retryAfter) * 1000 : Date.parse(retryAfter);
+      const retryUntil = Math.min(retryTime, expires);
+      if (retryUntil > Date.parse(alert.claim_until)) {
+        await rpc("bn_defer_urgent_circular_alert", {
+          p_installation: alert.installation, p_portal: alert.portal, p_binding: alert.binding,
+          p_notice: alert.event_id, p_claim_until: alert.claim_until, p_retry_at: new Date(retryUntil).toISOString(),
+        });
+      }
+    }
+    return "not_sent";
+  }
+  const details = Array.isArray(result?.error?.details) ? result.error.details : [];
+  if (!response.ok && details.some((detail: { errorCode?: string }) => detail?.errorCode === senderMismatch)) {
+    // Keep the registration and lease for a retry after the sender is corrected.
+    return senderMismatch;
+  }
+  const invalid = !response.ok && details.some((detail: { errorCode?: string }) => detail?.errorCode === "UNREGISTERED");
   if (response.ok || invalid) {
     const device = { ...delivery, p_invalid: invalid };
     if (alert.portal) {
@@ -104,24 +126,27 @@ async function deliver(alert: Alert, project: string, token: string) {
       await rpc("bn_finish_teacher_period_alert", { ...device, p_event: alert.event_id });
     }
   }
-  return response.ok;
+  return response.ok ? "accepted" : "not_sent";
 }
 
 async function dispatch(name: string, at: string, account: ServiceAccount, token: string) {
   const alerts: Alert[] = await rpc(name, { p_at: at });
   let index = 0;
   let sent = 0;
+  let senderMismatches = 0;
   await Promise.all(Array.from({ length: Math.min(alerts.length, 12) }, async () => {
     while (index < alerts.length) {
       const alert = alerts[index++];
       try {
-        if (await deliver(alert, account.project_id, token)) sent++;
+        const outcome = await deliver(alert, account.project_id, token);
+        if (outcome === "accepted") sent++;
+        if (outcome === senderMismatch) senderMismatches++;
       } catch (_) {
         // Leave the claim retryable. Never write device tokens to logs.
       }
     }
   }));
-  return { claimed: alerts.length, sent };
+  return { claimed: alerts.length, sent, senderMismatches };
 }
 
 Deno.serve(async (request) => {
@@ -136,15 +161,29 @@ Deno.serve(async (request) => {
       dispatch("bn_claim_teacher_period_alerts", at, account, token),
       dispatch("bn_claim_urgent_circular_alerts", at, account, token),
     ]);
-    if (period.status === "rejected") console.error("Teacher period claim failed");
-    if (urgent.status === "rejected") console.error("Urgent circular claim failed");
+    const periodResult = period.status === "fulfilled" ? period.value : undefined;
+    const urgentResult = urgent.status === "fulfilled" ? urgent.value : undefined;
+    if (!periodResult) console.error("Teacher period claim failed");
+    if (!urgentResult) console.error("Urgent circular claim failed");
+    const teacherPeriodAffected = periodResult?.senderMismatches ?? 0;
+    const urgentCircularAffected = urgentResult?.senderMismatches ?? 0;
+    const firebaseIssue = teacherPeriodAffected || urgentCircularAffected ? {
+      code: senderMismatch,
+      teacherPeriodAffected,
+      urgentCircularAffected,
+      message: "Check that the configured Firebase sender and the Android app use the same Firebase project.",
+    } : undefined;
+    if (firebaseIssue) console.warn("Firebase notification configuration issue", JSON.stringify(firebaseIssue));
+    const acceptedCount = (periodResult?.sent ?? 0) + (urgentResult?.sent ?? 0);
+    const unavailable = !periodResult || !urgentResult || (firebaseIssue && acceptedCount === 0);
     return json({
-      ...(period.status === "fulfilled" ? period.value : { error: "Teacher period dispatch unavailable" }),
-      urgent: urgent.status === "fulfilled" ? { claimed: urgent.value.claimed, accepted: urgent.value.sent }
+      ...(periodResult ? { claimed: periodResult.claimed, sent: periodResult.sent } : { error: "Teacher period dispatch unavailable" }),
+      urgent: urgentResult ? { claimed: urgentResult.claimed, accepted: urgentResult.sent }
         : { error: "Urgent circular dispatch unavailable" },
-    }, period.status === "rejected" || urgent.status === "rejected" ? 503 : 200);
-  } catch (error) {
-    console.error("Teacher alert dispatch failed", error instanceof Error ? error.message : String(error));
+      ...(firebaseIssue ? { firebaseIssue } : {}),
+    }, unavailable ? 503 : 200);
+  } catch (_) {
+    console.error("Teacher alert dispatch failed");
     return json({ error: "Teacher alert dispatch failed" }, 503);
   }
 });

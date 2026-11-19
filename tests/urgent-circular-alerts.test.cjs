@@ -48,6 +48,8 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
   await db.exec(fs.readFileSync(migration,'utf8'));
   const acceptanceMigration='supabase/migrations/20261119150100_record_urgent_circular_acceptance_after_device_change.sql';
   await db.exec(fs.readFileSync(acceptanceMigration,'utf8'));
+  const retryMigration='supabase/migrations/20261119153000_defer_urgent_circular_provider_retries.sql';
+  await db.exec(fs.readFileSync(retryMigration,'utf8'));
   const registration=id(15), oldRegistration=id(16);
   const enable=(s,p,d,t,r=registration)=>rpc('bn_enable_urgent_circular_alerts',s,p,d,t.repeat(30),r);
   await role('authenticated',teacher);
@@ -131,6 +133,33 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
   await role('authenticated',principal);
   assert.deepEqual(await rpc('bn_leadership_urgent_delivery_status',school,secondNotice),{waiting:0,accepted:1,expired:0,unavailable:0},
     'a provider acceptance already in flight survives later deregistration');
+
+  const delayedNotice=id(18);
+  await role('authenticated',parent);
+  await enable(school,'parent',parentDevice,'p');
+  await role('authenticated',principal);
+  await rpc('bn_leadership_publish_urgent_notice',school,delayedNotice,title,body);
+  await role('service_role');
+  const attemptedAt=new Date(Date.now()+1000);
+  const [failed]=await claim(attemptedAt);
+  assert.equal(failed.event_id,delayedNotice);
+  const deferredUntil=new Date(attemptedAt.getTime()+300000);
+  const defer=(item,until)=>rpc('bn_defer_urgent_circular_alert',item.installation,item.portal,item.binding,item.event_id,item.claim_until,until.toISOString());
+  await role('authenticated',principal);
+  await assert.rejects(defer(failed,deferredUntil),/permission denied/i);
+  await role('service_role');
+  await defer(failed,deferredUntil);
+  assert.deepEqual(await claim(new Date(attemptedAt.getTime()+180000)),[],
+   'the scheduled worker must wait beyond the original two-minute lease');
+  const [renewed]=await claim(deferredUntil);
+  assert.equal(renewed.event_id,delayedNotice,'the retry is due at the provider deadline');
+  await defer(failed,new Date(deferredUntil.getTime()+600000));
+  const [current]=await claim(new Date(deferredUntil.getTime()+180000));
+  assert.equal(current.event_id,delayedNotice,'an obsolete attempt cannot postpone a new claim');
+  const expiry=Date.parse(current.expires);
+  await defer(current,new Date(expiry+600000));
+  assert.deepEqual(await claim(new Date(expiry-1000)),[],'provider cooldown can outlast a notice');
+  assert.deepEqual(await claim(new Date(expiry)),[],'expired circulars are never sent');
  }finally{await db.close();}
 });
 
@@ -162,14 +191,14 @@ test('an Android enrollment response cannot bind the previous recipient after si
  assert.equal(removed,true);
 });
 
-test('the worker rechecks each recipient just before FCM, omits circular content and preserves period messages',async()=>{
+test('the worker rechecks each FCM recipient and reports sanitized sender failures without losing successful sends',async()=>{
  const {transformSync}=require('esbuild');
  const {runInNewContext}=require('node:vm');
  const {webcrypto}=require('node:crypto');
  const source=fs.readFileSync('supabase/functions/school-teacher-period-alerts/index.ts','utf8');
  const signer=await webcrypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
  const privateKey=await webcrypto.subtle.exportKey('pkcs8',signer.privateKey);
- const nonce=id(20),lease=new Date(Date.now()+120000).toISOString(),expires=new Date(Date.now()+180000).toISOString();
+ const nonce=id(20),lease=new Date(Date.now()+120000).toISOString(),expires=new Date(Date.now()+1200000).toISOString();
  const period={installation:teacherDevice,token:'unit-teacher-period',binding:nonce,event_id:'period-end',title:'Next class',body:'Room 2',expires};
  const allowed={installation:parentDevice,token:'unit-parent-allowed',binding:nonce,event_id:notice,portal:'parent',expires,claim_until:lease};
  const revoked={...allowed,installation:otherDevice,token:'unit-parent-revoked'};
@@ -177,10 +206,11 @@ test('the worker rechecks each recipient just before FCM, omits circular content
   TEACHER_PERIOD_SCHEDULER_SECRET:'test-scheduler-secret',TEACHER_PERIOD_FCM_SERVICE_ACCOUNT:JSON.stringify({
    project_id:'test-project',client_email:'worker@example.invalid',private_key:Buffer.from(privateKey).toString('base64')
   })};
- const calls=[];let handler;
+ const calls=[],mismatchedTokens=new Set(),diagnostics=[];let handler,unregisteredParent=false,retryResponse;
  runInNewContext(transformSync(source,{loader:'ts'}).code,{
   Deno:{env:{get:key=>environment[key]},serve:fn=>{handler=fn;}},
-  TextEncoder,Response,URLSearchParams,AbortSignal,btoa,atob,crypto:webcrypto,console,
+  TextEncoder,Response,URLSearchParams,AbortSignal,btoa,atob,crypto:webcrypto,
+  console:{error:(...details)=>diagnostics.push(details),warn:(...details)=>diagnostics.push(details)},
   fetch:async(url,settings)=>{
    const endpoint=new URL(url),action=endpoint.pathname.split('/').at(-1);
    const body=settings.body instanceof URLSearchParams?null:JSON.parse(settings.body);
@@ -189,8 +219,18 @@ test('the worker rechecks each recipient just before FCM, omits circular content
    if(action==='bn_claim_teacher_period_alerts')return Response.json([period]);
    if(action==='bn_claim_urgent_circular_alerts')return Response.json([allowed,revoked]);
    if(action==='bn_urgent_circular_alert_still_allowed')return Response.json(body.p_installation===parentDevice);
-   if(action==='messages:send')return Response.json({name:'test-message'});
-   if(action.startsWith('bn_finish_'))return Response.json(null);
+   if(action==='messages:send'){
+    if(retryResponse&&body.message.token===allowed.token)return Response.json({error:{status:'UNAVAILABLE'}},retryResponse);
+    if(mismatchedTokens.has(body.message.token))return Response.json({error:{
+     message:'provider details must stay private: '+body.message.token,
+     details:[{errorCode:'SENDER_ID_MISMATCH'}]
+    }},{status:403});
+    if(unregisteredParent&&body.message.token===allowed.token)return Response.json({error:{
+     details:[{errorCode:'UNREGISTERED'}]
+    }},{status:404});
+    return Response.json({name:'test-message'});
+   }
+   if(action.startsWith('bn_finish_')||action==='bn_defer_urgent_circular_alert')return Response.json(null);
    throw Error('Unexpected worker action '+action);
   }
  });
@@ -209,4 +249,68 @@ test('the worker rechecks each recipient just before FCM, omits circular content
  assert.equal(teacher.body.message.data.title,period.title);
  assert.equal(teacher.body.message.data.body,period.body);
  assert.equal(calls.filter(call=>call.action==='bn_finish_urgent_circular_alert').length,1);
+
+ const runWorker=()=>handler(new Request('https://test.supabase.co',{method:'POST',
+  headers:{'x-scheduler-secret':'test-scheduler-secret'}}));
+ calls.length=0;
+ mismatchedTokens.add(allowed.token);
+ mismatchedTokens.add(period.token);
+ result=await runWorker();
+ const fullFailure=await result.json();
+ assert.equal(result.status,503,'a provider mismatch with no accepted sends is not an all-clear');
+ assert.equal(fullFailure.sent,0);
+ assert.equal(fullFailure.urgent.accepted,0);
+ assert.deepEqual(fullFailure.firebaseIssue,{
+  code:'SENDER_ID_MISMATCH',teacherPeriodAffected:1,urgentCircularAffected:1,
+  message:'Check that the configured Firebase sender and the Android app use the same Firebase project.'
+ });
+ assert.equal(calls.some(call=>call.action.startsWith('bn_finish_')),false,'mismatch leaves the device and retry lease intact');
+
+ calls.length=0;
+ mismatchedTokens.delete(period.token);
+ result=await runWorker();
+ const mixed=await result.json();
+ assert.equal(result.status,200,'valid sends still succeed in a mixed batch');
+ assert.equal(mixed.sent,1);
+ assert.equal(mixed.urgent.accepted,0);
+ assert.deepEqual(mixed.firebaseIssue,{...fullFailure.firebaseIssue,teacherPeriodAffected:0});
+ assert.deepEqual(calls.filter(call=>call.action.startsWith('bn_finish_')).map(call=>call.action),['bn_finish_teacher_period_alert']);
+ assert.match(JSON.stringify(diagnostics),/SENDER_ID_MISMATCH/);
+ for(const sensitive of [allowed.token,period.token,nonce,'test-service-role','test-scheduler-secret','provider details must stay private']){
+  assert.equal(JSON.stringify({diagnostics,fullFailure,mixed}).includes(sensitive),false);
+ }
+
+ calls.length=0;
+ mismatchedTokens.clear();
+ unregisteredParent=true;
+ result=await runWorker();
+ assert.equal(result.status,200);
+ assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:0}});
+ const removal=calls.find(call=>call.action==='bn_finish_urgent_circular_alert'&&call.body.p_installation===parentDevice);
+ assert.equal(removal.body.p_invalid,true,'FCM UNREGISTERED still retires the exact current binding');
+
+ calls.length=0;
+ unregisteredParent=false;
+ retryResponse={status:503,headers:{'Retry-After':'300'}};
+ const started=Date.now();
+ result=await runWorker();
+ assert.equal(result.status,200,'the period queue still records its successful send');
+ assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:0}});
+ const deferred=calls.find(call=>call.action==='bn_defer_urgent_circular_alert');
+ assert.ok(deferred,'FCM retry cooldown must be persisted');
+ const {p_retry_at:retryAt,...claimKey}=deferred.body;
+ assert.deepEqual(claimKey,{p_installation:parentDevice,p_portal:'parent',p_binding:nonce,p_notice:notice,p_claim_until:lease});
+ assert.ok(Date.parse(retryAt)>=started+300000&&Date.parse(retryAt)<=Date.now()+300000);
+ assert.equal(calls.some(call=>call.action==='bn_finish_urgent_circular_alert'),false);
+
+ calls.length=0;
+ const retryAfterDate=new Date(Date.now()+420000).toUTCString();
+ retryResponse={status:429,headers:{'Retry-After':retryAfterDate}};
+ await runWorker();
+ assert.equal(calls.find(call=>call.action==='bn_defer_urgent_circular_alert').body.p_retry_at,new Date(retryAfterDate).toISOString());
+
+ calls.length=0;
+ retryResponse={status:429,headers:{'Retry-After':'invalid'}};
+ await runWorker();
+ assert.equal(calls.some(call=>call.action==='bn_defer_urgent_circular_alert'),false);
 });

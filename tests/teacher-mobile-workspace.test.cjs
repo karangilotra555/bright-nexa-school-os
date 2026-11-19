@@ -33,7 +33,8 @@ function fixture(handler,vault){
 }
 test('mobile attendance autoloads; quick marks preserve Leave and show only confirmed saves',async()=>{
   let confirmed=false;
-  const f=fixture(call=>call.method==='POST'?(confirmed?call.body:[]):[]);
+  const f=fixture(call=>call.table==='bn_save_class_attendance'&&confirmed
+    ?call.body.p_marks.map(({student_id,status})=>({student_id,status})):[]);
   f.api.tab('attendance');await tick();
   const rows=f.id('rosterList').children;
   assert.equal(rows.length,2);
@@ -45,7 +46,7 @@ test('mobile attendance autoloads; quick marks preserve Leave and show only conf
   assert.equal(rows[0].querySelector('[data-attendance-choice="excused"]').getAttribute('aria-pressed'),'true');
   confirmed=true;f.id('saveAttendance').click();await tick();
   assert.match(f.id('attendanceFeedback').textContent,/Attendance saved/);
-  assert.deepEqual(f.calls.filter(call=>call.method==='POST').at(-1).body.map(row=>row.status),['excused','present']);
+  assert.deepEqual(f.calls.filter(call=>call.table==='bn_save_class_attendance').at(-1).body.p_marks.map(row=>row.status),['excused','present']);
   assert.doesNotMatch(f.id('rosterList').textContent,/Supabase/);
   f.window.close();
 });
