@@ -8,7 +8,7 @@ test('staff admin opens useful classes rather than a duplicate empty dashboard',
  assert.match(js,/if\(t==='dashboard'\)btn\.classList\.add\('hidden'\)/);
  assert.match(js,/portalStats'\)\)\$\('portalStats'\)\.classList\.toggle\('hidden',isAdmin\(\)\)/);
  assert.match(js,/School Admin tools/);
- assert.match(html,/teacher-access\.js\?v=20261119-verified-feeds/);
+ assert.match(html,/teacher-access\.js\?v=20261119-attendance-conflict/);
  assert.match(html,/school-role-entry\.js\?v=20261118-shared-leadership/);
  assert.match(role,/school_admin:'classes'/);
 });

@@ -2338,10 +2338,10 @@
     const feedback=$('attendanceFeedback');
     if(rows.length)$('attendanceActions').prepend(feedback);
     const button=$('saveAttendance');
-    button.disabled=Boolean(rosterScope?.saving)||pending===0;
-    button.textContent=rosterScope?.saving?'Saving…':rosterScope?.retry?'Retry save · '+pending:
+    button.disabled=Boolean(rosterScope?.saving||rosterScope?.needsReload)||pending===0;
+    button.textContent=rosterScope?.saving?'Saving…':rosterScope?.needsReload?'Reload required':rosterScope?.retry?'Retry save · '+pending:
       pending?'Save '+pending+(pending===1?' change':' changes'):rows.length&&unmarked===0?'✓ Saved':'Save attendance';
-    $('markRemainingPresent').disabled=Boolean(rosterScope?.saving)||unmarked===0;
+    $('markRemainingPresent').disabled=Boolean(rosterScope?.saving||rosterScope?.needsReload)||unmarked===0;
   }
   async function openMobileAttendance(){
     if(rosterScope?.saving)return;
@@ -2403,8 +2403,11 @@
   function refreshAttendanceBadge(row){
     const saved=row.select.value&&row.select.value===row.confirmedStatus;
     const changed=row.select.value!==row.confirmedStatus;
-    row.badge.dataset.state=saved?'saved':changed?'pending':'unmarked';
-    row.badge.textContent=saved?(row.controls?'✓ Saved':'✓ Saved in Supabase'):changed?'Unsaved change':'Not saved';
+    row.badge.dataset.state=row.reviewDraft?'pending':saved?'saved':changed?'pending':'unmarked';
+    row.badge.textContent=row.reviewDraft
+      ? 'Saved status: '+(row.confirmedStatus||'not marked')+'. Previous choice: '+row.reviewDraft.value+'. Select again to change.'
+      :saved?(row.controls?'✓ Saved':'✓ Saved in Supabase'):changed?'Unsaved change':'Not saved';
+    if(row.keepSaved)row.keepSaved.hidden=!row.reviewDraft;
     if(row.controls){
       for(const [value,button] of row.controls.choices)button.setAttribute('aria-pressed',String(value===row.select.value));
       row.controls.more.dataset.late=String(row.select.value==='late');
@@ -2425,6 +2428,7 @@
     currentRoster=roster;rosterScope={classId:cls,day,rows:new Map()};
     const key=attendanceKey(cls,day),draft=attendanceDrafts.get(key);
     put('attendanceFeedback','');
+    $('attendanceFeedback').dataset.error='false';
     const savedStatuses=new Map(records.map(record=>[record.student_id,record.status]));
     const root=$('rosterList');clearChildren(root);
     for(const student of currentRoster){
@@ -2434,50 +2438,61 @@
       const status=savedStatuses.get(student.id)||'';
       const select=newSelect(['','present','absent','late','excused'],status);
       select.children[0].textContent='Not marked';
-      select.value=status;
+      const previous=draft?.get(student.id);
+      const reviewDraft=previous&&previous.expected!==status&&previous.value!==status?previous:null;
+      select.value=reviewDraft?status:(previous?.value??status);
       select.setAttribute('aria-label','Attendance for '+student.name);
       select.dataset.studentId=student.id;select.dataset.classId=cls;
       const badge=dom('small',undefined,'attendance-save-state');
-      const row={select,badge,confirmedStatus:status};
-      if(mobileTeacher()){
-        select.value=draft?.get(student.id)??status;
-        row.controls=attendanceChoices(student,select);
-      }
+      const row={select,badge,confirmedStatus:status,reviewDraft};
+      if(mobileTeacher())row.controls=attendanceChoices(student,select);
       rosterScope.rows.set(student.id,row);
       refreshAttendanceBadge(row);
-      select.addEventListener('change',()=>{refreshAttendanceBadge(row);attendanceEdited();});
+      select.addEventListener('change',()=>{row.reviewDraft=null;refreshAttendanceBadge(row);attendanceEdited();});
       left.append(badge);
+      if(reviewDraft){
+        const keep=dom('button','Keep saved status','ghost');keep.type='button';row.keepSaved=keep;
+        keep.addEventListener('click',()=>{row.reviewDraft=null;refreshAttendanceBadge(row);attendanceEdited();});
+        left.append(keep);
+      }
       line.append(left,select);
       if(row.controls)line.append(row.controls.group);
       root.append(line);
     }
     display('saveAttendance',currentRoster.length>0);
     display('markRemainingPresent',currentRoster.length>0);
+    if(!mobileTeacher()){$('saveAttendance').disabled=false;put('loadAttendance','Load class roster');}
     if(!currentRoster.length)root.append(dom('p','No students are published for this class.'));
+    else if([...rosterScope.rows.values()].some(row=>row.reviewDraft)){
+      $('attendanceFeedback').dataset.error='true';
+      put('attendanceFeedback','Latest marks loaded. Review changed rows and reselect only the changes you still want to save.');
+    }
     else if(currentRoster.every(student=>savedStatuses.get(student.id))&&!draft?.size)
       put('attendanceFeedback',mobileTeacher()?'✓ Attendance saved':'Attendance already saved for '+attendanceCount(currentRoster.length)+'.');
+    rememberAttendance(rosterScope);
     updateAttendanceSummary();
   }
   function rememberAttendance(scope){
-    if(!mobileTeacher())return;
     const key=attendanceKey(scope.classId,scope.day);
-    const changed=new Map([...scope.rows].filter(([,row])=>row.select.value!==row.confirmedStatus)
-      .map(([id,row])=>[id,row.select.value]));
+    const changed=new Map([...scope.rows].filter(([,row])=>row.reviewDraft||row.select.value!==row.confirmedStatus)
+      .map(([id,row])=>[id,row.reviewDraft||{value:row.select.value,expected:row.confirmedStatus}]));
     if(changed.size)attendanceDrafts.set(key,changed);
     else attendanceDrafts.delete(key);
   }
   function attendanceEdited(){
-    put('attendanceFeedback','');
-    if(!mobileTeacher()||!rosterScope)return;
-    $('attendanceFeedback').dataset.error='false';
-    rosterScope.retry=false;
+    if(!rosterScope)return;
     rememberAttendance(rosterScope);
+    if(rosterScope.needsReload)return;
+    put('attendanceFeedback','');
+    $('attendanceFeedback').dataset.error='false';
+    if(!mobileTeacher())return;
+    rosterScope.retry=false;
     updateAttendanceSummary();
   }
   $('markRemainingPresent').addEventListener('click',()=>{
-    if(!rosterScope||rosterScope.classId!==$('attendanceClass').value||rosterScope.day!==$('attendanceDate').value)return;
+    if(!rosterScope||rosterScope.needsReload||rosterScope.classId!==$('attendanceClass').value||rosterScope.day!==$('attendanceDate').value)return;
     for(const row of rosterScope.rows.values()){
-      if(row.select.value)continue;
+      if(row.select.value||row.reviewDraft)continue;
       row.select.value='present';
       refreshAttendanceBadge(row);
     }
@@ -2491,6 +2506,7 @@
     if(!writableClasses('can_take_attendance').some(c=>c.id===cls))throw Error('You are not assigned to this attendance class.');
     if(rosterScope.classId!==cls||rosterScope.day!==day)throw Error('Class or date changed. Reload roster.');
     if(selects.some(s=>s.dataset.classId!==cls))throw Error('Class changed. Reload roster.');
+    if(rosterScope.needsReload)return;
     if(selects.some(s=>!['present','absent','late','excused'].includes(s.value))){
       if(!mobileTeacher())throw Error('Mark every student before saving attendance.');
       put('attendanceFeedback','Mark every student before saving attendance.');
@@ -2502,9 +2518,10 @@
     }
     const scope=rosterScope,institutionId=me.institution_id;
     const records=selects.filter(s=>s.value!==scope.rows.get(s.dataset.studentId).confirmedStatus)
-      .map(s=>({student_id:s.dataset.studentId,class_id:cls,institution_id:institutionId,day,status:s.value,recorded_by:me.id}));
+      .map(s=>({student_id:s.dataset.studentId,status:s.value,expected:scope.rows.get(s.dataset.studentId).confirmedStatus||null}));
     const button=$('saveAttendance');if(button.disabled)return;
     if(!records.length){put('attendanceFeedback','Attendance already saved for '+attendanceCount(selects.length)+'.');return;}
+    rememberAttendance(scope);
     button.disabled=true;
     if(mobileTeacher()){
       scope.saving=true;scope.retry=false;
@@ -2521,9 +2538,12 @@
       };
       let confirmed=false,writeFailure=null;
       try{
-        const saved=await api('school_attendance','on_conflict=student_id%2Cday','POST',records,'resolution=merge-duplicates,return=representation');
+        const saved=await api('rpc/bn_save_class_attendance','','POST',{
+          p_school:institutionId,p_class:cls,p_day:day,p_recorder:me.id,p_marks:records
+        });
         confirmed=matches(saved);
       }catch(error){writeFailure=error;}
+      if([401,403,404,409].includes(writeFailure?.status))throw writeFailure;
       if(!confirmed){
         try{confirmed=matches(await readAttendance(cls,day,institutionId));}catch(_) {}
       }
@@ -2538,13 +2558,21 @@
       if(mobileTeacher())$('attendanceFeedback').dataset.error='false';
       put('attendanceFeedback',mobileTeacher()?'✓ Attendance saved':'Attendance verified in Supabase for '+attendanceCount(records.length)+'.');
     }catch(error){
-      if(!mobileTeacher())throw error;
       if(scope!==rosterScope)return;
+      if(error.status===409){
+        scope.needsReload=true;
+        $('attendanceFeedback').dataset.error='true';
+        put('attendanceFeedback','Attendance changed in Supabase. Reload the latest marks before reviewing your choices.');
+        put('loadAttendance','Reload latest attendance');
+        display('loadAttendance',true);
+        return;
+      }
+      if(!mobileTeacher())throw error;
       scope.retry=true;
       $('attendanceFeedback').dataset.error='true';
       put('attendanceFeedback',"Couldn't save attendance. Your choices are still here. Try again.");
     }finally{
-      if(!mobileTeacher())button.disabled=false;
+      if(!mobileTeacher()&&scope===rosterScope)button.disabled=Boolean(scope.needsReload);
       else if(scope===rosterScope){
         scope.saving=false;
         $('attendanceClass').disabled=writableClasses('can_take_attendance').length<=1;

@@ -162,7 +162,7 @@ test('an Android enrollment response cannot bind the previous recipient after si
  assert.equal(removed,true);
 });
 
-test('the worker rechecks each recipient just before FCM, omits circular content and preserves period messages',async()=>{
+test('the worker rechecks each FCM recipient and reports sanitized sender failures without losing successful sends',async()=>{
  const {transformSync}=require('esbuild');
  const {runInNewContext}=require('node:vm');
  const {webcrypto}=require('node:crypto');
@@ -177,10 +177,11 @@ test('the worker rechecks each recipient just before FCM, omits circular content
   TEACHER_PERIOD_SCHEDULER_SECRET:'test-scheduler-secret',TEACHER_PERIOD_FCM_SERVICE_ACCOUNT:JSON.stringify({
    project_id:'test-project',client_email:'worker@example.invalid',private_key:Buffer.from(privateKey).toString('base64')
   })};
- const calls=[];let handler;
+ const calls=[],mismatchedTokens=new Set(),diagnostics=[];let handler,unregisteredParent=false;
  runInNewContext(transformSync(source,{loader:'ts'}).code,{
   Deno:{env:{get:key=>environment[key]},serve:fn=>{handler=fn;}},
-  TextEncoder,Response,URLSearchParams,AbortSignal,btoa,atob,crypto:webcrypto,console,
+  TextEncoder,Response,URLSearchParams,AbortSignal,btoa,atob,crypto:webcrypto,
+  console:{error:(...details)=>diagnostics.push(details),warn:(...details)=>diagnostics.push(details)},
   fetch:async(url,settings)=>{
    const endpoint=new URL(url),action=endpoint.pathname.split('/').at(-1);
    const body=settings.body instanceof URLSearchParams?null:JSON.parse(settings.body);
@@ -189,7 +190,16 @@ test('the worker rechecks each recipient just before FCM, omits circular content
    if(action==='bn_claim_teacher_period_alerts')return Response.json([period]);
    if(action==='bn_claim_urgent_circular_alerts')return Response.json([allowed,revoked]);
    if(action==='bn_urgent_circular_alert_still_allowed')return Response.json(body.p_installation===parentDevice);
-   if(action==='messages:send')return Response.json({name:'test-message'});
+   if(action==='messages:send'){
+    if(mismatchedTokens.has(body.message.token))return Response.json({error:{
+     message:'provider details must stay private: '+body.message.token,
+     details:[{errorCode:'SENDER_ID_MISMATCH'}]
+    }},{status:403});
+    if(unregisteredParent&&body.message.token===allowed.token)return Response.json({error:{
+     details:[{errorCode:'UNREGISTERED'}]
+    }},{status:404});
+    return Response.json({name:'test-message'});
+   }
    if(action.startsWith('bn_finish_'))return Response.json(null);
    throw Error('Unexpected worker action '+action);
   }
@@ -209,4 +219,43 @@ test('the worker rechecks each recipient just before FCM, omits circular content
  assert.equal(teacher.body.message.data.title,period.title);
  assert.equal(teacher.body.message.data.body,period.body);
  assert.equal(calls.filter(call=>call.action==='bn_finish_urgent_circular_alert').length,1);
+
+ const runWorker=()=>handler(new Request('https://test.supabase.co',{method:'POST',
+  headers:{'x-scheduler-secret':'test-scheduler-secret'}}));
+ calls.length=0;
+ mismatchedTokens.add(allowed.token);
+ mismatchedTokens.add(period.token);
+ result=await runWorker();
+ const fullFailure=await result.json();
+ assert.equal(result.status,503,'a provider mismatch with no accepted sends is not an all-clear');
+ assert.equal(fullFailure.sent,0);
+ assert.equal(fullFailure.urgent.accepted,0);
+ assert.deepEqual(fullFailure.firebaseIssue,{
+  code:'SENDER_ID_MISMATCH',teacherPeriodAffected:1,urgentCircularAffected:1,
+  message:'Check that the configured Firebase sender and the Android app use the same Firebase project.'
+ });
+ assert.equal(calls.some(call=>call.action.startsWith('bn_finish_')),false,'mismatch leaves the device and retry lease intact');
+
+ calls.length=0;
+ mismatchedTokens.delete(period.token);
+ result=await runWorker();
+ const mixed=await result.json();
+ assert.equal(result.status,200,'valid sends still succeed in a mixed batch');
+ assert.equal(mixed.sent,1);
+ assert.equal(mixed.urgent.accepted,0);
+ assert.deepEqual(mixed.firebaseIssue,{...fullFailure.firebaseIssue,teacherPeriodAffected:0});
+ assert.deepEqual(calls.filter(call=>call.action.startsWith('bn_finish_')).map(call=>call.action),['bn_finish_teacher_period_alert']);
+ assert.match(JSON.stringify(diagnostics),/SENDER_ID_MISMATCH/);
+ for(const sensitive of [allowed.token,period.token,nonce,'test-service-role','test-scheduler-secret','provider details must stay private']){
+  assert.equal(JSON.stringify({diagnostics,fullFailure,mixed}).includes(sensitive),false);
+ }
+
+ calls.length=0;
+ mismatchedTokens.clear();
+ unregisteredParent=true;
+ result=await runWorker();
+ assert.equal(result.status,200);
+ assert.deepEqual(await result.json(),{claimed:1,sent:1,urgent:{claimed:2,accepted:0}});
+ const removal=calls.find(call=>call.action==='bn_finish_urgent_circular_alert'&&call.body.p_installation===parentDevice);
+ assert.equal(removal.body.p_invalid,true,'FCM UNREGISTERED still retires the exact current binding');
 });
