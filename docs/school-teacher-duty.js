@@ -92,22 +92,45 @@
       field(form,'Reason',reason);
       const submit = element('button','Request leave','primary');
       submit.type = 'submit';
-      form.append(submit);
+      form.append(submit,message);
+      const confirmation = element('dialog',undefined,'bn-email-dialog');
+      confirmation.setAttribute('aria-label','Leave request sent');
+      const confirmationContent = element('div',undefined,'bn-email-content');
+      confirmationContent.append(element('h2','Leave request sent'),
+        element('p','Awaiting approval. You can check the status under My requests.','bn-email-description'));
+      const dismiss = action(confirmationContent,'OK',()=>{
+        if (typeof confirmation.close==='function') confirmation.close();
+        else confirmation.removeAttribute('open');
+      },'primary');
+      dismiss.autofocus = true;
+      confirmation.append(confirmationContent);
       form.addEventListener('submit', e => {
         e.preventDefault();
         run(submit, async()=>{
           const partial = length.value === 'partial';
-          await rpc('bn_request_teacher_leave',{
-            p_from:from.value,p_to:partial?from.value:to.value,p_start:partial?start.value:null,
-            p_end:partial?end.value:null,p_kind:kind.value,p_reason:reason.value.trim()
-          });
+          const leaveKind = kind.value;
+          try {
+            const id = await rpc('bn_request_teacher_leave',{
+              p_from:from.value,p_to:partial?from.value:to.value,p_start:partial?start.value:null,
+              p_end:partial?end.value:null,p_kind:leaveKind,p_reason:reason.value.trim()
+            });
+            if (typeof id!=='string'||!id) throw Error('Could not confirm the request. Refresh My requests before trying again.');
+          } catch (error) {
+            if (!error.message?.includes('An overlapping leave request already exists')) throw error;
+            if (visible()) message.textContent = 'Request not sent. A pending or approved leave overlaps these dates or times. Check My requests or choose a different date or time.';
+            return;
+          }
           if (!visible()) return;
           reason.value = '';
-          message.textContent = kind.value==='emergency' ? 'Emergency leave sent for priority review.' : 'Leave sent for approval.';
-          await load();
+          const sent = leaveKind==='emergency' ? 'Emergency leave sent for priority review.' : 'Leave sent for approval.';
+          message.textContent = sent;
+          if (typeof confirmation.showModal==='function') confirmation.showModal();
+          else { confirmation.setAttribute('open',''); dismiss.focus(); }
+          try { await load(); }
+          catch (_) { if (visible()) message.textContent = sent+' Use Refresh under My requests to update the list.'; }
         });
       });
-      formArea.append(form);
+      formArea.append(form,confirmation);
     }
 
     async function load() {

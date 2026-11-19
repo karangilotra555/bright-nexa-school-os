@@ -298,7 +298,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   function openMetric(page){
     showPage(page);
     doc.querySelector('[data-page="'+page+'"] h2')?.focus();
-    if(page==='uncovered')return run(refreshVisiblePage);
+    if(page==='uncovered'||page==='leaves')return run(refreshVisiblePage);
   }
   async function loadUncovered(){
     const pulse=snapshot?.pulse;
@@ -538,6 +538,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   doc.querySelectorAll('[data-nav]').forEach(button=>button.addEventListener('click',()=>{
     const destination=button.dataset.nav;
     if(destination==='cover'&&!coverLeave){note('Choose an approved leave under Leave requests to plan cover.');showPage('leaves');return;}
+    if(destination==='leaves')return openMetric('leaves');
     showPage(destination);
   }));
   $('coverDate').addEventListener('change',()=>run(loadCover));
