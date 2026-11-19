@@ -194,15 +194,16 @@ function create(fetcher, deviceStore=root.BNMobileSession?.createStore('parent')
   return rows('school_parent_inbox_reads',{...filters,select:'item_kind,item_id',order:'item_kind.asc,item_id.asc'});
  }
  async function markInboxRead(link,kind,id){
-  const scope=inboxScope(link),activeSession=session;
+  const scope=inboxScope(link),revision=authRevision;
   const receipt={...scope,item_kind:kind,item_id:id};
   const conflict=Object.keys(receipt).join(',');
   await request('/rest/v1/school_parent_inbox_reads?on_conflict='+conflict,{
    method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(receipt)
   });
-  if(session!==activeSession)throw Error('Please log in again');
+  if(revision!==authRevision)throw Error('Please log in again');
   const filters=Object.fromEntries(Object.entries(receipt).map(([key,value])=>[key,'eq.'+value]));
   const confirmed=await rows('school_parent_inbox_reads',{...filters,select:'item_kind,item_id',order:'item_kind.asc,item_id.asc'});
+  if(revision!==authRevision)throw Error('Please log in again');
   if(!confirmed.length)throw Error('Read receipt was not confirmed');
  }
  async function enableUrgentAlerts(scope,device,registration){

@@ -46,6 +46,8 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
   await sql('insert into school_guardian_students values ($1,$2,$3),($4,$5,$6)',[school,parent,student,outside,otherParent,otherStudent]);
   await db.exec(fs.readFileSync('supabase/migrations/20261118100000_leadership_pulse_notice_finance.sql','utf8'));
   await db.exec(fs.readFileSync(migration,'utf8'));
+  const acceptanceMigration='supabase/migrations/20261119150100_record_urgent_circular_acceptance_after_device_change.sql';
+  await db.exec(fs.readFileSync(acceptanceMigration,'utf8'));
   const registration=id(15), oldRegistration=id(16);
   const enable=(s,p,d,t,r=registration)=>rpc('bn_enable_urgent_circular_alerts',s,p,d,t.repeat(30),r);
   await role('authenticated',teacher);
@@ -110,6 +112,25 @@ test('urgent notices queue one authorized Parent and Teacher delivery, with scop
   await rpc('bn_disable_urgent_circular_alerts',school,'teacher',teacherDevice,teacherBinding,registration);
   await role('authenticated',principal);
   assert.deepEqual(await rpc('bn_leadership_urgent_delivery_status',school,notice),{waiting:0,accepted:1,expired:0,unavailable:1});
+
+  // Firebase can accept a checked request while logout deletes its device registration.
+  const secondNotice=id(17);
+  await role('authenticated',parent);
+  const secondBinding=await enable(school,'parent',parentDevice,'p');
+  await role('authenticated',principal);
+  await rpc('bn_leadership_publish_urgent_notice',school,secondNotice,title,body);
+  await role('service_role');
+  const [sent]=await claim(new Date(Date.now()+1000));
+  assert.equal(sent.event_id,secondNotice);
+  assert.equal(await stillAllowed(sent),true);
+  await role('authenticated',parent);
+  await rpc('bn_disable_urgent_circular_alerts',school,'parent',parentDevice,secondBinding,registration);
+  await role('service_role');
+  assert.equal(await stillAllowed(sent),false,'revoked devices cannot start a new send');
+  await rpc('bn_finish_urgent_circular_alert',sent.installation,sent.portal,sent.binding,sent.token,sent.event_id,false);
+  await role('authenticated',principal);
+  assert.deepEqual(await rpc('bn_leadership_urgent_delivery_status',school,secondNotice),{waiting:0,accepted:1,expired:0,unavailable:0},
+    'a provider acceptance already in flight survives later deregistration');
  }finally{await db.close();}
 });
 

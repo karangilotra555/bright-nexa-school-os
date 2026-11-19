@@ -32,6 +32,11 @@
       async signedUrl(){return null;}
     };
   let schoolLoadEpoch=0;
+  let staffReloadRequest=0,rolePermissionRequest=0,homeworkRequest=0,noticeRequest=0;
+  function staffReadScope(){
+    const member=me,epoch=schoolLoadEpoch;
+    return {member,current:()=>Boolean(member)&&member===me&&epoch===schoolLoadEpoch};
+  }
   const homeworkFiles=window.BNHomeworkFiles.create({base:BASE,key:APIKEY,token:async()=>{await ensureToken();return session?.access_token;}});
   const values=v=>v==null?'':String(v);
   function notify(msg,isError=false){
@@ -153,6 +158,12 @@
   });
   if(urgentAlerts)document.addEventListener('visibilitychange',()=>{
     if(!document.hidden&&mobileTeacher())urgentAlerts.resume();
+  });
+  document.addEventListener?.('visibilitychange',()=>{
+    if(document.hidden||!mobileTeacher()||!me)return;
+    const view=document.querySelector('[data-view]:not(.hidden)')?.dataset.view;
+    if(view==='notices')void run(loadNotices);
+    if(view==='homework')void run(loadHomeworkFeed);
   });
 
   let teacherScheduleRequest=0,teacherScheduleMode='today';
@@ -501,7 +512,9 @@
       more.querySelector('summary').classList.toggle('active',Boolean(more.querySelector('[data-tab].active:not(.hidden)')));
       if(name==='attendance'&&!rosterScope)openMobileAttendance();
     }
-    if(name==='marks'&&!teacherMarksLoading&&(!mobileTeacher()||!teacherMarksRows.length))run(loadTeacherMarks);
+    if(name==='marks'&&!teacherMarksLoading&&!teacherMarksSaving)run(loadTeacherMarks);
+    if(name==='notices')void run(loadNotices);
+    if(name==='homework'&&mobileTeacher())void run(loadHomeworkFeed);
     if(name==='fees')loadFees().catch(e=>notify(e.message||'Fees unavailable',true));
     if(name==='leave'&&$('teacherLeaveWorkspace'))window.BNTeacherDuty?.show($('teacherLeaveWorkspace'),dutyScope());
     if(name==='staff-attendance'&&$('teacherPersonalAttendance'))window.BNTeacherDuty?.attendance($('teacherPersonalAttendance'),dutyScope());
@@ -799,6 +812,7 @@
     // selected school's roster and role permissions.
     allClasses=[];allStudents=[];allAssignments=[];allHomework=[];allStaff=[];allHomeworkFiles=[];
     rolePermissions=null;feeStudentRoster=[];invalidateRoster();attendanceDrafts.clear();clearProfileEditor();resetTeacherMarks();resetHomeworkForm();
+    for(const id of ['classesList','homeworkList','noticesList','staffTable'])$(id)?.replaceChildren();
     sessionStorage.setItem(SELECTED_SCHOOL_KEY,school.id);
     const selector=$('schoolPicker');
     selector.replaceChildren();
@@ -822,12 +836,14 @@
       return;
     }
     await loadRolePermissions();
+    if(thisLoad!==schoolLoadEpoch)return;
     if(next){location.replace(new URL(next,location.href).href);return;}
     display('loginSection',false);display('portalSection',true);display('logout',true);
     applyNavigationVisibility();
     installTeacherActivationControl();
     installOwnerRecoveryControl();
     await reload();
+    if(thisLoad!==schoolLoadEpoch)return;
     const requested=new URLSearchParams(location.search).get('view');
     const allowedViews=['dashboard','classes','timetable','attendance','homework','marks','notices','profiles','fees','admin','account','leave','staff-attendance'];
     const landing=allowedViews.find(view=>isTabVisibleForRole(view,me.role));
@@ -880,32 +896,38 @@
     target.replaceChildren(ul);
   }
   async function reload(){
+    const scope=staffReadScope(),request=++staffReloadRequest;
+    const current=()=>scope.current()&&request===staffReloadRequest;
+    if(!current())return;
     await loadRolePermissions();
-    const institution_id=me.institution_id;
+    if(!current())return;
+    const {institution_id}=scope.member;
     const cQ=query({select:'id,institution_id,name,section,academic_year,academic_stream',institution_id:eq(institution_id),order:'name.asc',limit:'500'});
     const sQ=query({select:'id,name,admission_number,class_id,institution_id,status',institution_id:eq(institution_id),status:eq('active'),limit:'1000'});
     const aQ=query({select:'*',institution_id:eq(institution_id),limit:'1000'});
-    const hQ=query({select:'*',institution_id:eq(institution_id),order:'created_at.desc',limit:'100'});
-    [allClasses,allStudents,allAssignments,allHomework]=await Promise.all([
+    const [classes,students,assignments]=await Promise.all([
       api('school_classes',cQ),
       api('school_students',sQ),
-      api('school_teacher_assignments',aQ),
-      canAcademic()?api('school_homework',hQ):Promise.resolve([])
+      api('school_teacher_assignments',aQ)
     ]);
+    if(!current())return;
+    let staff=[];
     if(isAdmin()){
-      allStaff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id,display_name',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
+      staff=await api('school_users',query({select:'id,auth_user_id,email,role,status,institution_id,display_name',institution_id:eq(institution_id),order:'email.asc',limit:'500'}));
+      if(!current())return;
       try{
         const profs=await api('school_student_profiles',query({select:'student_id,details',institution_id:eq(institution_id),limit:'1000'}));
         const pMap=new Map((profs||[]).map(p=>[p.student_id,p.details||{}]));
-        for(const s of allStudents){
+        for(const s of students){
           const d=pMap.get(s.id);
           if(d&&d.roll_number)s.roll_number=d.roll_number;
         }
       }catch(_){}
-    }else allStaff=[];
+    }
+    if(!current())return;
+    allClasses=classes;allStudents=students;allAssignments=assignments;allStaff=staff;
     applyNavigationVisibility();
-    allHomeworkFiles=await homeworkFiles.list(allHomework.map(h=>h.id));
-    put('countClasses',allClasses.length);put('countStudents',allStudents.length);put('countHomework',allHomework.length);
+    put('countClasses',allClasses.length);put('countStudents',allStudents.length);
     const activeAttendance=mobileTeacher()&&!document.querySelector('[data-view=attendance]')?.classList.contains('hidden');
     if(!mobileTeacher()||!rosterScope?.saving){
       invalidateRoster();
@@ -914,7 +936,10 @@
     }else{
       renderSelects({keepAttendance:true});
     }
-    renderClasses();renderHomework();if(isAdmin()){renderAdmin();await renderMobileReadiness();}await loadNotices();
+    renderClasses();
+    if(isAdmin()){renderAdmin();await renderMobileReadiness();}
+    if(!current())return;
+    await Promise.all([loadHomeworkFeed(),loadNotices()]);
   }
   let readProfile=null,editingStudent=null,profileGeneration=0;
   function clearProfileEditor(){
@@ -1175,9 +1200,11 @@
   })});
 
   async function loadNotices(){
-    if(!isTabVisibleForRole('notices',me?.role||'teacher')){$('noticesList').replaceChildren();return;}
-    const rows=await api('school_notices',query({select:'id,title,body,created_at',institution_id:eq(me.institution_id),order:'created_at.desc',limit:'100'}));
-    const root=$('noticesList');root.replaceChildren();
+    const scope=staffReadScope(),request=++noticeRequest,root=$('noticesList');
+    if(!scope.member||!isTabVisibleForRole('notices',scope.member.role)){root.replaceChildren();return;}
+    const rows=await api('school_notices',query({select:'id,title,body,created_at',institution_id:eq(scope.member.institution_id),order:'created_at.desc',limit:'100'}));
+    if(!scope.current()||request!==noticeRequest)return;
+    root.replaceChildren();
     if(!rows.length){root.append(dom('p','No notices published yet.'));return;}
     for(const n of rows){const item=dom('div',undefined,'assignment');item.append(dom('h3',n.title),dom('p',n.body),dom('small',new Date(n.created_at).toLocaleDateString(),'muted'));root.append(item);}
   }
@@ -1284,8 +1311,10 @@
   };
   function getRolePermissions(){return rolePermissions||DEFAULT_ROLE_PERMS;}
   async function loadRolePermissions(){
-    if(!me?.institution_id){rolePermissions=null;return DEFAULT_ROLE_PERMS;}
-    const rows=await api('school_role_module_permissions',query({select:'role,module_key,enabled',institution_id:eq(me.institution_id)}));
+    const scope=staffReadScope(),request=++rolePermissionRequest;
+    if(!scope.member?.institution_id){rolePermissions=null;return DEFAULT_ROLE_PERMS;}
+    const rows=await api('school_role_module_permissions',query({select:'role,module_key,enabled',institution_id:eq(scope.member.institution_id)}));
+    if(!scope.current()||request!==rolePermissionRequest)return getRolePermissions();
     if(!Array.isArray(rows))throw Error('Supabase role permissions could not be loaded.');
     const next=Object.fromEntries(Object.entries(DEFAULT_ROLE_PERMS).map(([role,modules])=>[role,{...modules}]));
     for(const row of rows){if(next[row.role]&&Object.prototype.hasOwnProperty.call(next[row.role],row.module_key))next[row.role][row.module_key]=row.enabled===true;}
@@ -1566,6 +1595,19 @@
     if(me?.institution_id!==school||me.id!==owner)return;
     resetHomeworkForm();renderHomework();
     notify(fileError?'Changes saved. Use Add photo / PDF on the post to retry the files.':'Homework updated.',Boolean(fileError));
+  }
+  async function loadHomeworkFeed(){
+    const scope=staffReadScope(),request=++homeworkRequest;
+    if(!scope.member)return;
+    const current=()=>scope.current()&&request===homeworkRequest;
+    const canRead=canAcademic()&&isTabVisibleForRole('homework',scope.member.role);
+    const rows=canRead?await api('school_homework',query({select:'*',institution_id:eq(scope.member.institution_id),order:'created_at.desc',limit:'100'})):[];
+    if(!current())return;
+    const files=await homeworkFiles.list(rows.map(h=>h.id));
+    if(!current())return;
+    allHomework=rows;allHomeworkFiles=files;
+    put('countHomework',rows.length);
+    renderHomework();
   }
   function renderHomework(){
     const root=$('homeworkList');root.replaceChildren();

@@ -6,6 +6,8 @@ const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 const allowedRoles=new Set(['school_admin','principal']);
 const staffSessionKey='bn_school_staff_session_v1';
 const staffSchoolKey='bn_school_staff_selected_school_v1';
+const erpSessionKey='bright-nexa-school-os:session:v2';
+const pendingNoticeKey='bn_leadership_pending_notice_v1';
 const staffEntry='./teacher-access.html?view=attendance';
 const denied=error=>[401,403].includes(error.status);
 const schoolAccessError=()=>Object.assign(Error('Active Owner or Principal school access is required.'),{status:403});
@@ -73,7 +75,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
         const institutions=(await send('/rest/v1/institutions?'+params)).data;
         const school=institutions?.[0];
         if(school?.id===member.institution_id&&['active','trial'].includes(school.status)){
-          verified.push({id:school.id,name:school.name||'Verified school',role:member.role,displayName:member.display_name||'School leadership'});
+          verified.push({id:school.id,name:school.name||'Verified school',role:member.role,memberId:member.id,displayName:member.display_name||'School leadership'});
         }
       }catch(error){if(!denied(error))throw error;}
     }
@@ -213,6 +215,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   async function logout(){
     const token=session?.access_token;
     session=null;schools=[];selected=null;version++;
+    for(const key of [staffSessionKey,staffSchoolKey,erpSessionKey,pendingNoticeKey])root.sessionStorage?.removeItem(key);
     await storage?.clear();
     if(token)send('/auth/v1/logout?scope=local',{method:'POST',keepalive:true,headers:{Authorization:'Bearer '+token}},false).catch(()=>{});
   }
@@ -223,10 +226,15 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   const params=new URLSearchParams(root.location?.search||'');
   const entry=params.get('entry');
   const fromSharedApp=entry==='staff'||entry==='launcher';
-  let snapshot=null,coverLeave=null,busy=false,pendingNoticeId=null;
+  let snapshot=null,coverLeave=null,busy=false,page='home',pendingNotice=null,publishedNotice=null;
   const elt=(tag,label,cls)=>{const e=doc.createElement(tag);if(label!==undefined)e.textContent=String(label);if(cls)e.className=cls;return e;};
   const note=(text,error=false)=>{const e=$('notice');e.textContent=text||'';e.classList.toggle('error',error);};
-  const status=busyValue=>{busy=busyValue;$('schoolPicker').disabled=busyValue;doc.querySelectorAll('button[data-action]').forEach(btn=>btn.disabled=busyValue);};
+  const status=busyValue=>{
+    busy=busyValue;
+    $('schoolPicker').disabled=busyValue;
+    $('coverDate').disabled=busyValue;
+    doc.querySelectorAll('button[data-action]').forEach(btn=>btn.disabled=busyValue);
+  };
   async function run(task){
     if(busy)return;
     status(true);note('');
@@ -239,7 +247,8 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     const div=elt('div',undefined,'line');
     div.append(elt('strong',title),elt('span',detail));parent.append(div);return div;
   }
-  function showPage(page){
+  function showPage(destination){
+    page=destination;
     doc.querySelectorAll('[data-page]').forEach(el=>el.hidden=el.dataset.page!==page);
     const activeNav=['student-attendance','teacher-attendance','uncovered'].includes(page)?'home':page;
     doc.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('selected',el.dataset.nav===activeNav));
@@ -289,7 +298,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   function openMetric(page){
     showPage(page);
     doc.querySelector('[data-page="'+page+'"] h2')?.focus();
-    if(page==='uncovered')return run(loadUncovered);
+    if(page==='uncovered')return run(refreshVisiblePage);
   }
   async function loadUncovered(){
     const pulse=snapshot?.pulse;
@@ -299,13 +308,15 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if(!pulse.scheduled_periods){summary.textContent='No periods have been published for '+pulse.day+'.';return;}
     if(!pulse.uncovered_periods){summary.textContent='All published periods are covered on '+pulse.day+'.';return;}
     summary.textContent=pulse.uncovered_periods+' of '+pulse.scheduled_periods+' published periods are uncovered on '+pulse.day+'.';
-    const classes=await client.timetableClasses(),picker=$('uncoveredClass');
+    const picker=$('uncoveredClass'),previousClass=picker.value;
+    const classes=await client.timetableClasses();
     picker.replaceChildren();
     for(const cls of classes){
       const option=elt('option',[cls.name,cls.section,cls.academic_stream].filter(Boolean).join(' · '));
       option.value=cls.id;picker.append(option);
     }
     if(!picker.options.length)return;
+    if(classes.some(cls=>cls.id===previousClass))picker.value=previousClass;
     field.hidden=false;
     await loadUncoveredClass();
   }
@@ -368,8 +379,8 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     $('publishCover').hidden=coverLeave.status==='pending';
     const date=$('coverDate');date.min=coverLeave.starts_on;date.max=coverLeave.ends_on;
     if(!date.value||date.value<date.min||date.value>date.max)date.value=today()<date.min?date.min:today()>date.max?date.max:today();
-    const rows=await client.covers(coverLeave.id,date.value);
     const target=$('coverRows');target.replaceChildren();
+    const rows=await client.covers(coverLeave.id,date.value);
     if(!rows?.length){target.append(elt('p','No published teaching periods affected for this date.','muted'));return;}
     for(const rowData of rows){
       const panel=elt('article',undefined,'panel');
@@ -389,8 +400,24 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     }
   }
   async function refresh(){
-    const data=await client.overview();snapshot=data;
+    let data;
+    try{data=await client.overview();}
+    catch(error){
+      $('lastSync').textContent=snapshot
+        ? 'Refresh failed. Showing last verified data for '+snapshot.pulse.day+'.'
+        : 'School data could not be refreshed.';
+      throw error;
+    }
+    snapshot=data;
     drawHome(data);drawLeaves(data.leaves);drawAttendanceDetails(data.pulse);
+  }
+  async function refreshVisiblePage(){
+    await refresh();
+    if(page==='uncovered')await loadUncovered();
+  }
+  function resumeDashboard(){
+    if(doc.hidden||$('mainApp').hidden||!['home','student-attendance','teacher-attendance','leaves','uncovered'].includes(page))return;
+    void run(refreshVisiblePage);
   }
   function chooseSchools(data){
     const picker=$('schoolPicker');picker.replaceChildren();
@@ -400,13 +427,16 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     picker.value=data.selected.id;picker.hidden=data.schools.length===1;
   }
   function clearDashboard(school){
-    snapshot=null;coverLeave=null;pendingNoticeId=null;
+    snapshot=null;coverLeave=null;pendingNotice=null;publishedNotice=null;
+    $('refreshNoticeStatus').hidden=true;
+    $('uncoveredClassField').hidden=true;
+    $('uncoveredList').hidden=true;
     $('schoolName').textContent=school?.name||'';
     $('roleLabel').textContent=school?(school.role==='principal'?'Principal':'Owner / Admin'):'';
     $('welcomeName').textContent=school?'Hello, '+school.displayName:'School leadership';
     for(const id of ['metricStudents','metricTeachers','metricPending','metricUrgent','feeTotal','feeCash','feeOnline','feeUnknown'])$(id).textContent='—';
-    for(const id of ['lastSync','attendanceCoverage','teacherCoverage','periodCoverage','feeReceipts','coverReviewStatus','aiCoverReason','noticePublishStatus'])$(id).textContent='';
-    for(const id of ['dailyBrief','leaveList','coverRows','studentAttendanceDetail','teacherAttendanceDetail'])$(id).replaceChildren();
+    for(const id of ['lastSync','attendanceCoverage','teacherCoverage','periodCoverage','feeReceipts','coverReviewStatus','aiCoverReason','noticePublishStatus','uncoveredSummary'])$(id).textContent='';
+    for(const id of ['dailyBrief','leaveList','coverRows','studentAttendanceDetail','teacherAttendanceDetail','uncoveredClass','uncoveredList'])$(id).replaceChildren();
     for(const id of ['openStudentRegister','openTeachingRegister'])$(id).hidden=school?.role!=='school_admin';
     for(const id of ['noticeTemplate','noticeTitle','noticeBody'])$(id).value='';
   }
@@ -427,6 +457,8 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     clearDashboard(school);showPage('home');await refresh();
   }));
   $('refreshBtn').addEventListener('click',()=>run(refresh));
+  doc.addEventListener('visibilitychange',resumeDashboard);
+  root.addEventListener('online',resumeDashboard);
   doc.querySelectorAll('[data-metric-page]').forEach(card=>card.addEventListener('click',()=>openMetric(card.dataset.metricPage)));
   $('uncoveredClass').addEventListener('change',()=>run(loadUncoveredClass));
   $('uncoveredLeaves').addEventListener('click',()=>openMetric('leaves'));
@@ -459,27 +491,49 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
       $('noticeTitle').value='Urgent: Change in School Dispersal Time';
       $('noticeBody').value='School will close earlier than usual today. Parents should follow the official transport and pickup instructions issued by the school.';
     }
-    pendingNoticeId=null;
   });
-  for(const id of ['noticeTitle','noticeBody'])$(id).addEventListener('input',()=>{pendingNoticeId=null;});
-  $('sendNotice').addEventListener('click',()=>run(async()=>{
-    const title=$('noticeTitle').value.trim(),body=$('noticeBody').value.trim();
-    if(title.length<8||body.length<15)throw Error('Enter a complete official notice.');
-    if(!root.confirm('Publish this official notice to the school feed?\\n\\n'+title+'\\n\\n'+body+'\\n\\nAndroid alerts will be queued for eligible phones.'))return;
-    if(!pendingNoticeId){
-      if(!root.crypto?.randomUUID)throw Error('Secure notice ID generation is not available on this device.');
-      pendingNoticeId=root.crypto.randomUUID();
+  async function requestIdForNotice(title,body){
+    const school=client.school();
+    const content=JSON.stringify([school.id,school.memberId,title,body]);
+    const digest=await root.crypto.subtle.digest('SHA-256',new TextEncoder().encode(content));
+    const fingerprint=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+    if(!pendingNotice){
+      try{pendingNotice=JSON.parse(root.sessionStorage?.getItem(pendingNoticeKey)||'null');}catch(_){}
     }
-    const notice=await client.publishUrgent(title,body,pendingNoticeId);
+    if(pendingNotice?.fingerprint!==fingerprint){
+      pendingNotice={fingerprint,id:root.crypto.randomUUID()};
+      try{root.sessionStorage?.setItem(pendingNoticeKey,JSON.stringify(pendingNotice));}catch(_){}
+    }
+    return pendingNotice.id;
+  }
+  async function refreshNoticeDelivery(){
+    if(!publishedNotice)return;
     const status=$('noticePublishStatus');
     status.textContent='Circular published to school feed. Checking Android alert status…';
-    const delivery=await client.urgentDeliveryStatus(notice).catch(()=>null);
+    const delivery=await client.urgentDeliveryStatus(publishedNotice).catch(()=>null);
     const android=delivery
       ? (delivery.waiting||delivery.accepted||delivery.expired||delivery.unavailable
         ? 'Android alerts: '+delivery.waiting+' waiting, '+delivery.accepted+' accepted by Firebase, '+delivery.expired+' expired, '+delivery.unavailable+' unavailable. Phone receipt is unconfirmed.'
         : 'No Android alert registrations matched this circular.')
-      : 'Android alert status is unavailable.';
+      : 'Android alert status is unavailable. Use Refresh delivery status to retry.';
     status.textContent='Circular published to school feed. '+android;
+  }
+  $('refreshNoticeStatus').addEventListener('click',()=>run(refreshNoticeDelivery));
+  $('sendNotice').addEventListener('click',()=>run(async()=>{
+    const title=$('noticeTitle').value.trim(),body=$('noticeBody').value.trim();
+    if(title.length<8||body.length<15)throw Error('Enter a complete official notice.');
+    if(!root.confirm('Publish this official notice to the school feed?\n\n'+title+'\n\n'+body+'\n\nAndroid alerts will be queued for eligible phones.'))return;
+    const requestId=await requestIdForNotice(title,body);
+    const notice=await client.publishUrgent(title,body,requestId);
+    if(notice!==requestId)throw Error('Notice publication could not be confirmed. Retry the same draft.');
+    publishedNotice=notice;
+    pendingNotice=null;
+    try{root.sessionStorage?.removeItem(pendingNoticeKey);}catch(_){}
+    if($('noticeTitle').value.trim()===title&&$('noticeBody').value.trim()===body){
+      for(const id of ['noticeTemplate','noticeTitle','noticeBody'])$(id).value='';
+    }
+    $('refreshNoticeStatus').hidden=false;
+    await refreshNoticeDelivery();
   }));
   doc.querySelectorAll('[data-nav]').forEach(button=>button.addEventListener('click',()=>{
     const destination=button.dataset.nav;
@@ -494,7 +548,9 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if(!entries.length)throw Error('There is no valid cover to publish.');
     if(!root.confirm('Publish '+entries.length+' substitute assignment(s) to the teachers?'))return;
     await client.publish(coverLeave.id,$('coverDate').value,entries);
-    note('Cover published. Verify delivery in Teacher App.');await loadCover();
+    note('Cover published. Verify delivery in Teacher App.');
+    await loadCover();
+    await refresh();
   }));
   gate(true);
   run(async()=>{
