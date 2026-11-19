@@ -29,7 +29,7 @@ function backend(role='principal'){
   ]);
   if(path==='/rest/v1/rpc/bn_review_teacher_leave')return response(null);
   if(path==='/rest/v1/rpc/bn_teacher_leave_cover_plan')return response([
-   {slot_id:'slot',class_id:'class',class_name:'10 A',subject:'Math',starts_at:'09:00:00',ends_at:'09:45:00',candidates:[{teacher_id:'t1',teacher_name:'Teacher C',subject_match:true,periods:2}]}
+   {slot_id:'slot',class_id:'class',class_name:'10 A',subject:'Math',starts_at:'09:00:00',ends_at:'09:45:00',teacher_id:'t1',candidates:[{teacher_id:'t1',teacher_name:'Teacher C',subject_match:true,periods:2}]}
   ]);
   if(path==='/rest/v1/rpc/bn_publish_teacher_covers')return response(null);
   throw Error('Unexpected request: '+url);
@@ -532,6 +532,119 @@ test('copyWhatsAppCover copies formatted plain-text substitution slip to clipboa
   assert.match(copiedText,/Teacher on Leave: Teacher B \(Planned Leave\)/);
   assert.match(copiedText,/10 A · Math/);
   assert.match(copiedText,/Cover: Teacher C/);
+ }finally{app.dom.window.close();}
+});
+
+test('overview excludes expired approved leaves from stats.approved and reminder insights',async()=>{
+ const mock=backend();
+ const originalFetcher=mock.fetcher;
+ mock.fetcher=async(url,opts)=>{
+  const path=new URL(url,'https://school.example').pathname;
+  if(path==='/rest/v1/rpc/bn_list_teacher_leaves'){
+   return new Response(JSON.stringify([
+    {id:leave,teacher_name:'Teacher A',status:'pending',kind:'emergency',starts_on:'2026-11-18',ends_on:'2026-11-18'},
+    {id:leave.replace(/3$/,'4'),teacher_name:'Teacher B',status:'approved',kind:'planned',starts_on:'2026-11-18',ends_on:'2026-11-20'},
+    {id:leave.replace(/3$/,'5'),teacher_name:'Teacher Past',status:'approved',kind:'planned',starts_on:'2026-11-01',ends_on:'2026-11-10'}
+   ]),{status:200,headers:{'Content-Type':'application/json'}});
+  }
+  return originalFetcher(url,opts);
+ };
+ const client=create(mock.fetcher,null);
+ await client.login('principal@example.com','correct password');
+ const stats=await client.overview();
+ assert.equal(stats.pending,1);
+ assert.equal(stats.approved,1,'expired approved leave must not be counted in stats.approved');
+});
+
+test('clearing cover and publishing keeps the slot unassigned on reload and WhatsApp slip copies unassigned status',async()=>{
+ let persistedCover='t1';
+ const mock=backend();
+ const originalFetcher=mock.fetcher;
+ mock.fetcher=async(url,opts)=>{
+  const path=new URL(url,'https://school.example').pathname;
+  if(path==='/rest/v1/rpc/bn_teacher_leave_cover_plan'){
+   return new Response(JSON.stringify([
+    {slot_id:'slot',class_id:'class',class_name:'10 A',subject:'Math',starts_at:'09:00:00',ends_at:'09:45:00',teacher_id:persistedCover,candidates:[{teacher_id:'t1',teacher_name:'Teacher C',subject_match:true,periods:2}]}
+   ]),{status:200,headers:{'Content-Type':'application/json'}});
+  }
+  if(path==='/rest/v1/rpc/bn_publish_teacher_covers'){
+   const body=opts.body?JSON.parse(opts.body):{};
+   const covers=body.p_covers||[];
+   persistedCover=covers[0]?.teacher_id||null;
+   return new Response(JSON.stringify(null),{status:200,headers:{'Content-Type':'application/json'}});
+  }
+  return originalFetcher(url,opts);
+ };
+ const app=await pilotLeadership(mock.fetcher);
+ try{
+  let copiedText='';
+  Object.defineProperty(app.window.navigator,'clipboard',{
+   value:{writeText:async text=>{copiedText=text;}},
+   configurable:true
+  });
+  app.window.confirm=()=>true;
+  app.doc.querySelector('[data-nav="leaves"]').click();
+  await waitForPilot(()=>app.el('leaveList').textContent.includes('Teacher B'),'approved leave visible');
+  await waitForPilot(()=>!app.el('coverDate').disabled,'leaves refresh finished');
+  const planBtn=app.doc.querySelector('button[data-action="cover"]');
+  planBtn.click();
+  await waitForPilot(()=>app.el('coverRows').childElementCount>0,'cover rows loaded');
+
+  let select=app.doc.querySelector('select[data-slot="slot"]');
+  assert.equal(select.value,'t1','initially assigned cover must reflect published teacher_id');
+
+  select.value='';
+  await waitForPilot(()=>!app.el('coverDate').disabled,'cover plan load finished');
+  app.el('publishCover').click();
+  await waitForPilot(()=>app.el('notice').textContent.includes('Cover cleared'),'cover cleared note displayed');
+  await waitForPilot(()=>!app.el('coverDate').disabled,'publish cover run finished');
+
+  select=app.doc.querySelector('select[data-slot="slot"]');
+  assert.equal(select.value,'','cleared cover must remain unassigned after reload, not auto-select candidate 0');
+
+  app.el('copyWhatsAppCover').click();
+  await waitForPilot(()=>copiedText.includes('Teacher Substitution Slip'),'slip copied to clipboard');
+  await waitForPilot(()=>!app.el('coverDate').disabled,'copy WhatsApp slip finished');
+  assert.match(copiedText,/10 A · Math/);
+  assert.match(copiedText,/Cover: No substitute \(Self-study \/ Unassigned\)/);
+  assert.doesNotMatch(copiedText,/Cover: Teacher C/);
+ }finally{app.dom.window.close();}
+});
+
+test('unassigned cover plan defaults dropdown to empty choice and WhatsApp slip copies unassigned status',async()=>{
+ const mock=backend();
+ const originalFetcher=mock.fetcher;
+ mock.fetcher=async(url,opts)=>{
+  const path=new URL(url,'https://school.example').pathname;
+  if(path==='/rest/v1/rpc/bn_teacher_leave_cover_plan'){
+   return new Response(JSON.stringify([
+    {slot_id:'slot',class_id:'class',class_name:'10 A',subject:'Math',starts_at:'09:00:00',ends_at:'09:45:00',teacher_id:null,candidates:[{teacher_id:'t1',teacher_name:'Teacher C',subject_match:true,periods:2}]}
+   ]),{status:200,headers:{'Content-Type':'application/json'}});
+  }
+  return originalFetcher(url,opts);
+ };
+ const app=await pilotLeadership(mock.fetcher);
+ try{
+  let copiedText='';
+  Object.defineProperty(app.window.navigator,'clipboard',{
+   value:{writeText:async text=>{copiedText=text;}},
+   configurable:true
+  });
+  app.doc.querySelector('[data-nav="leaves"]').click();
+  await waitForPilot(()=>app.el('leaveList').textContent.includes('Teacher B'),'approved leave visible');
+  await waitForPilot(()=>!app.el('coverDate').disabled,'leaves refresh finished');
+  const planBtn=app.doc.querySelector('button[data-action="cover"]');
+  planBtn.click();
+  await waitForPilot(()=>app.el('coverRows').childElementCount>0,'cover rows loaded');
+
+  const select=app.doc.querySelector('select[data-slot="slot"]');
+  assert.equal(select.value,'','unassigned slot must default to empty choice despite eligible candidates');
+
+  app.el('copyWhatsAppCover').click();
+  await waitForPilot(()=>copiedText.includes('Teacher Substitution Slip'),'slip copied to clipboard');
+  await waitForPilot(()=>!app.el('coverDate').disabled,'copy WhatsApp slip finished');
+  assert.match(copiedText,/Cover: No substitute \(Self-study \/ Unassigned\)/);
+  assert.doesNotMatch(copiedText,/Cover: Teacher C/);
  }finally{app.dom.window.close();}
 });
 
