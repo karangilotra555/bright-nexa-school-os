@@ -297,6 +297,7 @@ test('dashboard cards open the relevant attendance, leave and timetable sections
     await new Promise(resolve=>setImmediate(resolve));
    }
    assert.match(destination.textContent,expected);
+   await waitForPilot(()=>!card.disabled,'section refresh finishes before the next tap');
   }
   assert.doesNotMatch(doc.querySelector('[data-page="uncovered"]').textContent,/English/);
   assert.equal(doc.getElementById('openTeachingRegister').hidden,true,'Principal cannot open the write register');
@@ -359,6 +360,25 @@ test('Leadership refreshes previously opened attendance when returning to the fo
   app.doc.dispatchEvent(new app.window.Event('visibilitychange'));
   await waitForPilot(()=>app.el('studentAttendanceDetail').textContent.includes('30 students present'),'updated attendance from the second device');
   assert.equal(app.el('metricStudents').textContent,'100%');
+ }finally{app.dom.window.close();}
+});
+
+test('opening Leadership Leaves fetches teacher requests submitted after dashboard load',async()=>{
+ const mock=backend('school_admin');
+ let submitted=false;
+ const app=await pilotLeadership(async(url,options)=>{
+  if(submitted&&url.endsWith('/bn_list_teacher_leaves')){
+   assert.equal(JSON.parse(options.body).p_school,school);
+   return Response.json([{id:leave,teacher_name:'New teacher request',status:'pending',kind:'emergency',starts_on:'2026-11-19',ends_on:'2026-11-19'}]);
+  }
+  return mock.fetcher(url,options);
+ });
+ try{
+  assert.doesNotMatch(app.el('leaveList').textContent,/New teacher request/);
+  submitted=true;
+  app.doc.querySelector('[data-nav="leaves"]').click();
+  await waitForPilot(()=>app.el('leaveList').textContent.includes('New teacher request'),'fresh request in Owner Leaves');
+  assert.ok(app.el('leaveList').querySelector('[data-action="approved"]'));
  }finally{app.dom.window.close();}
 });
 

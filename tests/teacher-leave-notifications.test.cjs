@@ -86,7 +86,12 @@ test('approved partial emergency leave replans only affected periods and alerts 
     assert.equal(firstAlerts[0].body,'UKG B · Science · Room 06');
     await call('bn_finish_teacher_period_alert',install,teacherBinding,'teacher-token'.repeat(3),firstAlerts[0].event_id,false);
     await as(admin);
+    assert.equal((await call('bn_list_teacher_leaves',school)).find(x=>x.id===request)?.status,'pending');
     await call('bn_review_teacher_leave', school, request, 'approved');
+    await as(teacher);
+    await assert.rejects(call('bn_request_teacher_leave',school,day,day,null,null,'emergency','Full day'),/overlapping leave/);
+    await as(admin);
+    assert.deepEqual((await call('bn_list_teacher_leaves',school)).map(x=>[x.id,x.status]),[[request,'approved']]);
     const ledger = await call('bn_teacher_attendance_month',school,day);
     assert.equal(ledger.rows[0].faculty_id,'faculty-a');
     assert.equal(ledger.rows[0].marked_status,'Present');
@@ -230,8 +235,33 @@ test('Teacher App can submit emergency partial leave and render personal attenda
   await new Promise(resolve=>setImmediate(resolve));
   assert.match(pane.textContent,/Emergency leave sent for priority review/);
   assert.match(pane.textContent,/09:00–11:00 · pending/);
+  const confirmation = pane.querySelector('dialog[open]');
+  assert.ok(confirmation,'a confirmed request opens a popup');
+  assert.match(confirmation.textContent,/Leave request sent/);
+  assert.match(confirmation.textContent,/Awaiting approval/);
+  confirmation.querySelector('button').click();
+  assert.equal(pane.querySelector('dialog[open]'),null);
   await window.BNTeacherDuty.attendance(pane,scoped);
   assert.match(pane.textContent,/Approved partial leave · Present/);
   assert.deepEqual(calls,['bn_list_teacher_leaves','bn_request_teacher_leave','bn_list_teacher_leaves','bn_teacher_attendance_month']);
   window.close();
+});
+
+test('an overlapping full-day leave stays in the form and has no success popup',async t=>{
+  const {JSDOM} = require('jsdom');
+  const {window} = new JSDOM('<main id="duty"></main>',{runScripts:'outside-only'});
+  t.after(()=>window.close());
+  const pane = window.document.getElementById('duty');
+  window.eval(fs.readFileSync('school-teacher-duty.js','utf8'));
+  await window.BNTeacherDuty.show(pane,{admin:false,active:()=>true,rpc:async name=>{
+    if(name==='bn_list_teacher_leaves')return [{kind:'planned',starts_on:day,ends_on:day,starts_at:'09:00',ends_at:'11:00',status:'approved'}];
+    throw Error('An overlapping leave request already exists');
+  }});
+  const form=pane.querySelector('form'),reason=form.querySelector('textarea');
+  reason.value='Family event';
+  form.requestSubmit();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(pane.querySelector('dialog[open]'),null);
+  assert.equal(reason.value,'Family event');
+  assert.match(form.querySelector('[role="status"]')?.textContent||'',/Request not sent.*My requests/);
 });
