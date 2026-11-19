@@ -19460,17 +19460,14 @@ function isStudentInClass(student, classRecord) {
   if (!student || !classRecord) return false;
   if (!isClassMatch(student.className, classRecord.name)) return false;
   if (classRecord.section) {
-    const a = normalizeSection(student.section);
-    const b = normalizeSection(classRecord.section);
-    if (a && b && a !== b) return false;
+    const a2 = normalizeSection(student.section);
+    const b2 = normalizeSection(classRecord.section);
+    if (a2 && b2 && a2 !== b2) return false;
   }
-  // Missing stream is not a wildcard in senior secondary attendance.
-  if (['11', '12', 'xi', 'xii'].includes(String(normalizeClassName(classRecord.name)).toLowerCase())) {
-    return String(student.academicStream || '').trim().toLowerCase() ===
-      String(classRecord.academicStream || '').trim().toLowerCase();
+  if (["11", "12", "xi", "xii"].includes(String(normalizeClassName(classRecord.name)).toLowerCase())) {
+    return String(student.academicStream || "").trim().toLowerCase() === String(classRecord.academicStream || "").trim().toLowerCase();
   }
-  if (classRecord.academicStream && student.academicStream &&
-      String(classRecord.academicStream).trim().toLowerCase() !== String(student.academicStream).trim().toLowerCase()) return false;
+  if (classRecord.academicStream && student.academicStream && String(classRecord.academicStream).trim().toLowerCase() !== String(student.academicStream).trim().toLowerCase()) return false;
   return true;
 }
 function bnCascadeClassroomChanges(oldClasses = [], newClasses = [], students = [], operations = {}) {
@@ -19691,16 +19688,15 @@ function buildDynamicClassList(configuredClasses = [], studentList = [], include
   return result;
 }
 function buildDynamicSectionList(selectedClass, configuredClasses = [], studentList = [], academicStream) {
-  const sections = new Set();
+  const sections = /* @__PURE__ */ new Set();
   const selected = normalizeClassName(selectedClass);
-  const senior = ['11', '12', 'xi', 'xii'].includes(String(selected).toLowerCase());
-  const scoped = senior && academicStream !== undefined;
-  const stream = String(academicStream || '').trim().toLowerCase();
-  // Admission must never offer another stream's section or a phantom fallback.
+  const senior = ["11", "12", "xi", "xii"].includes(String(selected).toLowerCase());
+  const scoped = senior && academicStream !== void 0;
+  const stream = String(academicStream || "").trim().toLowerCase();
   if (scoped && !stream) return [];
   for (const cl of configuredClasses || []) {
-    if (!cl.section || cl.status === 'Inactive' || normalizeClassName(cl.name) !== selected) continue;
-    if (scoped && String(cl.academicStream || '').trim().toLowerCase() !== stream) continue;
+    if (!cl.section || cl.status === "Inactive" || normalizeClassName(cl.name) !== selected) continue;
+    if (scoped && String(cl.academicStream || "").trim().toLowerCase() !== stream) continue;
     sections.add(String(cl.section).trim());
   }
   if (scoped) return Array.from(sections).sort();
@@ -19709,7 +19705,7 @@ function buildDynamicSectionList(selectedClass, configuredClasses = [], studentL
       sections.add(String(student.section).trim());
     }
   }
-  return sections.size ? Array.from(sections).sort() : ['A'];
+  return sections.size ? Array.from(sections).sort() : ["A"];
 }
 function bnGetApiBase() {
   if (typeof window === "undefined") return "";
@@ -20344,7 +20340,7 @@ function _Component6({
     const configured = (classes || []).filter((c3) => c3.status !== "Inactive");
     return configured.length ? buildDynamicClassList(configured, [], false) : [];
   }, [classes]);
-  let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i2.className, classes, e2, i2.academicStream || ''), [i2.className, i2.academicStream, classes, e2]);
+  let availableSections = (0, w.useMemo)(() => buildDynamicSectionList(i2.className, classes, e2, i2.academicStream || ""), [i2.className, i2.academicStream, classes, e2]);
   let [o2, s2] = (0, w.useState)({});
   let [c2, l2] = (0, w.useState)(``);
   const [photoProcessing, setPhotoProcessing] = (0, w.useState)(false);
@@ -20545,7 +20541,10 @@ function _Component6({
           Component82,
           {
             value: i2.academicStream || ``,
-            onChange: (e3) => { p2(`academicStream`, gr(e3.target.value)); p2(`section`, ``); }
+            onChange: (e3) => {
+              p2(`academicStream`, gr(e3.target.value));
+              p2(`section`, ``);
+            }
           },
           /* @__PURE__ */ w.createElement(Component80, { value: `` }, `Select Stream`),
           Bn.map((e3) => /* @__PURE__ */ w.createElement(Component81, { key: e3 }, e3))
@@ -22979,7 +22978,10 @@ function Hr({ data: e2, students: t2, onUpdate: n2 }) {
   const [followUpOpen, setFollowUpOpen] = (0, w.useState)(false);
   const followUpActor = Qt();
   let r2 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  let [i2, a2] = (0, w.useState)(`students`);
+  let [i2, a2] = (0, w.useState)(() => {
+    const entry = new URLSearchParams(window.location.search);
+    return entry.get("tab") === "Attendance" && entry.get("attendance") === "teaching" && ["OWNER", "ADMIN"].includes(followUpActor?.role) ? "teaching" : "students";
+  });
   let [o2, s2] = (0, w.useState)(r2);
   let [c2, l2] = (0, w.useState)(r2.slice(0, 7));
   const leaveMonth = i2 === `reports` ? c2 : i2 === `teaching` ? o2.slice(0, 7) : "";
@@ -23010,7 +23012,7 @@ function Hr({ data: e2, students: t2, onUpdate: n2 }) {
   const leaveWarning = leaveKey && (leaveLedger?.key !== leaveKey ? "Loading approved teacher leave\u2026" : leaveLedger.error || (approvedLeaves.some((row) => !row.faculty_id) ? "Link the Teacher App account to its ERP faculty profile to include all approved leave in payroll." : ""));
   let allClassesForAttendance = (0, w.useMemo)(() => {
     const configured = (e2.classes || []).filter((cl) => cl.status !== "Inactive");
-    const classKey = (name, section, stream) => JSON.stringify([normalizeClassName(name), normalizeSection(section || ''), String(stream || '').trim().toLowerCase()]);
+    const classKey = (name, section, stream) => JSON.stringify([normalizeClassName(name), normalizeSection(section || ""), String(stream || "").trim().toLowerCase()]);
     const configuredKeys = new Set(configured.map((cl) => classKey(cl.name, cl.section, cl.academicStream)));
     const uncoveredMap = /* @__PURE__ */ new Map();
     for (const stu of t2 || []) {
@@ -26296,21 +26298,15 @@ function Ii({ initial: e2, onClose: t2, onSave: n2, classes = [] }) {
   let [r2, i2] = (0, w.useState)(e2?.title || ``);
   let [a2, o2] = (0, w.useState)(e2?.className || (classList.includes("6") ? "6" : classList[0]));
   let [l2, u2] = (0, w.useState)(e2?.academicStream);
-  const seniorHomework = a2 === '11' || a2 === '12';
-  const currentSections = configuredClasses.length > 0
-    ? Array.from(new Set(configuredClasses.filter((c3) => c3.name === a2 && (!seniorHomework || (l2 && String(c3.academicStream || '').toLowerCase() === String(l2).toLowerCase()))).map((c3) => c3.section).filter(Boolean)))
-    : (seniorHomework ? [] : ['A', 'B', 'C', 'D']);
-  const safeSections = currentSections.length > 0 ? currentSections : (seniorHomework ? [] : ['A']);
-  let [s2, c2] = (0, w.useState)(e2?.section || safeSections[0] || '');
-  const selectedSection = safeSections.includes(s2) ? s2 : (safeSections[0] || '');
-  const currentClassObj = configuredClasses.find((c3) => c3.name === a2 && (!selectedSection || c3.section === selectedSection) &&
-    (!seniorHomework || (l2 && String(c3.academicStream || '').toLowerCase() === String(l2).toLowerCase())))
-    || (seniorHomework ? undefined : configuredClasses.find((c3) => c3.name === a2));
-  const subjectList = currentClassObj?.subjects?.length ? currentClassObj.subjects
-    : (seniorHomework ? [] : ['Mathematics', 'Science', 'English', 'Hindi', 'Social Science', 'Sanskrit', 'Computer Science']);
-  let [d2, f2] = (0, w.useState)(e2?.subject || (subjectList.includes('Mathematics') ? 'Mathematics' : subjectList[0]));
-  const selectedSubject = subjectList.includes(d2) ? d2 : (subjectList[0] || '');
-
+  const seniorHomework = a2 === "11" || a2 === "12";
+  const currentSections = configuredClasses.length > 0 ? Array.from(new Set(configuredClasses.filter((c3) => c3.name === a2 && (!seniorHomework || l2 && String(c3.academicStream || "").toLowerCase() === String(l2).toLowerCase())).map((c3) => c3.section).filter(Boolean))) : seniorHomework ? [] : ["A", "B", "C", "D"];
+  const safeSections = currentSections.length > 0 ? currentSections : seniorHomework ? [] : ["A"];
+  let [s2, c2] = (0, w.useState)(e2?.section || safeSections[0] || "");
+  const selectedSection = safeSections.includes(s2) ? s2 : safeSections[0] || "";
+  const currentClassObj = configuredClasses.find((c3) => c3.name === a2 && (!selectedSection || c3.section === selectedSection) && (!seniorHomework || l2 && String(c3.academicStream || "").toLowerCase() === String(l2).toLowerCase())) || (seniorHomework ? void 0 : configuredClasses.find((c3) => c3.name === a2));
+  const subjectList = currentClassObj?.subjects?.length ? currentClassObj.subjects : seniorHomework ? [] : ["Mathematics", "Science", "English", "Hindi", "Social Science", "Sanskrit", "Computer Science"];
+  let [d2, f2] = (0, w.useState)(e2?.subject || (subjectList.includes("Mathematics") ? "Mathematics" : subjectList[0]));
+  const selectedSubject = subjectList.includes(d2) ? d2 : subjectList[0] || "";
   let [p2, m2] = (0, w.useState)(
     e2?.dueDate || new Date(Date.now() + 864e5).toISOString().slice(0, 10)
   );
@@ -26339,7 +26335,7 @@ function Ii({ initial: e2, onClose: t2, onSave: n2, classes = [] }) {
         onSubmit: (t3) => {
           t3.preventDefault();
           if (seniorHomework && (!l2 || !currentClassObj || !selectedSection || !selectedSubject)) {
-            window.alert('Select a configured stream, section and subject before publishing homework.');
+            window.alert("Select a configured stream, section and subject before publishing homework.");
             return;
           }
           if (!!r2.trim() && !!h2.trim() && (!seniorHomework || !!l2)) {
@@ -26383,7 +26379,10 @@ function Ii({ initial: e2, onClose: t2, onSave: n2, classes = [] }) {
           }
         },
         classList.map((cls) => /* @__PURE__ */ w.createElement("option", { key: cls, value: cls }, cls.toLowerCase().startsWith("class") ? cls : `Class ${cls}`))
-      )), /* @__PURE__ */ w.createElement(R, { label: `Section` }, /* @__PURE__ */ w.createElement("select", { value: selectedSection, onChange: (e3) => c2(e3.target.value) }, safeSections.map((sec) => /* @__PURE__ */ w.createElement("option", { key: sec, value: sec }, `Section ${sec}`)))), (a2 === `11` || a2 === `12`) && /* @__PURE__ */ w.createElement(R, { label: `Academic Stream *` }, /* @__PURE__ */ w.createElement(Component843, { value: l2 || ``, onChange: (e3) => { u2(e3.target.value); c2(''); } }, /* @__PURE__ */ w.createElement(Component841, { value: `` }, `Select Stream`), Bn.map((e3) => /* @__PURE__ */ w.createElement(Component842, { key: e3 }, e3)))), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("select", { value: selectedSubject, onChange: (e3) => f2(e3.target.value) }, subjectList.map((sub) => /* @__PURE__ */ w.createElement("option", { key: sub, value: sub }, sub)))), /* @__PURE__ */ w.createElement(R, { label: `Due date` }, /* @__PURE__ */ w.createElement(
+      )), /* @__PURE__ */ w.createElement(R, { label: `Section` }, /* @__PURE__ */ w.createElement("select", { value: selectedSection, onChange: (e3) => c2(e3.target.value) }, safeSections.map((sec) => /* @__PURE__ */ w.createElement("option", { key: sec, value: sec }, `Section ${sec}`)))), (a2 === `11` || a2 === `12`) && /* @__PURE__ */ w.createElement(R, { label: `Academic Stream *` }, /* @__PURE__ */ w.createElement(Component843, { value: l2 || ``, onChange: (e3) => {
+        u2(e3.target.value);
+        c2("");
+      } }, /* @__PURE__ */ w.createElement(Component841, { value: `` }, `Select Stream`), Bn.map((e3) => /* @__PURE__ */ w.createElement(Component842, { key: e3 }, e3)))), /* @__PURE__ */ w.createElement(R, { label: `Subject` }, /* @__PURE__ */ w.createElement("select", { value: selectedSubject, onChange: (e3) => f2(e3.target.value) }, subjectList.map((sub) => /* @__PURE__ */ w.createElement("option", { key: sub, value: sub }, sub)))), /* @__PURE__ */ w.createElement(R, { label: `Due date` }, /* @__PURE__ */ w.createElement(
         Component845,
         {
           type: `date`,

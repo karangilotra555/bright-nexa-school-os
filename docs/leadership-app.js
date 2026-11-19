@@ -5,6 +5,7 @@ const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
 const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 const allowedRoles=new Set(['school_admin','principal']);
 const staffSessionKey='bn_school_staff_session_v1';
+const staffSchoolKey='bn_school_staff_selected_school_v1';
 const staffEntry='./teacher-access.html?view=attendance';
 const denied=error=>[401,403].includes(error.status);
 const schoolAccessError=()=>Object.assign(Error('Active Owner or Principal school access is required.'),{status:403});
@@ -131,7 +132,7 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   }
   function school(){if(!selected)throw Error('Select a verified school.');return selected;}
   async function rpc(name,args={}){
-    if(!/^bn_(?:list_teacher_leaves|review_teacher_leave|teacher_leave_cover_plan|publish_teacher_covers|leadership_school_pulse|leadership_fee_snapshot|leadership_publish_urgent_notice|leadership_urgent_delivery_status)$/.test(name))throw Error('Unsupported leadership operation.');
+    if(!/^bn_(?:list_teacher_leaves|review_teacher_leave|school_dated_timetable|teacher_leave_cover_plan|publish_teacher_covers|leadership_school_pulse|leadership_fee_snapshot|leadership_publish_urgent_notice|leadership_urgent_delivery_status)$/.test(name))throw Error('Unsupported leadership operation.');
     const owner=school();
     return (await send('/rest/v1/rpc/'+name,{method:'POST',body:JSON.stringify({p_school:owner.id,...args})})).data;
   }
@@ -148,6 +149,24 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
       pending:leaves.filter(x=>x.status==='pending').length,
       emergency:leaves.filter(x=>x.status==='pending'&&x.kind==='emergency').length,
       approved:leaves.filter(x=>x.status==='approved').length};
+  }
+  async function attendanceEntry(section,store=root.sessionStorage){
+    if(school().role!=='school_admin')throw Object.assign(Error('Owner or Admin access is required for the ERP attendance register.'),{status:403});
+    if(!['students','teaching'].includes(section))throw Error('Choose a valid attendance register.');
+    await fresh();
+    store.setItem(staffSchoolKey,school().id);
+    const {access_token,refresh_token,expires_at}=session;
+    store.setItem(staffSessionKey,JSON.stringify({access_token,refresh_token,expires_at}));
+    return './index.html?'+new URLSearchParams({openSchool:'true',tab:'Attendance',attendance:section});
+  }
+  async function timetableClasses(){
+    const params=new URLSearchParams({
+      institution_id:'eq.'+school().id,select:'id,name,section,academic_stream',order:'name.asc,section.asc,academic_stream.asc'
+    });
+    return (await send('/rest/v1/school_classes?'+params)).data;
+  }
+  function datedTimetable(classId,day){
+    return rpc('bn_school_dated_timetable',{p_class:classId,p_from:day,p_to:day});
   }
   async function review(id,decision){
     if(!['approved','declined'].includes(decision))throw Error('Invalid leave decision.');
@@ -197,14 +216,14 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     await storage?.clear();
     if(token)send('/auth/v1/logout?scope=local',{method:'POST',keepalive:true,headers:{Authorization:'Bearer '+token}},false).catch(()=>{});
   }
-  return {login,resumeStaff,restore,verify,choose,school,overview,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today};
+  return {login,resumeStaff,restore,verify,choose,school,overview,attendanceEntry,timetableClasses,datedTimetable,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today};
 }
 function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)){
   const $=id=>doc.getElementById(id), client=create(fetcher);
   const params=new URLSearchParams(root.location?.search||'');
   const entry=params.get('entry');
   const fromSharedApp=entry==='staff'||entry==='launcher';
-  let snapshot=null,coverLeave=null,view='home',busy=false,pendingNoticeId=null;
+  let snapshot=null,coverLeave=null,busy=false,pendingNoticeId=null;
   const elt=(tag,label,cls)=>{const e=doc.createElement(tag);if(label!==undefined)e.textContent=String(label);if(cls)e.className=cls;return e;};
   const note=(text,error=false)=>{const e=$('notice');e.textContent=text||'';e.classList.toggle('error',error);};
   const status=busyValue=>{busy=busyValue;$('schoolPicker').disabled=busyValue;doc.querySelectorAll('button[data-action]').forEach(btn=>btn.disabled=busyValue);};
@@ -221,9 +240,9 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     div.append(elt('strong',title),elt('span',detail));parent.append(div);return div;
   }
   function showPage(page){
-    view=page;
     doc.querySelectorAll('[data-page]').forEach(el=>el.hidden=el.dataset.page!==page);
-    doc.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('selected',el.dataset.nav===page));
+    const activeNav=['student-attendance','teacher-attendance','uncovered'].includes(page)?'home':page;
+    doc.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('selected',el.dataset.nav===activeNav));
   }
   function drawHome(data){
     $('schoolName').textContent=data.school.name;
@@ -256,6 +275,54 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if(pulse.uncovered_periods===null)row(insights,'Timetable not published','No scheduled periods verified for today.');
     if(Number(fees.unclassified)>0)row(insights,'Fee payment modes',fees.unclassified+' rupees cannot be classified as cash/online from saved records.');
     $('lastSync').textContent='Verified live from Supabase · '+new Date().toLocaleString('en-IN');
+  }
+  function drawAttendanceDetails(pulse){
+    const students=$('studentAttendanceDetail'),teachers=$('teacherAttendanceDetail');
+    students.replaceChildren();
+    teachers.replaceChildren();
+    row(students,'Attendance on '+pulse.day,pulse.students_marked+' of '+pulse.students+' students marked');
+    row(students,'Present',pulse.students_present+' students present');
+    row(teachers,'Attendance on '+pulse.day,pulse.teachers_marked+' of '+pulse.teachers+' teacher attendance marks linked');
+    if(pulse.teachers_present!==null)row(teachers,'Present',pulse.teachers_present+' teachers present');
+    if(pulse.teachers_on_leave>0)row(teachers,'Approved leave',pulse.teachers_on_leave+' teachers on leave');
+  }
+  function openMetric(page){
+    showPage(page);
+    doc.querySelector('[data-page="'+page+'"] h2')?.focus();
+    if(page==='uncovered')return run(loadUncovered);
+  }
+  async function loadUncovered(){
+    const pulse=snapshot?.pulse;
+    const summary=$('uncoveredSummary'),field=$('uncoveredClassField'),list=$('uncoveredList');
+    field.hidden=true;list.hidden=true;list.replaceChildren();
+    if(!pulse){summary.textContent='Use Refresh live status to load today’s timetable.';return;}
+    if(!pulse.scheduled_periods){summary.textContent='No periods have been published for '+pulse.day+'.';return;}
+    if(!pulse.uncovered_periods){summary.textContent='All published periods are covered on '+pulse.day+'.';return;}
+    summary.textContent=pulse.uncovered_periods+' of '+pulse.scheduled_periods+' published periods are uncovered on '+pulse.day+'.';
+    const classes=await client.timetableClasses(),picker=$('uncoveredClass');
+    picker.replaceChildren();
+    for(const cls of classes){
+      const option=elt('option',[cls.name,cls.section,cls.academic_stream].filter(Boolean).join(' · '));
+      option.value=cls.id;picker.append(option);
+    }
+    if(!picker.options.length)return;
+    field.hidden=false;
+    await loadUncoveredClass();
+  }
+  async function loadUncoveredClass(){
+    const picker=$('uncoveredClass'),classId=picker.value,day=snapshot.pulse.day,list=$('uncoveredList');
+    picker.disabled=true;list.hidden=true;list.replaceChildren();
+    try{
+      const lessons=await client.datedTimetable(classId,day);
+      if(!Array.isArray(lessons)||lessons.some(lesson=>lesson.class_id!==classId||lesson.day!==day))
+        throw Error('The class timetable could not be verified.');
+      for(const lesson of lessons.filter(item=>item.teacher_id===null)){
+        row(list,lesson.subject,[lesson.starts_at.slice(0,5)+'–'+lesson.ends_at.slice(0,5),
+          lesson.room_number&&'Room '+lesson.room_number].filter(Boolean).join(' · '));
+      }
+      if(!list.childElementCount)list.append(elt('p','No uncovered published periods for this class.','muted'));
+      list.hidden=false;
+    }finally{picker.disabled=false;}
   }
   const leaveDescriptor=x=>x.starts_on+(x.starts_on!==x.ends_on?' to '+x.ends_on:'')+(x.starts_at?' · '+x.starts_at.slice(0,5)+'–'+x.ends_at.slice(0,5):' · Full day');
   function drawLeaves(leaves){
@@ -323,7 +390,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   }
   async function refresh(){
     const data=await client.overview();snapshot=data;
-    drawHome(data);drawLeaves(data.leaves);
+    drawHome(data);drawLeaves(data.leaves);drawAttendanceDetails(data.pulse);
   }
   function chooseSchools(data){
     const picker=$('schoolPicker');picker.replaceChildren();
@@ -339,7 +406,8 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     $('welcomeName').textContent=school?'Hello, '+school.displayName:'School leadership';
     for(const id of ['metricStudents','metricTeachers','metricPending','metricUrgent','feeTotal','feeCash','feeOnline','feeUnknown'])$(id).textContent='—';
     for(const id of ['lastSync','attendanceCoverage','teacherCoverage','periodCoverage','feeReceipts','coverReviewStatus','aiCoverReason','noticePublishStatus'])$(id).textContent='';
-    for(const id of ['dailyBrief','leaveList','coverRows'])$(id).replaceChildren();
+    for(const id of ['dailyBrief','leaveList','coverRows','studentAttendanceDetail','teacherAttendanceDetail'])$(id).replaceChildren();
+    for(const id of ['openStudentRegister','openTeachingRegister'])$(id).hidden=school?.role!=='school_admin';
     for(const id of ['noticeTemplate','noticeTitle','noticeBody'])$(id).value='';
   }
   async function showAuthenticated(data){
@@ -359,6 +427,12 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     clearDashboard(school);showPage('home');await refresh();
   }));
   $('refreshBtn').addEventListener('click',()=>run(refresh));
+  doc.querySelectorAll('[data-metric-page]').forEach(card=>card.addEventListener('click',()=>openMetric(card.dataset.metricPage)));
+  $('uncoveredClass').addEventListener('change',()=>run(loadUncoveredClass));
+  $('uncoveredLeaves').addEventListener('click',()=>openMetric('leaves'));
+  for(const [id,section] of [['openStudentRegister','students'],['openTeachingRegister','teaching']]){
+    $(id).addEventListener('click',()=>run(async()=>root.location.assign(await client.attendanceEntry(section))));
+  }
   $('approveFromCover').addEventListener('click',()=>run(async()=>{
     if(!coverLeave||coverLeave.status!=='pending')throw Error('Select a pending leave.');
     if(!root.confirm('Approve leave for '+coverLeave.teacher_name+'? Covers will still require separate publication.'))return;

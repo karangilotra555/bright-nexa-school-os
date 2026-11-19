@@ -16,7 +16,7 @@ body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}bu
 main{padding:18px}.eyebrow{font-size:11px;font-weight:800;color:#0877b2;text-transform:uppercase;letter-spacing:1px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0 25px}
 .metric{background:#fff;border:1px solid #e0e9f3;box-shadow:0 5px 18px #0c2e5010;padding:17px 15px;border-radius:17px;min-height:125px}
-.metric b{display:block;font-size:29px;letter-spacing:-1px;margin:10px 0 1px}.metric small{font-size:12px;color:#637891}.metric .symbol{font-size:21px}
+.metric b{display:block;font-size:29px;letter-spacing:-1px;margin:10px 0 1px}.metric .metricTitle{display:block;font-size:clamp(14px,4vw,16px);font-weight:750;line-height:1.25;color:#263f5b}.metric .symbol{font-size:21px}
 .panel{background:#fff;border:1px solid #e0e9f3;box-shadow:0 5px 15px #0c2e500b;border-radius:18px;padding:16px;margin:12px 0}
 .panel h2{font-size:17px;margin:0 0 10px}.line{padding:12px 0;border-top:1px solid #eaf0f6;display:flex;flex-direction:column;gap:4px}.line:first-child{border:0}.line strong{font-size:13px}.line span,.muted{font-size:13px;color:#60768b;line-height:1.6}
 button.primary{background:#087db7;color:#fff;border:0;border-radius:12px;padding:11px 15px;font-weight:800}
@@ -28,7 +28,7 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
 .warning{font-size:12px;color:#a44821;background:#fff5e7;padding:9px;border-radius:9px}
 .field{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#455f77;font-weight:700;margin:12px 0}
 .field input,.field select,.field textarea{width:100%;background:#fff;border:1px solid #cddbe8;border-radius:12px;padding:12px 13px;color:#163450}
-.field textarea{min-height:140px;resize:vertical}.metric .detail{display:block;color:#617891;font-size:10px;line-height:1.4;margin-top:7px}.feeLine{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2f8;font-size:13px}.feeLine span{color:#577088}.feeLine b{text-align:right}
+.field textarea{min-height:140px;resize:vertical}.metric .detail{display:block;color:#526a82;font-size:12px;line-height:1.4;margin-top:7px}.feeLine{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2f8;font-size:13px}.feeLine span{color:#577088}.feeLine b{text-align:right}
 #loginPage{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:28px 24px;background:radial-gradient(circle at 50% 5%,#d7eeff,transparent 60%),#f3f7fb}
 #loginPage img{width:65px;height:65px;border-radius:18px;object-fit:cover;margin-bottom:13px}
 #loginPage h1{font-size:29px;margin:2px 0 7px}#loginPage p{font-size:14px;color:#526982;line-height:1.6}
@@ -63,10 +63,10 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     <section data-page="home">
       <span class="eyebrow">Daily school overview</span><p id="lastSync" class="sub"></p>
       <div class="grid">
-        <div class="metric"><span class="symbol">🎓</span><b id="metricStudents">—</b><small>Students present</small><span id="attendanceCoverage" class="detail">Awaiting marks</span></div>
-        <div class="metric"><span class="symbol">👩‍🏫</span><b id="metricTeachers">—</b><small>Teachers present</small><span id="teacherCoverage" class="detail">Awaiting verified staff marks</span></div>
-        <div class="metric"><span class="symbol">📋</span><b id="metricPending">—</b><small>Pending leave</small></div>
-        <div class="metric"><span class="symbol">⚡</span><b id="metricUrgent">—</b><small>Uncovered periods</small><span id="periodCoverage" class="detail">Published timetable only</span></div>
+        <button class="metric" type="button" data-metric-page="student-attendance"><span class="symbol" aria-hidden="true">🎓</span><b id="metricStudents">—</b><span class="metricTitle">Students present</span><span id="attendanceCoverage" class="detail">Awaiting marks</span></button>
+        <button class="metric" type="button" data-metric-page="teacher-attendance"><span class="symbol" aria-hidden="true">👩‍🏫</span><b id="metricTeachers">—</b><span class="metricTitle">Teachers present</span><span id="teacherCoverage" class="detail">Awaiting verified staff marks</span></button>
+        <button class="metric" type="button" data-metric-page="leaves"><span class="symbol" aria-hidden="true">📋</span><b id="metricPending">—</b><span class="metricTitle">Pending leave</span></button>
+        <button class="metric" type="button" data-metric-page="uncovered"><span class="symbol" aria-hidden="true">⚡</span><b id="metricUrgent">—</b><span class="metricTitle">Uncovered periods</span><span id="periodCoverage" class="detail">Published timetable only</span></button>
       </div>
       <article class="panel"><h2>School Operations Brief</h2><div id="dailyBrief"></div></article>
       <article class="panel" aria-label="Read-only school fee snapshot">
@@ -80,8 +80,28 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
       </article>
       <button id="refreshBtn" data-action="refresh" type="button" class="secondary">Refresh live status</button>
     </section>
+    <section data-page="student-attendance" hidden>
+      <h2 class="screenTitle" tabindex="-1">Student attendance</h2>
+      <article class="panel" id="studentAttendanceDetail"></article>
+      <button class="primary" type="button" data-action="attendance" id="openStudentRegister" hidden>Open student attendance register</button>
+    </section>
+    <section data-page="teacher-attendance" hidden>
+      <h2 class="screenTitle" tabindex="-1">Teacher attendance</h2>
+      <article class="panel" id="teacherAttendanceDetail"></article>
+      <p class="sub">The school office records teacher attendance in School OS under Attendance → Teaching Staff.</p>
+      <button class="primary" type="button" data-action="attendance" id="openTeachingRegister" hidden>Open teaching staff register</button>
+    </section>
+    <section data-page="uncovered" hidden>
+      <h2 class="screenTitle" tabindex="-1">Uncovered periods</h2>
+      <p id="uncoveredSummary" class="sub"></p>
+      <label id="uncoveredClassField" class="field" for="uncoveredClass" hidden>Class / section
+        <select id="uncoveredClass"></select>
+      </label>
+      <article class="panel" id="uncoveredList" aria-live="polite" hidden></article>
+      <button id="uncoveredLeaves" class="secondary" type="button">Review teacher leave &amp; covers</button>
+    </section>
     <section data-page="leaves" hidden>
-      <h2 class="screenTitle">Teacher Leave Approvals</h2><p class="sub">Requests are verified against the selected school. Approval updates Supabase immediately.</p>
+      <h2 class="screenTitle" tabindex="-1">Teacher Leave Approvals</h2><p class="sub">Requests are verified against the selected school. Approval updates Supabase immediately.</p>
       <div id="leaveList"></div>
     </section>
     <section data-page="cover" hidden>
@@ -133,6 +153,6 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
 <div id="notice" class="notice" role="status" aria-live="polite"></div>
 </div>
 <script src="./school-mobile-session.js?v=20261118-shared-leadership"></script>
-<script src="./leadership-app.js?v=20261118-urgent-alerts-v1"></script>
+<script src="./leadership-app.js?v=20261119-dashboard-cards-v1"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
 </body></html>

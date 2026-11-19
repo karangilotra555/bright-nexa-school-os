@@ -257,3 +257,68 @@ test('AI cover suggestion with null teacher_id unassigns the slot to empty choic
 });
 
 
+
+test('dashboard cards open the relevant attendance, leave and timetable sections',async()=>{
+ const {JSDOM}=require('jsdom');
+ const mock=backend();
+ const dom=new JSDOM(read('leadership.html'),{runScripts:'outside-only',url:'https://school.example/leadership.html?entry=staff&school='+school});
+ try{
+  const {window}=dom, doc=window.document;
+  window.fetch=async(url,options)=>{
+   const path=new URL(url).pathname;
+   if(path==='/rest/v1/school_classes')return Response.json([{id:leave,name:'Class 10',section:'A'}]);
+   if(path.endsWith('/bn_school_dated_timetable'))return Response.json([
+    {day:'2026-11-18',class_id:leave,starts_at:'09:00:00',ends_at:'09:30:00',subject:'Math',teacher_id:null},
+    {day:'2026-11-18',class_id:leave,starts_at:'10:00:00',ends_at:'10:30:00',subject:'English',teacher_id:person}
+   ]);
+   return mock.fetcher(url,options);
+  };
+  window.sessionStorage.setItem('bn_school_staff_session_v1',JSON.stringify({
+   access_token:'existing',refresh_token:'refresh',expires_at:Date.now()/1000+3600
+  }));
+  window.eval(read('leadership-app.js'));
+  window.dispatchEvent(new window.Event('DOMContentLoaded'));
+  for(let i=0;i<20&&doc.getElementById('metricStudents').textContent!=='90%';i++){
+   await new Promise(resolve=>setImmediate(resolve));
+  }
+  for(const [metric,page,expected] of [
+   ['metricStudents','student-attendance',/27 students present/i],
+   ['metricTeachers','teacher-attendance',/3 of 7 teacher attendance marks linked/i],
+   ['metricPending','leaves',/Teacher A/],
+   ['metricUrgent','uncovered',/Math/]
+  ]){
+   doc.querySelector('[data-nav="home"]').click();
+   const card=doc.getElementById(metric).closest('button');
+   assert.ok(card,metric+' must be a keyboard-accessible card');
+   card.click();
+   const destination=doc.querySelector('[data-page="'+page+'"]');
+   assert.equal(destination.hidden,false);
+   for(let i=0;i<20&&!expected.test(destination.textContent);i++){
+    await new Promise(resolve=>setImmediate(resolve));
+   }
+   assert.match(destination.textContent,expected);
+  }
+  assert.doesNotMatch(doc.querySelector('[data-page="uncovered"]').textContent,/English/);
+  assert.equal(doc.getElementById('openTeachingRegister').hidden,true,'Principal cannot open the write register');
+ }finally{dom.window.close();}
+});
+
+test('Owner attendance card can hand the selected school to the normal ERP sign-in gate',async()=>{
+ const mock=backend('school_admin');
+ const client=create(mock.fetcher,null);
+ await client.login('admin@example.com','password');
+ const sessionStorage=new Map();
+ const url=await client.attendanceEntry('teaching',{
+  setItem:(key,value)=>sessionStorage.set(key,value)
+ });
+ const target=new URL(url,'https://school.example');
+ assert.equal(target.pathname,'/index.html');
+ assert.equal(target.searchParams.get('tab'),'Attendance');
+ assert.equal(target.searchParams.get('attendance'),'teaching');
+ assert.equal(sessionStorage.get('bn_school_staff_selected_school_v1'),school);
+ assert.equal(JSON.parse(sessionStorage.get('bn_school_staff_session_v1')).access_token,'test-access');
+
+ const principal=create(backend().fetcher,null);
+ await principal.login('principal@example.com','password');
+ await assert.rejects(principal.attendanceEntry('teaching',{setItem:()=>assert.fail('Principal wrote an ERP session')}),/Owner or Admin/);
+});
