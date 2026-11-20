@@ -31,7 +31,7 @@ test('browser script versions use changed services in school and parent portals'
   assert.match(s,/school-homework-files\.js\?v=20261111-sync-audit-v1/);
   assert.match(s,/school-student-photo-cloud\.js\?v=20261111-sync-audit-v1/);
  }
- assert.match(teacher,/teacher-access\.js\?v=20261119-attendance-conflict/);
+ assert.match(teacher,/teacher-access\.js\?v=20261120-optional-import/);
  assert.match(parent,/parents-cloud\.js\?v=20261119-inbox-receipt/);
  for(const f of ['teacher-access.html','teacher-access.js','parents.html','parents-cloud.js','school-homework-files.js','school-student-photo-cloud.js','teacher-drafts-cloud.js','school-workspace-controller.js'])
   assert.equal(read(f),read('docs/'+f),f+' mirror differs');

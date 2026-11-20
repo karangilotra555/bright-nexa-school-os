@@ -16,8 +16,8 @@
     if(fromLink&&store)store.setItem('bn_school_cloud_handoff_intent_v1','1');
     return fromLink||store?.getItem('bn_school_cloud_handoff_intent_v1')==='1';
   })();
-  if(FROM_LOCAL&&window.BNPrivateCache)await window.BNPrivateCache.ensureUnlocked();
-  const LOCAL_DRAFT=FROM_LOCAL?window.BNSchoolLocalHandoff?.read(window.BNPrivateCache?.storage):null;
+  const draftVault=window.BNPrivateCache;
+  let LOCAL_DRAFT=FROM_LOCAL&&draftVault?.isUnlocked?.()?window.BNSchoolLocalHandoff?.read(draftVault.storage):null;
   const ROLES=['school_admin','principal','teacher','accountant','librarian','receptionist','transport_staff'];
   const $=id=>document.getElementById(id);
   let session=null,me=null,identity=null,allClasses=[],allStudents=[],allHomework=[],allStaff=[],allAssignments=[],allHomeworkFiles=[];
@@ -1822,14 +1822,13 @@
     try{
       // The authenticated, SECURITY DEFINER RPC enforces one school per account.
       // It creates a fresh institution and a verified school_admin membership.
-      if(FROM_LOCAL&&!LOCAL_DRAFT&&window.BNPrivateCache.storage.getItem('bright-nexa-school-os:snapshot:v1'))
-        throw Error('Your existing local school could not be read. Device data was preserved; do not create a different school.');
-      const importing=!!LOCAL_DRAFT;
+      const importing=FROM_LOCAL && $('localSchoolImportConsent').checked;
       if(importing){
-        if(!window.BNWorkspaceCloud?.buildProjection||!window.BNSchoolLocalHandoff)
+        if(!window.BNWorkspaceCloud?.buildProjection||!window.BNSchoolLocalHandoff||!draftVault)
           throw Error('Local-to-Supabase import service is unavailable. Refresh without clearing data.');
-        if(!$('localSchoolImportConsent').checked)
-          throw Error('Confirm that this local school belongs to you before importing it.');
+        await draftVault.ensureUnlocked();
+        LOCAL_DRAFT=window.BNSchoolLocalHandoff.read(draftVault.storage);
+        if(!LOCAL_DRAFT)throw Error('The saved school could not be read. Leave import unchecked to create a new empty school.');
         if(LOCAL_DRAFT.name!==name)
           throw Error('Use the saved local school name to connect your draft. Existing local records were not changed.');
         const ops=LOCAL_DRAFT.operations||{};
@@ -1870,6 +1869,12 @@
         throw Error('School "'+name+'" was registered in Supabase, but '+(importing?'local import':'workspace initialization')+
           ' is not verified: '+(err.message||err)+
           '. Your original device data is still retained. Sign in again rather than creating a duplicate school.');
+      }
+      localStorage.removeItem('bn_school_cloud_handoff_intent_v1');
+      const params=new URLSearchParams(location.search);
+      if(params.has('fromLocal')){
+        params.delete('fromLocal');
+        history.replaceState(null,'',location.pathname+(params.size?'?'+params:'')+location.hash);
       }
       await load(String(schoolId));
       notify(importing?'Local school '+name+' imported and verified in Supabase.':'New empty Supabase school created.');
@@ -2716,17 +2721,15 @@
   if(FROM_LOCAL){
     // Local draft information belongs to the authenticated school-creation step,
     // never the public sign-in screen; it is not a login error.
+    display('localSchoolImportLabel',true);
     if(LOCAL_DRAFT){
       put('localSchoolNoticeTitle','Saved school setup: '+LOCAL_DRAFT.name);
-      put('localSchoolNoticeText','This browser contains a school setup that is not yet verified online. If this is your school, choose the import option after signing in. Nothing is deleted before successful online read-back.');
-      $('firstSchoolName').value=LOCAL_DRAFT.name;
+      put('localSchoolNoticeText','Leave import unchecked to create a new empty school in Supabase. To import the saved school, select import and enter its saved name.');
       $('loginEmail').value=LOCAL_DRAFT.email;
       $('ownerSignupEmail').value=LOCAL_DRAFT.email;
-      display('localSchoolImportLabel',true);
-      $('createFirstSchoolButton').textContent='Create '+LOCAL_DRAFT.name+' in Supabase';
     }else{
       put('localSchoolNoticeTitle','Review existing school setup');
-      put('localSchoolNoticeText','We could not read the saved setup on this browser. Existing data has not been changed.');
+      put('localSchoolNoticeText','Leave import unchecked to create a new empty school in Supabase. Select import to unlock and read any saved school records.');
     }
   }
   // Only Supabase-issued authenticated invite fragments are processed; tokens
