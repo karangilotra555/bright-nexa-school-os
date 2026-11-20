@@ -736,3 +736,29 @@ test('emergency alert opens its exact request after verified sign-in',async()=>{
   assert.ok(app.doc.activeElement.querySelector('[data-action="cancelled"]'));
  }finally{app.dom.window.close();}
 });
+
+test('tapping an alert for a withdrawn emergency leave opens it in history with cancelled status and no review buttons',async()=>{
+ const mock=backend();
+ const cancelledLeave='00000000-0000-4000-8000-000000000099';
+ const emergency={id:cancelledLeave,teacher_name:'Withdrawn teacher',status:'cancelled',kind:'emergency',
+  starts_on:'2099-11-18',ends_on:'2099-11-18',can_cancel:false};
+ const fetcher=async(url,options)=>{
+  if(new URL(url).pathname.endsWith('/bn_leadership_emergency_leave')){
+   assert.deepEqual(JSON.parse(options.body),{p_school:school,p_leave:cancelledLeave});
+   return Response.json(emergency);
+  }
+  return mock.fetcher(url,options);
+ };
+ const app=await pilotLeadership(fetcher,{},'https://school.example/leadership.html?school='+school+'&leave='+cancelledLeave);
+ try{
+  await waitForPilot(()=>app.doc.activeElement.dataset.leave===cancelledLeave,'notification focuses the exact leave');
+  assert.equal(app.doc.querySelector('[data-page="leaves"]').hidden,false);
+  assert.match(app.doc.activeElement.textContent,/Withdrawn teacher/);
+  assert.match(app.doc.activeElement.textContent,/Status:\s*cancelled/i);
+  assert.equal(app.doc.querySelector('[data-leave-view="history"]').getAttribute('aria-pressed'),'true');
+  assert.equal(app.doc.activeElement.querySelector('[data-action="approved"]'),null);
+  assert.equal(app.doc.activeElement.querySelector('[data-action="cancelled"]'),null);
+  assert.equal(app.doc.activeElement.querySelector('[data-action="cover"]'),null);
+ }finally{app.dom.window.close();}
+});
+

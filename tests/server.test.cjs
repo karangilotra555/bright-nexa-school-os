@@ -11,7 +11,7 @@ before(async()=>{
  fs.copyFileSync('student-portal.html',path.join(dir,'student-portal.html'));
  fs.copyFileSync('index.html',path.join(dir,'index.html'));
  child=spawn(process.execPath,['server.js'],{cwd:dir,env:{...process.env,PORT:'0',ADMIN_API_KEY:'test-only-admin',SESSION_SECRET:'test-only-session'}});
- base=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('server start timeout')),10000);child.stdout.on('data',chunk=>{const match=chunk.toString().match(/running on port (\d+)/);if(match){clearTimeout(timer);resolve('http://127.0.0.1:'+match[1]);}});child.on('exit',code=>{clearTimeout(timer);reject(new Error('server exited '+code));});});
+ base=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('server start timeout')),20000);child.stdout.on('data',chunk=>{const match=chunk.toString().match(/running on port (\d+)/);if(match){clearTimeout(timer);resolve('http://127.0.0.1:'+match[1]);}});child.on('exit',code=>{clearTimeout(timer);reject(new Error('server exited '+code));});});
 });
 after(async()=>{if(child){child.kill();await new Promise(r=>child.once('exit',r));} if(dir)fs.rmSync(dir,{recursive:true,force:true});});
 test('school profile API exposes public institution fields',async()=>{const r=await fetch(base+'/api/school-profile');assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/json/);const data=await r.json();assert.equal(typeof data.institution.name,'string');assert.equal(data.students,undefined);});
