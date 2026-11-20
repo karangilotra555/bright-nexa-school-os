@@ -22,6 +22,7 @@ main{padding:18px}.eyebrow{font-size:11px;font-weight:800;color:#0877b2;text-tra
 button.primary{background:#087db7;color:#fff;border:0;border-radius:12px;padding:11px 15px;font-weight:800}
 button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;border-radius:12px;padding:10px 13px;font-weight:700}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0 0}.actions button{flex:1}
+.leave-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:14px}.leave-filters button{min-height:44px;padding:8px 4px;font-size:13px}.leave-filters button[aria-pressed="true"]{background:#087db7;border-color:#087db7;color:#fff}
 .itemhead{display:flex;align-items:center;justify-content:space-between;gap:10px}.itemhead strong{font-size:15px}
 .tag{font-size:11px;background:#fff0dd;border-radius:20px;color:#91540b;padding:5px 9px}
 .sub{font-size:12px;color:#6a7d90;line-height:1.5}.bodytext{font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -102,6 +103,11 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
     </section>
     <section data-page="leaves" hidden>
       <h2 class="screenTitle" tabindex="-1">Teacher Leave Approvals</h2><p class="sub">Requests are verified against the selected school. Approval updates Supabase immediately.</p>
+      <div class="leave-filters" role="group" aria-label="Leave date filter">
+        <button type="button" class="secondary" data-action="leave-filter" data-leave-view="today" aria-pressed="true" aria-controls="leaveList">Today</button>
+        <button type="button" class="secondary" data-action="leave-filter" data-leave-view="upcoming" aria-pressed="false" aria-controls="leaveList">Upcoming</button>
+        <button type="button" class="secondary" data-action="leave-filter" data-leave-view="history" aria-pressed="false" aria-controls="leaveList">History</button>
+      </div>
       <div id="leaveList"></div>
     </section>
     <section data-page="cover" hidden>
@@ -161,6 +167,6 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
 </div>
 <script src="./school-mobile-session.js?v=20261118-shared-leadership"></script>
 <script src="./school-urgent-circular-alerts.js?v=20261118-v1"></script>
-<script src="./leadership-app.js?v=20261119-emergency-leave"></script>
+<script src="./leadership-app.js?v=20261120-leave-history"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});</script>
 </body></html>

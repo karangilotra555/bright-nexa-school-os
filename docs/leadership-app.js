@@ -242,6 +242,8 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   const entry=params.get('entry');
   const fromSharedApp=entry==='staff'||entry==='launcher';
   let snapshot=null,coverLeave=null,busy=false,page='home',pendingNotice=null,publishedNotice=null;
+  let leaveView='today';
+  const leaveFilters=[...doc.querySelectorAll('[data-leave-view]')];
   const idPattern=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
   const requestedLeave=params.get('leave'), requestedSchool=params.get('school');
   let openAlert=idPattern.test(requestedLeave)&&idPattern.test(requestedSchool);
@@ -272,6 +274,10 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     div.append(elt('strong',title),elt('span',detail));parent.append(div);return div;
   }
   function showPage(destination){
+    if(destination==='leaves'&&page!=='leaves'){
+      leaveView='today';
+      drawLeaves(snapshot?.leaves||[]);
+    }
     page=destination;
     doc.querySelectorAll('[data-page]').forEach(el=>el.hidden=el.dataset.page!==page);
     const activeNav=['student-attendance','teacher-attendance','uncovered'].includes(page)?'home':page;
@@ -360,16 +366,27 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     }finally{picker.disabled=false;}
   }
   const leaveDescriptor=x=>x.starts_on+(x.starts_on!==x.ends_on?' to '+x.ends_on:'')+(x.starts_at?' · '+x.starts_at.slice(0,5)+'–'+x.ends_at.slice(0,5):' · Full day');
+  function leaveViewFor(leave,day){
+    if(!['pending','approved'].includes(leave.status)||leave.ends_on<day)return 'history';
+    return leave.starts_on>day?'upcoming':'today';
+  }
   function drawLeaves(leaves,focusedLeave){
     const target=$('leaveList');target.replaceChildren();
-    const filtered=leaves.filter(x=>['pending','approved'].includes(x.status)).sort((a,b)=>
-      Number(b.status==='pending')-Number(a.status==='pending')||Number(b.kind==='emergency')-Number(a.kind==='emergency'));
-    if(focusedLeave) {
-      const index=filtered.findIndex(leave=>leave.id===focusedLeave.id);
-      if(index>=0)filtered.splice(index,1);
-      filtered.unshift(focusedLeave);
+    const day=snapshot?.pulse.day||today();
+    if(focusedLeave){
+      leaveView=leaveViewFor(focusedLeave,day);
+      leaves=[...leaves.filter(leave=>leave.id!==focusedLeave.id),focusedLeave];
     }
-    if(!filtered.length){target.append(elt('p','No pending or approved leave requests.','muted'));return;}
+    for(const button of leaveFilters)button.setAttribute('aria-pressed',String(button.dataset.leaveView===leaveView));
+    const filtered=leaves.filter(leave=>leaveViewFor(leave,day)===leaveView).sort((a,b)=>{
+      if(leaveView==='history')return b.ends_on.localeCompare(a.ends_on);
+      return Number(b.status==='pending')-Number(a.status==='pending')||Number(b.kind==='emergency')-Number(a.kind==='emergency')||a.starts_on.localeCompare(b.starts_on);
+    });
+    if(!filtered.length){
+      const empty={today:'No pending or approved leave for today.',upcoming:'No upcoming leave requests.',history:'No leave history yet.'};
+      target.append(elt('p',empty[leaveView],'muted'));
+      return;
+    }
     for(const leave of filtered){
       const card=elt('article',undefined,'panel');
       card.dataset.leave=leave.id;
@@ -384,16 +401,18 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
           button.addEventListener('click',()=>run(async()=>{
             if(!root.confirm('Confirm '+decision+' leave for '+(leave.teacher_name||'this teacher')+'?'))return;
             await client.review(leave.id,decision);await refresh();
-            if(decision==='approved'){coverLeave={...leave,status:'approved'};await loadCover();}
+            if(decision==='approved'&&leave.ends_on>=(snapshot?.pulse.day||day)){
+              coverLeave={...leave,status:'approved'};await loadCover();
+            }
           }));
           actions.append(button);
         }
-      }else if(leave.status==='approved'){
+      }else if(leave.status==='approved'&&leaveView!=='history'){
         const btn=elt('button','Plan substitute','secondary');btn.dataset.action='cover';
         btn.addEventListener('click',()=>run(async()=>{coverLeave=leave;await loadCover();}));
         actions.append(btn);
       }
-      if(leave.status==='pending'){
+      if(leave.status==='pending'&&leaveView!=='history'){
         const preview=elt('button','Preview affected periods','secondary');preview.dataset.action='preview';
         preview.addEventListener('click',()=>run(async()=>{coverLeave=leave;await loadCover();}));
         actions.append(preview);
@@ -411,8 +430,10 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
         }));
         actions.append(cancel);
       }
-      card.append(actions);target.append(card);
+      if(actions.childElementCount)card.append(actions);
+      target.append(card);
     }
+    if(leaveView==='history'&&leaves.length>=100)target.append(elt('p','History shows past requests from the 100 records returned by the school.','muted'));
   }
   async function loadCover(){
     if(!coverLeave)return;
@@ -471,6 +492,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   }
   function clearDashboard(school){
     snapshot=null;coverLeave=null;pendingNotice=null;publishedNotice=null;
+    leaveView='today';
     $('refreshNoticeStatus').hidden=true;
     $('uncoveredClassField').hidden=true;
     $('uncoveredList').hidden=true;
@@ -513,6 +535,10 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     clearDashboard(school);bindAlerts(school);showPage('home');await refresh();
   }));
   $('refreshBtn').addEventListener('click',()=>run(refresh));
+  for(const button of leaveFilters)button.addEventListener('click',()=>{
+    leaveView=button.dataset.leaveView;
+    drawLeaves(snapshot?.leaves||[]);
+  });
   doc.addEventListener('visibilitychange',()=>{
     if(!doc.hidden&&!$('mainApp').hidden)emergencyAlerts?.resume();
     resumeDashboard();
