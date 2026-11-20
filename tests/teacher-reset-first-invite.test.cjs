@@ -14,7 +14,7 @@ test('forgot password guides first-time staff to admin invitation instead of pro
     assert.match(html,/Create \/ Sync Teacher App Access/);
     assert.match(html,/index\.html\?openSchool=true&amp;tab=Teachers/);
     assert.match(html,/id="forgotFeedback"/);
-    assert.match(html,/teacher-access\.js\?v=20261119-attendance-conflict/);
+    assert.match(html,/teacher-access\.js\?v=20261120-optional-import/);
   }
   assert.equal(read('teacher-access.html'),read('docs/teacher-access.html'));
 });
