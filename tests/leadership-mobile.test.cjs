@@ -369,7 +369,7 @@ test('opening Leadership Leaves fetches teacher requests submitted after dashboa
  const app=await pilotLeadership(async(url,options)=>{
   if(submitted&&url.endsWith('/bn_list_teacher_leaves')){
    assert.equal(JSON.parse(options.body).p_school,school);
-   return Response.json([{id:leave,teacher_name:'New teacher request',status:'pending',kind:'emergency',starts_on:'2026-11-19',ends_on:'2026-11-19'}]);
+   return Response.json([{id:leave,teacher_name:'New teacher request',status:'pending',kind:'emergency',starts_on:'2026-11-18',ends_on:'2026-11-18'}]);
   }
   return mock.fetcher(url,options);
  });
@@ -379,6 +379,49 @@ test('opening Leadership Leaves fetches teacher requests submitted after dashboa
   app.doc.querySelector('[data-nav="leaves"]').click();
   await waitForPilot(()=>app.el('leaveList').textContent.includes('New teacher request'),'fresh request in Owner Leaves');
   assert.ok(app.el('leaveList').querySelector('[data-action="approved"]'));
+ }finally{app.dom.window.close();}
+});
+
+test('Leadership Leaves opens on the school day and keeps future and past requests accessible',async()=>{
+ const mock=backend('school_admin');
+ let schoolDay='2026-11-20';
+ const requests=[
+  ['Yesterday approved','approved','2026-11-19','2026-11-19'],
+  ['Today pending','pending','2026-11-20','2026-11-20'],
+  ['Ongoing approved','approved','2026-11-19','2026-11-21'],
+  ['Tomorrow planned','pending','2026-11-21','2026-11-21'],
+  ['Today declined','declined','2026-11-20','2026-11-20'],
+  ['Today cancelled','cancelled','2026-11-20','2026-11-20']
+ ].map(([teacher_name,status,starts_on,ends_on],i)=>({id:String(i),teacher_name,status,starts_on,ends_on,kind:'planned'}));
+ const app=await pilotLeadership(async(url,options)=>{
+  if(url.endsWith('/bn_list_teacher_leaves'))return Response.json(requests);
+  const response=await mock.fetcher(url,options);
+  if(url.endsWith('/bn_leadership_school_pulse'))return Response.json({...await response.json(),day:schoolDay});
+  return response;
+ });
+ try{
+  const button=value=>app.doc.querySelector(`[data-leave-view="${value}"]`);
+  const names=()=>[...app.el('leaveList').querySelectorAll('article strong')].map(card=>card.textContent);
+  app.doc.querySelector('[data-nav="leaves"]').click();
+  await waitForPilot(()=>!app.el('coverDate').disabled,'leaves refresh finishes');
+  assert.deepEqual(names(),['Today pending','Ongoing approved']);
+  assert.equal(button('today').getAttribute('aria-pressed'),'true');
+  button('upcoming').click();
+  assert.deepEqual(names(),['Tomorrow planned']);
+  assert.ok(app.el('leaveList').querySelector('[data-action="approved"]'));
+  button('history').click();
+  assert.deepEqual(new Set(names()),new Set(['Yesterday approved','Today declined','Today cancelled']));
+  assert.equal(app.el('leaveList').querySelector('[data-action="cover"]'),null,'expired approval cannot show a substitute planning action');
+  app.doc.querySelector('[data-nav="home"]').click();
+  app.doc.querySelector('[data-nav="leaves"]').click();
+  await waitForPilot(()=>!app.el('coverDate').disabled,'returning to Leaves refreshes today');
+  assert.deepEqual(names(),['Today pending','Ongoing approved']);
+  schoolDay='2026-11-21';
+  app.doc.dispatchEvent(new app.window.Event('visibilitychange'));
+  await waitForPilot(()=>names().includes('Tomorrow planned'),'new school day is loaded on foreground');
+  assert.deepEqual(names(),['Tomorrow planned','Ongoing approved']);
+  button('history').click();
+  assert.ok(names().includes('Today pending'),'older outstanding request stays discoverable in history');
  }finally{app.dom.window.close();}
 });
 
@@ -666,7 +709,7 @@ test('withdrawn cancelled leaves are excluded from pending/approved counts and l
   assert.match(app.el('dailyBrief').textContent,/No leave backlog/);
   app.doc.querySelector('[data-nav="leaves"]').click();
   await waitForPilot(()=>!app.el('coverDate').disabled,'leaves view loaded');
-  assert.match(app.el('leaveList').textContent,/No pending or approved leave requests/);
+  assert.match(app.el('leaveList').textContent,/No pending or approved leave for today/);
  }finally{app.dom.window.close();}
 });
 
@@ -688,6 +731,7 @@ test('emergency alert opens its exact request after verified sign-in',async()=>{
   await waitForPilot(()=>app.doc.activeElement.dataset.leave===leave,'notification focuses the exact leave');
   assert.equal(app.doc.querySelector('[data-page="leaves"]').hidden,false);
   assert.match(app.doc.activeElement.textContent,/Direct emergency/);
+  assert.equal(app.doc.querySelector('[data-leave-view="upcoming"]').getAttribute('aria-pressed'),'true');
   assert.ok(app.doc.activeElement.querySelector('[data-action="approved"]'));
   assert.ok(app.doc.activeElement.querySelector('[data-action="cancelled"]'));
  }finally{app.dom.window.close();}
