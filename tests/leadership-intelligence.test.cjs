@@ -7,7 +7,7 @@ const {PGlite}=require('@electric-sql/pglite');
 
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 const school=id(1), outside=id(2), admin=id(3), teacher=id(4), student1=id(5), student2=id(6), student3=id(7);
-const classA=id(8), classB=id(9);
+const classA=id(8), classB=id(9), principal=id(10);
 
 test('leadership intelligence SQL functions calculate at-risk students, class attendance trends, and fee follow-ups', async()=>{
   const db=new PGlite();
@@ -83,10 +83,16 @@ test('leadership intelligence SQL functions calculate at-risk students, class at
     await role('authenticated',teacher);
     await assert.rejects(rpc('bn_leadership_at_risk_students',school,75), /Owner or Principal required/i);
 
+    await db.exec('reset role');
+    await sql("insert into school_users values ($1,$2,$1,'principal','active','School Principal')",[principal,school]);
+    await role('authenticated',principal);
+    assert.ok((await rpc('bn_leadership_at_risk_students',school,75)).length);
+    await assert.rejects(rpc('bn_leadership_fee_followups',school),/Owner required/i);
+
     // The active Owner may read this school only.
     await role('authenticated',admin);
     for (const name of ['bn_leadership_at_risk_students','bn_leadership_class_attendance_summary','bn_leadership_fee_followups']) {
-      await assert.rejects(rpc(name,outside), /Owner or Principal required/i);
+      await assert.rejects(rpc(name,outside), /Owner(?: or Principal)? required/i);
     }
 
     // 1. At-Risk Students
@@ -172,6 +178,7 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
   const person = '00000000-0000-4000-8000-000000000002';
   const calls = [];
   let failIntelligence = false;
+  let activeRole='school_admin';
   const response = (data, headers = {}) => new Response(JSON.stringify(data), {
     status: 200,
     headers: { 'Content-Type': 'application/json', ...headers }
@@ -186,7 +193,7 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     if (p === '/auth/v1/token') return response({ access_token: 'tok', refresh_token: 'ref', expires_in: 3600 });
     if (p === '/auth/v1/user') return response({ id: person });
     if (p === '/rest/v1/school_users' && url.includes('auth_user_id=')) {
-      return response([{ id: person, institution_id: testSchool, auth_user_id: person, role: 'principal', status: 'active', display_name: 'Principal Sharma' }]);
+      return response([{ id: person, institution_id: testSchool, auth_user_id: person, role: activeRole, status: 'active', display_name: 'Principal Sharma' }]);
     }
     if (p === '/rest/v1/institutions') return response([{ id: testSchool, name: 'Bright Academy', status: 'active' }]);
     if (p === '/rest/v1/school_users') return response([{ id: person }], { 'content-range': '0-0/7' });
@@ -346,6 +353,17 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     }
     assert.match(queryItems.textContent,/Fee follow-ups unavailable/);
     await new Promise(resolve => setTimeout(resolve, 50));
+    activeRole='principal';
+    failIntelligence=false;
+    const principalClient=create(fetcher,null);
+    await principalClient.login('principal@example.com','password');
+    const callsBefore=calls.length;
+    const principalIntel=await principalClient.intelligence('2026-11-21',75);
+    assert.equal(principalIntel.feeRestricted,true);
+    assert.equal(principalIntel.followups,null);
+    assert.equal(principalIntel.atRisk.length,3);
+    assert.ok(calls.slice(callsBefore).every(call=>!call.path.endsWith('bn_leadership_fee_followups')));
+    await assert.rejects(principalClient.feeFollowups(),/Owner access/);
   } finally {
     dom.window.close();
   }

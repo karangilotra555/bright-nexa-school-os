@@ -246,16 +246,18 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
   function classAttendanceSummary(day=today()){
     return intelligenceList('bn_leadership_class_attendance_summary',{p_day:day});
   }
-  function feeFollowups(){
+  async function feeFollowups(){
+    if(school().role!=='school_admin')throw Error('Owner access is required for student fee follow-ups.');
     return intelligenceList('bn_leadership_fee_followups');
   }
   async function intelligence(day=today(),threshold=75){
+    const feeRestricted=school().role!=='school_admin';
     const [atRisk,classSummary,followups]=await Promise.all([
       atRiskStudents(threshold).catch(()=>null),
       classAttendanceSummary(day).catch(()=>null),
-      feeFollowups().catch(()=>null)
+      feeRestricted?null:feeFollowups().catch(()=>null)
     ]);
-    return {atRisk,classSummary,followups};
+    return {atRisk,classSummary,followups,feeRestricted};
   }
   return {login,resumeStaff,restore,verify,choose,school,overview,registerEmergencyAlerts,emergencyLeave,attendanceEntry,timetableClasses,datedTimetable,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today,atRiskStudents,classAttendanceSummary,feeFollowups,intelligence};
 }
@@ -340,7 +342,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if(Number(fees.unclassified)>0)row(insights,'Fee payment modes',fees.unclassified+' rupees cannot be classified as cash/online from saved records.');
     $('lastSync').textContent='Verified live from Supabase · '+new Date().toLocaleString('en-IN');
   }
-  function intelligenceAlerts(pulse,intel){
+  function intelligenceAlerts(pulse,intel,forDigest=false){
     const alerts=[];
     const dropped=intel.classSummary?.find(c=>c.trend==='dropped');
     if(dropped){
@@ -353,7 +355,9 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
       alerts.push({icon:'📊',text:'School attendance awaiting complete marks'});
     }
 
-    if(!intel.followups){
+    if(intel.feeRestricted){
+      if(!forDigest)alerts.push({icon:'🔒',text:'Student fee follow-ups require Owner access'});
+    }else if(!intel.followups){
       alerts.push({icon:'⚠️',text:'Fee follow-ups unavailable. Refresh to retry.'});
     }else if(intel.followups.length){
       const count=intel.followups.length;
@@ -398,7 +402,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
 
     const intel=await client.intelligence(pulse.day,75);
     if(requestVersion!==intelligenceVersion||snapshot!==data)return;
-    if(intel.atRisk&&intel.classSummary&&intel.followups){
+    if(intel.atRisk&&intel.classSummary&&(intel.feeRestricted||intel.followups)){
       cachedIntelligence=intel;
       if(share)share.disabled=false;
     }
@@ -461,6 +465,10 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
       return;
     }
 
+    if(parsed.wantsFees&&client.school().role!=='school_admin'){
+      itemsContainer.append(elt('p','Student fee follow-ups require Owner access.','warning'));
+      return;
+    }
     const rows=await (parsed.wantsFees?client.feeFollowups():
       client.atRiskStudents(parsed.threshold===null?75:parsed.threshold+(parsed.inclusive?0.1:0))).catch(()=>null);
     if(!rows){
@@ -896,7 +904,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
       feeTotal:fees.total,
       feeReceiptCount:fees.receipt_count,
       atRiskCount:intel.atRisk.length,
-      insights:intelligenceAlerts(pulse,intel).map(item=>item.text),
+      insights:intelligenceAlerts(pulse,intel,true).map(item=>item.text),
       uncoveredPeriods:pulse.uncovered_periods,
       scheduledPeriods:pulse.scheduled_periods
     });

@@ -166,10 +166,10 @@ create or replace function public.bn_leadership_fee_followups(
 )
 returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare
-  is_leader boolean := coalesce(school_private.has_role(p_school, array['school_admin','principal']), false);
+  is_owner boolean := coalesce(school_private.has_role(p_school, array['school_admin']), false);
 begin
-  if (select auth.uid()) is null or not is_leader then
-    raise exception 'Verified Owner or Principal required' using errcode='42501';
+  if (select auth.uid()) is null or not is_owner then
+    raise exception 'Verified Owner required for student fee follow-ups' using errcode='42501';
   end if;
 
   return coalesce((
