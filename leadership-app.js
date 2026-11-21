@@ -425,13 +425,59 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     const stream=text.match(/\b(science|commerce|arts|humanities|vocational)\b/i)?.[1].toLowerCase()||null;
     return {classLabel,stream,threshold,inclusive:pctMatch?.[1]==='<=',unsupportedThreshold:/\b(?:above|over|greater\s+than|more\s+than)\s+\d|>\s*=?\s*\d/i.test(text),wantsFees:/\b(?:fees?|balances?|dues|payments?)\b/i.test(text)};
   }
+  async function copyIntelligenceText(text){
+    try{
+      if(root.navigator?.clipboard?.writeText){
+        await root.navigator.clipboard.writeText(text);
+        return;
+      }
+    }catch(_){}
+    const previous=doc.activeElement;
+    const field=elt('textarea');
+    field.value=text;
+    field.setAttribute('readonly','');
+    field.style.cssText='position:fixed;left:-9999px;top:0';
+    doc.body.append(field);
+    try{
+      field.focus({preventScroll:true});
+      field.select();
+      if(!doc.execCommand?.('copy'))throw Error('Clipboard unavailable.');
+    }finally{field.remove();previous?.focus();}
+  }
   function guardianDraft(phone,message,buttonLabel){
     const url=root.BNWhatsApp.buildWhatsAppUrl(phone,message,'wa_me');
     if(!url)return '';
     const link=elt('a',buttonLabel,'intel-wa-pill');
     link.href=url;
     link.referrerPolicy='no-referrer';
-    return link;
+    const actions=elt('div',undefined,'intel-wa-actions');
+    const copy=elt('button','Copy link','intel-wa-pill intel-wa-copy');
+    copy.type='button';
+    copy.setAttribute('aria-label','Copy WhatsApp draft link');
+    const feedback=elt('span',undefined,'intel-wa-feedback');
+    feedback.setAttribute('role','status');
+    const manualLink=elt('input',undefined,'intel-wa-manual');
+    manualLink.type='url';
+    manualLink.readOnly=true;
+    manualLink.hidden=true;
+    manualLink.setAttribute('aria-label','WhatsApp draft link to copy');
+    copy.addEventListener('click',async()=>{
+      try{
+        await copyIntelligenceText(url);
+        manualLink.hidden=true;
+        manualLink.value='';
+        feedback.textContent='WhatsApp draft link copied. Paste it into your browser.';
+      }catch(_){
+        if(!actions.isConnected)return;
+        feedback.textContent='Select and copy the link below.';
+        manualLink.value=url;
+        manualLink.hidden=false;
+        manualLink.focus();
+        manualLink.select();
+      }
+    });
+    actions.append(link,copy,feedback,manualLink);
+    return actions;
   }
   async function runIntelligenceQuery(){
     const input=$('intelQueryInput');
@@ -914,16 +960,11 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     link.href='https://wa.me/?text='+encodeURIComponent(message);
     link.referrerPolicy='no-referrer';
     const currentSnapshot=snapshot;
-    const clipboard=root.navigator?.clipboard;
     note('WhatsApp draft requested.');
-    try{
-      if(clipboard?.writeText){
-        Promise.resolve(clipboard.writeText(message)).then(
-          ()=>{if(snapshot===currentSnapshot)note('WhatsApp draft requested and brief copied.');},
-          ()=>{if(snapshot===currentSnapshot)note('WhatsApp draft requested. Clipboard copy failed.');}
-        );
-      }
-    }catch(_){note('WhatsApp draft requested. Clipboard copy failed.');}
+    copyIntelligenceText(message).then(
+      ()=>{if(snapshot===currentSnapshot)note('WhatsApp draft requested and brief copied. You can paste it into WhatsApp.');},
+      ()=>{if(snapshot===currentSnapshot)note('WhatsApp draft requested. Clipboard copy failed.');}
+    );
     link.click();
   }));
   gate(true);

@@ -303,6 +303,36 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     assert.match(decodeURIComponent(waPill.href), /Attendance Follow-up/);
     assert.match(decodeURIComponent(waPill.href), /Aman Gupta/);
     assert.doesNotMatch(decodeURIComponent(waPill.href), /ABSENT \(Gairhaazir\)|7500058655/);
+    const copyLink=[...queryItems.querySelectorAll('button')].find(button=>button.textContent==='Copy link');
+    assert.ok(copyLink);
+    copyLink.click();
+    for(let i=0;i<30&&!copiedText;i++)await new Promise(resolve=>setTimeout(resolve,20));
+    assert.equal(copiedText,waPill.href);
+    assert.equal(openedUrl,'');
+
+    // Older WebViews may reject the Clipboard API. Copy from the selected field.
+    const writeText=win.navigator.clipboard.writeText;
+    win.navigator.clipboard.writeText=async()=>{throw Error('Clipboard unavailable');};
+    win.document.execCommand=command=>{
+      assert.equal(command,'copy');
+      copiedText=win.document.activeElement.value;
+      return true;
+    };
+    copiedText='';
+    copyLink.focus();
+    copyLink.click();
+    for(let i=0;i<30&&!copiedText;i++)await new Promise(resolve=>setTimeout(resolve,20));
+    assert.equal(copiedText,waPill.href);
+    assert.equal(win.document.activeElement,copyLink);
+    assert.equal(openedUrl,'');
+    assert.match(queryItems.textContent,/WhatsApp draft link copied/);
+
+    win.document.execCommand=()=>false;
+    copyLink.click();
+    for(let i=0;i<30&&!queryItems.querySelector('input[readonly]:not([hidden])');i++)await new Promise(resolve=>setTimeout(resolve,20));
+    assert.equal(queryItems.querySelector('input[readonly]:not([hidden])')?.value,waPill.href);
+    assert.equal(openedUrl,'');
+    win.navigator.clipboard.writeText=writeText;
 
     queryInput.value = 'Which students in 11-A Science have less than 80% attendance?';
     win.document.getElementById('intelQueryBtn').click();
@@ -322,6 +352,7 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     assert.doesNotMatch(feeDraft,/Invalid Date|7500058655/);
 
     // Send Daily Brief on WhatsApp button
+    copiedText='';
     win.document.getElementById('shareWhatsAppDigestBtn').dispatchEvent(new win.Event('click'));
     for (let i = 0; i < 40 && !openedUrl; i++) {
       await new Promise(resolve => setTimeout(resolve, 25));
