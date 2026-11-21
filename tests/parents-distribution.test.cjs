@@ -36,3 +36,9 @@ test('Android parents app has no fictional demo data or offline preview',()=>{
  assert.match(wf,/--prerelease/);
  assert.match(wf,/school-app-v0\.5\.4/);
 });
+
+test('The School APK workflow preserves an already published version',()=>{
+ const workflow=read('.github/workflows/build-parents-apk.yml');
+ assert.doesNotMatch(workflow,/--clobber/);
+ assert.match(workflow,/gh release view[^\n]+\n[^\n]+\n\s+exit 0/);
+});

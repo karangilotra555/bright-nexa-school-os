@@ -65,6 +65,10 @@ jobs:
           FCM_PROJECT_ID: ${{ vars.FCM_PROJECT_ID }}
         run: |
           tag='school-app-v0.5.4'
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "$tag already exists. Keeping the published APK and its signing certificate."
+            exit 0
+          fi
           for key in FCM_APP_ID FCM_API_KEY FCM_SENDER_ID FCM_PROJECT_ID; do
             if [ -z "${!key}" ]; then
               echo "::error::Configure repository variable $key before publishing the push-capable APK."
@@ -72,8 +76,4 @@ jobs:
             fi
           done
           cp android-parents/app/build/outputs/apk/debug/app-debug.apk Bright-Nexa-School-v0.5.4.apk
-          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload "$tag" Bright-Nexa-School-v0.5.4.apk --clobber --repo "${{ github.repository }}"
-          else
-            gh release create "$tag" Bright-Nexa-School-v0.5.4.apk --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease --title 'Bright Nexa School App v0.5.4' --notes 'Fixes the WhatsApp draft handoff on Bright Nexa Leadership. Teacher, parent and student portals remain available.'
-          fi
+          gh release create "$tag" Bright-Nexa-School-v0.5.4.apk --repo "${{ github.repository }}" --target "${{ github.sha }}" --prerelease --title 'Bright Nexa School App v0.5.4' --notes 'Fixes the WhatsApp draft handoff on Bright Nexa Leadership. Teacher, parent and student portals remain available.'
