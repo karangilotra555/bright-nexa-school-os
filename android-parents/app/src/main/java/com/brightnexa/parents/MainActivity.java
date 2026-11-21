@@ -158,7 +158,14 @@ public final class MainActivity extends Activity {
                 URI uri = parse(request.getUrl().toString());
                 if (uri == null || !"https".equalsIgnoreCase(uri.getScheme())) return true;
                 String host = uri.getHost();
-                return !(liveHost.length()>0 && liveHost.equalsIgnoreCase(host));
+                if (liveHost.length()>0 && liveHost.equalsIgnoreCase(host)) return false;
+                if (request.isForMainFrame() && isLeadershipWhatsAppDraft(v.getUrl(), uri)) {
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl())); }
+                    catch (Exception ignored) {
+                        Toast.makeText(MainActivity.this, "Could not open WhatsApp draft", Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
             }
         });
         root.addView(web, new LinearLayout.LayoutParams(-1,0,1));
@@ -176,6 +183,17 @@ public final class MainActivity extends Activity {
         });
         // Open the configured school; all records still require role-specific authentication.
         openSchool(configuredUrl);
+    }
+
+    private boolean isLeadershipWhatsAppDraft(String from, URI target) {
+        URI source = parse(from);
+        if (source == null || !"https".equalsIgnoreCase(source.getScheme())
+                || !liveHost.equalsIgnoreCase(source.getHost()) || !"/leadership.html".equals(source.getPath())) return false;
+        String path = target.getPath();
+        return "wa.me".equalsIgnoreCase(target.getHost())
+                && target.getUserInfo() == null && target.getPort() == -1
+                && path != null && path.matches("/(?:91[6-9][0-9]{9})?")
+                && target.getRawQuery() != null && target.getRawQuery().startsWith("text=");
     }
 
     private URI parse(String input) {

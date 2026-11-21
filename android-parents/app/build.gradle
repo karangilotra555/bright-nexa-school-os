@@ -8,8 +8,8 @@ android {
         applicationId 'com.brightnexa.school'
         minSdk 26
         targetSdk 35
-        versionCode 8
-        versionName '0.5.3'
+        versionCode 9
+        versionName '0.5.4'
         ['FCM_APP_ID','FCM_API_KEY','FCM_SENDER_ID','FCM_PROJECT_ID'].each { key ->
             buildConfigField 'String', key, groovy.json.JsonOutput.toJson(providers.environmentVariable(key).orElse('').get())
         }

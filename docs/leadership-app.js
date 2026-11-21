@@ -234,22 +234,30 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     await storage?.clear();
     if(token)send('/auth/v1/logout?scope=local',{method:'POST',keepalive:true,headers:{Authorization:'Bearer '+token}},false).catch(()=>{});
   }
-  async function atRiskStudents(threshold=75,classId=null){
-    return rpc('bn_leadership_at_risk_students',{p_threshold:threshold,p_class:classId});
+  async function intelligenceList(name,args){
+    const epoch=version;
+    const data=await rpc(name,args);
+    if(epoch!==version||!Array.isArray(data))throw Error('School intelligence could not be verified.');
+    return data;
   }
-  async function classAttendanceSummary(day=today()){
-    return rpc('bn_leadership_class_attendance_summary',{p_day:day});
+  function atRiskStudents(threshold=75,classId=null){
+    return intelligenceList('bn_leadership_at_risk_students',{p_threshold:threshold,p_class:classId});
+  }
+  function classAttendanceSummary(day=today()){
+    return intelligenceList('bn_leadership_class_attendance_summary',{p_day:day});
   }
   async function feeFollowups(){
-    return rpc('bn_leadership_fee_followups');
+    if(school().role!=='school_admin')throw Error('Owner access is required for student fee follow-ups.');
+    return intelligenceList('bn_leadership_fee_followups');
   }
   async function intelligence(day=today(),threshold=75){
+    const feeRestricted=school().role!=='school_admin';
     const [atRisk,classSummary,followups]=await Promise.all([
-      atRiskStudents(threshold).catch(()=>[]),
-      classAttendanceSummary(day).catch(()=>[]),
-      feeFollowups().catch(()=>[])
+      atRiskStudents(threshold).catch(()=>null),
+      classAttendanceSummary(day).catch(()=>null),
+      feeRestricted?null:feeFollowups().catch(()=>null)
     ]);
-    return {atRisk:atRisk||[],classSummary:classSummary||[],followups:followups||[]};
+    return {atRisk,classSummary,followups,feeRestricted};
   }
   return {login,resumeStaff,restore,verify,choose,school,overview,registerEmergencyAlerts,emergencyLeave,attendanceEntry,timetableClasses,datedTimetable,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today,atRiskStudents,classAttendanceSummary,feeFollowups,intelligence};
 }
@@ -259,7 +267,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   const entry=params.get('entry');
   const fromSharedApp=entry==='staff'||entry==='launcher';
   let snapshot=null,coverLeave=null,busy=false,page='home',pendingNotice=null,publishedNotice=null;
-  let cachedIntelligence=null;
+  let cachedIntelligence=null,intelligenceVersion=0;
   let leaveView='today';
   const leaveFilters=[...doc.querySelectorAll('[data-leave-view]')];
   const idPattern=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
@@ -333,7 +341,39 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if(pulse.uncovered_periods===null)row(insights,'Timetable not published','No scheduled periods verified for today.');
     if(Number(fees.unclassified)>0)row(insights,'Fee payment modes',fees.unclassified+' rupees cannot be classified as cash/online from saved records.');
     $('lastSync').textContent='Verified live from Supabase · '+new Date().toLocaleString('en-IN');
-    drawIntelligence(data).catch(()=>{});
+  }
+  function intelligenceAlerts(pulse,intel,forDigest=false){
+    const alerts=[];
+    const dropped=intel.classSummary?.find(c=>c.trend==='dropped');
+    if(dropped){
+      alerts.push({icon:'📉',text:'Class '+dropped.class_label+' attendance dropped from '+dropped.week_percent+'% to '+dropped.today_percent+'% (vs previous 7 days)'});
+    }else if(!intel.classSummary){
+      alerts.push({icon:'⚠️',text:'Class attendance trends unavailable. Refresh to retry.'});
+    }else if(pulse.student_percent!=null){
+      alerts.push({icon:'📊',text:'School student attendance at '+pulse.student_percent+'% today'});
+    }else{
+      alerts.push({icon:'📊',text:'School attendance awaiting complete marks'});
+    }
+
+    if(intel.feeRestricted){
+      if(!forDigest)alerts.push({icon:'🔒',text:'Student fee follow-ups require Owner access'});
+    }else if(!intel.followups){
+      alerts.push({icon:'⚠️',text:'Fee follow-ups unavailable. Refresh to retry.'});
+    }else if(intel.followups.length){
+      const count=intel.followups.length;
+      alerts.push({icon:'✏️',text:count+(count===1?' student has a pending fee balance':' students have pending fee balances')});
+    }else{
+      alerts.push({icon:'✏️',text:'No pending fee balances found'});
+    }
+
+    if(pulse.uncovered_periods==null||!pulse.scheduled_periods){
+      alerts.push({icon:'📅',text:'No published timetable verified for '+pulse.day});
+    }else if(pulse.uncovered_periods>0){
+      alerts.push({icon:'⚠️',text:pulse.uncovered_periods+' published period(s) require substitute teacher cover'});
+    }else{
+      alerts.push({icon:'📅',text:'All '+pulse.scheduled_periods+' published periods have teacher cover'});
+    }
+    return alerts;
   }
   async function drawIntelligence(data){
     if(!$('schoolIntelligenceCard'))return;
@@ -351,57 +391,47 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     $('intelFeeVal').textContent=feeDisplay;
     $('intelFeeSub').textContent=(fees.receipt_count||0)+' receipts recorded';
 
-    let intel={atRisk:[],classSummary:[],followups:[]};
-    try{
-      intel=await client.intelligence(pulse.day,75);
-    }catch(_){}
-    cachedIntelligence={...intel,pulse,fees,school:data.school};
-
-    $('intelAtRiskVal').textContent=String(intel.atRisk?.length??0);
-    $('intelAtRiskSub').textContent='< 75% attendance';
-
+    const share=$('shareWhatsAppDigestBtn');
+    const requestVersion=++intelligenceVersion;
+    cachedIntelligence=null;
+    if(share)share.disabled=true;
     const alertsList=$('intelAlertsList');
+    alertsList?.replaceChildren();
+    $('intelAtRiskVal').textContent='—';
+    $('intelAtRiskSub').textContent='Checking attendance…';
+
+    const intel=await client.intelligence(pulse.day,75);
+    if(requestVersion!==intelligenceVersion||snapshot!==data)return;
+    if(intel.atRisk&&intel.classSummary&&(intel.feeRestricted||intel.followups)){
+      cachedIntelligence=intel;
+      if(share)share.disabled=false;
+    }
+    $('intelAtRiskVal').textContent=intel.atRisk?String(intel.atRisk.length):'—';
+    $('intelAtRiskSub').textContent=intel.atRisk?'<75% or 3+ consecutive absences':'Unavailable. Refresh to retry.';
+
     if(alertsList){
-      alertsList.replaceChildren();
-      const alerts=[];
-      const dropped=intel.classSummary?.find(c=>c.trend_status==='dropped');
-      if(dropped){
-        const prev=dropped.prev_attendance_percent?dropped.prev_attendance_percent+'%':'earlier';
-        alerts.push({icon:'📉',text:'Class '+dropped.class_label+' attendance dropped from '+prev+' to '+dropped.attendance_percent+'% this week'});
-      }else if(intel.classSummary?.length){
-        const top=intel.classSummary[0];
-        alerts.push({icon:'📊',text:'Class '+top.class_label+' attendance at '+top.attendance_percent+'% today'});
-      }else if(pulse.student_percent!==null){
-        alerts.push({icon:'📊',text:'School student attendance at '+pulse.student_percent+'% today'});
-      }
-
-      if(intel.followups?.length){
-        alerts.push({icon:'✏️',text:intel.followups.length+' fee follow-up'+(intel.followups.length>1?'s':'')+' drafted, awaiting approval'});
-      }else{
-        alerts.push({icon:'✏️',text:'Fee register up to date; zero pending follow-ups'});
-      }
-
-      if(pulse.uncovered_periods>0){
-        alerts.push({icon:'⚠️',text:pulse.uncovered_periods+' published period(s) require substitute teacher cover'});
-      }else{
-        alerts.push({icon:'📅',text:'Timetable clash prevented for '+(pulse.day||'today')+' ('+(pulse.scheduled_periods||0)+' periods)'});
-      }
-
-      for(const item of alerts){
+      for(const item of intelligenceAlerts(pulse,intel)){
         const div=elt('div',undefined,'intel-alert-item');
         div.append(elt('span',item.icon,'intel-alert-icon'),elt('span',item.text,'intel-alert-text'));
         alertsList.append(div);
       }
     }
   }
-  function parseIntelQuery(queryText,defaultThreshold=75){
-    const text=String(queryText||'').trim();
-    const classMatch=text.match(/(?:class\s*)?([0-9]{1,2})\s*[-/ ]?\s*([A-Za-z])/i);
-    const classLabel=classMatch?`${classMatch[1]}-${classMatch[2].toUpperCase()}`:null;
-    const pctMatch=text.match(/(?:less\s+than|below|under|<|<=)\s*(\d+)\s*%?/i);
-    const threshold=pctMatch?parseInt(pctMatch[1],10):defaultThreshold;
-    const wantsFees=/fee|balance|dues|payment/i.test(text);
-    return {text,classLabel,threshold,wantsFees};
+  function parseIntelQuery(text){
+    const classMatch=text.match(/\b(\d{1,2})\s*(?:[-/]\s*|\s+)?([a-z])\b/i);
+    const classLabel=classMatch?classMatch[1]+'-'+classMatch[2].toUpperCase():null;
+    const pctMatch=text.match(/(?:\b(?:less\s+than|below|under)\s+|(<=|<)\s*)([+-]?\d+(?:\.\d+)?)\s*%?/i);
+    const threshold=pctMatch?Number(pctMatch[2]):null;
+    const stream=text.match(/\b(science|commerce|arts|humanities|vocational)\b/i)?.[1].toLowerCase()||null;
+    return {classLabel,stream,threshold,inclusive:pctMatch?.[1]==='<=',unsupportedThreshold:/\b(?:above|over|greater\s+than|more\s+than)\s+\d|>\s*=?\s*\d/i.test(text),wantsFees:/\b(?:fees?|balances?|dues|payments?)\b/i.test(text)};
+  }
+  function guardianDraft(phone,message,buttonLabel){
+    const url=root.BNWhatsApp.buildWhatsAppUrl(phone,message,'wa_me');
+    if(!url)return '';
+    const link=elt('a',buttonLabel,'intel-wa-pill');
+    link.href=url;
+    link.referrerPolicy='no-referrer';
+    return link;
   }
   async function runIntelligenceQuery(){
     const input=$('intelQueryInput');
@@ -412,75 +442,63 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     itemsContainer.replaceChildren();
     panel.hidden=false;
 
-    const schoolName=client.school()?.name||'Bright Nexa School';
+    const schoolName=client.school().name;
     const waEngine=root.BNWhatsApp;
+    const matchesClass=s=>{
+      if(parsed.stream&&String(s.academic_stream||'').trim().toLowerCase()!==parsed.stream)return false;
+      if(!parsed.classLabel)return true;
+      const label=s.class_name!=null&&s.section!=null?s.class_name+'-'+s.section:String(s.class_label).split(' (')[0];
+      return label.replace(/^class\s+/i,'').replace(/\s+/g,'').toUpperCase()===parsed.classLabel;
+    };
+    const classLabel=(parsed.classLabel?'Class '+parsed.classLabel:'All Classes')+
+      (parsed.stream?' · '+parsed.stream.charAt(0).toUpperCase()+parsed.stream.slice(1):'');
+    const operator=parsed.inclusive?'≤':'<';
+    if(heading)heading.textContent=parsed.wantsFees?'Fee Follow-ups ('+classLabel+')':
+      parsed.threshold===null?'At-Risk Students ('+classLabel+')':'Attendance '+operator+parsed.threshold+'% ('+classLabel+')';
 
-    if(parsed.wantsFees){
-      if(heading)heading.textContent='Fee Follow-ups ('+(parsed.classLabel?'Class '+parsed.classLabel:'All Classes')+')';
-      const followups=await client.feeFollowups().catch(()=>[]);
-      const filtered=parsed.classLabel?followups.filter(s=>s.class_label===parsed.classLabel):followups;
-      if(!filtered.length){
-        itemsContainer.append(elt('p','No pending fee balances found.','sub'));
-        return;
+    if(!parsed.wantsFees&&parsed.unsupportedThreshold){
+      itemsContainer.append(elt('p','For attendance, use “below 80%” or “<= 80%”.','warning'));
+      return;
+    }
+    if(!parsed.wantsFees&&parsed.threshold!==null&&(parsed.threshold<0||parsed.threshold>100)){
+      itemsContainer.append(elt('p','Enter an attendance percentage from 0 to 100.','warning'));
+      return;
+    }
+
+    if(parsed.wantsFees&&client.school().role!=='school_admin'){
+      itemsContainer.append(elt('p','Student fee follow-ups require Owner access.','warning'));
+      return;
+    }
+    const rows=await (parsed.wantsFees?client.feeFollowups():
+      client.atRiskStudents(parsed.threshold===null?75:parsed.threshold+(parsed.inclusive?0.1:0))).catch(()=>null);
+    if(!rows){
+      itemsContainer.append(elt('p',(parsed.wantsFees?'Fee follow-ups':'Attendance results')+' unavailable. Try again.','warning'));
+      return;
+    }
+    const filtered=rows.filter(s=>matchesClass(s)&&(parsed.wantsFees||parsed.threshold===null||
+      (s.attendance_percent!=null&&(parsed.inclusive?s.attendance_percent<=parsed.threshold:s.attendance_percent<parsed.threshold))));
+    if(!filtered.length){
+      itemsContainer.append(elt('p',parsed.wantsFees?'No pending fee balances found.':'No students match this attendance query.','sub'));
+      return;
+    }
+    for(const s of filtered){
+      const rowDiv=elt('div',undefined,'intel-student-row');
+      const info=elt('div',undefined,'intel-student-info');
+      const details=parsed.wantsFees?' · Balance: ₹'+Number(s.balance_rupees).toLocaleString('en-IN')+(s.guardian_phone?' · 📞 '+s.guardian_phone:' · No phone'):
+        ' · '+s.attendance_percent+'% attendance · '+(s.consecutive_absent||0)+' consecutive absences';
+      info.append(elt('strong',s.name+' ('+s.admission_number+')'),elt('span','Class '+s.class_label+details));
+      rowDiv.append(info);
+      if(s.guardian_phone&&waEngine){
+        const common={schoolName,studentName:s.name,className:s.class_label};
+        const message=parsed.wantsFees?waEngine.createFeeReminderMessage({
+          ...common,admissionNumber:s.admission_number,amountDue:s.balance_rupees,dueDate:null,schoolPhone:''
+        }):waEngine.createAttendanceFollowupMessage({
+          ...common,attendancePercent:s.attendance_percent,consecutiveAbsences:s.consecutive_absent
+        });
+        const link=guardianDraft(s.guardian_phone,message,parsed.wantsFees?'💬 Remind Fee':'💬 WhatsApp Guardian');
+        if(link)rowDiv.append(link);
       }
-      for(const s of filtered){
-        const rowDiv=elt('div',undefined,'intel-student-row');
-        const info=elt('div',undefined,'intel-student-info');
-        info.append(
-          elt('strong',s.name+' ('+s.admission_number+')'),
-          elt('span','Class '+s.class_label+' · Balance: ₹'+Number(s.balance_rupees||0).toLocaleString('en-IN')+(s.guardian_phone?' · 📞 '+s.guardian_phone:' · No phone'))
-        );
-        rowDiv.append(info);
-        if(s.guardian_phone&&waEngine){
-          const msg=waEngine.createFeeReminderMessage({
-            schoolName,
-            studentName:s.name,
-            className:s.class_label,
-            dueAmount:s.balance_rupees,
-            dueDate:'immediate'
-          });
-          const url=waEngine.buildWhatsAppUrl(s.guardian_phone,msg,'wa_me');
-          if(url){
-            const btn=elt('a','💬 Remind Fee','intel-wa-pill');
-            btn.href=url;btn.target='_blank';btn.rel='noopener noreferrer';
-            rowDiv.append(btn);
-          }
-        }
-        itemsContainer.append(rowDiv);
-      }
-    }else{
-      if(heading)heading.textContent='At-Risk Students ('+(parsed.classLabel?'Class '+parsed.classLabel:'All Classes')+', <'+parsed.threshold+'%)';
-      const atRisk=await client.atRiskStudents(parsed.threshold).catch(()=>[]);
-      const filtered=parsed.classLabel?atRisk.filter(s=>s.class_label===parsed.classLabel):atRisk;
-      if(!filtered.length){
-        itemsContainer.append(elt('p','No students found with attendance below '+parsed.threshold+'%.','sub'));
-        return;
-      }
-      for(const s of filtered){
-        const rowDiv=elt('div',undefined,'intel-student-row');
-        const info=elt('div',undefined,'intel-student-info');
-        info.append(
-          elt('strong',s.name+' ('+s.admission_number+')'),
-          elt('span','Class '+s.class_label+' · '+s.attendance_percent+'% attendance · '+(s.consecutive_absent||0)+' consecutive absents')
-        );
-        rowDiv.append(info);
-        if(s.guardian_phone&&waEngine){
-          const msg=waEngine.createAbsenteeMessage({
-            schoolName,
-            studentName:s.name,
-            className:s.class_label,
-            date:today(),
-            reason:`${s.attendance_percent}% overall attendance (${s.consecutive_absent||0} consecutive absents)`
-          });
-          const url=waEngine.buildWhatsAppUrl(s.guardian_phone,msg,'wa_me');
-          if(url){
-            const btn=elt('a','💬 WhatsApp Guardian','intel-wa-pill');
-            btn.href=url;btn.target='_blank';btn.rel='noopener noreferrer';
-            rowDiv.append(btn);
-          }
-        }
-        itemsContainer.append(rowDiv);
-      }
+      itemsContainer.append(rowDiv);
     }
   }
   function drawAttendanceDetails(pulse){
@@ -632,9 +650,16 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     }
   }
   async function refresh(){
+    $('intelQueryItems')?.replaceChildren();
+    const queryResult=$('intelQueryResult');
+    if(queryResult)queryResult.hidden=true;
     let data;
     try{data=await client.overview();}
     catch(error){
+      cachedIntelligence=null;
+      intelligenceVersion++;
+      const share=$('shareWhatsAppDigestBtn');
+      if(share)share.disabled=true;
       $('lastSync').textContent=snapshot
         ? 'Refresh failed. Showing last verified data for '+snapshot.pulse.day+'.'
         : 'School data could not be refreshed.';
@@ -642,6 +667,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     }
     snapshot=data;
     drawHome(data);drawLeaves(data.leaves);drawAttendanceDetails(data.pulse);
+    void drawIntelligence(data);
   }
   async function refreshVisiblePage(){
     await refresh();
@@ -661,6 +687,9 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   function clearDashboard(school){
     snapshot=null;coverLeave=null;pendingNotice=null;publishedNotice=null;
     cachedIntelligence=null;
+    intelligenceVersion++;
+    const share=$('shareWhatsAppDigestBtn');
+    if(share)share.disabled=true;
     leaveView='today';
     $('refreshNoticeStatus').hidden=true;
     $('uncoveredClassField').hidden=true;
@@ -863,54 +892,39 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if($('intelQueryResult'))$('intelQueryResult').hidden=true;
   });
   $('shareWhatsAppDigestBtn')?.addEventListener('click',()=>run(async()=>{
-    const pulse=snapshot?.pulse,fees=snapshot?.fees;
-    if(!pulse||!fees)throw Error('School pulse unavailable.');
-    let intel=cachedIntelligence;
-    if(!intel){
-      intel=await client.intelligence(pulse.day,75).catch(()=>({atRisk:[],classSummary:[],followups:[]}));
-    }
-    const insights=[];
-    const dropped=intel.classSummary?.find(c=>c.trend_status==='dropped');
-    if(dropped){
-      insights.push('Class '+dropped.class_label+' attendance dropped from '+(dropped.prev_attendance_percent||'normal')+'% to '+dropped.attendance_percent+'% this week');
-    }
-    if(intel.followups?.length){
-      insights.push(intel.followups.length+' fee follow-up(s) drafted, awaiting approval');
-    }
-    if(pulse.uncovered_periods>0){
-      insights.push(pulse.uncovered_periods+' period(s) require teacher substitute cover');
-    }else{
-      insights.push('Timetable clash prevented for '+pulse.day);
-    }
-
+    const pulse=snapshot?.pulse,fees=snapshot?.fees,intel=cachedIntelligence;
     const waEngine=root.BNWhatsApp;
-    const message=waEngine?.createDailyIntelligenceDigestMessage
-      ?waEngine.createDailyIntelligenceDigestMessage({
-          schoolName:client.school()?.name||'Bright Nexa School',
-          date:pulse.day,
-          attendancePercent:pulse.student_percent||0,
-          studentsPresent:pulse.students_present||0,
-          totalStudents:pulse.students||0,
-          feeTotal:fees.total||0,
-          feeReceiptCount:fees.receipt_count||0,
-          atRiskCount:intel.atRisk?.length||0,
-          insights,
-          uncoveredPeriods:pulse.uncovered_periods||0,
-          scheduledPeriods:pulse.scheduled_periods||0
-        })
-      :`Bright Nexa Daily Brief: ${pulse.student_percent}% attendance, ₹${fees.total} fees.`;
+    if(!pulse||!fees||!intel||!waEngine)throw Error('Verified school intelligence unavailable. Refresh before sharing.');
+    const message=waEngine.createDailyIntelligenceDigestMessage({
+      schoolName:snapshot.school.name,
+      date:pulse.day,
+      attendancePercent:pulse.student_percent,
+      studentsPresent:pulse.students_present,
+      totalStudents:pulse.students,
+      feeTotal:fees.total,
+      feeReceiptCount:fees.receipt_count,
+      atRiskCount:intel.atRisk.length,
+      insights:intelligenceAlerts(pulse,intel,true).map(item=>item.text),
+      uncoveredPeriods:pulse.uncovered_periods,
+      scheduledPeriods:pulse.scheduled_periods
+    });
 
+    // Navigate in the current frame so Android WebViews can hand off to WhatsApp.
+    const link=elt('a');
+    link.href='https://wa.me/?text='+encodeURIComponent(message);
+    link.referrerPolicy='no-referrer';
+    const currentSnapshot=snapshot;
+    const clipboard=root.navigator?.clipboard;
+    note('WhatsApp draft requested.');
     try{
-      if(root.navigator?.clipboard?.writeText){
-        await root.navigator.clipboard.writeText(message);
+      if(clipboard?.writeText){
+        Promise.resolve(clipboard.writeText(message)).then(
+          ()=>{if(snapshot===currentSnapshot)note('WhatsApp draft requested and brief copied.');},
+          ()=>{if(snapshot===currentSnapshot)note('WhatsApp draft requested. Clipboard copy failed.');}
+        );
       }
-    }catch(_){}
-    const waUrl=waEngine?.buildWhatsAppUrl('',message,'wa_me')||`https://wa.me/?text=${encodeURIComponent(message)}`;
-    const winView=doc.defaultView||root;
-    if(winView&&typeof winView.open==='function'){
-      winView.open(waUrl,'_blank');
-    }
-    note('Daily intelligence brief copied and opened for WhatsApp.');
+    }catch(_){note('WhatsApp draft requested. Clipboard copy failed.');}
+    link.click();
   }));
   gate(true);
   run(async()=>{
