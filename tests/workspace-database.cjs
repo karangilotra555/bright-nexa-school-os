@@ -30,7 +30,8 @@ do $$declare t text;begin foreach t in array array['institutions','school_users'
  else execute format('create policy fixture on %I for all to authenticated using(school_private.has_role(institution_id,array[''school_admin''])) with check(school_private.has_role(institution_id,array[''school_admin'']))',t); end if;
 end loop;end$$;
 `;
-(async () => {
+module.exports={fixture};
+if(require.main===module)(async () => {
  const db = new PGlite(); await db.exec(fixture);
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261105200548_school_workspace_sync.sql'),'utf8'));
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261107131000_guard_first_workspace_import.sql'),'utf8'));

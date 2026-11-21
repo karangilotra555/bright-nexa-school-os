@@ -19,6 +19,23 @@
     return 'v2:'+value.length+':'+[a,b,c,d].map(function(x){return x.toString(16).padStart(8,'0');}).join('');
   }
   function fingerprint(value){return hashCanonical(canonical(value));}
+  // Account for the three empty values stripped by the ERP device cache
+  // in the fee counter round trip. All nonempty fields still compare exactly.
+  function restoredFingerprint(snapshot){
+    var operations=snapshot?.operations;
+    if(!operations)return fingerprint(snapshot);
+    var normalized={...operations};
+    for(var [collection,field] of [['classes','academicStream'],['feePayments','note']]){
+      var rows=operations[collection];
+      if(!Array.isArray(rows)||!rows.some(row=>row?.[field]===''))continue;
+      normalized[collection]=rows.map(function(row){
+        if(row?.[field]!=='')return row;
+        var copy={...row};delete copy[field];return copy;
+      });
+    }
+    if(Array.isArray(operations.externalFeeLedger)&&operations.externalFeeLedger.length===0)delete normalized.externalFeeLedger;
+    return fingerprint({...snapshot,operations:normalized});
+  }
   function institutionId(s){return s&&s.institution&&s.institution.institution&&s.institution.institution.id;}
   function create(options){
     var o=options, storage=o.storage, binding=null, record=null, disk=null, generation=0, running=null, status='local', lastError=null, serial=0, disposed=false, saving=Promise.resolve(), missingPendingRecovery=false, retryTimer=null, retryFailures=0, conflictRecheck=null;
@@ -253,23 +270,26 @@
           return state();
         }
       }
-      if(binding&&((record.pending&&fingerprint(record.pending)!==fingerprint(o.getSnapshot()))||(!record.pending&&record.fingerprint!==fingerprint(o.getSnapshot())))){
+      var local=o.getSnapshot();
+      if(binding&&((record.pending&&restoredFingerprint(record.pending)!==restoredFingerprint(local))||
+        (!record.pending&&record.fingerprint!==fingerprint(local)&&record.fingerprint!==restoredFingerprint(local)))){
         conflict(error('Saved browser records differ from the school workspace. No local changes were uploaded.'));
         if(verifiedExplicitOpen()){
           // An older browser checksum can disagree even when the actual clean
-          // local school is byte-for-byte equal to the cloud. Confirm that
+          // local school contains the same data as the cloud. Confirm that
           // against the hydrated Supabase workspace before changing metadata.
           // Never use this shortcut if an older pending edit is present.
           try{
             if(record&&!record.pending&&!record.pendingRef){
-              var beforeFingerprint=fingerprint(o.getSnapshot()), b=binding, r=record, checkpoint=generation;
+              var before=o.getSnapshot(),beforeFingerprint=fingerprint(before), b=binding, r=record, checkpoint=generation;
+              var beforeRestored=restoredFingerprint(before);
               var confirmed=await o.client.pull(b.schoolId);
               if(confirmed?.snapshot&&Number.isSafeInteger(confirmed.revision)
                 &&String(institutionId(confirmed.snapshot))===b.localId
-                &&fingerprint(confirmed.snapshot)===beforeFingerprint
+                &&restoredFingerprint(confirmed.snapshot)===beforeRestored
                 &&checkpoint===generation&&binding===b&&record===r
                 &&consistent()&&fingerprint(o.getSnapshot())===beforeFingerprint){
-                await persist({...r,revision:confirmed.revision,fingerprint:beforeFingerprint,pending:null});
+                await persist({...r,revision:confirmed.revision,fingerprint:beforeRestored,pending:null});
                 notify('synced');
                 return state();
               }
@@ -301,7 +321,7 @@
             var result=await o.client.push(b.schoolId,r.revision,snapshot,o.buildProjection?o.buildProjection(snapshot):undefined);
             if(binding!==b||record!==r)break;
             if(!consistent()){conflict();break;}
-            var acknowledged={...r,revision:result.revision,fingerprint:fingerprint(snapshot),
+            var acknowledged={...r,revision:result.revision,fingerprint:restoredFingerprint(snapshot),
               pending:generation===sentGeneration&&r.pending&&fingerprint(r.pending)===fingerprint(snapshot)?null:r.pending};
             await persist(acknowledged);notify(record.pending?'pending':'synced');
           }catch(e){
@@ -322,7 +342,7 @@
                 if(remote&&remote.snapshot&&remote.revision>r.revision
                   &&fingerprint(remote.snapshot)===fingerprint(expected)
                   &&binding===b&&record===r&&consistent()){
-                  await persist({...r,revision:remote.revision,fingerprint:fingerprint(snapshot),
+                  await persist({...r,revision:remote.revision,fingerprint:restoredFingerprint(snapshot),
                     pending:generation===sentGeneration&&r.pending&&fingerprint(r.pending)===fingerprint(snapshot)?null:r.pending});
                   notify(record.pending?'pending':'synced');
                   continue;
@@ -375,7 +395,7 @@
         if(applied===false)throw error('Cloud records could not be applied safely; local records were retained.');
         observed.check();
         if(start!==generation)throw error('Local edits occurred while applying the school. Local records were retained.');
-        nextRecord.fingerprint=fingerprint(o.getSnapshot());
+        nextRecord.fingerprint=restoredFingerprint(o.getSnapshot());
         storage.setItem(recordKey(next),JSON.stringify(nextRecord));storage.setItem(bindingKey(next.localId),JSON.stringify(next));
         binding=next;record=nextRecord;disk=JSON.stringify(record);++generation;notify('synced');return remote;
       }catch(e){if(e.code==='CONFLICT'||recovering)conflict(e);else notify(record&&record.pending?'pending':binding?'pending':'local',e);throw e;}
@@ -417,7 +437,8 @@
       conflictRecheck=(async function(){
         var b=binding,r=record,start=generation,snapshot=clone(o.getSnapshot());
         if(String(institutionId(snapshot))!==b.localId)return state();
-        var localFingerprint=fingerprint(snapshot),atStart=storage.getItem(recordKey(b));
+        var localFingerprint=fingerprint(snapshot),localRestored=restoredFingerprint(snapshot);
+        var atStart=storage.getItem(recordKey(b));
         if(!atStart||storage.getItem(bindingKey(b.localId))!==JSON.stringify(b))return state();
         var newest;
         try{newest=JSON.parse(atStart);}catch(_){return state();}
@@ -437,17 +458,17 @@
             return state();
           if(newest.revision>remote.revision)
             throw error('Another tab has newer recovery metadata than Supabase. No edits were replaced.');
-          if(fingerprint(remote.snapshot)===localFingerprint){
-            // Byte-for-byte identical local and hydrated cloud snapshots: stale
+          if(restoredFingerprint(remote.snapshot)===localRestored){
+            // Equivalent local and hydrated cloud snapshots: stale
             // checksum/revision metadata was the only problem.
             if(disk!==atStart){record=newest;disk=atStart;}
-            await persist({...record,revision:remote.revision,fingerprint:localFingerprint,
+            await persist({...record,revision:remote.revision,fingerprint:localRestored,
               pending:null,pendingRef:null});
             if(!consistent())throw changed();
             notify('synced');
             return state();
           }
-          if(localFingerprint===r.fingerprint&&
+          if((localFingerprint===r.fingerprint||localRestored===r.fingerprint)&&
             !r.pending&&!r.pendingRef){
             // Clean old tab, newer cloud data: use the existing guarded backup
             // + cloud hydration path. If another tab writes mid-flight,
@@ -480,11 +501,11 @@
         // workspace revision. Pull is a live overlay, so compare canonical content
         // as well as revision or those teacher-side changes never reach the ERP.
         if(!remote.snapshot)throw error('The cloud workspace is empty. Local records were retained.');
-        var remoteFingerprint=fingerprint(remote.snapshot);
-        if(remote.revision!==record.revision||remoteFingerprint!==record.fingerprint){
+        if(remote.revision!==record.revision||
+          (fingerprint(remote.snapshot)!==record.fingerprint&&restoredFingerprint(remote.snapshot)!==record.fingerprint)){
           if(String(institutionId(remote.snapshot))!==binding.localId){conflict(error('Cloud institution identity changed. Open the school explicitly.'));return state();}
-          var localFingerprint=fingerprint(o.getSnapshot());
-          if(localFingerprint!==record.fingerprint){
+          var local=o.getSnapshot(),localFingerprint=fingerprint(local);
+          if(localFingerprint!==record.fingerprint&&restoredFingerprint(local)!==record.fingerprint){
             conflict(error('Unsaved local edits were detected while updating the cloud view. Your changes were preserved. Resolve the school sync conflict before reloading.'));
             return state();
           }
@@ -496,7 +517,7 @@
           });
           if(start!==generation||binding!==b||record.pending)return state();
           if(!consistent()){conflict();return state();}
-          await persist({...record,fingerprint:fingerprint(o.getSnapshot()),revision:remote.revision});
+          await persist({...record,fingerprint:restoredFingerprint(o.getSnapshot()),revision:remote.revision});
         }
         notify('synced');
       }catch(e){failed(e);}
