@@ -224,7 +224,7 @@
       timeZone: 'UTC'
     }) : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
-    const formattedFee = '₹' + Number(feeTotal || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    const formattedFee = '₹' + Number(feeTotal || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
     const attendanceText = attendancePercent == null ? 'Awaiting complete marks' : Number(attendancePercent).toLocaleString('en-IN',{maximumFractionDigits:1})+'%';
 
     let timetableText = '';

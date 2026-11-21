@@ -418,7 +418,8 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     const classLabel=classMatch?classMatch[1]+'-'+classMatch[2].toUpperCase():null;
     const pctMatch=text.match(/(?:\b(?:less\s+than|below|under)\s+|(<=|<)\s*)([+-]?\d+(?:\.\d+)?)\s*%?/i);
     const threshold=pctMatch?Number(pctMatch[2]):null;
-    return {classLabel,threshold,inclusive:pctMatch?.[1]==='<=',unsupportedThreshold:/\b(?:above|over|greater\s+than|more\s+than)\s+\d|>\s*=?\s*\d/i.test(text),wantsFees:/\b(?:fees?|balances?|dues|payments?)\b/i.test(text)};
+    const stream=text.match(/\b(science|commerce|arts|humanities|vocational)\b/i)?.[1].toLowerCase()||null;
+    return {classLabel,stream,threshold,inclusive:pctMatch?.[1]==='<=',unsupportedThreshold:/\b(?:above|over|greater\s+than|more\s+than)\s+\d|>\s*=?\s*\d/i.test(text),wantsFees:/\b(?:fees?|balances?|dues|payments?)\b/i.test(text)};
   }
   function guardianDraft(phone,message,buttonLabel){
     const url=root.BNWhatsApp.buildWhatsAppUrl(phone,message,'wa_me');
@@ -439,8 +440,14 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
 
     const schoolName=client.school().name;
     const waEngine=root.BNWhatsApp;
-    const matchesClass=s=>!parsed.classLabel||String(s.class_label).replace(/^class\s+/i,'').replace(/\s+/g,'').toUpperCase()===parsed.classLabel;
-    const classLabel=parsed.classLabel?'Class '+parsed.classLabel:'All Classes';
+    const matchesClass=s=>{
+      if(parsed.stream&&String(s.academic_stream||'').trim().toLowerCase()!==parsed.stream)return false;
+      if(!parsed.classLabel)return true;
+      const label=s.class_name!=null&&s.section!=null?s.class_name+'-'+s.section:String(s.class_label).split(' (')[0];
+      return label.replace(/^class\s+/i,'').replace(/\s+/g,'').toUpperCase()===parsed.classLabel;
+    };
+    const classLabel=(parsed.classLabel?'Class '+parsed.classLabel:'All Classes')+
+      (parsed.stream?' · '+parsed.stream.charAt(0).toUpperCase()+parsed.stream.slice(1):'');
     const operator=parsed.inclusive?'≤':'<';
     if(heading)heading.textContent=parsed.wantsFees?'Fee Follow-ups ('+classLabel+')':
       parsed.threshold===null?'At-Risk Students ('+classLabel+')':'Attendance '+operator+parsed.threshold+'% ('+classLabel+')';
@@ -635,6 +642,9 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     }
   }
   async function refresh(){
+    $('intelQueryItems')?.replaceChildren();
+    const queryResult=$('intelQueryResult');
+    if(queryResult)queryResult.hidden=true;
     let data;
     try{data=await client.overview();}
     catch(error){

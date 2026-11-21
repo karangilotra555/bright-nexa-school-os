@@ -1,4 +1,4 @@
--- Replace attendance intelligence calculations without changing RPC signatures or grants.
+-- Correct intelligence calculations and add class identifiers without changing RPC signatures.
 begin;
 
 create or replace function public.bn_leadership_at_risk_students(
@@ -23,7 +23,9 @@ begin
         c.id as class_id,
         c.name as class_name,
         c.section,
-        c.name || '-' || c.section as class_label,
+        c.academic_stream,
+        c.name || '-' || c.section ||
+          case when btrim(c.academic_stream) <> '' then ' (' || btrim(c.academic_stream) || ')' else '' end as class_label,
         coalesce(sp.guardian_name, '') as guardian_name,
         coalesce(sp.guardian_phone, '') as guardian_phone
       from public.school_students s
@@ -60,6 +62,7 @@ begin
         'class_name', sr.class_name,
         'section', sr.section,
         'class_label', sr.class_label,
+        'academic_stream', sr.academic_stream,
         'guardian_name', sr.guardian_name,
         'guardian_phone', sr.guardian_phone,
         'total_days', coalesce(ast.total_days, 0),
@@ -93,12 +96,14 @@ begin
         c.id as class_id,
         c.name as class_name,
         c.section,
-        c.name || '-' || c.section as class_label,
+        c.academic_stream,
+        c.name || '-' || c.section ||
+          case when btrim(c.academic_stream) <> '' then ' (' || btrim(c.academic_stream) || ')' else '' end as class_label,
         count(s.id) as total_students
       from public.school_classes c
       left join public.school_students s on s.class_id = c.id and s.institution_id = c.institution_id and lower(s.status) = 'active'
       where c.institution_id = p_school
-      group by c.id, c.name, c.section
+      group by c.id, c.name, c.section, c.academic_stream
     ),
     eligible_marks as (
       select a.class_id, a.student_id, a.day, lower(a.status) as status
@@ -119,16 +124,19 @@ begin
       where a.day = p_day
       group by a.class_id
     ),
-    week_stats as (
-      select
-        a.class_id,
-        round(
-          (count(*) filter (where a.status in ('present','late','half day','half_day'))::numeric * 100) /
-          nullif(count(*), 0), 1
-        ) as week_percent
+    complete_previous_days as (
+      select a.class_id, a.day, count(*) as marked,
+        count(*) filter (where a.status in ('present','late','half day','half_day')) as present
       from eligible_marks a
+      join classes c on c.class_id = a.class_id
       where a.day < p_day
-      group by a.class_id
+      group by a.class_id, a.day, c.total_students
+      having count(distinct a.student_id) = c.total_students
+    ),
+    week_stats as (
+      select class_id, round(sum(present) * 100.0 / nullif(sum(marked), 0), 1) as week_percent
+      from complete_previous_days
+      group by class_id
     )
     select jsonb_agg(
       jsonb_build_object(
@@ -136,6 +144,7 @@ begin
         'class_name', c.class_name,
         'section', c.section,
         'class_label', c.class_label,
+        'academic_stream', c.academic_stream,
         'total_students', c.total_students,
         'marked_today', coalesce(ts.marked_today, 0),
         'today_percent', ts.today_percent,
@@ -151,5 +160,51 @@ begin
     left join week_stats ws on ws.class_id = c.class_id
   ), '[]'::jsonb);
 end $$;
+
+create or replace function public.bn_leadership_fee_followups(
+  p_school uuid
+)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare
+  is_leader boolean := coalesce(school_private.has_role(p_school, array['school_admin','principal']), false);
+begin
+  if (select auth.uid()) is null or not is_leader then
+    raise exception 'Verified Owner or Principal required' using errcode='42501';
+  end if;
+
+  return coalesce((
+    select jsonb_agg(
+      jsonb_build_object(
+        'student_id', s.id,
+        'name', s.name,
+        'admission_number', s.admission_number,
+        'class_id', c.id,
+        'class_name', c.name,
+        'section', c.section,
+        'academic_stream', c.academic_stream,
+        'class_label', c.name || '-' || c.section ||
+          case when btrim(c.academic_stream) <> '' then ' (' || btrim(c.academic_stream) || ')' else '' end,
+        'balance_rupees', b.balance_rupees,
+        'guardian_name', coalesce(sp.guardian_name, 'Parent'),
+        'guardian_phone', coalesce(sp.guardian_phone, '')
+      ) order by b.balance_rupees desc
+    )
+    from public.school_fee_balances b
+    join public.school_students s on s.id = b.student_id and s.institution_id = b.institution_id
+    join public.school_classes c on c.id = s.class_id and c.institution_id = s.institution_id
+    left join public.school_student_profiles sp on sp.student_id = s.id and sp.institution_id = s.institution_id
+    where b.institution_id = p_school
+      and b.balance_rupees > 0
+      and lower(s.status) = 'active'
+  ), '[]'::jsonb);
+end $$;
+
+revoke all on function public.bn_leadership_at_risk_students(uuid, numeric, uuid) from public, anon, authenticated;
+revoke all on function public.bn_leadership_class_attendance_summary(uuid, date) from public, anon, authenticated;
+revoke all on function public.bn_leadership_fee_followups(uuid) from public, anon, authenticated;
+
+grant execute on function public.bn_leadership_at_risk_students(uuid, numeric, uuid) to authenticated;
+grant execute on function public.bn_leadership_class_attendance_summary(uuid, date) to authenticated;
+grant execute on function public.bn_leadership_fee_followups(uuid) to authenticated;
 
 commit;
