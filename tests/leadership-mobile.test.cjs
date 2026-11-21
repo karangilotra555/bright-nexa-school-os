@@ -32,6 +32,15 @@ function backend(role='principal'){
    {slot_id:'slot',class_id:'class',class_name:'10 A',subject:'Math',starts_at:'09:00:00',ends_at:'09:45:00',teacher_id:'t1',candidates:[{teacher_id:'t1',teacher_name:'Teacher C',subject_match:true,periods:2}]}
   ]);
   if(path==='/rest/v1/rpc/bn_publish_teacher_covers')return response(null);
+  if(path==='/rest/v1/rpc/bn_leadership_at_risk_students')return response([
+   {student_id:'s1',admission_number:'ADM-101',name:'Student One',class_id:'c1',class_label:'10-B',attendance_percent:72,guardian_phone:'9876543210',guardian_name:'Guardian One',consecutive_absent:3}
+  ]);
+  if(path==='/rest/v1/rpc/bn_leadership_class_attendance_summary')return response([
+   {class_id:'c1',class_label:'8-B',total_students:40,marked_students:40,present_students:31,attendance_percent:77.5,trend_status:'dropped',prev_attendance_percent:95}
+  ]);
+  if(path==='/rest/v1/rpc/bn_leadership_fee_followups')return response([
+   {student_id:'s1',admission_number:'ADM-101',name:'Student One',class_label:'10-B',balance_rupees:4500,guardian_phone:'9876543210',guardian_name:'Guardian One'}
+  ]);
   throw Error('Unexpected request: '+url);
  };
  return {fetcher,calls};
