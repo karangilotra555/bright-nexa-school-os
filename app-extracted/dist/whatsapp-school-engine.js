@@ -87,6 +87,22 @@
     );
   }
 
+  function createAttendanceFollowupMessage({schoolName,studentName,className,attendancePercent,consecutiveAbsences}) {
+    const details = [
+      `*Recorded attendance:* ${attendancePercent}%`,
+      Number(consecutiveAbsences)>=3 ? `*Consecutive recorded absences:* ${consecutiveAbsences}` : ''
+    ].filter(Boolean);
+    return [
+      `🔔 *${schoolName} • Attendance Follow-up*`,
+      '',
+      `Namaste, hum *${studentName}* (Class: ${className}) ki attendance ke baare mein aapse baat karna chahte hain.`,
+      ...details,
+      'Kripya school office se sampark karein.',
+      '',
+      `_Dhanyawaad • ${schoolName}_`
+    ].join('\n');
+  }
+
   /**
    * 2. Pending Fee Reminder Message
    */
@@ -103,7 +119,7 @@
   } = {}) {
     const classLabel = [className, section].filter(Boolean).join('-');
     const inrAmount = Number(amountDue || 0).toLocaleString('en-IN', {
-      maximumFractionDigits: 0
+      maximumFractionDigits: 2
     });
     const formattedDue = dueDate ? new Date(dueDate + 'T00:00:00Z').toLocaleDateString('en-IN', {
       day: 'numeric',
@@ -117,10 +133,10 @@
       `Aapke bache *${studentName}*${classLabel ? ` (Class: ${classLabel})` : ''}${admissionNumber ? ` [Adm No: ${admissionNumber}]` : ''} ki school fees pending hai:\n\n` +
       `📌 *Total Baaki Fees:* ₹${inrAmount}\n` +
       (month ? `📅 *Month / Period:* ${month}\n` : '') +
-      `⏳ *Due Date:* ${formattedDue}\n\n` +
+      (dueDate===null ? '\n' : `⏳ *Due Date:* ${formattedDue}\n\n`) +
       `Kripya baaki fees school accounts counter par ya authorized mode se jama karein.\n` +
       `Kisi bhi jaankari ya receipt ke liye accounts office se sampark karein:\n` +
-      `📞 Accounts Helpline: ${schoolPhone}\n\n` +
+      (schoolPhone ? `📞 Accounts Helpline: ${schoolPhone}\n` : '') + '\n' +
       `_Dhanyawaad • ${schoolName}_`
     );
   }
@@ -191,7 +207,7 @@
   function createDailyIntelligenceDigestMessage({
     schoolName = 'Bright Nexa School',
     date = '',
-    attendancePercent = 0,
+    attendancePercent = null,
     studentsPresent = 0,
     totalStudents = 0,
     feeTotal = 0,
@@ -204,26 +220,27 @@
     const formattedDate = date ? new Date(date + (date.includes('T') ? '' : 'T00:00:00Z')).toLocaleDateString('en-IN', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: 'UTC'
     }) : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
     const formattedFee = '₹' + Number(feeTotal || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-    const formattedPct = typeof attendancePercent === 'number' ? (Number.isInteger(attendancePercent) ? String(attendancePercent) : attendancePercent.toFixed(1)) : String(attendancePercent || 0);
+    const attendanceText = attendancePercent == null ? 'Awaiting complete marks' : Number(attendancePercent).toLocaleString('en-IN',{maximumFractionDigits:1})+'%';
 
     let timetableText = '';
     if (uncoveredPeriods > 0) {
       timetableText = `⚠️ *Uncovered Periods:* ${uncoveredPeriods} period(s) require teacher cover`;
     } else if (scheduledPeriods > 0) {
-      timetableText = `✅ *Timetable:* All ${scheduledPeriods} periods covered (no timetable clash)`;
+      timetableText = `✅ *Timetable:* All ${scheduledPeriods} periods covered`;
     }
 
     const lines = [
       `📊 *${schoolName} • Daily School Intelligence Brief*`,
       `📅 *Date:* ${formattedDate}`,
       '',
-      `*• Attendance Today: ${formattedPct}%*` + (totalStudents ? ` (${studentsPresent}/${totalStudents} present)` : ''),
+      `*• Attendance Today: ${attendanceText}*` + (attendancePercent!=null&&totalStudents ? ` (${studentsPresent}/${totalStudents} present)` : ''),
       `*• Fee Collection: ${formattedFee}*` + (feeReceiptCount ? ` (${feeReceiptCount} receipts)` : ''),
-      `*• At-Risk Students: ${atRiskCount}*` + (atRiskCount > 0 ? ` (<75% attendance or consecutive absents)` : ''),
+      `*• At-Risk Students: ${atRiskCount}*` + (atRiskCount > 0 ? ` (<75% attendance or 3+ consecutive absences)` : ''),
       ''
     ];
 
@@ -416,6 +433,7 @@
     normalizeIndianPhone,
     buildWhatsAppUrl,
     createAbsenteeMessage,
+    createAttendanceFollowupMessage,
     createFeeReminderMessage,
     createPtmMessage,
     createEmergencyNoticeMessage,

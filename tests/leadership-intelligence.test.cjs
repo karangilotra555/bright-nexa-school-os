@@ -58,6 +58,11 @@ test('leadership intelligence SQL functions calculate at-risk students, class at
       ($1,$3,$2,'2026-11-19','present'),
       ($1,$3,$2,'2026-11-20','present')`,[school,student2,classA]);
 
+    // Three scattered absences in the recent marks must not be called a streak.
+    await sql(`insert into school_attendance(institution_id,class_id,student_id,day,status)
+      select $1,$3,$2,day::date,case when extract(day from day) in (7,9,11) then 'absent' else 'present' end
+      from generate_series('2026-11-04'::date,'2026-11-12'::date,'1 day'::interval) day`,[school,student2,classA]);
+
     // Fees: Student 1 has 5000 pending fee, Student 3 has 0
     await sql(`insert into school_fee_entries(institution_id,student_id,kind,amount_rupees,occurred_on) values
       ($1,$2,'charge',5000,'2026-11-01'),
@@ -67,6 +72,7 @@ test('leadership intelligence SQL functions calculate at-risk students, class at
     // Run migration
     const migrationFile=path.join(__dirname,'../supabase/migrations/20261121100000_leadership_school_intelligence.sql');
     await db.exec(fs.readFileSync(migrationFile,'utf8'));
+    await db.exec(fs.readFileSync(path.join(path.dirname(migrationFile),'20261121184520_leadership_intelligence_accuracy.sql'),'utf8'));
 
     // Check RBAC: Anonymous or teacher rejected
     await role('anon');
@@ -75,13 +81,17 @@ test('leadership intelligence SQL functions calculate at-risk students, class at
     await role('authenticated',teacher);
     await assert.rejects(rpc('bn_leadership_at_risk_students',school,75), /Owner or Principal required/i);
 
-    // School admin can query
+    // The active Owner may read this school only.
     await role('authenticated',admin);
+    for (const name of ['bn_leadership_at_risk_students','bn_leadership_class_attendance_summary','bn_leadership_fee_followups']) {
+      await assert.rejects(rpc(name,outside), /Owner or Principal required/i);
+    }
 
     // 1. At-Risk Students
     const atRisk=await rpc('bn_leadership_at_risk_students',school,75);
     assert.equal(Array.isArray(atRisk),true);
     assert.equal(atRisk.length,1);
+    assert.deepEqual((await rpc('bn_leadership_at_risk_students',school,0)).map(s=>s.student_id),[student1]);
     assert.equal(atRisk[0].student_id,student1);
     assert.equal(atRisk[0].name,'Aman Gupta');
     assert.equal(atRisk[0].class_label,'8-B');
@@ -90,13 +100,17 @@ test('leadership intelligence SQL functions calculate at-risk students, class at
     assert.equal(atRisk[0].consecutive_absent,3);
 
     // 2. Class Attendance Trends
-    const trends=await rpc('bn_leadership_class_attendance_summary',school);
+    const trends=await rpc('bn_leadership_class_attendance_summary',school,'2026-11-20');
     assert.equal(Array.isArray(trends),true);
     assert.equal(trends.length,2);
     const class8B=trends.find(t=>t.class_id===classA);
     assert.ok(class8B);
     assert.equal(class8B.class_label,'8-B');
     assert.equal(class8B.total_students,2);
+    assert.equal(class8B.today_percent,50);
+    assert.equal(class8B.week_percent,66.7);
+    assert.equal(class8B.trend,'dropped');
+    assert.equal(trends.find(t=>t.class_id===classB).today_percent,null);
 
     // 3. Fee Follow-ups
     const followUps=await rpc('bn_leadership_fee_followups',school);
@@ -126,7 +140,7 @@ test('whatsapp-school-engine formats daily intelligence digest message correctly
     atRiskCount: 7,
     insights: [
       'Class 8-B attendance dropped from 95% to 78% this week',
-      '3 fee follow-ups drafted, awaiting approval',
+      '3 students have pending fee balances',
       'Timetable clash prevented for Monday P4'
     ],
     uncoveredPeriods: 0,
@@ -138,8 +152,11 @@ test('whatsapp-school-engine formats daily intelligence digest message correctly
   assert.match(message, /Fee Collection:\s*₹18,40,000/);
   assert.match(message, /At-Risk Students:\s*7/);
   assert.match(message, /Class 8-B attendance dropped/);
-  assert.match(message, /3 fee follow-ups drafted/);
+  assert.match(message, /3 students have pending fee balances/);
   assert.match(message, /All 48 periods covered/);
+  const incomplete=engine.createDailyIntelligenceDigestMessage({attendancePercent:null});
+  assert.match(incomplete,/Attendance Today: Awaiting complete marks/);
+  assert.doesNotMatch(incomplete,/Attendance Today: 0%|All 0 periods covered/);
 });
 
 test('leadership client and DOM render Live School Intelligence card and WhatsApp triggers', async () => {
@@ -150,6 +167,7 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
   const testSchool = '00000000-0000-4000-8000-000000000001';
   const person = '00000000-0000-4000-8000-000000000002';
   const calls = [];
+  let failIntelligence = false;
   const response = (data, headers = {}) => new Response(JSON.stringify(data), {
     status: 200,
     headers: { 'Content-Type': 'application/json', ...headers }
@@ -158,6 +176,9 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
   const fetcher = async (url, request = {}) => {
     const p = new URL(url, 'https://school.example').pathname;
     calls.push({ path: p, body: request.body ? JSON.parse(request.body) : null });
+    if (failIntelligence && /bn_leadership_(at_risk_students|class_attendance_summary|fee_followups)$/.test(p)) {
+      return new Response(JSON.stringify({message:'Temporary database problem'}),{status:503});
+    }
     if (p === '/auth/v1/token') return response({ access_token: 'tok', refresh_token: 'ref', expires_in: 3600 });
     if (p === '/auth/v1/user') return response({ id: person });
     if (p === '/rest/v1/school_users' && url.includes('auth_user_id=')) {
@@ -180,12 +201,12 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     }
     if (p === '/rest/v1/rpc/bn_leadership_class_attendance_summary') {
       return response([
-        { class_id: 'c1', class_label: '8-B', total_students: 40, marked_students: 40, present_students: 31, attendance_percent: 77.5, trend_status: 'dropped', prev_attendance_percent: 95 }
+        { class_id: 'c1', class_label: '8-B', total_students: 40, marked_today: 40, today_percent: 77.5, trend: 'dropped', week_percent: 95 }
       ]);
     }
     if (p === '/rest/v1/rpc/bn_leadership_fee_followups') {
       return response([
-        { student_id: 's1', admission_number: 'ADM-101', name: 'Aman Gupta', class_label: '10-B', balance_rupees: 5000, guardian_phone: '9876543210', guardian_name: 'Mr. Gupta' }
+        { student_id: 's1', admission_number: 'ADM-101', name: 'Aman Gupta', class_label: '10-B', balance_rupees: 5000.25, guardian_phone: '9876543210', guardian_name: 'Mr. Gupta' }
       ]);
     }
     throw Error('Unexpected mock path: ' + p);
@@ -200,11 +221,11 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
 
   const classSummary = await client.classAttendanceSummary('2026-11-21');
   assert.equal(classSummary.length, 1);
-  assert.equal(classSummary[0].trend_status, 'dropped');
+  assert.equal(classSummary[0].trend, 'dropped');
 
   const followups = await client.feeFollowups();
   assert.equal(followups.length, 1);
-  assert.equal(followups[0].balance_rupees, 5000);
+  assert.equal(followups[0].balance_rupees, 5000.25);
 
   const intel = await client.intelligence('2026-11-21', 75);
   assert.equal(intel.atRisk.length, 1);
@@ -224,7 +245,7 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
       writeText: async text => { copiedText = text; }
     };
     let openedUrl = '';
-    win.open = url => { openedUrl = url; return {}; };
+    win.HTMLAnchorElement.prototype.click = function(){ openedUrl=this.href; };
 
     win.eval(read('whatsapp-school-engine.js'));
     win.eval(read('leadership-app.js'));
@@ -246,8 +267,8 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     // Actionable alerts rendered in list
     const alerts = win.document.getElementById('intelAlertsList');
     assert.match(alerts.textContent, /Class 8-B attendance dropped from 95% to 77\.5%/);
-    assert.match(alerts.textContent, /1 fee follow-up drafted, awaiting approval/);
-    assert.match(alerts.textContent, /Timetable clash prevented for 2026-11-21/);
+    assert.match(alerts.textContent, /1 student has a pending fee balance/);
+    assert.match(alerts.textContent, /All 32 published periods have teacher cover/);
 
     // Query interactive filter: "Which students in 10-B have less than 80% attendance?"
     const queryInput = win.document.getElementById('intelQueryInput');
@@ -261,14 +282,24 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     assert.equal(win.document.getElementById('intelQueryResult').hidden, false);
     const queryItems = win.document.getElementById('intelQueryItems');
     assert.match(queryItems.textContent, /Aman Gupta \(ADM-101\)/);
-    assert.match(queryItems.textContent, /Class 10-B · 72% attendance · 3 consecutive absents/);
+    assert.match(queryItems.textContent, /Class 10-B · 72% attendance · 3 consecutive absences/);
 
     // Verify WhatsApp button with wa.me link
     const waPill = queryItems.querySelector('a.intel-wa-pill');
     assert.ok(waPill);
     assert.match(waPill.href, /^https:\/\/wa\.me\/919876543210\?text=/);
-    assert.match(decodeURIComponent(waPill.href), /Attendance Notice/);
+    assert.match(decodeURIComponent(waPill.href), /Attendance Follow-up/);
     assert.match(decodeURIComponent(waPill.href), /Aman Gupta/);
+    assert.doesNotMatch(decodeURIComponent(waPill.href), /ABSENT \(Gairhaazir\)|7500058655/);
+
+    queryInput.value = 'Fee dues for 10-B';
+    win.document.getElementById('intelQueryBtn').click();
+    for (let i=0; i<40 && !queryItems.textContent.includes('Balance:'); i++) {
+      await new Promise(resolve=>setTimeout(resolve,25));
+    }
+    const feeDraft=decodeURIComponent(queryItems.querySelector('a.intel-wa-pill').href);
+    assert.match(feeDraft,/₹5,000\.25/);
+    assert.doesNotMatch(feeDraft,/Invalid Date|7500058655/);
 
     // Send Daily Brief on WhatsApp button
     win.document.getElementById('shareWhatsAppDigestBtn').dispatchEvent(new win.Event('click'));
@@ -282,6 +313,23 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     assert.match(copiedText, /At-Risk Students:\s*1/);
     assert.match(openedUrl, /^https:\/\/wa\.me\/\?text=/);
 
+
+    for (let i=0; i<40 && !win.document.getElementById('notice').textContent.includes('brief copied'); i++) {
+      await new Promise(resolve=>setTimeout(resolve,25));
+    }
+    failIntelligence=true;
+    win.document.getElementById('refreshBtn').click();
+    for (let i=0; i<40 && !alerts.textContent.includes('unavailable'); i++) {
+      await new Promise(resolve=>setTimeout(resolve,25));
+    }
+    assert.equal(win.document.getElementById('intelAtRiskVal').textContent,'—');
+    assert.match(alerts.textContent,/Fee follow-ups unavailable/);
+    assert.equal(win.document.getElementById('shareWhatsAppDigestBtn').disabled,true);
+    win.document.getElementById('intelQueryBtn').click();
+    for (let i=0; i<40 && !queryItems.textContent.includes('unavailable'); i++) {
+      await new Promise(resolve=>setTimeout(resolve,25));
+    }
+    assert.match(queryItems.textContent,/Fee follow-ups unavailable/);
     await new Promise(resolve => setTimeout(resolve, 50));
   } finally {
     dom.window.close();
