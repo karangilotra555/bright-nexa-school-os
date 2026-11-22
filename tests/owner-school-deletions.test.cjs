@@ -85,9 +85,40 @@ test('school owners alone can remove published attachments, homework and teacher
  }
  assert.deepEqual((await deleteObject('other-file')).rows,[{name:'other-file'}]);
  await signIn(owner);
+ await assert.rejects(deleteHomework(),error=>error.code==='42501');
+ assert.equal((await db.query('select id from public.school_homework where id=$1',[homework])).rows.length,1);
  await assert.rejects(deleteFile(published),error=>error.code==='42501');
  assert.deepEqual((await deleteObject(publishedPath)).rows,[{name:publishedPath}]);
  assert.deepEqual((await deleteFile(published)).rows,[{id:published}]);
  assert.deepEqual((await deleteHomework()).rows,[{id:homework}]);
  assert.deepEqual((await deleteAssignment()).rows,[{id:homework}]);
+});
+
+test('assignment revoke reports success only after the server returns the requested row', async () => {
+ const source=fs.readFileSync('teacher-access.js','utf8');
+ const apiBlock=source.match(/  async function api\(table,[\s\S]*?\n  }\n  const query/)[0]
+  .replace(/\n  const query$/, '');
+ const bindBlock=source.match(/      const scope=staffReadScope\(\);\n      revoke\.addEventListener\('click',\(\)=>run\(async\(\)=>\{[\s\S]*?\n      \}\)\);/)[0];
+ const bind=new Function('revoke','run','staffReadScope','me','a','query','eq','reload','notify','ensureToken','timedCloudFetch','responseJson','BASE','APIKEY','session',apiBlock+'\n'+bindBlock);
+ let callback, response=[], reloads=0, notice='', request, reloadFails=false;
+ bind({addEventListener:(_event, fn)=>callback=fn}, task=>task(),
+   ()=>({member:{institution_id:school},current:()=>true}),{institution_id:school},
+   {id:homework}, params=>new URLSearchParams(params).toString(), x=>'eq.'+x,
+   async()=>{reloads++;if(reloadFails)throw Error('Offline');},message=>{notice=message;},async()=>{},
+   async(_url,options)=>{request=options;return response;}, async value=>value,
+   'https://example.invalid','test-key',{access_token:'test-token'});
+ await assert.rejects(callback(),/no authorized school record/i);
+ assert.equal(reloads,0);
+ assert.equal(notice,'');
+ response=[{id:otherSchool}];
+ await assert.rejects(callback(),/assignment removal could not be confirmed/i);
+ assert.equal(reloads,0);
+ response=[{id:homework}];
+ await callback();
+ assert.equal(request.headers.Prefer,'return=representation');
+ assert.equal(reloads,1);
+ assert.equal(notice,'Assignment revoked.');
+ reloadFails=true;
+ await callback();
+ assert.match(notice,/Assignment revoked.*refresh/i);
 });

@@ -11,8 +11,10 @@
   function mount({ panel, open, close, rotate, revoke, refresh, inbox, key, status, rows, getScope, confirm }) {
     if (!open || !panel) return { reset() {} };
     let generation = 0;
+    let loadedInbox = null;
     function reset() {
       generation++;
+      loadedInbox = null;
       panel.hidden = true;
       key.value = '';
       key.hidden = true;
@@ -43,13 +45,30 @@
       }
     }
 
-    async function load(rpc, active) {
-      rows.replaceChildren();
-      const reviewed = inbox.value === 'reviewed';
-      const data = await rpc('list_enquiries', { p_reviewed: reviewed });
-      if (!Array.isArray(data)) throw Error('Invalid inbox response');
+    async function load(rpc, active, markedReviewed = false) {
+      const requestedInbox = inbox.value;
+      const reviewed = requestedInbox === 'reviewed';
+      let data;
+      try {
+        data = await rpc('list_enquiries', { p_reviewed: reviewed });
+        if (!Array.isArray(data) || data.some(enquiry => !enquiry || typeof enquiry.id !== 'string')) {
+          throw Error('Invalid inbox response');
+        }
+      } catch (_) {
+        if (!active()) return;
+        if (loadedInbox !== null) inbox.value = loadedInbox;
+        status.textContent = markedReviewed
+          ? 'Enquiry marked reviewed. Could not refresh the inbox; try Refresh enquiries.'
+          : loadedInbox !== null
+            ? 'Could not refresh the inbox. Showing the last loaded enquiries.'
+            : 'Could not load admission enquiries. Try Refresh enquiries.';
+        return;
+      }
       if (!active()) return;
-      status.textContent = data.length ? '' : reviewed ? 'No reviewed enquiries.' : 'No new admission enquiries.';
+      loadedInbox = requestedInbox;
+      rows.replaceChildren();
+      status.textContent = markedReviewed ? 'Enquiry marked reviewed.'
+        : data.length ? '' : reviewed ? 'No reviewed enquiries.' : 'No new admission enquiries.';
       for (const enquiry of data) {
         const row = rows.insertRow();
         for (const value of [
@@ -69,7 +88,9 @@
         button.textContent = 'Mark reviewed';
         button.addEventListener('click', () => run(async (send, isCurrent) => {
           await send('mark_reviewed', { p_enquiry: enquiry.id });
-          if (isCurrent()) await load(send, isCurrent);
+          if (!isCurrent()) return;
+          row.remove();
+          await load(send, isCurrent, true);
         }));
         actions.append(button);
       }
