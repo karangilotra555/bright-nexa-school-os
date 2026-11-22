@@ -39,6 +39,9 @@ test('the beta page used by the WordPress plugin separates live school setup fro
     ]);
     assert.match(setup.textContent, /real admission enquiries/i);
     assert.match(guide.textContent, /separate test school/i);
+    assert.match(guide.textContent, /separate owner account/i);
+    assert.match(guide.textContent, /separate test WordPress site/i);
+    assert.match(guide.textContent, /live WordPress site connected to your actual school/i);
     assert.match(guide.textContent, /fictional student/i);
     assert.match(guide.textContent, /only their linked student/i);
     assert.match(guide.textContent, /no duplicate receipt/i);
