@@ -65,3 +65,135 @@ test('WordPress enquiry keys are write-only, tenant-scoped, revocable and dedupl
     await db.close();
   }
 });
+
+test('WordPress admissions UI handles empty states, guarded dates and action lifecycle', async () => {
+  const { JSDOM } = require('jsdom');
+  const admissions = require('../school-wordpress-admissions.js');
+  const dom = new JSDOM(`
+    <!doctype html>
+    <div id="panel" hidden>
+      <button id="open"></button>
+      <button id="close"></button>
+      <button id="rotate"></button>
+      <button id="revoke"></button>
+      <button id="refresh"></button>
+      <select id="inbox">
+        <option value="new">New</option>
+        <option value="reviewed">Reviewed</option>
+      </select>
+      <input id="key" hidden />
+      <span id="status"></span>
+      <table><tbody id="rows"></tbody></table>
+    </div>
+  `);
+  const doc = dom.window.document;
+  const elements = {
+    panel: doc.getElementById('panel'),
+    open: doc.getElementById('open'),
+    close: doc.getElementById('close'),
+    rotate: doc.getElementById('rotate'),
+    revoke: doc.getElementById('revoke'),
+    refresh: doc.getElementById('refresh'),
+    inbox: doc.getElementById('inbox'),
+    key: doc.getElementById('key'),
+    status: doc.getElementById('status'),
+    rows: doc.getElementById('rows'),
+    getScope: () => ({
+      rpc: async (fn, args) => {
+        if (fn === 'list_enquiries') {
+          if (args.p_reviewed) return [];
+          return [
+            {
+              id: 'enq-1',
+              name: 'Aarav Sharma',
+              email: 'aarav@example.com',
+              phone: '+91 9876543210',
+              year_group: 'Class 6',
+              submitted_at: '2026-11-20T10:00:00.000Z'
+            },
+            {
+              id: 'enq-2',
+              name: 'Priya Patel',
+              email: 'priya@example.com',
+              phone: '',
+              year_group: '',
+              submitted_at: null
+            },
+            {
+              id: 'enq-3',
+              name: 'Rohan Gupta',
+              email: 'rohan@example.com',
+              phone: '',
+              year_group: '',
+              submitted_at: 'invalid-date'
+            }
+          ];
+        }
+        if (fn === 'mark_reviewed') return true;
+        if (fn === 'rotate_key') return 'a'.repeat(64);
+        if (fn === 'revoke_key') return true;
+        throw new Error('Unknown RPC: ' + fn);
+      },
+      current: () => true
+    }),
+    confirm: () => true
+  };
+
+  const ui = admissions.mount(elements);
+  assert.ok(ui && typeof ui.reset === 'function');
+
+  // Open panel and load enquiries
+  elements.open.click();
+  await new Promise(r => setTimeout(r, 60));
+
+  assert.equal(elements.panel.hidden, false);
+  assert.equal(elements.rows.rows.length, 3);
+
+  // Check valid date row
+  const row1 = elements.rows.rows[0];
+  assert.equal(row1.cells[0].textContent, 'Aarav Sharma');
+  assert.notEqual(row1.cells[4].textContent, '—');
+  assert.notEqual(row1.cells[4].textContent, 'Invalid Date');
+
+  // Check null date row
+  const row2 = elements.rows.rows[1];
+  assert.equal(row2.cells[0].textContent, 'Priya Patel');
+  assert.equal(row2.cells[4].textContent, '—');
+
+  // Check invalid date row
+  const row3 = elements.rows.rows[2];
+  assert.equal(row3.cells[0].textContent, 'Rohan Gupta');
+  assert.equal(row3.cells[4].textContent, '—');
+
+  // Check mark reviewed action
+  const markReviewedBtn = row1.cells[5].querySelector('button');
+  assert.ok(markReviewedBtn);
+  markReviewedBtn.click();
+  await new Promise(r => setTimeout(r, 60));
+
+  // Check rotate key
+  elements.rotate.click();
+  await new Promise(r => setTimeout(r, 60));
+  assert.equal(elements.key.value, 'a'.repeat(64));
+  assert.equal(elements.key.hidden, false);
+  assert.match(elements.status.textContent, /Copy this key/);
+
+  // Check switch inbox to reviewed (returns empty array)
+  elements.inbox.value = 'reviewed';
+  elements.inbox.dispatchEvent(new dom.window.Event('change'));
+  await new Promise(r => setTimeout(r, 60));
+  assert.equal(elements.status.textContent, 'No reviewed enquiries.');
+
+  // Check revoke key
+  elements.revoke.click();
+  await new Promise(r => setTimeout(r, 60));
+  assert.equal(elements.key.value, '');
+  assert.equal(elements.key.hidden, true);
+  assert.equal(elements.status.textContent, 'WordPress disconnected.');
+
+  // Check close reset
+  elements.close.click();
+  assert.equal(elements.panel.hidden, true);
+  assert.equal(elements.rows.rows.length, 0);
+});
+

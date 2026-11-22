@@ -12,7 +12,7 @@ const mirrors=[
  'school-workspace-cloud.js','school-online-guard.js','school-role-entry.js',
  'teacher-access.html','teacher-access.js','parents.html','parents-cloud.js','school-mobile-session.js',
  'assets/index-brightnexa-v2.js','school-private-cache.js','school-workspace-persistence.js',
- 'school-auth-signout.js','portal.js','marksheet.html'
+ 'school-auth-signout.js','portal.js','marksheet.html','school-wordpress-admissions.js'
 ];
 let verified=0;
 for(const file of mirrors){

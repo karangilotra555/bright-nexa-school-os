@@ -45006,7 +45006,6 @@ function Fs({ children: e }) {
                   <Component2206>{`Institution type *`}</Component2206>
                   <Component2209 value={p} onChange={(e) => m(e.target.value)}>
                     <Component2207>{`School`}</Component2207>
-                    <Component2208>{`Coaching Centre`}</Component2208>
                   </Component2209>
                 </Component2210>
                 <Component2213>

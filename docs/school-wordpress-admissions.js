@@ -2,6 +2,12 @@
 (function (root) {
   'use strict';
 
+  function formatSubmittedAt(raw) {
+    if (!raw) return '—';
+    const date = new Date(raw);
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('en-IN');
+  }
+
   function mount({ panel, open, close, rotate, revoke, refresh, inbox, key, status, rows, getScope, confirm }) {
     if (!open || !panel) return { reset() {} };
     let generation = 0;
@@ -46,8 +52,13 @@
       status.textContent = data.length ? '' : reviewed ? 'No reviewed enquiries.' : 'No new admission enquiries.';
       for (const enquiry of data) {
         const row = rows.insertRow();
-        for (const value of [enquiry.name, enquiry.email, enquiry.phone, enquiry.year_group,
-          new Date(enquiry.submitted_at).toLocaleString()]) {
+        for (const value of [
+          enquiry.name,
+          enquiry.email,
+          enquiry.phone,
+          enquiry.year_group,
+          formatSubmittedAt(enquiry.submitted_at)
+        ]) {
           row.insertCell().textContent = value || '—';
         }
         const actions = row.insertCell();
