@@ -2368,13 +2368,14 @@
     if(!mobileTeacher())return;
     const rows=[...(rosterScope?.rows.values()||[])];
     const pending=rows.filter(row=>row.select.value!==row.confirmedStatus).length;
+    const review=rows.filter(row=>row.reviewDraft).length;
     const unmarked=rows.filter(row=>!row.select.value).length;
     put('attendanceSummary',rows.length?(rows.length-unmarked)+' of '+rows.length+' marked':'');
     const feedback=$('attendanceFeedback');
     if(rows.length)$('attendanceActions').prepend(feedback);
     const button=$('saveAttendance');
-    button.disabled=Boolean(rosterScope?.saving||rosterScope?.needsReload)||pending===0;
-    button.textContent=rosterScope?.saving?'Saving…':rosterScope?.needsReload?'Reload required':rosterScope?.retry?'Retry save · '+pending:
+    button.disabled=Boolean(rosterScope?.saving||rosterScope?.needsReload)||review>0||pending===0;
+    button.textContent=rosterScope?.saving?'Saving…':rosterScope?.needsReload?'Reload required':review?'Review '+review+(review===1?' change':' changes'):rosterScope?.retry?'Retry save · '+pending:
       pending?'Save '+pending+(pending===1?' change':' changes'):rows.length&&unmarked===0?'✓ Saved':'Save attendance';
     $('markRemainingPresent').disabled=Boolean(rosterScope?.saving||rosterScope?.needsReload)||unmarked===0;
   }
@@ -2518,6 +2519,12 @@
     if(!rosterScope)return;
     rememberAttendance(rosterScope);
     if(rosterScope.needsReload)return;
+    if([...rosterScope.rows.values()].some(row=>row.reviewDraft)){
+      put('attendanceFeedback','Review changed rows: keep the saved status or select your choice again.');
+      $('attendanceFeedback').dataset.error='true';
+      updateAttendanceSummary();
+      return;
+    }
     put('attendanceFeedback','');
     $('attendanceFeedback').dataset.error='false';
     if(!mobileTeacher())return;
@@ -2542,6 +2549,7 @@
     if(rosterScope.classId!==cls||rosterScope.day!==day)throw Error('Class or date changed. Reload roster.');
     if(selects.some(s=>s.dataset.classId!==cls))throw Error('Class changed. Reload roster.');
     if(rosterScope.needsReload)return;
+    if([...rosterScope.rows.values()].some(row=>row.reviewDraft)){attendanceEdited();return;}
     if(selects.some(s=>!['present','absent','late','excused'].includes(s.value))){
       if(!mobileTeacher())throw Error('Mark every student before saving attendance.');
       put('attendanceFeedback','Mark every student before saving attendance.');

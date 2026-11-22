@@ -89,6 +89,7 @@ test('WordPress admissions UI handles empty states, guarded dates and action lif
   const doc = dom.window.document;
   let failList = false;
   let reviewed = false;
+  let failKey = false;
   let pendingList;
   const elements = {
     panel: doc.getElementById('panel'),
@@ -135,7 +136,7 @@ test('WordPress admissions UI handles empty states, guarded dates and action lif
           ];
         }
         if (fn === 'mark_reviewed') { reviewed = true; return true; }
-        if (fn === 'rotate_key') return 'a'.repeat(64);
+        if (fn === 'rotate_key') { if(failKey) throw Error('Response lost after rotation'); return 'a'.repeat(64); }
         if (fn === 'revoke_key') return true;
         throw new Error('Unknown RPC: ' + fn);
       },
@@ -200,6 +201,13 @@ test('WordPress admissions UI handles empty states, guarded dates and action lif
   assert.equal(elements.key.value, 'a'.repeat(64));
   assert.equal(elements.key.hidden, false);
   assert.match(elements.status.textContent, /Copy this key/);
+  failKey = true;
+  elements.rotate.click();
+  await new Promise(r => setImmediate(r));
+  assert.equal(elements.key.hidden, true, 'an unconfirmed rotation cannot leave an obsolete key available to copy');
+  assert.equal(elements.key.value, '');
+  failKey = false;
+
 
   // Check switch inbox to reviewed (returns empty array)
   elements.inbox.value = 'reviewed';
