@@ -11,6 +11,8 @@ body{margin:0}main{max-width:760px;margin:8vh auto;padding:clamp(24px,6vw,54px);
 header{display:flex;align-items:center;gap:.75rem;font-weight:750}h1{font-size:clamp(2rem,6vw,3.5rem);line-height:1.08;letter-spacing:-.035em;margin:1rem 0}
 h2{font-size:1.2rem;margin-top:2rem}a{color:#075784}.actions{display:flex;flex-wrap:wrap;gap:.75rem;margin:1.4rem 0}
 .button{padding:.7rem 1rem;border-radius:.55rem;font-weight:680}.primary{color:white;background:#085b87;text-decoration:none}
+details{margin:.65rem 0;border:1px solid #dce6ef;border-radius:.55rem;padding:.65rem .85rem}
+summary{cursor:pointer;font-weight:680}details ul{margin:.65rem 0 .35rem;padding-inline-start:1.35rem}
 </style>
 </head>
 <body>
@@ -22,12 +24,68 @@ h2{font-size:1.2rem;margin-top:2rem}a{color:#075784}.actions{display:flex;flex-w
   <a class="button primary" href="./teacher-access.html?signup=1">Create a free school</a>
   <a class="button" href="./teacher-access.html">Sign in</a>
 </div>
-<h2>Try a school workflow</h2>
-<ol>
-  <li>Create an owner account, verify your email and set up a test school.</li>
-  <li>Open Full School OS and add a sample class and fictional students.</li>
-  <li>Test school and family workflows with the <a href="./parent-app-download.html">Android app</a>.</li>
-</ol>
+<section id="school-setup" aria-labelledby="school-setup-heading">
+  <h2 id="school-setup-heading">Connect an actual school</h2>
+  <p>Create an owner account for your school, verify your email and open Full School OS. If you use WordPress, generate a connection key in <a href="./teacher-access.html?view=wordpress">WordPress Admissions</a>, save it in the plugin and add <code>[bright_nexa_admissions]</code> to your admissions page. Real admission enquiries will appear in your school’s inbox when parents submit the form with consent.</p>
+</section>
+<section id="testing-guide" aria-labelledby="testing-guide-heading">
+  <h2 id="testing-guide-heading">Test the whole School OS</h2>
+  <p>Create a separate test school and open Full School OS as its owner. Add two classes, a fictional student in each and a test teacher assigned to one class. Use fictional records and email addresses or phone numbers you control for account setup. Open the <a href="./parent-app-download.html">Android app download page</a> for Teacher and Student access and the <a href="./parents.html">Parent Portal</a> for linked family access.</p>
+  <details open>
+    <summary>School setup, admissions and documents</summary>
+    <ul>
+      <li>Save a school profile and add classes, sections and students. Refresh the Dashboard and open each student profile to verify the changes.</li>
+      <li>With the plugin connected to your test school, submit a practice enquiry and mark it reviewed in WordPress Admissions. Create a student record separately to test enrolment.</li>
+      <li>Open ID Cards &amp; Certificates and preview the documents for the correct test student.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Staff, timetable and teaching</summary>
+    <ul>
+      <li>Invite the test teacher, activate the account and grant attendance, homework or marks permissions for one class.</li>
+      <li>Publish a timetable and confirm the assigned teacher can see the right class and periods in the Android app.</li>
+      <li>Mark student attendance, publish homework and enter exam marks where permitted. Reopen the app to confirm the saved entries.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Family access and published records</summary>
+    <ul>
+      <li>Set up the test student’s family login and verify that the Parent Portal or Student app shows only their linked student.</li>
+      <li>Publish a notice and a marksheet. Check the linked account for attendance, homework, published results, fee balance and notices.</li>
+      <li>Submit a practice leave request and check that it reaches the school. Use test recipients for any messages you send.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Fees, expenses and reports</summary>
+    <ul>
+      <li>Set a test fee, record a fictional payment and check the updated balance. Refresh and verify that there is no duplicate receipt.</li>
+      <li>Try a concession or reversal in the test workspace. Verify the amount due in the owner’s reports and the linked family account.</li>
+      <li>Record a fictional expense, check the budget and compare the totals in Owner Reports with the entries you saved.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Staff operations, transport and assets</summary>
+    <ul>
+      <li>Add non-teaching staff and try staff attendance, leave and an approval from the <a href="./leadership.html">Leadership portal</a>.</li>
+      <li>Add a sample route and asset. Assign the route to a test student and confirm both records are visible after refresh.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Teaching tools, progress and school quality</summary>
+    <ul>
+      <li>Try AI Teacher Tools and Smart Tools with fictional classroom examples. Review the output before using it in your test school.</li>
+      <li>Open Opportunity Desk, Growth Passport and School Quality Score. Check that each screen reflects the information available to the signed-in role.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Sync, permissions and recovery</summary>
+    <ul>
+      <li>Save a test record on one device and open the same school on another. Verify the saved record and try an offline edit followed by reconnecting.</li>
+      <li>Switch the test teacher and family accounts to confirm class and student access. If you test Accountant or Librarian access, verify the modules the owner has enabled for each account.</li>
+      <li>Try backup and recovery only in the test workspace. Reopen the workspace and verify the selected school and records before continuing.</li>
+    </ul>
+  </details>
+</section>
 <h2>Tell us what happened</h2>
 <p><a href="https://github.com/karangilotra555/bright-nexa-school-os/issues/new/choose">Report a bug or request an improvement</a>. Include the steps you tried, the device you used and what you expected. Reports are public. Use fictional data and leave out student records, screenshots with personal details and passwords.</p>
 </main>
