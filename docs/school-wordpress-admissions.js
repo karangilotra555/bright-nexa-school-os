@@ -108,6 +108,9 @@
     rotate.addEventListener('click', () => {
       if (!confirm('Generate a new key? If a site is already connected, replace its old key in WordPress.')) return;
       void run(async (rpc, active) => {
+        // A lost response may follow a successful rotation; never offer the old key.
+        key.value = '';
+        key.hidden = true;
         const result = await rpc('rotate_key');
         if (typeof result !== 'string' || !/^[a-f0-9]{64}$/.test(result)) throw Error('Invalid connection response');
         if (!active()) return;
@@ -121,6 +124,8 @@
     revoke.addEventListener('click', () => {
       if (!confirm('Disconnect the WordPress admission form for this school?')) return;
       void run(async (rpc, active) => {
+        key.value = '';
+        key.hidden = true;
         await rpc('revoke_key');
         if (!active()) return;
         key.value = '';

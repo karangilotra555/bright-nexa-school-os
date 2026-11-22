@@ -79,6 +79,8 @@ test('Teacher cannot overwrite a newer status without reloading and selecting it
  assert.equal(select().value,'present');
  const badge=f.node('rosterList').children[0].children[0].children[2];
  assert.match(badge.textContent,/saved.*present.*choice.*late/i);
+ assert.match(f.node('saveAttendance').textContent,/Review 1 change/i);
+ assert.equal(f.node('saveAttendance').disabled,true);
  await f.node('saveAttendance').listeners.click();
  assert.equal(f.calls.filter(c=>c.opt.method==='POST').length,1);
  select().value='late';select().listeners.change();
@@ -88,3 +90,18 @@ test('Teacher cannot overwrite a newer status without reloading and selecting it
   [{student_id:'child',status:'late',expected:'present'}]);
 });
 test('the shared app links both roles without changing the native APK',()=>{const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');assert.match(read('docs/parents.html'),/teacher-access\.html\?view=attendance/);assert.match(read('docs/teacher-access.html'),/id="parentApp" href="\.\/parents\.html"/);assert.match(read('docs/sw.js'),/teacher-access/);});
+
+test('unresolved attendance conflict cannot be hidden by another edited row',async()=>{
+ const f=setup({saved:[{student_id:'child',status:'absent'},{student_id:'second',status:'present'}],mobile:true});
+ f.state.students.push({id:'second',name:'Second',class_id:'assigned'});
+ await f.api.loadAttendance();let rows=f.node('rosterList').querySelectorAll();
+ rows[0].value='late';rows[0].listeners.change();f.cloud.set('child','present');
+ await f.node('saveAttendance').listeners.click();await f.node('loadAttendance').listeners.click();
+ rows=f.node('rosterList').querySelectorAll();rows[1].value='absent';rows[1].listeners.change();
+ assert.equal(f.node('saveAttendance').disabled,true);
+ assert.match(f.node('attendanceFeedback').textContent,/review/i);
+ await f.node('saveAttendance').listeners.click();assert.equal(f.calls.filter(c=>c.opt.method==='POST').length,1);
+ f.node('rosterList').children[0].children[0].children[3].listeners.click();
+ assert.equal(f.node('saveAttendance').disabled,false);
+ await f.node('saveAttendance').listeners.click();assert.equal(f.cloud.get('second'),'absent');assert.equal(f.cloud.get('child'),'present');
+});
