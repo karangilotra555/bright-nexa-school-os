@@ -87,6 +87,9 @@ test('WordPress admissions UI handles empty states, guarded dates and action lif
     </div>
   `);
   const doc = dom.window.document;
+  let failList = false;
+  let reviewed = false;
+  let pendingList;
   const elements = {
     panel: doc.getElementById('panel'),
     open: doc.getElementById('open'),
@@ -101,6 +104,8 @@ test('WordPress admissions UI handles empty states, guarded dates and action lif
     getScope: () => ({
       rpc: async (fn, args) => {
         if (fn === 'list_enquiries') {
+          if (pendingList) return pendingList;
+          if (failList) throw Error('Network unavailable');
           if (args.p_reviewed) return [];
           return [
             {
@@ -129,7 +134,7 @@ test('WordPress admissions UI handles empty states, guarded dates and action lif
             }
           ];
         }
-        if (fn === 'mark_reviewed') return true;
+        if (fn === 'mark_reviewed') { reviewed = true; return true; }
         if (fn === 'rotate_key') return 'a'.repeat(64);
         if (fn === 'revoke_key') return true;
         throw new Error('Unknown RPC: ' + fn);
@@ -165,11 +170,29 @@ test('WordPress admissions UI handles empty states, guarded dates and action lif
   assert.equal(row3.cells[0].textContent, 'Rohan Gupta');
   assert.equal(row3.cells[4].textContent, '—');
 
+  // A failed refresh on the current view keeps the last verified results.
+  failList = true;
+  elements.refresh.click();
+  await new Promise(r => setImmediate(r));
+  assert.equal(elements.rows.rows.length, 3);
+  assert.match(elements.status.textContent, /last loaded enquiries/i);
+
+  // A failed switch keeps the selector aligned with the records being shown.
+  elements.inbox.value = 'reviewed';
+  elements.inbox.dispatchEvent(new dom.window.Event('change'));
+  await new Promise(r => setImmediate(r));
+  assert.equal(elements.inbox.value, 'new');
+  assert.equal(elements.rows.rows.length, 3);
+
   // Check mark reviewed action
   const markReviewedBtn = row1.cells[5].querySelector('button');
   assert.ok(markReviewedBtn);
   markReviewedBtn.click();
-  await new Promise(r => setTimeout(r, 60));
+  await new Promise(r => setImmediate(r));
+  assert.equal(reviewed, true);
+  assert.equal(elements.rows.rows.length, 2);
+  assert.match(elements.status.textContent, /marked reviewed.*refresh/i);
+  failList = false;
 
   // Check rotate key
   elements.rotate.click();
@@ -191,9 +214,17 @@ test('WordPress admissions UI handles empty states, guarded dates and action lif
   assert.equal(elements.key.hidden, true);
   assert.equal(elements.status.textContent, 'WordPress disconnected.');
 
-  // Check close reset
-  elements.close.click();
+  // A slow response from the previous school cannot repaint a reset inbox.
+  let finishList;
+  pendingList = new Promise(resolve => { finishList = resolve; });
+  elements.refresh.click();
+  ui.reset();
+  finishList([{id:'old-school-enquiry', name:'Old school'}]);
+  await new Promise(r => setImmediate(r));
+
   assert.equal(elements.panel.hidden, true);
   assert.equal(elements.rows.rows.length, 0);
+  assert.equal(elements.key.value, '');
+  dom.window.close();
 });
 

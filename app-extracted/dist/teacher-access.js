@@ -416,7 +416,7 @@
     inbox:$('wordpressAdmissionsInbox'),key:$('wordpressAdmissionsKey'),status:$('wordpressAdmissionsStatus'),rows:$('wordpressAdmissionsRows'),
     confirm:message=>window.confirm(message),
     getScope:()=>{
-      if(!isAdmin())return null;
+      if(!isAdmin()||$('wordpressAdmissionsOpen')?.disabled)return null;
       const scope=staffReadScope();
       return {current:scope.current,rpc:(name,params={})=>api('rpc/bn_wordpress_'+name,'','POST',{
         p_school:scope.member.institution_id,...params
@@ -744,6 +744,9 @@
   }
   async function load(requestedSchoolId,teacherResume=false){
     const thisLoad=++schoolLoadEpoch;
+    wordpressAdmissions?.reset();
+    const admissionsOpen=$('wordpressAdmissionsOpen');
+    if(admissionsOpen)admissionsOpen.disabled=true;
     await ensureToken();
     const userResponse=await timedCloudFetch(BASE+'/auth/v1/user',{headers:{
       apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'});
@@ -867,7 +870,10 @@
     const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
     const openingView=deepLink||(preferredLandingView&&isTabVisibleForRole(preferredLandingView,me.role)?preferredLandingView:null)||landing||'account';
     tab(openingView);clearNotice();
-    if(requested==='wordpress'&&isAdmin())$('wordpressAdmissionsOpen').click();
+    if(admissionsOpen){
+      admissionsOpen.disabled=!isAdmin();
+      if(requested==='wordpress'&&isAdmin())admissionsOpen.click();
+    }
     if(teacherApp){
       enablePeriodAlerts('resume');
       urgentAlerts?.setScope({school:me.institution_id,member:me.id});
@@ -1758,9 +1764,15 @@
         [a.can_view_roster?'Roster':'',a.can_take_attendance?'Attendance':'',a.can_assign_homework?'Homework':'',a.can_enter_marks?'Marks':''].filter(Boolean).join(', ');
       left.append(dom('div',detail,'muted'));line.append(left);
       const revoke=dom('button','Revoke','danger');
+      const scope=staffReadScope();
       revoke.addEventListener('click',()=>run(async()=>{
-        await api('school_teacher_assignments',query({id:eq(a.id),institution_id:eq(me.institution_id)}),'DELETE',null,'return=minimal');
-        await reload();notify('Assignment revoked.');
+        if(!scope.current())return;
+        const removed=await api('school_teacher_assignments',query({id:eq(a.id),institution_id:eq(scope.member.institution_id)}),'DELETE')
+          .catch(error=>{if(scope.current())throw error;return [];});
+        if(!scope.current())return;
+        if(removed.length!==1||removed[0].id!==a.id)throw Error('Assignment removal could not be confirmed. Refresh and try again.');
+        const refreshed=await reload().then(()=>true,()=>false);
+        if(scope.current())notify(refreshed?'Assignment revoked.':'Assignment revoked. Could not refresh the list; reload to see the change.',!refreshed);
       }));
       line.append(revoke);listing.append(line);
     }
