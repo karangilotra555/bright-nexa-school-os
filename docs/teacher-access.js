@@ -410,6 +410,20 @@
   const teacher=()=>me?.role==='teacher';
   const mobileTeacher=()=>document.body?.classList.contains('bn-teacher-app')===true;
   const canAcademic=()=>['school_admin','principal','teacher'].includes(me?.role);
+  const wordpressAdmissions=window.BNWordPressAdmissions?.mount({
+    panel:$('wordpressAdmissionsPanel'),open:$('wordpressAdmissionsOpen'),close:$('wordpressAdmissionsClose'),
+    rotate:$('wordpressAdmissionsRotate'),revoke:$('wordpressAdmissionsRevoke'),refresh:$('wordpressAdmissionsRefresh'),
+    inbox:$('wordpressAdmissionsInbox'),key:$('wordpressAdmissionsKey'),status:$('wordpressAdmissionsStatus'),rows:$('wordpressAdmissionsRows'),
+    confirm:message=>window.confirm(message),
+    getScope:()=>{
+      if(!isAdmin())return null;
+      const scope=staffReadScope();
+      return {current:scope.current,rpc:(name,params={})=>api('rpc/bn_wordpress_'+name,'','POST',{
+        p_school:scope.member.institution_id,...params
+      })};
+    }
+  });
+
   // Website is for school office roles. Teacher/student daily work uses
   // the installed mobile PWA or trusted app WebView. This is a UX boundary;
   // Supabase RLS remains the actual authorization control.
@@ -445,6 +459,7 @@
     for(const row of records){const o=dom('option',label(row));o.value=row.id;s.append(o)}
   }
   function dropSession(){
+    wordpressAdmissions?.reset();
     ++schoolLoadEpoch;
     clearPeriodAlerts();
     urgentAlerts?.clear();
@@ -491,6 +506,7 @@
     if(name!=='admin'&&!isTabVisibleForRole(name,me?.role||'teacher'))return;
     // Owner timetable deep-links retain the main School OS context without
     // spawning a second, duplicated staff/ERP sidebar.
+    wordpressAdmissions?.reset();
     const focused=isAdmin()&&name==='timetable'
       &&new URLSearchParams(location.search).get('view')==='timetable';
     document.body.classList.toggle('bn-owner-timetable',focused);
@@ -851,6 +867,7 @@
     const preferredLandingView=window.BNSchoolRoleEntry?.preferredView(me.role);
     const openingView=deepLink||(preferredLandingView&&isTabVisibleForRole(preferredLandingView,me.role)?preferredLandingView:null)||landing||'account';
     tab(openingView);clearNotice();
+    if(requested==='wordpress'&&isAdmin())$('wordpressAdmissionsOpen').click();
     if(teacherApp){
       enablePeriodAlerts('resume');
       urgentAlerts?.setScope({school:me.institution_id,member:me.id});
@@ -1337,6 +1354,7 @@
   }
   function applyNavigationVisibility(){
     const role=me?.role||'teacher';
+    wordpressAdmissions?.reset();
     const isAdm=isAdmin();
     display('dashboardTab',false); // Full ERP owns the Dashboard; this workspace keeps staff tools.
     display('adminTab',isAdm);
