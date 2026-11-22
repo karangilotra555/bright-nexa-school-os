@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Bright Nexa School OS
+ * Plugin Name: Bright Nexa School
  * Description: Connect a school website to Bright Nexa School OS and receive admission enquiries.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Requires at least: 6.5
  * Requires PHP: 7.4
  * Author: Bright Nexa
@@ -90,9 +90,8 @@ function render_form() {
 	if ( ! $post || ! is_singular() ) {
 		return '';
 	}
-	$result = isset( $_GET['bright_nexa_enquiry'] ) && is_string( $_GET['bright_nexa_enquiry'] )
-		? sanitize_key_for_status( wp_unslash( $_GET['bright_nexa_enquiry'] ) )
-		: '';
+	$status = filter_input( INPUT_GET, 'bright_nexa_enquiry' );
+	$result = in_array( $status, array( 'received', 'invalid', 'unavailable' ), true ) ? $status : '';
 	$instance = wp_unique_id( 'bright-nexa-admission-' );
 	ob_start();
 	?>
@@ -120,12 +119,9 @@ function render_form() {
 	return ob_get_clean();
 }
 
-function sanitize_key_for_status( $status ) {
-	return in_array( $status, array( 'received', 'invalid', 'unavailable' ), true ) ? $status : '';
-}
-
 function input( $field ) {
-	return isset( $_POST[ $field ] ) && is_string( $_POST[ $field ] ) ? wp_unslash( $_POST[ $field ] ) : '';
+	$value = filter_input( INPUT_POST, $field );
+	return is_string( $value ) ? $value : '';
 }
 
 function forward_enquiry( $key, $name, $email, $phone, $year ) {
@@ -149,8 +145,9 @@ function submit() {
 	$back = 'publish' === get_post_status( $page ) ? get_permalink( $page ) : home_url( '/' );
 	$result = 'invalid';
 
-	if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
-		&& wp_verify_nonce( input( '_wpnonce' ), ACTION . '_' . $page )
+	$method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
+	if ( 'POST' === $method
+		&& wp_verify_nonce( sanitize_text_field( input( '_wpnonce' ) ), ACTION . '_' . $page )
 		&& '' === input( 'website_confirm' ) && '1' === input( 'consent' ) ) {
 		$key   = get_option( OPTION, '' );
 		$name  = sanitize_text_field( input( 'parent_name' ) );

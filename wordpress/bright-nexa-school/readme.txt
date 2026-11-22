@@ -1,8 +1,9 @@
-=== Bright Nexa School OS ===
+=== Bright Nexa School ===
 Tags: school, admissions, education, school management
 Requires at least: 6.5
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,6 +31,9 @@ Service: https://bright-nexa-school-os.onrender.com/school-beta.html
 Database provider: https://supabase.com/privacy
 
 == Changelog ==
+
+= 0.1.1 =
+* Updated form input handling and verified compatibility with WordPress 7.1.
 
 = 0.1.0 =
 * Admission enquiry form and school-specific connection.
