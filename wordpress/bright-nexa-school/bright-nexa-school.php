@@ -1,12 +1,15 @@
 <?php
 /**
  * Plugin Name: Bright Nexa School
+ * Plugin URI: https://bright-nexa-school-os.onrender.com/school-beta.html
  * Description: Connect a school website to Bright Nexa School OS and receive admission enquiries.
  * Version: 0.1.1
  * Requires at least: 6.5
  * Requires PHP: 7.4
  * Author: Bright Nexa
+ * Author URI: https://bright-nexa-school-os.onrender.com
  * License: GPL-2.0-or-later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: bright-nexa-school
  */
 

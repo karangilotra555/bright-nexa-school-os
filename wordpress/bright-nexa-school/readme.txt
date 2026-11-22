@@ -1,5 +1,6 @@
 === Bright Nexa School ===
-Tags: school, admissions, education, school management
+Contributors: karangilotra555, karangilotra
+Tags: school, admissions, education, school-management
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
@@ -22,6 +23,17 @@ The full School OS is available during the free beta. Visit https://bright-nexa-
 3. Paste the key in WordPress under Settings → Bright Nexa School OS and save.
 4. Add [bright_nexa_admissions] to a published page and exclude that page from full-page and CDN caching so the form security token stays current.
 5. Submit a fictional enquiry and check the school inbox.
+
+== Frequently Asked Questions ==
+
+= Does this plugin create student records automatically? =
+No. Admission enquiries are forwarded securely to the school's write-only Supabase intake and held in the School Admin workspace inbox for review. They do not create student records or change school database state without administrator action.
+
+= Where are enquiry submissions stored? =
+Enquiries are not stored in the WordPress database. They are securely forwarded via SSL directly to the school's isolated Bright Nexa School OS cloud workspace.
+
+= What external services does this plugin communicate with? =
+This plugin connects to the Bright Nexa School OS cloud service hosted on Render and the backend database hosted on Supabase to deliver admission enquiries.
 
 == External services ==
 
