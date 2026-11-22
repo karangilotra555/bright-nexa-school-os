@@ -2793,6 +2793,9 @@
     });
   }
   if(authLinkExpired)emailDialog('expired');
+  if(launchParams.get('signup')==='1'&&!session&&!mobileTeacher()&&!openingActivation&&!authLinkExpired){
+    $('showOwnerSignup').click();
+  }
   if(confirmedByEmailLink&&session){
     fetch(BASE+'/auth/v1/user',{headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token},cache:'no-store'})
       .then(responseJson).then(user=>{

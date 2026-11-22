@@ -1,0 +1,20 @@
+name: School OS beta feedback
+description: Report a problem or suggest an improvement after trying the free beta.
+title: "[Beta] "
+body:
+  - type: markdown
+    attributes:
+      value: Use fictional examples. This report is public. Leave out names, contact details, school records and passwords.
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you try?
+      description: Include the screen, device and steps.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened and what did you expect?
+    validations:
+      required: true
