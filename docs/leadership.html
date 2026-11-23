@@ -75,6 +75,19 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
 .intel-footer-actions{display:flex;gap:8px}
 .intel-whatsapp-btn{flex:1;background:#25d366;color:#fff;border:0;border-radius:12px;padding:11px;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}
 .intel-whatsapp-btn:hover{background:#1ebe5d}
+
+/* Keep school intelligence inside narrow Android WebViews without hiding content. */
+.intel-card,.intel-title,.intel-title>div,.intel-metric-box,.intel-alert-text,.intel-query-panel,.intel-student-row,.intel-student-info{min-width:0}
+.intel-title>div,.intel-alert-text,.intel-student-info{overflow-wrap:anywhere}
+.intel-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.intel-query-box input{min-width:0;width:0}
+.intel-badge{flex-shrink:0}
+.intel-badge[data-status="checking"]{background:#29445c;color:#cad8e7;border-color:#6689a7}
+.intel-badge[data-status="partial"]{background:#4a3823;color:#f5cf8a;border-color:#a88952}
+.intel-badge[data-status="checking"] .intel-pulse-dot{background:#a9bed2;box-shadow:none}
+.intel-badge[data-status="partial"] .intel-pulse-dot{background:#f5cf8a;box-shadow:none}
+@media(max-width:480px){.intel-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-metric-box:last-child{grid-column:1/-1}.intel-header{gap:8px}.intel-title strong{font-size:clamp(12px,3.6vw,16px)}.intel-student-row{flex-wrap:wrap}.intel-wa-actions{width:100%}}
+@media(max-width:340px){.intel-grid{grid-template-columns:minmax(0,1fr)}.intel-metric-box:last-child{grid-column:auto}}
 @media(min-width:700px){.phone{margin-top:14px;margin-bottom:14px;min-height:calc(100dvh - 28px);border-radius:24px;overflow:hidden}.nav{border-radius:0 0 24px 24px}}
 </style></head>
 <body>
@@ -114,7 +127,7 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
               <small>Live School Intelligence</small>
             </div>
           </div>
-          <span class="intel-badge"><span class="intel-pulse-dot" aria-hidden="true"></span>LIVE</span>
+          <span class="intel-badge" id="intelLiveBadge" data-status="checking"><span class="intel-pulse-dot" aria-hidden="true"></span><span id="intelLiveBadgeText">CHECKING</span></span>
         </div>
         <div class="intel-grid">
           <div class="intel-metric-box">
@@ -148,7 +161,7 @@ button.secondary{background:#eaf4ff;color:#0b4770;border:1px solid #c7deef;borde
         </div>
         <div class="intel-footer-actions">
           <button type="button" id="shareWhatsAppDigestBtn" class="intel-whatsapp-btn" disabled>
-            <span aria-hidden="true">💬</span> Send Daily Brief on WhatsApp
+            <span aria-hidden="true">💬</span> Open Daily Brief in WhatsApp
           </button>
         </div>
       </article>
