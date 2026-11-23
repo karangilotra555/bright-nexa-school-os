@@ -67,6 +67,7 @@ test('PHP lints and WordPress stubs render portal and enquiry form without priva
     function wp_unique_id($prefix = '') { return $prefix . 'test'; }
     function admin_url($url = '') { return 'https://wp.example/wp-admin/' . $url; }
     function wp_nonce_field($action) { echo '<input type="hidden" name="_wpnonce" value="safe">'; }
+    function wp_unslash($value) { return stripslashes($value); }
     require ${JSON.stringify(plugin)};
     $portal = \\BrightNexa\\School\\render_portal();
     $form = \\BrightNexa\\School\\render_form();
