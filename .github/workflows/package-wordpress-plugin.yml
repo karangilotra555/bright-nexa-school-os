@@ -1,0 +1,32 @@
+name: Package Bright Nexa WordPress plugin
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wordpress/bright-nexa-school/**'
+      - '.github/workflows/package-wordpress-plugin.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP plugin syntax
+        run: php -l wordpress/bright-nexa-school/bright-nexa-school.php
+      - name: Build WordPress-installable ZIP
+        run: |
+          mkdir -p release
+          cd wordpress
+          zip -r ../release/bright-nexa-school-0.2.0.zip bright-nexa-school -x '*.DS_Store'
+          cd ..
+          unzip -t release/bright-nexa-school-0.2.0.zip
+          unzip -l release/bright-nexa-school-0.2.0.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bright-nexa-school-wordpress-0.2.0
+          path: release/bright-nexa-school-0.2.0.zip
+          if-no-files-found: error
+          retention-days: 30
