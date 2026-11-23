@@ -281,6 +281,12 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   const bindAlerts=school=>emergencyAlerts?.setScope({school:school.id,member:school.memberId});
   const elt=(tag,label,cls)=>{const e=doc.createElement(tag);if(label!==undefined)e.textContent=String(label);if(cls)e.className=cls;return e;};
   const note=(text,error=false)=>{const e=$('notice');if(!e)return;e.textContent=text||'';e.classList.toggle('error',error);};
+  function setIntelBadge(state){
+    const badge=$('intelLiveBadge'),label=$('intelLiveBadgeText');
+    if(!badge||!label)return;
+    badge.dataset.status=state;
+    label.textContent=state==='live'?'LIVE':state==='partial'?'PARTIAL':'CHECKING';
+  }
   const status=busyValue=>{
     busy=busyValue;
     const picker=$('schoolPicker'),coverDate=$('coverDate');
@@ -391,6 +397,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     $('intelFeeVal').textContent=feeDisplay;
     $('intelFeeSub').textContent=(fees.receipt_count||0)+' receipts recorded';
 
+    setIntelBadge('checking');
     const share=$('shareWhatsAppDigestBtn');
     const requestVersion=++intelligenceVersion;
     cachedIntelligence=null;
@@ -405,7 +412,8 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if(intel.atRisk&&intel.classSummary&&(intel.feeRestricted||intel.followups)){
       cachedIntelligence=intel;
       if(share)share.disabled=false;
-    }
+      setIntelBadge('live');
+    }else setIntelBadge('partial');
     $('intelAtRiskVal').textContent=intel.atRisk?String(intel.atRisk.length):'—';
     $('intelAtRiskSub').textContent=intel.atRisk?'<75% or 3+ consecutive absences':'Unavailable. Refresh to retry.';
 
@@ -502,6 +510,13 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if(heading)heading.textContent=parsed.wantsFees?'Fee Follow-ups ('+classLabel+')':
       parsed.threshold===null?'At-Risk Students ('+classLabel+')':'Attendance '+operator+parsed.threshold+'% ('+classLabel+')';
 
+    // Unsupported natural-language questions must not silently show at-risk results.
+    if(!parsed.wantsFees&&parsed.threshold===null&&
+       !/\b(?:at[\s-]?risk|low[\s-]?attendance|short[\s-]?attendance|absentees?|consecutive\s+absences?)\b/i.test(queryStr)){
+      if(heading)heading.textContent='Question not supported yet';
+      itemsContainer.append(elt('p','This screen supports low-attendance and fee-dues searches. It cannot list who was present today. Use the Attendance register after marks are complete.','warning'));
+      return;
+    }
     if(!parsed.wantsFees&&parsed.unsupportedThreshold){
       itemsContainer.append(elt('p','For attendance, use “below 80%” or “<= 80%”.','warning'));
       return;
@@ -704,6 +719,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     catch(error){
       cachedIntelligence=null;
       intelligenceVersion++;
+      setIntelBadge('partial');
       const share=$('shareWhatsAppDigestBtn');
       if(share)share.disabled=true;
       $('lastSync').textContent=snapshot
@@ -734,6 +750,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     snapshot=null;coverLeave=null;pendingNotice=null;publishedNotice=null;
     cachedIntelligence=null;
     intelligenceVersion++;
+    setIntelBadge('checking');
     const share=$('shareWhatsAppDigestBtn');
     if(share)share.disabled=true;
     leaveView='today';

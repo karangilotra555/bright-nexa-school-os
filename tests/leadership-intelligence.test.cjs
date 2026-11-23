@@ -275,6 +275,7 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     assert.equal(win.document.getElementById('intelAttendanceVal').textContent, '90%');
     assert.equal(win.document.getElementById('intelFeeVal').textContent, '₹18.4L');
     assert.equal(win.document.getElementById('intelAtRiskVal').textContent, '3');
+    assert.equal(win.document.getElementById('intelLiveBadgeText').textContent,'LIVE');
 
     // Actionable alerts rendered in list
     const alerts = win.document.getElementById('intelAlertsList');
@@ -378,12 +379,20 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
     assert.match(alerts.textContent,/Fee follow-ups unavailable/);
     assert.equal(queryItems.querySelector('a.intel-wa-pill'),null);
     assert.equal(win.document.getElementById('shareWhatsAppDigestBtn').disabled,true);
+    assert.equal(win.document.getElementById('intelLiveBadgeText').textContent,'PARTIAL');
     win.document.getElementById('intelQueryBtn').click();
     for (let i=0; i<40 && !queryItems.textContent.includes('unavailable'); i++) {
       await new Promise(resolve=>setTimeout(resolve,25));
     }
     assert.match(queryItems.textContent,/Fee follow-ups unavailable/);
     await new Promise(resolve => setTimeout(resolve, 50));
+    queryInput.value='Aaj kaun kaun aaya?';
+    win.document.getElementById('intelQueryBtn').click();
+    for(let i=0;i<40&&!queryItems.textContent.includes('cannot list who was present today');i++){
+      await new Promise(resolve=>setTimeout(resolve,25));
+    }
+    assert.match(queryItems.textContent,/cannot list who was present today/);
+    assert.doesNotMatch(queryItems.textContent,/Aman Gupta/);
     activeRole='principal';
     failIntelligence=false;
     const principalClient=create(fetcher,null);
@@ -401,3 +410,17 @@ test('leadership client and DOM render Live School Intelligence card and WhatsAp
 });
 
 
+
+test('leadership intelligence card remains contained in mobile width CSS',()=>{
+  const html=fs.readFileSync(path.join(__dirname,'../leadership.html'),'utf8');
+  const docs=fs.readFileSync(path.join(__dirname,'../docs/leadership.html'),'utf8');
+  assert.equal(html,docs,'Published mobile HTML must match source');
+  assert.match(html,/\.intel-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\}/);
+  assert.match(html,/@media\(max-width:480px\)/);
+  assert.match(html,/\.intel-query-box input\{min-width:0;width:0\}/);
+  assert.match(html,/id="intelLiveBadge" data-status="checking"/);
+  assert.match(html,/Open Daily Brief in WhatsApp/);
+  const js=fs.readFileSync(path.join(__dirname,'../leadership-app.js'),'utf8');
+  assert.equal(js,fs.readFileSync(path.join(__dirname,'../docs/leadership-app.js'),'utf8'));
+  assert.equal(js,fs.readFileSync(path.join(__dirname,'../app-extracted/dist/leadership-app.js'),'utf8'));
+});
