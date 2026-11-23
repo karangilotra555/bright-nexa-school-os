@@ -510,6 +510,13 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     if(heading)heading.textContent=parsed.wantsFees?'Fee Follow-ups ('+classLabel+')':
       parsed.threshold===null?'At-Risk Students ('+classLabel+')':'Attendance '+operator+parsed.threshold+'% ('+classLabel+')';
 
+    // Unsupported natural-language questions must not silently show at-risk results.
+    if(!parsed.wantsFees&&parsed.threshold===null&&
+       !/\b(?:at[\s-]?risk|low[\s-]?attendance|short[\s-]?attendance|absentees?|consecutive\s+absences?)\b/i.test(queryStr)){
+      if(heading)heading.textContent='Question not supported yet';
+      itemsContainer.append(elt('p','This screen supports low-attendance and fee-dues searches. It cannot list who was present today. Use the Attendance register after marks are complete.','warning'));
+      return;
+    }
     if(!parsed.wantsFees&&parsed.unsupportedThreshold){
       itemsContainer.append(elt('p','For attendance, use “below 80%” or “<= 80%”.','warning'));
       return;
