@@ -87,7 +87,7 @@ test('PHP lints and WordPress stubs render portal and enquiry form without priva
   assert.equal(response.status, 0, response.stderr || response.stdout);
   const output = JSON.parse(response.stdout);
   assert.match(output.portal, /School office sign-in/);
-  assert.match(output.portal, /Teacher & Parent mobile apps/);
+  assert.match(output.portal, /Teacher &amp; Parent mobile apps/);
   assert.match(output.form, /Send enquiry/);
   assert.match(output.workspace, /Full School OS/);
   assert.match(output.workspace, /Configure admission enquiries/);
