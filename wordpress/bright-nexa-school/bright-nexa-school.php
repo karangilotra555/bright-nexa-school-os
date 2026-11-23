@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Bright Nexa School
  * Plugin URI: https://bright-nexa-school-os.onrender.com/school-beta.html
- * Description: Connect a school website to Bright Nexa School OS and receive admission enquiries.
- * Version: 0.1.1
+ * Description: Connect admission enquiries and access the hosted Bright Nexa School OS from WordPress.
+ * Version: 0.2.0
  * Requires at least: 6.5
  * Requires PHP: 7.4
  * Author: Bright Nexa
@@ -26,6 +26,7 @@ const ACTION = 'bright_nexa_school_enquiry';
 add_action( 'admin_menu', __NAMESPACE__ . '\\add_settings_page' );
 add_action( 'admin_init', __NAMESPACE__ . '\\register_settings' );
 add_shortcode( 'bright_nexa_admissions', __NAMESPACE__ . '\\render_form' );
+add_shortcode( 'bright_nexa_school_portal', __NAMESPACE__ . '\\render_portal' );
 add_action( 'admin_post_' . ACTION, __NAMESPACE__ . '\\submit' );
 add_action( 'admin_post_nopriv_' . ACTION, __NAMESPACE__ . '\\submit' );
 
@@ -35,6 +36,71 @@ function add_settings_page() {
 		__( 'Bright Nexa School OS', 'bright-nexa-school' ),
 		'manage_options', 'bright-nexa-school', __NAMESPACE__ . '\\render_settings'
 	);
+	add_menu_page(
+		__( 'Bright Nexa School OS', 'bright-nexa-school' ),
+		__( 'Bright Nexa', 'bright-nexa-school' ),
+		'manage_options', 'bright-nexa-school-workspace', __NAMESPACE__ . '\\render_workspace',
+		'dashicons-welcome-learn-more', 58
+	);
+}
+
+
+/**
+ * Only navigation is hosted in WordPress. All school records and role checks
+ * stay in the signed-in Bright Nexa service; no school credentials are copied
+ * to WordPress, and these links perform no background requests.
+ */
+function workspace_links() {
+	return array(
+		__( 'Full School OS — Owner, Admin & Accountant', 'bright-nexa-school' ) => CLOUD . '/teacher-access.html',
+		__( 'Leadership App — Owner & Principal', 'bright-nexa-school' ) => CLOUD . '/leadership.html',
+		__( 'WordPress Admissions inbox — School Admin', 'bright-nexa-school' ) => CLOUD . '/teacher-access.html?view=wordpress',
+		__( 'Teacher & Parent mobile app information', 'bright-nexa-school' ) => CLOUD . '/parent-app-download.html',
+		__( 'Create a free school or sign in', 'bright-nexa-school' ) => CLOUD . '/school-beta.html',
+	);
+}
+
+function render_workspace() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	?>
+	<div class="wrap">
+		<h1><?php esc_html_e( 'Bright Nexa School OS', 'bright-nexa-school' ); ?></h1>
+		<p><?php esc_html_e( 'These links open Bright Nexa School OS securely in a new tab. School users sign in there with their existing school account; WordPress administrator access does not grant access to student records.', 'bright-nexa-school' ); ?></p>
+		<ul>
+			<?php foreach ( workspace_links() as $title => $url ) : ?>
+				<li><a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $title ); ?></a></li>
+			<?php endforeach; ?>
+		</ul>
+		<p><a class="button button-primary" href="<?php echo esc_url( admin_url( 'options-general.php?page=bright-nexa-school' ) ); ?>"><?php esc_html_e( 'Configure admission enquiries', 'bright-nexa-school' ); ?></a></p>
+		<p><?php esc_html_e( 'The full ERP is hosted by Bright Nexa and is not installed inside WordPress. No student, staff, fee, or attendance data is copied into WordPress by these links.', 'bright-nexa-school' ); ?></p>
+	</div>
+	<?php
+}
+
+/**
+ * Optional school-site portal: the site owner explicitly places the shortcode.
+ * Only public sign-in or app-information links are shown, never private records.
+ */
+function render_portal() {
+	$links = array(
+		__( 'School office sign-in', 'bright-nexa-school' ) => CLOUD . '/teacher-access.html',
+		__( 'Owner & Principal leadership', 'bright-nexa-school' ) => CLOUD . '/leadership.html',
+		__( 'Teacher & Parent mobile apps', 'bright-nexa-school' ) => CLOUD . '/parent-app-download.html',
+	);
+	ob_start();
+	?>
+	<nav class="bright-nexa-school-portal" aria-label="<?php esc_attr_e( 'Bright Nexa School portals', 'bright-nexa-school' ); ?>">
+		<p><?php esc_html_e( 'Open the Bright Nexa School OS service. Your school account is required; this WordPress site does not handle school passwords.', 'bright-nexa-school' ); ?></p>
+		<ul>
+			<?php foreach ( $links as $title => $url ) : ?>
+				<li><a href="<?php echo esc_url( $url ); ?>" rel="noopener noreferrer"><?php echo esc_html( $title ); ?></a></li>
+			<?php endforeach; ?>
+		</ul>
+	</nav>
+	<?php
+	return ob_get_clean();
 }
 
 function register_settings() {
@@ -69,6 +135,8 @@ function render_settings() {
 			<li><?php esc_html_e( 'Submit one fictional enquiry and check the WordPress Admissions inbox in Bright Nexa.', 'bright-nexa-school' ); ?></li>
 		</ol>
 		<p><?php esc_html_e( 'Saving a key enables sending the parent or guardian name, email, optional phone and grade to Bright Nexa School OS when an enquiry is submitted. Clear the key here to disable the form.', 'bright-nexa-school' ); ?></p>
+		<p><?php esc_html_e( 'To display links to the full hosted school system on a WordPress page, use [bright_nexa_school_portal]. This does not copy private school information or make it accessible without Bright Nexa sign-in.', 'bright-nexa-school' ); ?></p>
+		<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=bright-nexa-school-workspace' ) ); ?>"><?php esc_html_e( 'Open the full School OS dashboard links', 'bright-nexa-school' ); ?></a></p>
 		<p><?php echo esc_html( $key ? __( 'A connection key is saved.', 'bright-nexa-school' ) : __( 'No connection key saved.', 'bright-nexa-school' ) ); ?></p>
 		<form method="post" action="options.php">
 			<?php settings_fields( 'bright_nexa_school' ); ?>
@@ -123,8 +191,11 @@ function render_form() {
 }
 
 function input( $field ) {
-	$value = filter_input( INPUT_POST, $field );
-	return is_string( $value ) ? $value : '';
+	// WordPress forms are processed from $_POST; wp_unslash restores submitted input.
+	if ( ! isset( $_POST[ $field ] ) || ! is_string( $_POST[ $field ] ) ) {
+		return '';
+	}
+	return wp_unslash( $_POST[ $field ] );
 }
 
 function forward_enquiry( $key, $name, $email, $phone, $year ) {
@@ -145,19 +216,20 @@ function forward_enquiry( $key, $name, $email, $phone, $year ) {
 
 function submit() {
 	$page = absint( input( 'school_page' ) );
-	$back = 'publish' === get_post_status( $page ) ? get_permalink( $page ) : home_url( '/' );
+	$published = $page > 0 && 'publish' === get_post_status( $page );
+	$back = $published ? get_permalink( $page ) : home_url( '/' );
 	$result = 'invalid';
 
 	$method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
-	if ( 'POST' === $method
+	if ( $published && 'POST' === $method
 		&& wp_verify_nonce( sanitize_text_field( input( '_wpnonce' ) ), ACTION . '_' . $page )
 		&& '' === input( 'website_confirm' ) && '1' === input( 'consent' ) ) {
 		$key   = get_option( OPTION, '' );
 		$name  = sanitize_text_field( input( 'parent_name' ) );
-		$email = trim( input( 'parent_email' ) );
-		$phone = trim( input( 'parent_phone' ) );
+		$email = sanitize_email( trim( input( 'parent_email' ) ) );
+		$phone = sanitize_text_field( trim( input( 'parent_phone' ) ) );
 		$year  = sanitize_text_field( input( 'year_group' ) );
-		if ( '' !== $name && strlen( $name ) <= 480 && strlen( $email ) <= 254 && is_email( $email )
+		if ( strlen( trim( $name ) ) >= 2 && strlen( $name ) <= 480 && strlen( $email ) <= 254 && is_email( $email )
 			&& strlen( $year ) <= 240 && ( '' === $phone || preg_match( '/^\+?[0-9][0-9 ()-]{4,28}$/D', $phone ) ) ) {
 			$result = is_string( $key ) && preg_match( '/^[a-f0-9]{64}$/D', $key )
 				&& forward_enquiry( $key, $name, $email, $phone, $year ) ? 'received' : 'unavailable';
