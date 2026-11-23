@@ -57,6 +57,7 @@ test('PHP lints and WordPress stubs render portal and enquiry form without priva
     function __($v, $domain = '') { return $v; }
     function esc_html($v) { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
     function esc_url($v) { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
+    function esc_attr($v) { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
     function esc_attr_e($v, $domain = '') { echo esc_html($v); }
     function esc_html_e($v, $domain = '') { echo esc_html($v); }
     function current_user_can($cap) { return $cap === 'manage_options'; }
