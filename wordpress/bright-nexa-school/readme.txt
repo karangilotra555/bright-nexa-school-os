@@ -4,7 +4,7 @@ Tags: school, admissions, education, school-management
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,7 +18,7 @@ WordPress administrators also get a Bright Nexa menu linking to the full hosted 
 
 The existing School OS, including its admissions, attendance, fees, timetable, exams, and other ERP screens, is hosted by Bright Nexa and requires separate verified school credentials. This plugin is a bridge and launcher, not a second standalone copy of the ERP in WordPress.
 
-Visit https://bright-nexa-school-os.onrender.com/school-beta.html to create a free beta school or sign in.
+Visit https://bright-nexa-school-os.onrender.com/school-beta.html to create a free beta school or sign in. Review the service's privacy and terms links in the External services section before collecting real admission enquiries.
 
 == Installation ==
 
@@ -48,12 +48,27 @@ This plugin connects to the Bright Nexa School OS cloud service hosted on Render
 
 == External services ==
 
-This plugin uses the Bright Nexa School OS cloud service to deliver admission enquiries. It connects only when a visitor submits the enquiry form with consent, after a WordPress administrator has saved a school connection key. The WordPress navigation links open the Bright Nexa site in the visitor's browser but do not themselves transmit school records. The form forwards the parent or guardian name and email, any phone and year or grade provided, and the school's write-only key to the Bright Nexa Supabase project. The data is stored in that school's Bright Nexa workspace. No enquiry is stored by this plugin in the WordPress database. Clear the key in WordPress to disable the form, or revoke it in Bright Nexa to disconnect the site.
+The plugin is an integration with the Bright Nexa School OS cloud service. It uses one external API for admission enquiries. The service is operated by the Bright Nexa project and uses Supabase for the backend database and Render for website hosting. The WordPress plugin is functional without connecting the form only as a launcher; its admission enquiry feature needs a valid school connection key and the external intake.
 
-Service: https://bright-nexa-school-os.onrender.com/school-beta.html
-Database provider: https://supabase.com/privacy
+What is sent and when: Only when a site visitor submits the [bright_nexa_admissions] form with the required consent checkbox, the WordPress server sends a HTTPS POST request to https://mrfvbwmyxndrakskqyas.supabase.co/rest/v1/rpc/bn_wordpress_submit_enquiry. It contains parent/guardian name and email, optional phone and year/grade, and the school-specific write-only key. The key lets the service route the request to the correct school. The backend stores the enquiry in that school's private Bright Nexa admissions inbox for its authorized staff to review; it does not automatically create a student record. The plugin does not save the submitted enquiry in the WordPress database. The WordPress administrator's saved connection key is stored locally as a WordPress setting. Server providers may independently maintain technical access logs.
+
+Navigation links opened from the Bright Nexa WordPress admin menu or the optional [bright_nexa_school_portal] shortcode lead to Bright Nexa's hosted site; they do not transfer WordPress school records or WordPress passwords. Separate Bright Nexa account sign-in may be required to use hosted features.
+
+Bright Nexa service: https://bright-nexa-school-os.onrender.com/school-beta.html
+Bright Nexa Privacy Policy: https://bright-nexa-school-os.onrender.com/privacy-policy.html
+Bright Nexa Terms of Service: https://bright-nexa-school-os.onrender.com/terms-of-service.html
+Supabase (database/API provider) privacy: https://supabase.com/privacy
+Supabase terms: https://supabase.com/terms
+Render (website hosting) privacy: https://render.com/privacy
+Render terms: https://render.com/terms
+
+To disconnect: Clear the key under Settings > Bright Nexa School OS and optionally revoke it in the Bright Nexa admin inbox. This disables new WordPress form transmissions but does not automatically delete earlier enquiries from the school's cloud inbox. Contact the school administrator or Bright Nexa support through the privacy policy for access/deletion requests.
 
 == Changelog ==
+
+= 0.2.1 =
+* Documented the external intake, service providers, privacy policy, terms and data handling for WordPress.org review.
+* Added privacy and terms links to the admission enquiry form and plugin settings.
 
 = 0.2.0 =
 * Added a WordPress admin launcher for the complete hosted School OS, Leadership and mobile-app instructions.
