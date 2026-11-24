@@ -1,0 +1,31 @@
+name: WordPress plugin release ZIP
+on:
+  pull_request:
+    paths:
+      - 'wordpress/bright-nexa-school/**'
+      - '.github/workflows/wordpress-plugin-release.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check plugin PHP and version
+        run: |
+          php -l wordpress/bright-nexa-school/bright-nexa-school.php
+          grep -q 'Version: 0.2.1' wordpress/bright-nexa-school/bright-nexa-school.php
+          grep -q 'Stable tag: 0.2.1' wordpress/bright-nexa-school/readme.txt
+          grep -q 'privacy-policy.html' wordpress/bright-nexa-school/readme.txt
+          grep -q 'terms-of-service.html' wordpress/bright-nexa-school/readme.txt
+      - name: Package release
+        run: |
+          cd wordpress
+          zip -q -r "$RUNNER_TEMP/bright-nexa-school-0.2.1.zip" bright-nexa-school -x '*.DS_Store' '*/.git/*'
+          unzip -t "$RUNNER_TEMP/bright-nexa-school-0.2.1.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bright-nexa-school-0.2.1
+          path: ${{ runner.temp }}/bright-nexa-school-0.2.1.zip
+          if-no-files-found: error

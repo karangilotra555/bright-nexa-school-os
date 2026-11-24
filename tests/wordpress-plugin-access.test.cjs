@@ -11,8 +11,8 @@ const readme = fs.readFileSync(path.join(__dirname, '..', 'wordpress', 'bright-n
 const source = fs.readFileSync(plugin, 'utf8');
 
 test('WordPress bridge preserves admission integration and offers full hosted School OS entry points', () => {
-  assert.match(source, /Version: 0\.2\.0/);
-  assert.match(readme, /Stable tag: 0\.2\.0/);
+  assert.match(source, /Version: 0\.2\.1/);
+  assert.match(readme, /Stable tag: 0\.2\.1/);
   assert.match(source, /add_shortcode\( 'bright_nexa_admissions'/);
   assert.match(source, /add_shortcode\( 'bright_nexa_school_portal'/);
   assert.match(source, /function render_workspace\(\)/);

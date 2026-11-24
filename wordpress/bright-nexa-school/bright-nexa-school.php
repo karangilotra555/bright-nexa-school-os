@@ -3,7 +3,7 @@
  * Plugin Name: Bright Nexa School
  * Plugin URI: https://bright-nexa-school-os.onrender.com/school-beta.html
  * Description: Connect admission enquiries and access the hosted Bright Nexa School OS from WordPress.
- * Version: 0.2.0
+ * Version: 0.2.1
  * Requires at least: 6.5
  * Requires PHP: 7.4
  * Author: Bright Nexa
@@ -135,6 +135,7 @@ function render_settings() {
 			<li><?php esc_html_e( 'Submit one fictional enquiry and check the WordPress Admissions inbox in Bright Nexa.', 'bright-nexa-school' ); ?></li>
 		</ol>
 		<p><?php esc_html_e( 'Saving a key enables sending the parent or guardian name, email, optional phone and grade to Bright Nexa School OS when an enquiry is submitted. Clear the key here to disable the form.', 'bright-nexa-school' ); ?></p>
+		<p><?php esc_html_e( 'Read how the external service handles admission enquiries:', 'bright-nexa-school' ); ?> <a href="<?php echo esc_url( CLOUD . '/privacy-policy.html' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Privacy Policy', 'bright-nexa-school' ); ?></a> · <a href="<?php echo esc_url( CLOUD . '/terms-of-service.html' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Terms of Service', 'bright-nexa-school' ); ?></a></p>
 		<p><?php esc_html_e( 'To display links to the full hosted school system on a WordPress page, use [bright_nexa_school_portal]. This does not copy private school information or make it accessible without Bright Nexa sign-in.', 'bright-nexa-school' ); ?></p>
 		<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=bright-nexa-school-workspace' ) ); ?>"><?php esc_html_e( 'Open the full School OS dashboard links', 'bright-nexa-school' ); ?></a></p>
 		<p><?php echo esc_html( $key ? __( 'A connection key is saved.', 'bright-nexa-school' ) : __( 'No connection key saved.', 'bright-nexa-school' ) ); ?></p>
@@ -184,6 +185,7 @@ function render_form() {
 		<p><label><?php esc_html_e( 'Year or grade of interest (optional)', 'bright-nexa-school' ); ?><br><input name="year_group" maxlength="60"></label></p>
 		<p hidden><label><?php esc_html_e( 'Leave this field empty', 'bright-nexa-school' ); ?><input name="website_confirm" autocomplete="off" tabindex="-1"></label></p>
 		<p><label><input type="checkbox" name="consent" value="1" required> <?php esc_html_e( 'I agree that the school may receive these details through Bright Nexa School OS and contact me about admissions.', 'bright-nexa-school' ); ?></label></p>
+		<p><?php esc_html_e( 'Your enquiry is sent to the school through Bright Nexa School OS.', 'bright-nexa-school' ); ?> <a href="<?php echo esc_url( CLOUD . '/privacy-policy.html' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Privacy Policy', 'bright-nexa-school' ); ?></a> · <a href="<?php echo esc_url( CLOUD . '/terms-of-service.html' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Terms of Service', 'bright-nexa-school' ); ?></a></p>
 		<button type="submit"><?php esc_html_e( 'Send enquiry', 'bright-nexa-school' ); ?></button>
 	</form>
 	<?php
