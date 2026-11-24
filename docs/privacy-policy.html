@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Privacy Policy for Bright Nexa School OS and its WordPress admissions integration.">
+<title>Privacy Policy | Bright Nexa School OS</title>
+<style>
+:root{font:16px/1.65 system-ui,-apple-system,sans-serif;color:#183044;background:#f1f6fa}
+*{box-sizing:border-box}body{margin:0}main{max-width:860px;margin:5vh auto;padding:clamp(22px,5vw,48px);background:#fff;border-radius:16px;box-shadow:0 10px 34px #14365012}
+a{color:#075d89}header{display:flex;align-items:center;gap:12px}header a{text-decoration:none;font-weight:700}
+h1{font-size:clamp(2rem,5vw,3rem);line-height:1.16;margin:1.2rem 0 .35rem}h2{font-size:1.2rem;margin:1.8rem 0 .5rem}p,li{max-width:78ch}li{margin:.25rem 0}footer{margin-top:2rem;border-top:1px solid #dce6ea;padding-top:1rem}
+</style></head><body><main>
+<header><a href="/school-beta.html">Bright Nexa School OS</a></header>
+<h1>Privacy Policy</h1><p><strong>Effective date: 24 November 2026</strong></p>
+<p>Bright Nexa School OS is an online school management service operated under the Bright Nexa project name. This policy explains how the service and its optional WordPress admissions integration handle personal information. Contact: <a href="mailto:karanloves1@gmail.com">karanloves1@gmail.com</a>.</p>
+<h2>1. Who controls school information?</h2>
+<p>Schools choose what student, family, employee and admissions data to enter, who is authorized to access it, and how they use it. Each school is responsible for its notices, appropriate permissions and lawful collection of information, including children's information. Bright Nexa provides the hosted software and handles records on the school's behalf to operate the service. For account registration, security and service communications, Bright Nexa determines the necessary processing.</p>
+<h2>2. Information the School OS may handle</h2>
+<ul>
+<li>School and user accounts: school name, contact information, account identifiers, email address, sign-in and role details.</li>
+<li>Records entered by an authorized school: student names, guardian contacts, class details, attendance, timetables, homework, assessments, fees, staff details, notices and files or photographs uploaded by the school.</li>
+<li>Operational information: records of requests, errors, authentication events, and device or browser metadata required for service functionality, reliability, abuse prevention and security.</li>
+</ul>
+<p>Data fields depend on the modules a school enables and uses. A school's records are not intended to be public merely because the school uses the service.</p>
+<h2>3. WordPress admission enquiry form</h2>
+<p>The optional <strong>Bright Nexa School</strong> WordPress plugin displays a form through the <code>[bright_nexa_admissions]</code> shortcode. Only when a visitor actively submits the form with its required consent checkbox does the WordPress server send the following to the Bright Nexa admissions intake:</p>
+<ul>
+<li>Parent or guardian name and email address;</li>
+<li>Phone number and year/grade of interest, if provided;</li>
+<li>The school's saved connection key, used to route the enquiry to the correct school.</li>
+</ul>
+<p>The WordPress server sends the enquiry over HTTPS to <code>https://mrfvbwmyxndrakskqyas.supabase.co/rest/v1/rpc/bn_wordpress_submit_enquiry</code>, which is part of the Bright Nexa service hosted using Supabase. The WordPress plugin saves the connection key in WordPress settings but <strong>does not save submitted enquiry records in the WordPress database</strong>. The submitted enquiry is stored in the connected school's Bright Nexa inbox for authorized staff to review. It does not automatically create a student record. WordPress and hosting providers may separately retain routine request logs under their own policies.</p>
+<p>The optional WordPress school portal shortcode displays links to the hosted School OS and apps. Opening these links is a normal browser navigation; the plugin does not copy school records into WordPress through those links.</p>
+<h2>4. Why information is used</h2>
+<p>We use information to provide school accounts, deliver admissions enquiries, support school operations, keep records synchronized, authenticate authorized users, troubleshoot errors, prevent abuse and protect the service. Schools may use records to administer classes, fees, attendance and other school activities. Contact information from an enquiry is used to allow the connected school to follow up about admissions, as disclosed next to the form.</p>
+<h2>5. Hosting and service providers</h2>
+<p>The School OS uses <a href="https://supabase.com/privacy" rel="noopener noreferrer">Supabase</a> for its hosted backend/database and <a href="https://render.com/privacy" rel="noopener noreferrer">Render</a> for website/application hosting. Technical data may be processed in the regions where these service providers operate, including outside the user's country, subject to the provider's infrastructure and terms. Schools should ensure their use and notices suit their jurisdiction. Other third-party integrations, if separately enabled by a school, may have their own notices and terms.</p>
+<h2>6. Access, sharing and protection</h2>
+<p>Records are made available to authenticated school users according to their configured roles and school association. We do not make school or enquiry records public via the plugin. Service providers may process information to run the platform. Information may also be disclosed where legally required or to protect users and the service. We use HTTPS and application access controls, but no online service can guarantee absolute security. School administrators should control account access, connection keys and the accuracy of their records.</p>
+<h2>7. Retention and deletion</h2>
+<p>School records and admission enquiries remain in the hosted service while required for the school's use and operations unless the school removes them or requests deletion. Account, backup and technical log retention can differ and may be affected by operational, security or legal needs; we do not represent a fixed deletion period across all data categories. For assistance with access, correction, export or deletion, contact your school administrator first if the record belongs to a school, or email the contact below. We may need to verify authority before acting on a request.</p>
+<h2>8. Children and parents</h2>
+<p>The service is intended to be administered by schools and authorized adults. Schools are responsible for complying with applicable rules for children's data and collecting any required parent or guardian permissions. Do not enter real student information into a practice school or send practice enquiries to a live school's inbox.</p>
+<h2>9. Updates and contact</h2>
+<p>We may update this policy as the service evolves. The date at the top reflects this version. For privacy questions and requests, email <a href="mailto:karanloves1@gmail.com">karanloves1@gmail.com</a>.</p>
+<footer><a href="/terms-of-service.html">Terms of Service</a> · <a href="/school-beta.html">Free beta and setup</a></footer>
+</main></body></html>
