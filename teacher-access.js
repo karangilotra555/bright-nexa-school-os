@@ -1848,6 +1848,8 @@
     await ensureToken();
     const name=$('firstSchoolName').value.trim();
     if(name.length<3||name.length>120)throw Error('Enter a school name between 3 and 120 characters.');
+    const activationCode=$('firstSchoolActivation').value.trim().toLowerCase();
+    if(!/^[0-9a-f]{64}$/.test(activationCode))throw Error('Enter the valid activation code supplied by Bright Nexa.');
     button.disabled=true;
     try{
       // The authenticated, SECURITY DEFINER RPC enforces one school per account.
@@ -1867,7 +1869,8 @@
       }
       // The first-school RPC authenticates the email-confirmed owner and
       // atomically creates the tenant and school_admin membership.
-      const schoolId=await api('rpc/register_first_school','','POST',{p_school_name:name});
+      const schoolId=await api('rpc/register_first_school','','POST',{p_school_name:name,p_activation_code:activationCode});
+      $('firstSchoolActivation').value='';
       if(!/^[0-9a-f-]{36}$/i.test(String(schoolId)))throw Error('School creation returned no valid school ID.');
       sessionStorage.setItem(SELECTED_SCHOOL_KEY,String(schoolId));
       let initial;
