@@ -48,3 +48,12 @@ test('expired school 403 preserves local unsynced edits and resumes cleanly once
  assert.equal(c.state().status,'synced');
  assert.equal(pushes.at(-1).students.length,2);
 });
+
+test('staff portal shows trial/read-only status banner support and ERP entry marks expired state clearly',()=>{
+ const fs=require('node:fs');
+ const teacherJs=fs.readFileSync('teacher-access.js','utf8');
+ const erpJs=fs.readFileSync('school-erp-entry.js','utf8');
+ assert.match(teacherJs,/bn_school_trial_status/);
+ assert.match(teacherJs,/bn_school_writable/);
+ assert.match(erpJs,/data-trial-state/);
+});

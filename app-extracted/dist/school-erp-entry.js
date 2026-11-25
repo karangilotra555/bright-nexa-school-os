@@ -180,8 +180,15 @@
       });
       const data=await parseResponse(res,'Subscription status unavailable');
       const current=parse(store.getItem(ERP_KEY));
-      if(current?.institutionId===id&&current?.cloudVerified===true&&store.getItem(CHOSEN_KEY)===id)node.textContent=trialStatusText(data);
-      else node.remove();
+      if(current?.institutionId===id&&current?.cloudVerified===true&&store.getItem(CHOSEN_KEY)===id){
+        const end=Date.parse(data?.ends_at),now=Date.parse(data?.server_time);
+        const days=Number.isFinite(end)&&Number.isFinite(now)?Math.max(0,Math.ceil((end-now)/86400000)):null;
+        const state=data?.status==='expired'||(Number.isFinite(end)&&Number.isFinite(now)&&end<=now)?'expired':(days!==null&&days<=7?'reminder':(data?.status==='unassigned'?'unassigned':'active'));
+        node.setAttribute('data-trial-state',state);
+        if(state==='expired')node.style.cssText='font:13px system-ui,sans-serif;padding:8px 16px;background:#fde8e8;color:#7f1d1d;text-align:center;line-height:1.4;font-weight:600';
+        else if(state==='reminder')node.style.cssText='font:13px system-ui,sans-serif;padding:8px 16px;background:#fef3c7;color:#78350f;text-align:center;line-height:1.4';
+        node.textContent=trialStatusText(data);
+      }else node.remove();
     }catch(_){
       if(parse(store.getItem(ERP_KEY))?.institutionId===id)node.textContent='Subscription status unavailable. Refresh to verify.';
       else node.remove();

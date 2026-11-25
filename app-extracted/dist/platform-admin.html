@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://mrfvbwmyxndrakskqyas.supabase.co; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Bright Nexa School OS · Platform Operator Admin</title>
+<style>
+  :root{font:15px/1.5 system-ui,sans-serif;color:#0f2438;background:#f2f6fa}
+  body{margin:0;padding:20px}
+  main{max-width:1100px;margin:0 auto;background:#fff;border:1px solid #d7e3ee;border-radius:14px;padding:24px;box-shadow:0 8px 24px #0f24380d}
+  h1{margin:0 0 4px;font-size:1.45rem}
+  h2{margin:24px 0 8px;font-size:1.1rem;border-top:1px solid #e6edf4;padding-top:18px}
+  .sub{color:#4b6379;margin:0 0 14px;font-size:.92rem}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+  label{display:block;font-weight:600;margin-bottom:4px;font-size:.9rem}
+  input,select{padding:8px 10px;border:1px solid #bfd0e0;border-radius:8px;font:inherit;min-width:220px}
+  button{padding:9px 14px;border-radius:8px;border:1px solid #085b87;background:#085b87;color:#fff;font:inherit;font-weight:600;cursor:pointer}
+  button.ghost{background:#fff;color:#085b87}
+  button.danger{background:#a61b1b;border-color:#a61b1b}
+  button:disabled{opacity:.55;cursor:not-allowed}
+  .notice{padding:10px 12px;border-radius:8px;margin:12px 0;background:#eef6fc;border:1px solid #c3def3;color:#0c3559}
+  .notice.error{background:#fdecec;border-color:#f3c0c0;color:#7d1818}
+  .code-box{background:#f7fafc;border:1px solid #bcd4e6;border-radius:10px;padding:12px;margin-top:12px}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;margin-top:8px}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid #e6edf4;vertical-align:middle}
+  th{background:#f6f9fc;font-weight:700}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.78rem;font-weight:700;background:#e4eef7;color:#12385b}
+  .pill.expired,.pill.revoked{background:#fdecec;color:#8a1c1c}
+  .pill.active,.pill.trial,.pill.redeemed{background:#e6f6ec;color:#145a32}
+</style>
+</head>
+<body>
+<main>
+  <header class="row" style="justify-content:space-between;align-items:center">
+    <div>
+      <h1>Bright Nexa Platform Operator Console</h1>
+      <p class="sub">Server-verified Super Admin control for school activation codes, 30-day trials, legacy onboarding, and renewals.</p>
+    </div>
+    <button id="opLogout" type="button" class="ghost" hidden>Sign out</button>
+  </header>
+
+  <div id="opStatus" class="notice" role="status" aria-live="polite" hidden></div>
+
+  <section id="opLoginSection">
+    <form id="opLoginForm" class="row" autocomplete="off">
+      <div><label for="opEmail">Operator Email</label><input id="opEmail" type="email" required placeholder="Verified Bright Nexa operator email"></div>
+      <div><label for="opPassword">Password</label><input id="opPassword" type="password" required minlength="8" autocomplete="current-password"></div>
+      <button id="opLoginSubmit" type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <section id="opWorkspace" hidden>
+    <p id="opIdentity" class="sub"></p>
+
+    <h2>Issue Single-Use Activation Code (7-day validity, email-bound)</h2>
+    <form id="issueCodeForm" class="row" autocomplete="off">
+      <div><label for="issueOwnerEmail">Verified School Owner Email</label><input id="issueOwnerEmail" type="email" required placeholder="owner@school.example"></div>
+      <button id="issueCodeButton" type="submit">Issue Activation Code</button>
+      <button id="opRefreshAll" type="button" class="ghost">Refresh All</button>
+    </form>
+    <div id="issuedCodeBox" class="code-box" hidden>
+      <strong>Share once with school owner (<span id="issuedCodeOwner"></span>):</strong>
+      <p class="sub" style="margin:4px 0 8px">Only its SHA-256 hash is stored. It cannot be viewed again after leaving this screen.</p>
+      <div class="row">
+        <input id="issuedCodeValue" type="text" readonly style="flex:1;font-family:monospace">
+        <button id="copyIssuedCode" type="button" class="ghost">Copy Code</button>
+      </div>
+    </div>
+
+    <h2>Activation Codes</h2>
+    <div style="overflow:auto">
+      <table>
+        <thead><tr><th>Owner Email</th><th>Digest ID</th><th>Status</th><th>Issued</th><th>Expires</th><th>School</th><th>Action</th></tr></thead>
+        <tbody id="opCodesBody"></tbody>
+      </table>
+    </div>
+
+    <h2>Schools &amp; Subscriptions</h2>
+    <div style="overflow:auto">
+      <table>
+        <thead><tr><th>School</th><th>Status</th><th>Expires (IST)</th><th>Days Left</th><th>Reminders Sent</th><th>Manage</th></tr></thead>
+        <tbody id="opSchoolsBody"></tbody>
+      </table>
+    </div>
+
+    <h2>Platform Audit Trail (No Plaintext Secrets)</h2>
+    <div style="overflow:auto">
+      <table>
+        <thead><tr><th>Time (IST)</th><th>Event</th><th>Owner Email</th><th>School ID</th><th>Digest ID</th></tr></thead>
+        <tbody id="opAuditBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script src="./platform-admin.js"></script>
+</body>
+</html>

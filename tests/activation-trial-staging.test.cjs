@@ -172,4 +172,31 @@ test('staged hardening: storage uploads, WordPress intake, institutions update, 
  assert.ok(audit.some(r=>r.event_type==='entitlement_assigned'));
  assert.ok(audit.some(r=>r.event_type==='trial_reminder_recorded'));
  assert.ok(audit.every(r=>!r.code_digest_prefix||r.code_digest_prefix!==code),'Plaintext code must never enter audit log');
+
+ // Super Admin listing and digest-prefix revocation RPCs are strictly service_role only and never expose plaintext
+ await login(A);
+ await assert.rejects(db.query('select * from public.bn_list_school_activations(20)'));
+ await assert.rejects(db.query('select * from public.bn_list_school_entitlements(20)'));
+ await assert.rejects(db.query('select * from public.bn_list_platform_audit(20)'));
+ await assert.rejects(db.query("select public.bn_revoke_school_activation_by_prefix('000000000000','owner@example.test')"));
+
+ await db.exec('reset role; set role service_role');
+ const listed=(await db.query('select * from public.bn_list_school_activations(20)')).rows;
+ assert.equal(listed.length,1);
+ assert.equal(listed[0].status,'active');
+ assert.equal(listed[0].code_digest_prefix.length,12);
+ assert.notEqual(listed[0].code_digest_prefix,code.slice(0,12));
+ assert.equal(JSON.stringify(listed).includes(code),false,'Activation listing must never expose plaintext code');
+ const entRows=(await db.query('select * from public.bn_list_school_entitlements(20)')).rows;
+ assert.equal(entRows[0].effective_status,'expired');
+ await db.exec('reset role');
+ await db.query('update school_private.bn_school_entitlements set ends_at=(select max(ends_at) from school_private.bn_trial_reminders where institution_id=$1) where institution_id=$1',[legacy]);
+ await db.exec('set role service_role');
+ const activeEnt=(await db.query('select * from public.bn_list_school_entitlements(20)')).rows;
+ assert.ok(activeEnt[0].milestones_sent.includes(7),'Entitlement view should include recorded milestone for matching ends_at window');
+ const auditRows=(await db.query('select * from public.bn_list_platform_audit(20)')).rows;
+ assert.ok(auditRows.some(r=>r.event_type==='activation_issued'));
+ assert.equal((await db.query('select public.bn_revoke_school_activation_by_prefix($1,$2) r',[listed[0].code_digest_prefix,'owner@example.test'])).rows[0].r,true);
+ await login(A);
+ await assert.rejects(db.query("select public.register_first_school('Blocked After Prefix Revoke',$1)",[code]),/activation/i);
 });

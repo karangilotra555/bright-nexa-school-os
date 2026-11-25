@@ -261,6 +261,115 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_renew_school_entitlement(uuid,integer) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_renew_school_entitlement(uuid,integer) TO service_role;
 
+-- Super Admin platform operator listing and digest-prefix revocation (service_role only).
+CREATE FUNCTION public.bn_list_school_activations(p_limit integer DEFAULT 100)
+RETURNS TABLE(
+ code_digest_prefix text,
+ owner_email text,
+ issued_at timestamptz,
+ expires_at timestamptz,
+ revoked_at timestamptz,
+ redeemed_at timestamptz,
+ institution_id uuid,
+ school_name text,
+ status text
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT left(c.code_hash,12) AS code_digest_prefix,
+  c.owner_email,c.issued_at,c.expires_at,c.revoked_at,c.redeemed_at,c.institution_id,
+  i.name AS school_name,
+  CASE
+   WHEN c.redeemed_at IS NOT NULL THEN 'redeemed'
+   WHEN c.revoked_at IS NOT NULL THEN 'revoked'
+   WHEN clock_timestamp()>=c.expires_at THEN 'expired'
+   ELSE 'active'
+  END AS status
+ FROM school_private.bn_activation_codes c
+ LEFT JOIN public.institutions i ON i.id=c.institution_id
+ ORDER BY c.issued_at DESC
+ LIMIT greatest(1,least(coalesce(p_limit,100),500));
+$$;
+REVOKE ALL ON FUNCTION public.bn_list_school_activations(integer) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_list_school_activations(integer) TO service_role;
+
+CREATE FUNCTION public.bn_revoke_school_activation_by_prefix(p_code_prefix text,p_owner_email text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE v_email text := lower(trim(p_owner_email)); v_hash text;
+BEGIN
+ IF p_code_prefix IS NULL OR p_code_prefix !~ '^[0-9a-f]{12}$' OR v_email IS NULL OR v_email='' THEN
+  RETURN false;
+ END IF;
+ SELECT c.code_hash INTO v_hash
+ FROM school_private.bn_activation_codes c
+ WHERE left(c.code_hash,12)=p_code_prefix AND c.owner_email=v_email
+  AND c.redeemed_at IS NULL AND c.revoked_at IS NULL
+ FOR UPDATE;
+ IF NOT FOUND THEN RETURN false; END IF;
+ UPDATE school_private.bn_activation_codes SET revoked_at=clock_timestamp()
+ WHERE code_hash=v_hash AND redeemed_at IS NULL AND revoked_at IS NULL;
+ INSERT INTO school_private.bn_platform_audit(event_type,owner_email,code_digest_prefix)
+ VALUES('activation_revoked',v_email,p_code_prefix);
+ RETURN true;
+END $$;
+REVOKE ALL ON FUNCTION public.bn_revoke_school_activation_by_prefix(text,text) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_revoke_school_activation_by_prefix(text,text) TO service_role;
+
+CREATE FUNCTION public.bn_list_school_entitlements(p_limit integer DEFAULT 200)
+RETURNS TABLE(
+ institution_id uuid,
+ name text,
+ institution_status text,
+ plan text,
+ starts_at timestamptz,
+ ends_at timestamptz,
+ effective_status text,
+ days_remaining integer,
+ milestones_sent integer[]
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT i.id AS institution_id,i.name,(to_jsonb(i)->>'status')::text AS institution_status,
+  e.plan,e.starts_at,e.ends_at,
+  CASE
+   WHEN e.institution_id IS NULL THEN 'unassigned'
+   WHEN clock_timestamp()>=e.ends_at THEN 'expired'
+   ELSE e.plan
+  END AS effective_status,
+  CASE
+   WHEN e.institution_id IS NULL THEN NULL
+   ELSE greatest(0,ceil(extract(epoch FROM (e.ends_at-clock_timestamp()))/86400.0)::integer)
+  END AS days_remaining,
+  coalesce((
+   SELECT array_agg(r.milestone_days ORDER BY r.milestone_days)
+   FROM school_private.bn_trial_reminders r
+   WHERE r.institution_id=i.id AND r.ends_at=e.ends_at
+  ),ARRAY[]::integer[]) AS milestones_sent
+ FROM public.institutions i
+ LEFT JOIN school_private.bn_school_entitlements e ON e.institution_id=i.id
+ ORDER BY i.name NULLS LAST,i.id
+ LIMIT greatest(1,least(coalesce(p_limit,200),500));
+$$;
+REVOKE ALL ON FUNCTION public.bn_list_school_entitlements(integer) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_list_school_entitlements(integer) TO service_role;
+
+CREATE FUNCTION public.bn_list_platform_audit(p_limit integer DEFAULT 100)
+RETURNS TABLE(
+ id uuid,
+ event_type text,
+ owner_email text,
+ institution_id uuid,
+ code_digest_prefix text,
+ details jsonb,
+ created_at timestamptz
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT a.id,a.event_type,a.owner_email,a.institution_id,a.code_digest_prefix,a.details,a.created_at
+ FROM school_private.bn_platform_audit a
+ ORDER BY a.created_at DESC,a.id
+ LIMIT greatest(1,least(coalesce(p_limit,100),500));
+$$;
+REVOKE ALL ON FUNCTION public.bn_list_platform_audit(integer) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_list_platform_audit(integer) TO service_role;
+
 -- Enforce expiry across tables, private WordPress/alert tables, and Storage
 -- even inside SECURITY DEFINER RPCs.
 CREATE FUNCTION school_private.bn_assert_school_writable(p_school uuid)
