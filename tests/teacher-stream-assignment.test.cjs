@@ -70,6 +70,7 @@ function edgeStreamFixture({ teacherAssignments = [], subjects = ['Physics'] } =
 
   const admin = {
     async rpc(name, data) {
+      if (name === 'bn_school_writable') return { data: true };
       writes.push(['database', 'provision', data]);
       return { data: 'member-1' };
     },

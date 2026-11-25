@@ -46,10 +46,10 @@ export function handler(create=createClient){return async(req:Request)=>{
    const {data:existing,error:readError}=await admin.from('school_guardians').select('id,status').eq('institution_id',s.institution_id).eq('auth_user_id',user.id).maybeSingle();
    if(readError||existing?.status==='disabled')throw Error('School access is disabled. Contact the school office.');
    let guardian=existing;
-   if(!guardian){const {data,error}=await admin.from('school_guardians').upsert({institution_id:s.institution_id,auth_user_id:user.id,email:user.email,status:'active'},{onConflict:'institution_id,auth_user_id'}).select('id').single();if(error)throw Error('Cannot link student account');guardian=data;}
+   if(!guardian){const {data,error}=await admin.from('school_guardians').upsert({institution_id:s.institution_id,auth_user_id:user.id,email:user.email,status:'active'},{onConflict:'institution_id,auth_user_id'}).select('id').single();if(error)throw Error(/read-only|42501/i.test(error.message||'')?'Subscription expired: school is read-only. Contact Bright Nexa.':'Cannot link student account');guardian=data;}
    const {data:existingLink,error:linkReadError}=await admin.from('school_guardian_students').select('student_id').eq('institution_id',s.institution_id).eq('guardian_id',guardian.id).eq('student_id',s.id).maybeSingle();
    if(linkReadError)throw Error('Cannot verify student account link');
-   if(!existingLink){const {error}=await admin.from('school_guardian_students').upsert({institution_id:s.institution_id,guardian_id:guardian.id,student_id:s.id,relationship:'guardian'},{onConflict:'guardian_id,student_id'});if(error)throw Error('Cannot link student account');}
+   if(!existingLink){const {error}=await admin.from('school_guardian_students').upsert({institution_id:s.institution_id,guardian_id:guardian.id,student_id:s.id,relationship:'guardian'},{onConflict:'guardian_id,student_id'});if(error)throw Error(/read-only|42501/i.test(error.message||'')?'Subscription expired: school is read-only. Contact Bright Nexa.':'Cannot link student account');}
   }
 
   // Student authentication uses synthetic .invalid Auth addresses; built-in
@@ -185,6 +185,9 @@ export function handler(create=createClient){return async(req:Request)=>{
   const pending=user.app_metadata.bn_password_pending===true;
   if(!pending)await linkUser(user,s);
   return reply({session,mustChangePassword:pending,links:pending?[]:[{institution_id:s.institution_id,student_id:s.id}]});
- }catch(_){return reply({error:'Unable to complete student login. Try again or contact the school office.'},500);}
+ }catch(e){
+  if(/read-only|42501/i.test(String((e as Error)?.message)))return reply({error:'Subscription expired: school is read-only. Contact Bright Nexa.'},403);
+  return reply({error:'Unable to complete student login. Try again or contact the school office.'},500);
+ }
 };}
 Deno.serve(handler());

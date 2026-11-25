@@ -53,7 +53,10 @@ test('staff portal shows trial/read-only status banner support and ERP entry mar
  const fs=require('node:fs');
  const teacherJs=fs.readFileSync('teacher-access.js','utf8');
  const erpJs=fs.readFileSync('school-erp-entry.js','utf8');
+ const leadJs=fs.readFileSync('leadership-app.js','utf8');
  assert.match(teacherJs,/bn_school_trial_status/);
  assert.match(teacherJs,/bn_school_writable/);
  assert.match(erpJs,/data-trial-state/);
+ assert.match(teacherJs,/dropSession[\s\S]*bnStaffTrialStatus/);
+ assert.match(leadJs,/data-trial-state/);
 });

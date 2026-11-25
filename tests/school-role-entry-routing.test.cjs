@@ -86,7 +86,7 @@ test('empty-school re-registration is gated by a verified login and opens the da
  assert.match(html,/data-view="dashboard"/);
  assert.match(js,/if\(!active\.length\)\{/);
  assert.match(js,/display\('createFirstSchoolPanel',true\)/);
- assert.match(js,/await api\('rpc\/register_first_school'/);
+ assert.match(js,/functions\/v1\/school-register-school/);
  assert.match(js,/await load\(String\(schoolId\)\)/);
  assert.match(js,/const allowedViews=\['dashboard'/);
  assert.match(read('school-role-entry.js'),/school_admin:'classes'/);

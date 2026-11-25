@@ -27,6 +27,13 @@
   }
   function saveSession(s) { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); return s; }
   function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
+  function revokeRemoteSession(accessToken) {
+    if (!accessToken) return;
+    fetch(SUPABASE + '/auth/v1/logout?scope=local', {
+      method: 'POST', cache: 'no-store', keepalive: true,
+      headers: { apikey: PUBLISHABLE, Authorization: 'Bearer ' + accessToken }
+    }).catch(() => {});
+  }
 
   async function ensureToken() {
     let s = readSession();
@@ -200,7 +207,9 @@
       await openConsole();
       setStatus('Platform Super Admin verified.');
     } catch (err) {
+      const token = readSession()?.access_token;
       clearSession();
+      revokeRemoteSession(token);
       setStatus(err.message, true);
     } finally {
       $('opLoginSubmit').disabled = false;
@@ -243,7 +252,9 @@
   });
 
   $('opLogout')?.addEventListener('click', () => {
+    const token = readSession()?.access_token;
     clearSession();
+    revokeRemoteSession(token);
     $('issuedCodeValue').value = '';
     $('issuedCodeBox').hidden = true;
     $('opWorkspace').hidden = true;

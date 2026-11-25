@@ -30,3 +30,8 @@ test('Library schema is Supabase RLS first and forbids cross-tenant or duplicate
  for(const p of [/ENABLE ROW LEVEL SECURITY/g,/CREATE POLICY library_loans_insert/,/CREATE POLICY library_items_read/,/FOREIGN KEY\(student_id,institution_id\)/,/UNIQUE INDEX school_library_one_active_loan/,/school_private\.has_role/,/school_library_loan_update_guard/])assert.match(text,p);
  assert.doesNotMatch(text,/GRANT DELETE/);
 });
+test('TDD RED: library portal checks bn_school_writable and shows read-only status when subscription expired',()=>{
+ const js=R('library.js');
+ assert.match(js,/bn_school_writable/);
+ assert.match(js,/read-only/i);
+});

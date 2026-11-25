@@ -13,3 +13,26 @@ SELECT n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) AS argument
 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
 WHERE n.nspname IN ('public','school_private') ORDER BY 1,2,3;
 SELECT pg_get_functiondef(to_regprocedure('public.register_first_school(text)')) AS current_registration_rpc;
+
+-- Reconcile check for legacy empty subscription table reported in production preflight.
+SELECT to_regclass('public.bn_school_subscriptions') AS bn_school_subscriptions_oid;
+SELECT a.attname AS column_name, pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type, a.attnotnull
+FROM pg_attribute a
+WHERE a.attrelid = to_regclass('public.bn_school_subscriptions') AND a.attnum > 0 AND NOT a.attisdropped
+ORDER BY a.attnum;
+SELECT conname, contype, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = to_regclass('public.bn_school_subscriptions')
+   OR confrelid = to_regclass('public.bn_school_subscriptions');
+SELECT n.nspname, p.proname, pg_get_function_identity_arguments(p.oid) AS args
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname IN ('public','school_private')
+  AND pg_get_functiondef(p.oid) ILIKE '%bn_school_subscriptions%';
+DO $$
+DECLARE n_rows bigint;
+BEGIN
+  IF to_regclass('public.bn_school_subscriptions') IS NOT NULL THEN
+    EXECUTE 'SELECT count(*) FROM public.bn_school_subscriptions' INTO n_rows;
+    RAISE NOTICE 'public.bn_school_subscriptions row count = %', n_rows;
+  END IF;
+END $$;

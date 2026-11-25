@@ -27,9 +27,12 @@
   const schoolQuery=new URLSearchParams({select:'name,status',id:'eq.'+member.institution_id});
   const schools=await unpack(await fetch(BASE+'/rest/v1/institutions?'+schoolQuery,{headers:auth,cache:'no-store'}));
   if(!schools[0]||!['active','trial'].includes(schools[0].status))throw Error('School is inactive.');
+  const writableRes=await fetch(BASE+'/rest/v1/rpc/bn_school_writable',{method:'POST',cache:'no-store',headers:{...auth,'Content-Type':'application/json'},body:JSON.stringify({p_institution_id:member.institution_id})});
+  const isWritable=writableRes.ok?(await writableRes.json())===true:false;
   $('schoolLabel').textContent=schools[0].name+' · '+member.role.replaceAll('_',' ');
-  writable=member.role!=='principal';
+  writable=member.role!=='principal'&&isWritable;
   show('editSections',writable);show('logout',true);show('dashboard',true);show('loginNotice',false);
+  if(!isWritable)note('Subscription expired — read-only. Contact Bright Nexa to renew; your records remain available.',true);
  }
  async function api(table,params,method='GET',body=null,prefer='return=representation'){
   if(!member||!session?.access_token)throw Error('School staff login required.');

@@ -507,6 +507,7 @@
     attendanceDrafts.clear();invalidateRoster();clearProfileEditor();resetTeacherMarks();resetHomeworkForm();
     $('bnTeacherActivationAdmin')?.remove();
     $('bnSchoolPendingRecovery')?.remove();
+    $('bnStaffTrialStatus')?.remove();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
     display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);showAuthView('login');
     document.body.classList.remove('bn-teacher-app');
@@ -1901,9 +1902,14 @@
         if(['feeStructures','feePayments','studentFeeDues','classFeeCharges'].some(k=>Array.isArray(ops[k])&&ops[k].length))
           throw Error('Local fee records require separate reconciliation. Cloud school was not created.');
       }
-      // The first-school RPC authenticates the email-confirmed owner and
-      // atomically creates the tenant and school_admin membership.
-      const schoolId=await api('rpc/register_first_school','','POST',{p_school_name:name,p_activation_code:activationCode});
+      // The rate-limited Edge Function authenticates the email-confirmed owner,
+      // enforces activation attempts outside rollback scope, and atomically creates
+      // the tenant and school_admin membership.
+      const registered=await responseJson(await timedCloudFetch(BASE+'/functions/v1/school-register-school',{
+        method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({schoolName:name,activationCode}),cache:'no-store'
+      }));
+      const schoolId=registered?.schoolId;
       $('firstSchoolActivation').value='';
       if(!/^[0-9a-f-]{36}$/i.test(String(schoolId)))throw Error('School creation returned no valid school ID.');
       sessionStorage.setItem(SELECTED_SCHOOL_KEY,String(schoolId));

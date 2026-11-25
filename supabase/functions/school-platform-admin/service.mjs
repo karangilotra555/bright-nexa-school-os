@@ -67,7 +67,17 @@ export function createService({ url, serviceKey, anonKey, operatorEmails = '', f
       if (!authRes.ok) return reply({ error: 'Invalid or expired platform operator session' }, 401);
       const identity = await authRes.json().catch(() => null);
       const email = norm(identity?.email).toLowerCase();
-      if (!identity?.id || identity.is_anonymous || !identity.email_confirmed_at || !allowedOperators.has(email)) {
+      const bannedUntil = identity?.banned_until ? Date.parse(identity.banned_until) : NaN;
+      if (
+        !norm(identity?.id) ||
+        identity.is_anonymous ||
+        !identity.email_confirmed_at ||
+        identity.deleted_at ||
+        (Number.isFinite(bannedUntil) && bannedUntil > Date.now()) ||
+        identity.app_metadata?.bn_student_id ||
+        identity.app_metadata?.bn_teacher_mobile_pending === true ||
+        !allowedOperators.has(email)
+      ) {
         return reply({ error: 'Bright Nexa platform operator access required' }, 403);
       }
 
@@ -93,13 +103,13 @@ export function createService({ url, serviceKey, anonKey, operatorEmails = '', f
         if (!ownerEmail || ownerEmail.length > 254 || !EMAIL_RE.test(ownerEmail)) {
           return reply({ error: 'Enter a valid school owner email address.' }, 400);
         }
-        const code = await rpc('bn_issue_school_activation', { p_owner_email: ownerEmail });
+        const code = await rpc('bn_issue_school_activation', { p_owner_email: ownerEmail, p_actor_uid: identity.id });
         return reply({ code, ownerEmail, notice: 'One-time code generated. Share privately; only its cryptographic hash is stored.' });
       }
       if (route === '/activations/revoke' && req.method === 'POST') {
         const rawCode = norm(body.code).toLowerCase();
         if (/^[0-9a-f]{64}$/.test(rawCode)) {
-          const revoked = Boolean(await rpc('bn_revoke_school_activation', { p_code: rawCode }));
+          const revoked = Boolean(await rpc('bn_revoke_school_activation', { p_code: rawCode, p_actor_uid: identity.id }));
           return reply({ revoked });
         }
         const codePrefix = norm(body.codePrefix).toLowerCase();
@@ -107,7 +117,7 @@ export function createService({ url, serviceKey, anonKey, operatorEmails = '', f
         if (!/^[0-9a-f]{12}$/.test(codePrefix) || !EMAIL_RE.test(ownerEmail)) {
           return reply({ error: 'Valid activation digest prefix and owner email are required.' }, 400);
         }
-        const revoked = Boolean(await rpc('bn_revoke_school_activation_by_prefix', { p_code_prefix: codePrefix, p_owner_email: ownerEmail }));
+        const revoked = Boolean(await rpc('bn_revoke_school_activation_by_prefix', { p_code_prefix: codePrefix, p_owner_email: ownerEmail, p_actor_uid: identity.id }));
         return reply({ revoked });
       }
       if (route === '/entitlements' && req.method === 'GET') {
@@ -121,7 +131,7 @@ export function createService({ url, serviceKey, anonKey, operatorEmails = '', f
         if (!UUID_RE.test(institutionId) || !['trial', 'active'].includes(plan) || !Number.isInteger(days) || days < 1 || days > 366) {
           return reply({ error: 'Valid school ID, plan (trial/active), and duration (1-366 days) required.' }, 400);
         }
-        await rpc('bn_assign_school_entitlement', { p_institution_id: institutionId, p_plan: plan, p_days: days });
+        await rpc('bn_assign_school_entitlement', { p_institution_id: institutionId, p_plan: plan, p_days: days, p_actor_uid: identity.id });
         return reply({ assigned: true });
       }
       if (route === '/entitlements/renew' && req.method === 'POST') {
@@ -130,7 +140,7 @@ export function createService({ url, serviceKey, anonKey, operatorEmails = '', f
         if (!UUID_RE.test(institutionId) || !Number.isInteger(days) || days < 1 || days > 366) {
           return reply({ error: 'Valid school ID and renewal duration (1-366 days) required.' }, 400);
         }
-        await rpc('bn_renew_school_entitlement', { p_institution_id: institutionId, p_days: days });
+        await rpc('bn_renew_school_entitlement', { p_institution_id: institutionId, p_days: days, p_actor_uid: identity.id });
         return reply({ renewed: true });
       }
       if (route === '/audit' && req.method === 'GET') {

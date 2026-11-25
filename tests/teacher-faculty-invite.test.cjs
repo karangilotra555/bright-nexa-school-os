@@ -75,12 +75,13 @@ test('saving a teacher provisions the app account after Supabase confirms the fa
  assert.deepEqual(events,['profile']);
 });
 
-function edgeFixture({existing=null,authUsers=[],facultyLink=null,interrupt=false}={}){
+function edgeFixture({existing=null,authUsers=[],facultyLink=null,interrupt=false,writable=true}={}){
  const writes=[];
  const source=fs.readFileSync(path.join(__dirname,'../supabase/functions/school-invite-staff/index.ts'),'utf8').replace(/^import[^\n]+\n/,'');
  const {transformSync}=require('esbuild');
  const teacher={id:'faculty-1',email:'teacher@example.test',name:'Test Teacher',status:'Active',joiningDate:'2026-11-01',employmentType:'Permanent',mobile:'9000000000',assignedClasses:[],subjects:[]};
  const admin={async rpc(name,data){
+  if(name==='bn_school_writable')return {data:writable};
   assert.equal(name,'bn_create_teacher_app_membership');
   writes.push(['database','provision',data]);
   if(interrupt){interrupt=false;return {error:{message:'write failed'}};}
@@ -106,17 +107,27 @@ function edgeFixture({existing=null,authUsers=[],facultyLink=null,interrupt=fals
  },auth:{admin:{
   async listUsers(){return {data:{users:authUsers}};},
   async createUser(data){writes.push(['auth','create',data]);authUsers.push({id:'new-auth',...data});return {data:{user:{id:'new-auth'}}};},
+  async inviteUserByEmail(email){writes.push(['auth','invite',email]);return {data:{user:{id:'invited-auth'}}};},
   async getUserById(id){return {data:{user:authUsers.find(user=>user.id===id)}};}
  }}};
  const context={Deno:{env:{get:key=>key},serve:h=>{context.handler=h;}},Response,crypto,TextEncoder,
   createClient:(_url,key)=>key==='SUPABASE_ANON_KEY'?{auth:{getUser:async()=>({data:{user:{id:'admin-auth'}}})}}:admin};
  vm.runInNewContext(transformSync(source,{loader:'ts'}).code,context);
- return {writes,async ensure(){
+ return {writes,handler:context.handler,async ensure(){
   const answer=await context.handler(new Request('https://test.invalid',{method:'POST',headers:{authorization:'Bearer test'},
    body:JSON.stringify({action:'ensure_teacher_account',role:'teacher',facultyId:teacher.id,email:teacher.email})}));
   return {status:answer.status,body:await answer.json()};
  }};
 }
+
+test('TDD RED: expired school blocks staff invites before creating auth users or sending emails',async()=>{
+ const f=edgeFixture({writable:false});
+ const inviteRes=await f.handler(new Request('https://test.invalid',{method:'POST',headers:{authorization:'Bearer test'},
+  body:JSON.stringify({email:'acc@example.test',role:'accountant'})}));
+ assert.equal(inviteRes.status,403);
+ assert.match((await inviteRes.json()).error,/read-only/i);
+ assert.deepEqual(f.writes,[],'Expired school must not create Auth accounts or send invite emails');
+});
 test('automatic provisioning preserves existing active and disabled accounts and their assignments',async()=>{
  for(const status of ['active','disabled']){
   const f=edgeFixture({existing:{id:'member',role:'teacher',status,email:'teacher@example.test',auth_user_id:'prior-auth'},authUsers:[{id:'prior-auth',email:'teacher@example.test'}]});

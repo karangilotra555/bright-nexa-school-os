@@ -94,6 +94,29 @@ test('TDD RED: Super Admin edge service enforces operator identity and exposes c
   }));
   assert.equal(renewed.status, 200);
   assert.equal((await renewed.json()).renewed, true);
+
+  // Operator actions must pass p_actor_uid for platform audit accountability
+  assert.equal(calls.find(c => c.pathname.endsWith('/bn_issue_school_activation')).body.p_actor_uid, 'op-1');
+  assert.equal(calls.find(c => c.pathname.endsWith('/bn_renew_school_entitlement')).body.p_actor_uid, 'op-1');
+
+  // Synthetic student, pending teacher, banned, and deleted operator accounts fail closed (403)
+  for (const badUser of [
+    { id: 'op-1', email: 'operator@brightnexa.in', email_confirmed_at: '2026-11-25T00:00:00Z', app_metadata: { bn_student_id: 's1' } },
+    { id: 'op-1', email: 'operator@brightnexa.in', email_confirmed_at: '2026-11-25T00:00:00Z', app_metadata: { bn_teacher_mobile_pending: true } },
+    { id: 'op-1', email: 'operator@brightnexa.in', email_confirmed_at: '2026-11-25T00:00:00Z', banned_until: '2099-01-01T00:00:00Z' },
+    { id: 'op-1', email: 'operator@brightnexa.in', email_confirmed_at: '2026-11-25T00:00:00Z', deleted_at: '2026-11-25T00:00:00Z' }
+  ]) {
+    const blocked = makeHandler({ user: badUser });
+    assert.equal((await blocked(new Request('https://fixture.supabase.co/functions/v1/school-platform-admin/session', { headers: authed }))).status, 403);
+  }
+});
+
+test('TDD RED: Supabase Edge config disables gateway JWT bypass mismatches and platform-admin revokes server sessions on logout', () => {
+  const configToml = read('supabase/config.toml');
+  assert.match(configToml, /\[functions\.school-platform-admin\]\s+verify_jwt\s*=\s*false/);
+  assert.match(configToml, /\[functions\.school-register-school\]\s+verify_jwt\s*=\s*false/);
+  const js = read('platform-admin.js');
+  assert.match(js, /\/auth\/v1\/logout\?scope=local/);
 });
 
 test('TDD RED: Super Admin UI is mirrored, online-only, secret-free, and manages codes and renewals', async () => {

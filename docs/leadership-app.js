@@ -753,8 +753,17 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
       let banner=$('bnTrialStatus');
       if(!banner){banner=elt('p');banner.id='bnTrialStatus';banner.setAttribute('role','status');heading.after(banner);}
       banner.textContent='Checking subscription status…';
-      void client.trialStatus().then(status=>{if(snapshot===data)banner.textContent=trialStatusText(status);},
-        ()=>{if(snapshot===data)banner.textContent='Subscription status unavailable. Refresh to verify.';});
+      void client.trialStatus().then(status=>{
+        if(snapshot!==data)return;
+        const end=Date.parse(status?.ends_at),now=Date.parse(status?.server_time);
+        const days=Number.isFinite(end)&&Number.isFinite(now)?Math.max(0,Math.ceil((end-now)/86400000)):null;
+        const state=status?.status==='expired'||(Number.isFinite(end)&&Number.isFinite(now)&&end<=now)?'expired':(days!==null&&days<=7?'reminder':(status?.status==='unassigned'?'unassigned':'active'));
+        banner.setAttribute('data-trial-state',state);
+        if(state==='expired')banner.style.cssText='background:#fde8e8;color:#7f1d1d;padding:7px 10px;border-radius:10px;margin-top:8px;font-weight:600';
+        else if(state==='reminder')banner.style.cssText='background:#fef3c7;color:#78350f;padding:7px 10px;border-radius:10px;margin-top:8px';
+        else banner.removeAttribute('style');
+        banner.textContent=trialStatusText(status);
+      },()=>{if(snapshot===data)banner.textContent='Subscription status unavailable. Refresh to verify.';});
     }
   }
   async function refreshVisiblePage(){

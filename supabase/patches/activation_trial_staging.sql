@@ -67,6 +67,41 @@ REVOKE ALL ON school_private.bn_activation_codes,school_private.bn_school_entitl
  school_private.bn_activation_attempts,school_private.bn_trial_reminders,school_private.bn_platform_audit
  FROM PUBLIC,anon,authenticated,service_role;
 
+-- Reconcile existing empty legacy subscription table found in preflight so
+-- school_private.bn_school_entitlements is the single authoritative subscription source.
+DO $$
+DECLARE
+ v_rows bigint := 0;
+ v_fks text;
+ v_views text;
+BEGIN
+ IF to_regclass('public.bn_school_subscriptions') IS NOT NULL THEN
+  EXECUTE 'SELECT count(*) FROM public.bn_school_subscriptions' INTO v_rows;
+  IF v_rows <> 0 THEN
+   RAISE EXCEPTION 'public.bn_school_subscriptions has % row(s); reconcile into school_private.bn_school_entitlements before dropping', v_rows;
+  END IF;
+  SELECT string_agg(c.conname || ' on ' || c.conrelid::regclass::text, ', ') INTO v_fks
+  FROM pg_catalog.pg_constraint c
+  WHERE c.confrelid = 'public.bn_school_subscriptions'::regclass
+    AND c.conrelid <> 'public.bn_school_subscriptions'::regclass;
+  IF v_fks IS NOT NULL THEN
+   RAISE EXCEPTION 'public.bn_school_subscriptions has dependent foreign keys (%); review before dropping', v_fks;
+  END IF;
+  SELECT string_agg(DISTINCT r.ev_class::regclass::text, ', ') INTO v_views
+  FROM pg_catalog.pg_depend d
+  JOIN pg_catalog.pg_rewrite r ON r.oid = d.objid
+  WHERE d.refobjid = 'public.bn_school_subscriptions'::regclass
+    AND d.classid = 'pg_catalog.pg_rewrite'::regclass
+    AND r.ev_class <> 'public.bn_school_subscriptions'::regclass;
+  IF v_views IS NOT NULL THEN
+   RAISE EXCEPTION 'public.bn_school_subscriptions has dependent views (%); review before dropping', v_views;
+  END IF;
+  DROP TABLE public.bn_school_subscriptions;
+  INSERT INTO school_private.bn_platform_audit(event_type,details)
+  VALUES('legacy_subscription_table_retired',jsonb_build_object('table','public.bn_school_subscriptions','row_count',0));
+ END IF;
+END $$;
+
 CREATE FUNCTION public.bn_activation_attempt(p_bucket text,p_limit integer)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_attempts integer;
@@ -90,7 +125,7 @@ GRANT EXECUTE ON FUNCTION public.bn_activation_attempt(text,integer) TO service_
 
 -- The platform operator's trusted server may issue a code. Never give a
 -- service_role key to a school owner or expose it in the browser.
-CREATE FUNCTION public.bn_issue_school_activation(p_owner_email text)
+CREATE FUNCTION public.bn_issue_school_activation(p_owner_email text,p_actor_uid uuid DEFAULT NULL)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_email text := lower(trim(p_owner_email)); v_code text; v_hash text;
 BEGIN
@@ -105,14 +140,14 @@ BEGIN
  v_hash := encode(sha256(convert_to(v_code,'UTF8')),'hex');
  INSERT INTO school_private.bn_activation_codes(code_hash,owner_email,expires_at)
  VALUES(v_hash,v_email,now()+interval '7 days');
- INSERT INTO school_private.bn_platform_audit(event_type,owner_email,code_digest_prefix)
- VALUES('activation_issued',v_email,left(v_hash,12));
+ INSERT INTO school_private.bn_platform_audit(event_type,actor_uid,owner_email,code_digest_prefix)
+ VALUES('activation_issued',p_actor_uid,v_email,left(v_hash,12));
  RETURN v_code;
 END $$;
-REVOKE ALL ON FUNCTION public.bn_issue_school_activation(text) FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION public.bn_issue_school_activation(text) TO service_role;
+REVOKE ALL ON FUNCTION public.bn_issue_school_activation(text,uuid) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_issue_school_activation(text,uuid) TO service_role;
 
-CREATE FUNCTION public.bn_revoke_school_activation(p_code text)
+CREATE FUNCTION public.bn_revoke_school_activation(p_code text,p_actor_uid uuid DEFAULT NULL)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_hash text;
 BEGIN
@@ -121,53 +156,71 @@ BEGIN
  UPDATE school_private.bn_activation_codes SET revoked_at=clock_timestamp()
  WHERE code_hash=v_hash AND redeemed_at IS NULL AND revoked_at IS NULL;
  IF FOUND THEN
- INSERT INTO school_private.bn_platform_audit(event_type,code_digest_prefix)
- VALUES('activation_revoked',left(v_hash,12));
+ INSERT INTO school_private.bn_platform_audit(event_type,actor_uid,code_digest_prefix)
+ VALUES('activation_revoked',p_actor_uid,left(v_hash,12));
  RETURN true;
  END IF;
  RETURN false;
 END $$;
-REVOKE ALL ON FUNCTION public.bn_revoke_school_activation(text) FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION public.bn_revoke_school_activation(text) TO service_role;
+REVOKE ALL ON FUNCTION public.bn_revoke_school_activation(text,uuid) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_revoke_school_activation(text,uuid) TO service_role;
 
 -- Keep original registration logic rather than duplicating its tenant logic.
--- The prior public RPC must no longer be executable directly.
+-- Remove all direct browser/authenticated registration access so every signup
+-- must flow through the rate-limited school-register-school Edge Function.
 ALTER FUNCTION public.register_first_school(text) SET SCHEMA school_private;
 ALTER FUNCTION school_private.register_first_school(text) RENAME TO bn_register_first_school_legacy;
 REVOKE ALL ON FUNCTION school_private.bn_register_first_school_legacy(text) FROM PUBLIC,anon,authenticated,service_role;
 
-CREATE FUNCTION public.register_first_school(p_school_name text,p_activation_code text)
+CREATE FUNCTION public.bn_register_school_for_user(p_owner_uid uuid,p_school_name text,p_activation_code text)
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE v_uid uuid := auth.uid(); v_email text; v_hash text; v_school uuid; v_start timestamptz;
+DECLARE
+ v_email text;
+ v_hash text;
+ v_school uuid;
+ v_start timestamptz;
+ v_prev_sub text := pg_catalog.current_setting('request.jwt.claim.sub',true);
+ v_prev_claims text := pg_catalog.current_setting('request.jwt.claims',true);
 BEGIN
- IF v_uid IS NULL THEN RAISE EXCEPTION 'Verified owner required' USING ERRCODE='42501'; END IF;
- SELECT lower(trim(u.email)) INTO v_email FROM auth.users u WHERE u.id=v_uid AND u.email_confirmed_at IS NOT NULL;
+ IF p_owner_uid IS NULL THEN RAISE EXCEPTION 'Verified owner required' USING ERRCODE='42501'; END IF;
+ SELECT lower(trim(u.email)) INTO v_email FROM auth.users u WHERE u.id=p_owner_uid AND u.email_confirmed_at IS NOT NULL;
  IF v_email IS NULL THEN RAISE EXCEPTION 'Verified owner email required' USING ERRCODE='42501'; END IF;
  IF p_activation_code IS NULL OR p_activation_code !~ '^[0-9a-f]{64}$' THEN
  RAISE EXCEPTION 'Invalid or unavailable activation code' USING ERRCODE='42501'; END IF;
- -- Serialize registration for this verified account even with different codes.
- PERFORM pg_advisory_xact_lock(hashtextextended(v_uid::text, 182));
+ -- Serialize registration for this verified account even across distinct codes.
+ PERFORM pg_advisory_xact_lock(hashtextextended(p_owner_uid::text, 182));
  v_hash := encode(sha256(convert_to(p_activation_code,'UTF8')),'hex');
- -- Row lock serializes concurrent redemption. No write survives if
- -- legacy registration or entitlement creation fails.
+ -- Row lock serializes concurrent redemption. No write survives if legacy registration or entitlement insert fails.
  PERFORM 1 FROM school_private.bn_activation_codes c
  WHERE c.code_hash=v_hash AND c.owner_email=v_email AND c.revoked_at IS NULL
  AND c.redeemed_at IS NULL AND c.expires_at>clock_timestamp() FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Invalid or unavailable activation code' USING ERRCODE='42501'; END IF;
- v_school := school_private.bn_register_first_school_legacy(p_school_name);
- IF v_school IS NULL OR NOT school_private.has_role(v_school,ARRAY['school_admin']) THEN
- RAISE EXCEPTION 'Registration not confirmed' USING ERRCODE='42501'; END IF;
+
+ PERFORM pg_catalog.set_config('request.jwt.claim.sub',p_owner_uid::text,true);
+ PERFORM pg_catalog.set_config('request.jwt.claims',jsonb_build_object('sub',p_owner_uid::text,'role','authenticated')::text,true);
+ BEGIN
+  v_school := school_private.bn_register_first_school_legacy(p_school_name);
+  IF v_school IS NULL OR NOT school_private.has_role(v_school,ARRAY['school_admin']) THEN
+  RAISE EXCEPTION 'Registration not confirmed' USING ERRCODE='42501'; END IF;
+ EXCEPTION WHEN OTHERS THEN
+  PERFORM pg_catalog.set_config('request.jwt.claim.sub',coalesce(v_prev_sub,''),true);
+  PERFORM pg_catalog.set_config('request.jwt.claims',coalesce(v_prev_claims,''),true);
+  RAISE;
+ END;
+ PERFORM pg_catalog.set_config('request.jwt.claim.sub',coalesce(v_prev_sub,''),true);
+ PERFORM pg_catalog.set_config('request.jwt.claims',coalesce(v_prev_claims,''),true);
+
  v_start := clock_timestamp();
  INSERT INTO school_private.bn_school_entitlements(institution_id,plan,starts_at,ends_at)
  VALUES(v_school,'trial',v_start,v_start+interval '720 hours');
- UPDATE school_private.bn_activation_codes SET redeemed_at=v_start,redeemed_by=v_uid,institution_id=v_school
+ UPDATE school_private.bn_activation_codes SET redeemed_at=v_start,redeemed_by=p_owner_uid,institution_id=v_school
  WHERE code_hash=v_hash;
  INSERT INTO school_private.bn_platform_audit(event_type,actor_uid,owner_email,institution_id,code_digest_prefix)
- VALUES('school_registered',v_uid,v_email,v_school,left(v_hash,12));
+ VALUES('school_registered',p_owner_uid,v_email,v_school,left(v_hash,12));
  RETURN v_school;
 END $$;
-REVOKE ALL ON FUNCTION public.register_first_school(text,text) FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION public.register_first_school(text,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.bn_register_school_for_user(uuid,text,text) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_register_school_for_user(uuid,text,text) TO service_role;
 
 CREATE FUNCTION public.bn_school_trial_status(p_institution_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
@@ -228,7 +281,7 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_school_writable(uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_school_writable(uuid) TO authenticated,service_role;
 
-CREATE FUNCTION public.bn_assign_school_entitlement(p_institution_id uuid,p_plan text DEFAULT 'active',p_days integer DEFAULT 30)
+CREATE FUNCTION public.bn_assign_school_entitlement(p_institution_id uuid,p_plan text DEFAULT 'active',p_days integer DEFAULT 30,p_actor_uid uuid DEFAULT NULL)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_now timestamptz:=clock_timestamp();
 BEGIN
@@ -239,13 +292,13 @@ BEGIN
  RAISE EXCEPTION 'Entitlement already assigned; use renewal'; END IF;
  INSERT INTO school_private.bn_school_entitlements(institution_id,plan,starts_at,ends_at)
  VALUES(p_institution_id,p_plan,v_now,v_now+make_interval(hours=>24*p_days));
- INSERT INTO school_private.bn_platform_audit(event_type,institution_id,details)
- VALUES('entitlement_assigned',p_institution_id,jsonb_build_object('plan',p_plan,'days',p_days));
+ INSERT INTO school_private.bn_platform_audit(event_type,actor_uid,institution_id,details)
+ VALUES('entitlement_assigned',p_actor_uid,p_institution_id,jsonb_build_object('plan',p_plan,'days',p_days));
 END $$;
-REVOKE ALL ON FUNCTION public.bn_assign_school_entitlement(uuid,text,integer) FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION public.bn_assign_school_entitlement(uuid,text,integer) TO service_role;
+REVOKE ALL ON FUNCTION public.bn_assign_school_entitlement(uuid,text,integer,uuid) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_assign_school_entitlement(uuid,text,integer,uuid) TO service_role;
 
-CREATE FUNCTION public.bn_renew_school_entitlement(p_institution_id uuid,p_days integer)
+CREATE FUNCTION public.bn_renew_school_entitlement(p_institution_id uuid,p_days integer,p_actor_uid uuid DEFAULT NULL)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_now timestamptz:=clock_timestamp();
 BEGIN
@@ -255,11 +308,11 @@ BEGIN
  ends_at=greatest(ends_at,v_now)+make_interval(hours=>24*p_days),updated_at=v_now
  WHERE institution_id=p_institution_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'No entitlement found'; END IF;
- INSERT INTO school_private.bn_platform_audit(event_type,institution_id,details)
- VALUES('entitlement_renewed',p_institution_id,jsonb_build_object('days',p_days));
+ INSERT INTO school_private.bn_platform_audit(event_type,actor_uid,institution_id,details)
+ VALUES('entitlement_renewed',p_actor_uid,p_institution_id,jsonb_build_object('days',p_days));
 END $$;
-REVOKE ALL ON FUNCTION public.bn_renew_school_entitlement(uuid,integer) FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION public.bn_renew_school_entitlement(uuid,integer) TO service_role;
+REVOKE ALL ON FUNCTION public.bn_renew_school_entitlement(uuid,integer,uuid) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_renew_school_entitlement(uuid,integer,uuid) TO service_role;
 
 -- Super Admin platform operator listing and digest-prefix revocation (service_role only).
 CREATE FUNCTION public.bn_list_school_activations(p_limit integer DEFAULT 100)
@@ -292,7 +345,7 @@ $$;
 REVOKE ALL ON FUNCTION public.bn_list_school_activations(integer) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_list_school_activations(integer) TO service_role;
 
-CREATE FUNCTION public.bn_revoke_school_activation_by_prefix(p_code_prefix text,p_owner_email text)
+CREATE FUNCTION public.bn_revoke_school_activation_by_prefix(p_code_prefix text,p_owner_email text,p_actor_uid uuid DEFAULT NULL)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_email text := lower(trim(p_owner_email)); v_hash text;
 BEGIN
@@ -307,12 +360,12 @@ BEGIN
  IF NOT FOUND THEN RETURN false; END IF;
  UPDATE school_private.bn_activation_codes SET revoked_at=clock_timestamp()
  WHERE code_hash=v_hash AND redeemed_at IS NULL AND revoked_at IS NULL;
- INSERT INTO school_private.bn_platform_audit(event_type,owner_email,code_digest_prefix)
- VALUES('activation_revoked',v_email,p_code_prefix);
+ INSERT INTO school_private.bn_platform_audit(event_type,actor_uid,owner_email,code_digest_prefix)
+ VALUES('activation_revoked',p_actor_uid,v_email,p_code_prefix);
  RETURN true;
 END $$;
-REVOKE ALL ON FUNCTION public.bn_revoke_school_activation_by_prefix(text,text) FROM PUBLIC,anon,authenticated,service_role;
-GRANT EXECUTE ON FUNCTION public.bn_revoke_school_activation_by_prefix(text,text) TO service_role;
+REVOKE ALL ON FUNCTION public.bn_revoke_school_activation_by_prefix(text,text,uuid) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.bn_revoke_school_activation_by_prefix(text,text,uuid) TO service_role;
 
 CREATE FUNCTION public.bn_list_school_entitlements(p_limit integer DEFAULT 200)
 RETURNS TABLE(
@@ -355,6 +408,7 @@ CREATE FUNCTION public.bn_list_platform_audit(p_limit integer DEFAULT 100)
 RETURNS TABLE(
  id uuid,
  event_type text,
+ actor_uid uuid,
  owner_email text,
  institution_id uuid,
  code_digest_prefix text,
@@ -362,7 +416,7 @@ RETURNS TABLE(
  created_at timestamptz
 )
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- SELECT a.id,a.event_type,a.owner_email,a.institution_id,a.code_digest_prefix,a.details,a.created_at
+ SELECT a.id,a.event_type,a.actor_uid,a.owner_email,a.institution_id,a.code_digest_prefix,a.details,a.created_at
  FROM school_private.bn_platform_audit a
  ORDER BY a.created_at DESC,a.id
  LIMIT greatest(1,least(coalesce(p_limit,100),500));
@@ -398,6 +452,38 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION school_private.bn_guard_trial_write() FROM PUBLIC,anon,authenticated,service_role;
 
+-- Allow incoming Meta webhook delivery callbacks and in-flight worker outcome
+-- reconciliation to update previously dispatched WhatsApp recipient status
+-- while blocking new queued claims, inserts, or deletes on expired schools.
+CREATE FUNCTION school_private.bn_guard_whatsapp_recipient_write()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF TG_OP='UPDATE'
+  AND NEW.id=OLD.id
+  AND NEW.institution_id=OLD.institution_id
+  AND NEW.batch_id=OLD.batch_id
+  AND NEW.student_id=OLD.student_id
+  AND NEW.phone=OLD.phone
+  AND NEW.parameters=OLD.parameters
+  AND (
+   (OLD.state IN ('processing','accepted','sent','delivered','unknown')
+    AND NEW.state IN ('accepted','sent','delivered','read','failed','unknown')
+    AND NEW.attempt_id IS NOT DISTINCT FROM OLD.attempt_id)
+   OR (OLD.state='processing' AND NEW.state='unknown')
+  ) THEN
+  RETURN NEW;
+ END IF;
+ IF TG_OP IN ('UPDATE','DELETE') THEN
+  PERFORM school_private.bn_assert_school_writable(OLD.institution_id);
+ END IF;
+ IF TG_OP IN ('INSERT','UPDATE') THEN
+  PERFORM school_private.bn_assert_school_writable(NEW.institution_id);
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION school_private.bn_guard_whatsapp_recipient_write() FROM PUBLIC,anon,authenticated,service_role;
+
 CREATE FUNCTION school_private.bn_guard_institution_write()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
@@ -430,6 +516,10 @@ BEGIN
  EXECUTE 'DROP TRIGGER IF EXISTS bn_trial_institution_guard ON public.institutions';
  EXECUTE 'CREATE TRIGGER bn_trial_institution_guard BEFORE UPDATE OR DELETE ON public.institutions FOR EACH ROW EXECUTE FUNCTION school_private.bn_guard_institution_write()';
  END IF;
+ IF to_regclass('public.school_whatsapp_recipients') IS NOT NULL THEN
+ EXECUTE 'DROP TRIGGER IF EXISTS bn_trial_wa_recipient_guard ON public.school_whatsapp_recipients';
+ EXECUTE 'CREATE TRIGGER bn_trial_wa_recipient_guard BEFORE INSERT OR UPDATE OR DELETE ON public.school_whatsapp_recipients FOR EACH ROW EXECUTE FUNCTION school_private.bn_guard_whatsapp_recipient_write()';
+ END IF;
  FOR rec IN
  SELECT n.nspname AS schema_name,c.relname AS table_name
  FROM pg_catalog.pg_class c
@@ -438,7 +528,7 @@ BEGIN
  WHERE n.nspname IN ('public','school_private') AND c.relkind IN ('r','p')
  AND a.attname='institution_id' AND a.atttypid='uuid'::regtype AND NOT a.attisdropped
  AND NOT (n.nspname='school_private' AND c.relname IN ('bn_activation_codes','bn_school_entitlements','bn_activation_attempts','bn_trial_reminders','bn_platform_audit'))
- AND NOT (n.nspname='public' AND c.relname IN ('school_whatsapp_events'))
+ AND NOT (n.nspname='public' AND c.relname IN ('school_whatsapp_events','school_whatsapp_recipients'))
  LOOP
  EXECUTE format('DROP TRIGGER IF EXISTS bn_trial_write_guard ON %I.%I',rec.schema_name,rec.table_name);
  EXECUTE format('CREATE TRIGGER bn_trial_write_guard BEFORE INSERT OR UPDATE OR DELETE ON %I.%I FOR EACH ROW EXECUTE FUNCTION school_private.bn_guard_trial_write()',rec.schema_name,rec.table_name);
