@@ -12,3 +12,31 @@ test('webhook requires HMAC signature over the exact raw body',async()=>{const c
 test('service rejects unauthenticated requests without touching the database',async()=>{const {createService}=await import('../supabase/functions/school-whatsapp/service.mjs');let calls=0;const handler=createService({url:'https://fixture.test',serviceKey:'server-only',anonKey:'public',fetcher:async()=>{calls++;throw Error('No fetch expected');}});const response=await handler(new Request('https://fixture.test/functions/v1/school-whatsapp/connection'));assert.equal(response.status,401);assert.equal(calls,0);});
 test('service validates real auth identity and administrator role',async()=>{const {createService}=await import('../supabase/functions/school-whatsapp/service.mjs');const calls=[];const handler=createService({url:'https://fixture.test',serviceKey:'server-only',anonKey:'public',fetcher:async(url,options)=>{calls.push({url,options});return Response.json(url.includes('/auth/')?{id:'11111111-1111-4111-8111-111111111111'}:[]);}});const response=await handler(new Request('https://fixture.test/functions/v1/school-whatsapp/connection',{headers:{Authorization:'Bearer fixture'}}));assert.equal(response.status,403);assert.equal(calls.length,2);assert.match(calls[1].url,/role=eq.school_admin&status=eq.active/);});
 test('cross-origin callers cannot reach auth or storage',async()=>{const {createService}=await import('../supabase/functions/school-whatsapp/service.mjs');const handler=createService({url:'https://fixture.test',serviceKey:'server-only',anonKey:'public',fetcher:()=>{throw Error('No network');}});assert.equal((await handler(new Request('https://fixture.test/functions/v1/school-whatsapp/batches',{method:'POST',headers:{Origin:'https://other.test'}}))).status,403);});
+
+test('TDD RED: WhatsApp browser client refreshes malformed expiry, rejects missing refresh_token and times out stalled fetches',async()=>{
+ const vm=require('node:vm'),fs=require('node:fs');
+ const code=fs.readFileSync('school-whatsapp-client.js','utf8');
+ function makeEnv(session,fetcher){
+  const store=new Map(session?[['bn_school_staff_session_v1',JSON.stringify(session)]]:[]);
+  const storage={getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)};
+  const window={fetch:fetcher,sessionStorage:storage};
+  vm.runInNewContext(code,{window,globalThis:window,sessionStorage:storage,fetch:fetcher,JSON,Date,Number,Error,AbortController,setTimeout,clearTimeout});
+  return {api:window.BNSchoolWhatsApp,store};
+ }
+ let refreshed=0;
+ const {api:badExpApi}=makeEnv({access_token:'stale',refresh_token:'rt-1',expires_at:'not-a-number'},async url=>{
+  if(url.includes('/auth/v1/token')){refreshed++;return {ok:true,json:async()=>({access_token:'fresh-token',refresh_token:'rt-2',expires_in:3600})};}
+  return {ok:true,json:async()=>({connected:true})};
+ });
+ await badExpApi.request('/connection');
+ assert.equal(refreshed,1,'Malformed expires_at must trigger token refresh');
+
+ const {api:noRtApi}=makeEnv({access_token:'expired',expires_at:0},async()=>{throw Error('Should not call network without refresh_token');});
+ await assert.rejects(noRtApi.request('/connection'),/sign in again/i);
+
+ const {api:abortApi}=makeEnv({access_token:'ok',refresh_token:'rt',expires_at:Math.floor(Date.now()/1000)+3600},async(_url,opts)=>{
+  assert.ok(opts.signal,'WhatsApp fetch must attach AbortSignal timeout');
+  const err=Error('Timed out');err.name='AbortError';throw err;
+ });
+ await assert.rejects(abortApi.request('/connection'),/timed out/i);
+});

@@ -318,3 +318,19 @@ test('Gemini 404 uses configured Groq fallback without declaring rate limits or 
  assert.match((await service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token')).content,/Teaching plan/);
  assert.deepEqual(models,['gemini','openai/gpt-oss-120b']);
 });
+
+test('TDD RED: promptFor preserves all tool instructions without duplicate object key overrides',()=>{
+ const source=fs.readFileSync('src/smart-tools/teacher-ai.cjs','utf8');
+ const block=source.slice(source.indexOf('const instructions={'),source.indexOf('common.push(instructions[req.tool]'));
+ const keys=[...block.matchAll(/^\s*'([^']+)'\s*:/gm)].map(m=>m[1]);
+ assert.equal(new Set(keys).size,keys.length,'instructions object must not contain duplicate tool keys');
+ const remark=svc.promptFor(svc.validateInput({...base,tool:'Student Remark Generator',evidence:'Shows steady effort in reading comprehension'}));
+ assert.match(remark.system,/strengths, needs, next action/i);
+ assert.match(remark.system,/age-appropriate, encouraging language/i);
+ const remedial=svc.promptFor(svc.validateInput({...base,tool:'Weak Student Remedial Plan',evidence:'Struggles with fraction equivalence'}));
+ assert.match(remedial.system,/NCERT-compatible/i);
+ assert.match(remedial.system,/two-week remediation plan/i);
+ const notice=svc.promptFor(svc.validateInput({...base,tool:'School Notice Generator',instructions:'Publish PTM schedule for Saturday 9 AM'}));
+ assert.match(notice.system,/CBSE affiliation/i);
+ assert.match(notice.system,/compulsory attendance/i);
+});

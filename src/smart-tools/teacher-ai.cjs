@@ -278,16 +278,13 @@ function promptFor(req,blueprint){
   common.push('The sum of all entry minutes must not exceed the selected '+req.durationMinutes+' minutes.');
   format={[key]:Array.from({length:req.count},()=>({title:'Unique activity title',goal:'Specific learning goal',materials:['simple real materials'],steps:['Detailed step 1','Detailed step 2'],minutes:7}))};
  }else{
-  const instructions={
-   'Lesson Plan Generator':'Produce measurable objectives, prerequisites, concrete teaching examples, a period-by-period plan whose durations sum to '+req.durationMinutes+' minutes, differentiated teaching, formative checks and an exit ticket.',
-   'Student Remark Generator':'Write an evidence-based specific student remark using ONLY supplied observations; do not invent grades, attendance or diagnoses. Include strengths, needs, next action.',
-   'Parent Message Generator':'Write a ready-to-review respectful message to parents about this actual learning topic, without inventing events, homework deadlines or claims of student results.',
-   'Student Remark Generator':'Base each remark solely on the supplied real observations. Use age-appropriate, encouraging language; do not imply NCERT affiliation or invent grades.',
-   'Weak Student Remedial Plan':'Use provided evidence to identify measurable gaps and a practical age-appropriate remediation plan. If academic content is needed, keep examples within selected class and NCERT-compatible subject concepts; do not invent student performance.',
-   'School Notice Generator':'Use the school-provided notice details only. Do not fabricate an event, deadline or CBSE affiliation.' ,
-   'Weak Student Remedial Plan':'Create an evidence-based measurable two-week plan, concrete session tasks and progress check. Do not diagnose or stigmatize a student.',
-   'School Notice Generator':'Create a clear school notice on the SPECIFIC topic and supplied event details. Do not fabricate dates, deadlines, venue, permissions or compulsory attendance.'
-  };
+   const instructions={
+    'Lesson Plan Generator':'Produce measurable objectives, prerequisites, concrete teaching examples, a period-by-period plan whose durations sum to '+req.durationMinutes+' minutes, differentiated teaching, formative checks and an exit ticket.',
+    'Student Remark Generator':'Base each evidence-based specific remark solely on supplied observations; do not invent grades, attendance or diagnoses, and do not imply NCERT affiliation. Include strengths, needs, next action in age-appropriate, encouraging language.',
+    'Parent Message Generator':'Write a ready-to-review respectful message to parents about this actual learning topic, without inventing events, homework deadlines or claims of student results.',
+    'Weak Student Remedial Plan':'Use provided evidence to identify measurable gaps and create a practical, age-appropriate two-week remediation plan with concrete session tasks and progress checks. If academic content is needed, keep examples within selected class and NCERT-compatible subject concepts; do not invent student performance, diagnose or stigmatize a student.',
+    'School Notice Generator':'Create a clear school notice using only the SPECIFIC supplied school topic and event details. Do not fabricate dates, deadlines, venue, permissions, compulsory attendance, or CBSE affiliation.'
+   };
   common.push(instructions[req.tool]||'Write a complete, specific teacher-reviewed school document.');
   format={content:'A complete, practical formatted draft, with headings, examples and school-safe details.'};
  }
