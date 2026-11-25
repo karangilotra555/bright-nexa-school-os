@@ -217,7 +217,7 @@ REVOKE ALL ON FUNCTION school_private.bn_school_is_writable(uuid) FROM PUBLIC,an
 CREATE FUNCTION public.bn_school_writable(p_institution_id uuid)
 RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
 BEGIN
- IF current_user <> 'service_role' AND (auth.uid() IS NULL OR (
+ IF current_setting('role',true) IS DISTINCT FROM 'service_role' AND (auth.uid() IS NULL OR (
  NOT school_private.has_role(p_institution_id,ARRAY['school_admin','principal','teacher','accountant','librarian','receptionist','transport_staff'])
  AND NOT school_private.parent_in_school(p_institution_id)
  )) THEN
@@ -299,6 +299,21 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION school_private.bn_guard_institution_write() FROM PUBLIC,anon,authenticated,service_role;
 
+-- Restrictive Storage policy helper: no direct entitlement disclosure to outsiders.
+CREATE FUNCTION school_private.bn_storage_school_writable(p_path text)
+RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
+DECLARE v_prefix text:=split_part(p_path,'/',1); v_school uuid;
+BEGIN
+ IF v_prefix IS NULL OR v_prefix !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+  RETURN false;
+ END IF;
+ v_school:=v_prefix::uuid;
+ RETURN school_private.has_role(v_school,ARRAY['school_admin','principal','teacher'])
+ AND school_private.bn_school_is_writable(v_school);
+END $$;
+REVOKE ALL ON FUNCTION school_private.bn_storage_school_writable(text) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION school_private.bn_storage_school_writable(text) TO authenticated;
+
 DO $$
 DECLARE rec record;
 BEGIN
@@ -324,9 +339,9 @@ BEGIN
  EXECUTE 'DROP POLICY IF EXISTS bn_trial_storage_insert_guard ON storage.objects';
  EXECUTE 'DROP POLICY IF EXISTS bn_trial_storage_update_guard ON storage.objects';
  EXECUTE 'DROP POLICY IF EXISTS bn_trial_storage_delete_guard ON storage.objects';
- EXECUTE $p$CREATE POLICY bn_trial_storage_insert_guard ON storage.objects AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (bucket_id NOT IN ('school-homework','school-student-photos') OR (split_part(name,'/',1) ~ '^[0-9a-f-]{36}$' AND school_private.bn_school_is_writable(split_part(name,'/',1)::uuid)))$p$;
- EXECUTE $p$CREATE POLICY bn_trial_storage_update_guard ON storage.objects AS RESTRICTIVE FOR UPDATE TO authenticated USING (bucket_id NOT IN ('school-homework','school-student-photos') OR (split_part(name,'/',1) ~ '^[0-9a-f-]{36}$' AND school_private.bn_school_is_writable(split_part(name,'/',1)::uuid))) WITH CHECK (bucket_id NOT IN ('school-homework','school-student-photos') OR (split_part(name,'/',1) ~ '^[0-9a-f-]{36}$' AND school_private.bn_school_is_writable(split_part(name,'/',1)::uuid)))$p$;
- EXECUTE $p$CREATE POLICY bn_trial_storage_delete_guard ON storage.objects AS RESTRICTIVE FOR DELETE TO authenticated USING (bucket_id NOT IN ('school-homework','school-student-photos') OR (split_part(name,'/',1) ~ '^[0-9a-f-]{36}$' AND school_private.bn_school_is_writable(split_part(name,'/',1)::uuid)))$p$;
+ EXECUTE $p$CREATE POLICY bn_trial_storage_insert_guard ON storage.objects AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (bucket_id NOT IN ('school-homework','school-student-photos') OR school_private.bn_storage_school_writable(name))$p$;
+ EXECUTE $p$CREATE POLICY bn_trial_storage_update_guard ON storage.objects AS RESTRICTIVE FOR UPDATE TO authenticated USING (bucket_id NOT IN ('school-homework','school-student-photos') OR school_private.bn_storage_school_writable(name)) WITH CHECK (bucket_id NOT IN ('school-homework','school-student-photos') OR school_private.bn_storage_school_writable(name))$p$;
+ EXECUTE $p$CREATE POLICY bn_trial_storage_delete_guard ON storage.objects AS RESTRICTIVE FOR DELETE TO authenticated USING (bucket_id NOT IN ('school-homework','school-student-photos') OR school_private.bn_storage_school_writable(name))$p$;
  END IF;
 END $$;
 

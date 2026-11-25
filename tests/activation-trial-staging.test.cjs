@@ -133,6 +133,15 @@ test('staged hardening: storage uploads, WordPress intake, institutions update, 
  for(let i=0;i<5;i++)assert.equal((await db.query('select public.bn_activation_attempt($1,5) ok',[bucket])).rows[0].ok,true);
  assert.equal((await db.query('select public.bn_activation_attempt($1,5) ok',[bucket])).rows[0].ok,false);
 
+ // Service role call must work without a school user; regular outsiders must not.
+ await db.query("select set_config('request.jwt.claim.sub','',false)");
+ assert.equal((await db.query('select public.bn_school_writable($1) w',[legacy])).rows[0].w,true);
+ await login('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+ await assert.rejects(db.query('select public.bn_school_writable($1)',[legacy]),/access/i);
+ await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('school-homework',$1)",[legacy+'/hw1/unauthorized.pdf']));
+ await login(A);
+ await db.query("insert into storage.objects(bucket_id,name) values('school-homework',$1)",[legacy+'/hw1/active.pdf']);
+ await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('school-homework','------------------------------------/bad.pdf')"),/row-level security/i);
  // Milestone 7, 3, 1 reminders recorded once per milestone for a given expiry period
  for(const daysLeft of [7,3,1]){
   await db.exec('reset role');
@@ -154,7 +163,8 @@ test('staged hardening: storage uploads, WordPress intake, institutions update, 
  await assert.rejects(db.query("update public.institutions set name='Renamed' where id=$1",[legacy]),/read-only/i);
  await assert.rejects(db.query("insert into public.school_library_items(institution_id,title) values($1,'Book')",[legacy]),/read-only/i);
  await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('school-student-photos',$1)",[legacy+'/s1/photo-abc12345.webp']));
- await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('school-homework',$1)",[legacy+'/hw1/doc.pdf']));
+ await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('school-homework',$1)",[legacy+'/hw1/doc.pdf']),/row-level security/i);
+ assert.equal((await db.query("delete from storage.objects where bucket_id='school-homework' and name=$1 returning name",[legacy+'/hw1/active.pdf'])).rows.length,0);
  await db.exec('reset role');
  await assert.rejects(db.query("insert into school_private.bn_wordpress_enquiries(institution_id,guardian_name) values($1,'Blocked Parent')",[legacy]),/read-only/i);
  const audit=(await db.query('select event_type,code_digest_prefix from school_private.bn_platform_audit')).rows;
