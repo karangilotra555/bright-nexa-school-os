@@ -406,6 +406,7 @@ body:has(#loginSection:not(.hidden)) .footer{display:none}
       <p class="sub" id="localSchoolNoticeText">You can review and import this browser's saved school records when creating your school. Existing data is kept until a verified online import finishes.</p>
     </div>
     <form id="createFirstSchoolForm"><label for="firstSchoolName">School name</label><input id="firstSchoolName" name="school" minlength="3" maxlength="120" required autocomplete="organization" placeholder="Your school name">
+      <div style="margin-top:12px"><label for="firstSchoolActivation">Activation code</label><input id="firstSchoolActivation" type="password" required minlength="64" maxlength="64" pattern="[0-9a-fA-F]{64}" autocomplete="off" spellcheck="false" placeholder="Code provided by Bright Nexa"><p class="sub">Contact Bright Nexa for your school activation code and 30-day free trial.</p></div>
       <label id="localSchoolImportLabel" class="hidden local-import-option"><input id="localSchoolImportConsent" type="checkbox"><span>Import the saved school records from this device</span></label>
       <button id="createFirstSchoolButton" type="submit" class="primary auth-submit" style="margin-top:12px">Create school</button>
     </form>
