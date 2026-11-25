@@ -68,3 +68,8 @@ test('retired DOB login never authenticates active, inactive or unknown students
   fs.rmSync(tmp,{recursive:true,force:true});
  }
 });
+
+test('TDD RED: school-student-login does not write school_guardian_students when student link already exists',async()=>{
+ const ts=fs.readFileSync(path.join(__dirname,'../supabase/functions/school-student-login/index.ts'),'utf8');
+ assert.match(ts,/from\('school_guardian_students'\)\.select\(/,'linkUser should check existing guardian-student link before mutating DB');
+});

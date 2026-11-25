@@ -47,8 +47,9 @@ export function handler(create=createClient){return async(req:Request)=>{
    if(readError||existing?.status==='disabled')throw Error('School access is disabled. Contact the school office.');
    let guardian=existing;
    if(!guardian){const {data,error}=await admin.from('school_guardians').upsert({institution_id:s.institution_id,auth_user_id:user.id,email:user.email,status:'active'},{onConflict:'institution_id,auth_user_id'}).select('id').single();if(error)throw Error('Cannot link student account');guardian=data;}
-   const {error}=await admin.from('school_guardian_students').upsert({institution_id:s.institution_id,guardian_id:guardian.id,student_id:s.id,relationship:'guardian'},{onConflict:'guardian_id,student_id'});
-   if(error)throw Error('Cannot link student account');
+   const {data:existingLink,error:linkReadError}=await admin.from('school_guardian_students').select('student_id').eq('institution_id',s.institution_id).eq('guardian_id',guardian.id).eq('student_id',s.id).maybeSingle();
+   if(linkReadError)throw Error('Cannot verify student account link');
+   if(!existingLink){const {error}=await admin.from('school_guardian_students').upsert({institution_id:s.institution_id,guardian_id:guardian.id,student_id:s.id,relationship:'guardian'},{onConflict:'guardian_id,student_id'});if(error)throw Error('Cannot link student account');}
   }
 
   // Student authentication uses synthetic .invalid Auth addresses; built-in
