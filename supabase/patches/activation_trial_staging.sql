@@ -62,7 +62,7 @@ REVOKE ALL ON FUNCTION public.bn_issue_school_activation(text) FROM PUBLIC,anon,
 GRANT EXECUTE ON FUNCTION public.bn_issue_school_activation(text) TO service_role;
 
 CREATE FUNCTION public.bn_revoke_school_activation(p_code text)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF p_code IS NULL OR p_code !~ '^[0-9a-f]{64} rather than duplicating its tenant logic.
 -- The prior public RPC must no longer be executable directly.
@@ -133,7 +133,7 @@ GRANT EXECUTE ON FUNCTION public.bn_renew_school_entitlement(uuid,integer) TO se
 -- updates that attempt to move a record out of an expired tenant.
 -- No entitlement is treated as legacy until explicit migration/backfill.
 CREATE FUNCTION school_private.bn_assert_school_writable(p_school uuid)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_end timestamptz;
 BEGIN
  SELECT ends_at INTO v_end FROM school_private.bn_school_entitlements
@@ -141,10 +141,10 @@ BEGIN
  IF FOUND AND clock_timestamp()>=v_end THEN
  RAISE EXCEPTION 'Subscription expired: school is read-only. Contact Bright Nexa.' USING ERRCODE='42501';
  END IF;
-END $;
+END $$;
 REVOKE ALL ON FUNCTION school_private.bn_assert_school_writable(uuid) FROM PUBLIC,anon,authenticated,service_role;
 CREATE FUNCTION school_private.bn_guard_trial_write()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF TG_OP IN ('UPDATE','DELETE') THEN
  PERFORM school_private.bn_assert_school_writable(OLD.institution_id);
@@ -154,11 +154,11 @@ BEGIN
  END IF;
  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
  RETURN NEW;
-END $;
+END $$;
 REVOKE ALL ON FUNCTION school_private.bn_guard_trial_write() FROM PUBLIC,anon,authenticated,service_role;
 -- Explicit known tenant data tables only; production requires catalog audit
 -- of additional tables, storage paths, auth actions and queued operations.
-DO $
+DO $$
 DECLARE t text;
 BEGIN
  FOREACH t IN ARRAY ARRAY['school_students','school_student_profiles','school_classes','school_attendance',
@@ -171,7 +171,7 @@ BEGIN
  EXECUTE format('CREATE TRIGGER bn_trial_write_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION school_private.bn_guard_trial_write()',t);
  END IF;
  END LOOP;
-END $;
+END $$;
 
 -- Remaining release gates: real operator identity/authorization UI,
 -- rate limits, old RPC privilege audit including custom
@@ -183,7 +183,7 @@ COMMIT;
  WHERE code_hash=encode(sha256(convert_to(p_code,'UTF8')),'hex')
  AND redeemed_at IS NULL AND revoked_at IS NULL;
  RETURN FOUND;
-END $;
+END $$;
 REVOKE ALL ON FUNCTION public.bn_revoke_school_activation(text) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_revoke_school_activation(text) TO service_role;
 
