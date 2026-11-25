@@ -20,7 +20,7 @@ test('staged registration: verified email, one-time code, atomic trial, owner-sc
  create function school_private.has_role(i uuid,roles text[]) returns boolean language sql stable security definer set search_path='' as
  $$select exists(select 1 from public.school_users u where u.institution_id=i and u.auth_user_id=auth.uid() and u.role=any(roles) and u.status='active')$$;
  create policy fixture_students on public.school_students for all to authenticated using(school_private.has_role(institution_id,array['school_admin'])) with check(school_private.has_role(institution_id,array['school_admin']));
- create function public.fixture_write(p_school uuid,p_name text) returns void language sql security definer set search_path='' as $insert into public.school_students(institution_id,name) values(p_school,p_name)$;
+ create function public.fixture_write(p_school uuid,p_name text) returns void language sql security definer set search_path='' as $$insert into public.school_students(institution_id,name) values(p_school,p_name)$$;
  create function public.register_first_school(p_school_name text) returns uuid language plpgsql security definer set search_path='' as $$
  declare s uuid; begin
  if exists(select 1 from public.school_users where auth_user_id=auth.uid()) then raise exception 'Already registered'; end if;
