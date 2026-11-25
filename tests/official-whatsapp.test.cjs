@@ -40,3 +40,19 @@ test('TDD RED: WhatsApp browser client refreshes malformed expiry, rejects missi
  });
  await assert.rejects(abortApi.request('/connection'),/timed out/i);
 });
+
+test('TDD RED: official WhatsApp service denies batch mutations when school trial is expired',async()=>{
+ const {createService}=await import('../supabase/functions/school-whatsapp/service.mjs');
+ const handler=createService({url:'https://fixture.test',serviceKey:'server-only',anonKey:'public',fetcher:async url=>{
+  if(url.endsWith('/auth/v1/user'))return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  if(url.includes('/school_users?'))return Response.json([{id:'u1',institution_id:'22222222-2222-4222-8222-222222222222',role:'school_admin',status:'active'}]);
+  if(url.includes('/institutions?'))return Response.json([{id:'22222222-2222-4222-8222-222222222222',name:'School',status:'trial'}]);
+  if(url.includes('/rpc/bn_school_writable'))return Response.json(false);
+  throw Error('Unexpected write query on expired school: '+url);
+ }});
+ const response=await handler(new Request('https://fixture.test/functions/v1/school-whatsapp/batches',{
+  method:'POST',headers:{Authorization:'Bearer fixture'},body:JSON.stringify({confirmed:true,consentConfirmed:true})
+ }));
+ assert.equal(response.status,403);
+ assert.match((await response.json()).error,/expired|read-only/i);
+});

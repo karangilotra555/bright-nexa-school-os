@@ -324,6 +324,9 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
   ensure(schools.ok,403,'School status cannot be verified.');
   const instances=await readJson(schools);
   ensure(Array.isArray(instances)&&instances.some(x=>x.id===own[0].institution_id&&['active','trial'].includes(x.status)),403,'School is not active.');
+  const writable=await fetcher(schoolUrl+'/rest/v1/rpc/bn_school_writable',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_institution_id:own[0].institution_id}),cache:'no-store'});
+  ensure(writable.ok,403,'School subscription status cannot be verified.');
+  ensure((await readJson(writable))===true,403,'Subscription expired: school is read-only. Contact Bright Nexa.');
   return own[0];
  }
  async function gemini(key,prompt){

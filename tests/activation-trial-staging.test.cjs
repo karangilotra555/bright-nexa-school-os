@@ -79,3 +79,87 @@ test('staged registration: verified email, one-time code, atomic trial, owner-sc
  assert.equal((await db.query('select name from public.school_students where institution_id=$1',[id])).rows[0].name,'Renewed');
  await login(B); assert.equal((await status(other)).status,'trial');
 });
+
+test('staged hardening: storage uploads, WordPress intake, institutions update, 7/3/1 reminders, legacy backfill, and audit log',async t=>{
+ const db=new PGlite(); t.after(()=>db.close());
+ await db.exec(`
+ create role anon; create role authenticated; create role service_role;
+ create schema auth; create schema school_private; create schema storage;
+ grant usage on schema auth,school_private,storage to authenticated,anon;
+ create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
+ create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ create table public.institutions(id uuid primary key default gen_random_uuid(),name text,status text default 'active');
+ create table public.school_users(id uuid primary key default gen_random_uuid(),institution_id uuid references public.institutions,auth_user_id uuid,role text,status text);
+ create table public.school_students(id uuid primary key default gen_random_uuid(),institution_id uuid not null references public.institutions(id),name text not null);
+ create table public.school_library_items(id uuid primary key default gen_random_uuid(),institution_id uuid not null references public.institutions(id),title text);
+ create table public.school_homework_files(id uuid primary key default gen_random_uuid(),homework_id uuid,institution_id uuid not null references public.institutions(id),storage_path text unique);
+ create table storage.buckets(id text primary key,name text,public boolean);
+ create table storage.objects(bucket_id text,name text,primary key(bucket_id,name));
+ create table school_private.bn_wordpress_connections(institution_id uuid primary key references public.institutions(id),key_hash text);
+ create table school_private.bn_wordpress_enquiries(id uuid primary key default gen_random_uuid(),institution_id uuid not null references public.institutions(id),guardian_name text);
+ grant select,insert,update,delete on public.institutions,public.school_students,public.school_library_items,public.school_homework_files to authenticated;
+ grant select,insert,update,delete on storage.objects to authenticated;
+ alter table public.school_students enable row level security;
+ alter table public.institutions enable row level security;
+ alter table storage.objects enable row level security;
+ create function school_private.has_role(i uuid,roles text[]) returns boolean language sql stable security definer set search_path='' as
+ $$select exists(select 1 from public.school_users u where u.institution_id=i and u.auth_user_id=auth.uid() and u.role=any(roles) and u.status='active')$$;
+ create function school_private.parent_in_school(i uuid) returns boolean language sql stable as $$select false$$;
+ create policy allow_inst on public.institutions for all to authenticated using(school_private.has_role(id,array['school_admin'])) with check(school_private.has_role(id,array['school_admin']));
+ create policy allow_students on public.school_students for all to authenticated using(school_private.has_role(institution_id,array['school_admin'])) with check(school_private.has_role(institution_id,array['school_admin']));
+ create policy allow_storage on storage.objects for all to authenticated using(true) with check(true);
+ create function public.register_first_school(p_school_name text) returns uuid language plpgsql security definer set search_path='' as $$
+ declare s uuid; begin
+ if exists(select 1 from public.school_users where auth_user_id=auth.uid()) then raise exception 'Already registered'; end if;
+ insert into public.institutions(name) values(p_school_name) returning id into s;
+ insert into public.school_users(institution_id,auth_user_id,role,status) values(s,auth.uid(),'school_admin','active');
+ return s; end $$;
+ grant execute on function public.register_first_school(text) to authenticated;
+ insert into auth.users values('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','owner@example.test',now());
+ `);
+ await db.exec(fs.readFileSync('supabase/patches/activation_trial_staging.sql','utf8'));
+ const A='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+ const legacy='99999999-9999-4999-8999-999999999999';
+ const login=async(id,role='authenticated')=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role '+role);};
+ await db.query("insert into public.institutions(id,name,status) values($1,'Legacy School','active')",[legacy]);
+ await db.query("insert into public.school_users(institution_id,auth_user_id,role,status) values($1,$2,'school_admin','active')",[legacy,A]);
+ await db.exec('set role service_role');
+ const code=(await db.query("select public.bn_issue_school_activation('owner@example.test') as code")).rows[0].code;
+ // Legacy assignment RPC exists and rejects duplicate direct assignment
+ await db.query("select public.bn_assign_school_entitlement($1,'trial',30)",[legacy]);
+ await assert.rejects(db.query("select public.bn_assign_school_entitlement($1,'active',30)",[legacy]),/already assigned/i);
+ // Rate limiter function exists for service_role edge calls
+ const bucket='a'.repeat(64);
+ for(let i=0;i<5;i++)assert.equal((await db.query('select public.bn_activation_attempt($1,5) ok',[bucket])).rows[0].ok,true);
+ assert.equal((await db.query('select public.bn_activation_attempt($1,5) ok',[bucket])).rows[0].ok,false);
+
+ // Milestone 7, 3, 1 reminders recorded once per milestone for a given expiry period
+ for(const daysLeft of [7,3,1]){
+  await db.exec('reset role');
+  await db.query("update school_private.bn_school_entitlements set starts_at=clock_timestamp()-interval '30 days',ends_at=clock_timestamp()+make_interval(hours=>24*$2-1) where institution_id=$1",[legacy,daysLeft]);
+  await login(A);
+  const first=(await db.query('select public.bn_school_trial_status($1) s',[legacy])).rows[0].s;
+  assert.equal(first.milestone_days,daysLeft);
+  assert.equal(first.new_reminder_milestone,daysLeft);
+  const second=(await db.query('select public.bn_school_trial_status($1) s',[legacy])).rows[0].s;
+  assert.equal(second.milestone_days,daysLeft);
+  assert.equal(second.new_reminder_milestone,null,'Duplicate check in same window must not re-fire milestone '+daysLeft);
+ }
+
+ // Expired school blocks institutions update, extended tables, WordPress table, Storage uploads/deletes, and bn_school_writable=false
+ await db.exec('reset role');
+ await db.query("update school_private.bn_school_entitlements set ends_at=clock_timestamp()-interval '1 minute' where institution_id=$1",[legacy]);
+ await login(A);
+ assert.equal((await db.query('select public.bn_school_writable($1) w',[legacy])).rows[0].w,false);
+ await assert.rejects(db.query("update public.institutions set name='Renamed' where id=$1",[legacy]),/read-only/i);
+ await assert.rejects(db.query("insert into public.school_library_items(institution_id,title) values($1,'Book')",[legacy]),/read-only/i);
+ await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('school-student-photos',$1)",[legacy+'/s1/photo-abc12345.webp']));
+ await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('school-homework',$1)",[legacy+'/hw1/doc.pdf']));
+ await db.exec('reset role');
+ await assert.rejects(db.query("insert into school_private.bn_wordpress_enquiries(institution_id,guardian_name) values($1,'Blocked Parent')",[legacy]),/read-only/i);
+ const audit=(await db.query('select event_type,code_digest_prefix from school_private.bn_platform_audit')).rows;
+ assert.ok(audit.some(r=>r.event_type==='activation_issued'));
+ assert.ok(audit.some(r=>r.event_type==='entitlement_assigned'));
+ assert.ok(audit.some(r=>r.event_type==='trial_reminder_recorded'));
+ assert.ok(audit.every(r=>!r.code_digest_prefix||r.code_digest_prefix!==code),'Plaintext code must never enter audit log');
+});

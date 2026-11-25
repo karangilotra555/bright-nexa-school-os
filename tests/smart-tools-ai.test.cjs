@@ -6,7 +6,7 @@ const svc=require('../src/smart-tools/teacher-ai.cjs');
 
 const base={tool:'Question Paper Generator',className:'6',subject:'Hindi',topic:'all',language:'English',difficulty:'Medium',duration:'3 Hours',totalMarks:40,count:14};
 
-function mockFetch({role='teacher',school='school-a',failProvider=false,output}={}){
+function mockFetch({role='teacher',school='school-a',writable=true,failProvider=false,output}={}){
  const requests=[];
  const fetcher=async(url,opts={})=>{
   requests.push({url,opts});
@@ -14,6 +14,7 @@ function mockFetch({role='teacher',school='school-a',failProvider=false,output}=
   if(url.endsWith('/auth/v1/user'))data={id:'user-1'};
   else if(url.includes('/rest/v1/school_users?'))data=[{id:'staff-1',auth_user_id:'user-1',institution_id:school,role,status:'active'}];
   else if(url.includes('/rest/v1/institutions?'))data=[{id:school,status:'active'}];
+  else if(url.includes('/rest/v1/rpc/bn_school_writable'))data=writable;
   else if(url.includes('generativelanguage.googleapis.com')){
    if(failProvider){status=429;data={error:{message:'Rate limit'}}}
    else data={candidates:[{content:{parts:[{text:JSON.stringify(output)}]}}]};
@@ -77,6 +78,7 @@ test('TDD: server authenticates Supabase staff and school before any Gemini gene
  await assert.rejects(service.generate({...base},''),e=>e.status===401);
  assert.equal(h.requests.length,0);
  await assert.rejects(config(mockFetch({role:'accountant'}).fetcher).generate(base,'valid-staff-token'),e=>e.status===403);
+ await assert.rejects(config(mockFetch({writable:false}).fetcher).generate(base,'valid-staff-token'),e=>e.status===403&&/read-only/i.test(e.message));
  const noKey=svc.createService({fetcher:h.fetcher,env:{SCHOOL_SUPABASE_URL:'https://example.supabase.co',SCHOOL_SUPABASE_PUBLISHABLE_KEY:'public-key'}});
  await assert.rejects(noKey.generate(base,'valid-staff-token'),e=>e.status===503);
 });
@@ -270,6 +272,7 @@ test('default Groq uses supported GPT-OSS JSON model instead of retired Llama 70
   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
   if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'trial'}]};
+  if(url.includes('/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
   const request=JSON.parse(opts.body);requests.push(request);
   return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Learning objectives include practicing safe circuit building. Children explore how batteries and bulbs work together, discuss observations, compare materials, and complete a short exit ticket to demonstrate understanding.'})}}]})};
  }});
@@ -286,6 +289,7 @@ test('deprecated Groq model migrates once after real HTTP 404, preserving school
   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
   if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'school_admin',status:'active'}]};
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'trial'}]};
+  if(url.includes('/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
   const model=JSON.parse(opts.body).model;models.push(model);
   if(model==='llama-3.3-70b-versatile')return {ok:false,status:404};
   return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Class activity: practice safe low-voltage circuits with teacher oversight. Identify circuit parts, compare working and broken circuits, and finish with guided observations and an exit ticket.'})}}]})};
@@ -300,6 +304,7 @@ test('unsupported custom Groq model 404 does not invent content or retry endless
   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
   if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  if(url.includes('/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
   attempts++;return {ok:false,status:404};
  }});
  await assert.rejects(service.generate({...base,subject:'Science',tool:'Lesson Plan Generator'},'fixture-token'),err=>err.status===404&&/unavailable or retired/.test(err.message));
@@ -311,6 +316,7 @@ test('Gemini 404 uses configured Groq fallback without declaring rate limits or 
   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
   if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  if(url.includes('/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
   if(url.includes('googleapis.com')){models.push('gemini');return {ok:false,status:404};}
   models.push(JSON.parse(opts.body).model);
   return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Teaching plan: introduce energy transfer in simple electric circuits, explore safety with low-voltage batteries, test connections and record observations in a teacher-monitored classroom.'})}}]})};

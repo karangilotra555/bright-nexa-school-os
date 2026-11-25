@@ -157,7 +157,10 @@
     const expiry=new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeZone:'Asia/Kolkata'}).format(new Date(end));
     const days=Math.max(0,Math.ceil((end-now)/86400000));
     if(s.status==='expired'||end<=now)return 'Subscription expired on '+expiry+' — read-only. Contact Bright Nexa to renew; your records remain available.';
-    return (s.status==='trial'?'Free trial':'Subscription')+' · '+days+' day'+(days===1?'':'s')+' remaining · Expires '+expiry+(days<=7?' · Renewal reminder: contact Bright Nexa.':'');
+    const reminder=days<=1?' · Renewal reminder (final day — 1 day left): contact Bright Nexa.'
+      :days<=3?' · Renewal reminder (3-day window): contact Bright Nexa.'
+      :days<=7?' · Renewal reminder (7-day window): contact Bright Nexa.':'';
+    return (s.status==='trial'?'Free trial':'Subscription')+' · '+days+' day'+(days===1?'':'s')+' remaining · Expires '+expiry+reminder;
   }
   async function showTrialStatus(verified,store){
     const id=verified.schoolId;

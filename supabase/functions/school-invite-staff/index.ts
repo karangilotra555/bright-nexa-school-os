@@ -389,6 +389,8 @@ Deno.serve(async (req:Request)=>{
         p_email:email,p_staff:teacherStaffRecord(facultyId,email,facultyProfile),
         p_assignments:facultyProfile.teachingRows
       });
+      if(provisionError&&/read-only/i.test(provisionError.message||""))
+        return reply({error:"Subscription expired: school is read-only. Contact Bright Nexa."},403);
       if(provisionError||!memberId)
         return reply({error:"Teacher App setup was not confirmed. Retry Save Teacher."},503);
       return reply({ok:true,email,role,status:"invited",emailSent:false,initialMobilePassword:true,
