@@ -292,6 +292,17 @@ function promptFor(req,blueprint){
  if(blueprint)data.assessmentBlueprint=blueprint;
  return {system:common.join('\n'),user:JSON.stringify({input:data,requiredJsonShape:format})};
 }
+function parseModelJson(raw){
+ if(typeof raw!=='string')throw new SmartToolsError(502,'AI provider returned malformed structured output.');
+ const trimmed=raw.trim();
+ ensure(trimmed.length>0&&trimmed.length<=100000,502,'AI provider returned an empty or oversized response.');
+ const unwrapped=trimmed.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+ try{return JSON.parse(unwrapped);}catch{throw new SmartToolsError(502,'AI provider returned malformed structured output.');}
+}
+function clockMinutes(text){
+ const m=String(text||'').match(/^(\d{2}):(\d{2})/);
+ return m?Number(m[1])*60+Number(m[2]):null;
+}
 async function readJson(response,statusMessage){
  let data;try{data=await response.json()}catch{throw new SmartToolsError(502,statusMessage||'Invalid response from external service.');}
  return data;
@@ -345,8 +356,7 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
    }
    const data=await readJson(res,'AI provider returned invalid JSON.');
    const message=data?.candidates?.[0]?.content?.parts?.map(x=>x.text||'').join('');
-   ensure(message&&message.length<=100000,502,'AI provider returned an empty or oversized response.');
-   try{return JSON.parse(message)}catch{throw new SmartToolsError(502,'AI provider returned malformed structured output.');}
+   return parseModelJson(message);
   }
   try{return await call(configured)}
   catch(err){
@@ -378,7 +388,7 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
     throw new SmartToolsError(502,'AI provider request failed (HTTP '+res.status+'). No content was generated.');
    }
    const data=await readJson(res);
-   try{return JSON.parse(data.choices[0].message.content)}catch{throw new SmartToolsError(502,'AI provider returned malformed structured output.');}
+   return parseModelJson(data?.choices?.[0]?.message?.content);
   }
   try{return await call(configured);}
   catch(err){
@@ -402,7 +412,9 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
  }
  async function generate(input,token){
   const req=validateInput(input);
-  const staff=await authorized(token);
+  ensure(input?.school==null||typeof input.school==='string',422,'Invalid school identifier.');
+  const requestedSchool=typeof input?.school==='string'&&input.school.trim()?input.school.trim():undefined;
+  const staff=await authorized(token,requestedSchool);
   const blueprint=ASSESSMENTS.has(req.tool)?planAssessment(req):null;
   const content=await generateStructured(staff,promptFor(req,blueprint),result=>validateOutput(req,result,blueprint));
   return {content,tool:req.tool,subject:req.subject,className:req.className,language:req.language,source:'AI / teacher-review-required'};
@@ -452,16 +464,21 @@ function createService({fetcher=globalThis.fetch,env=process.env,now=()=>Date.no
   return generateStructured(staff,prompt,result=>{
    ensure(result&&Array.isArray(result.choices)&&result.choices.length<=byRef.size&&typeof result.summary==='string'&&typeof result.question==='string',
     502,'School AI returned an invalid cover draft.');
-   const seen=new Set(), booked=new Set(), choices=[];
+   const seen=new Set(), bookedByTeacher=new Map(), choices=[];
    if(!result.question.trim()){
     for(const item of result.choices){
      const entry=byRef.get(item?.period);
      ensure(entry&&!seen.has(item.period)&&(item.teacher===null||entry.candidates.has(item.teacher)),502,'School AI suggested an unavailable cover.');
      seen.add(item.period);
      const teacher=entry.candidates.get(item.teacher)?.teacher_id||null;
-     const assignment=entry.row.slot_id+'|'+teacher;
-     ensure(!teacher||!booked.has(assignment),502,'School AI suggested overlapping cover duties.');
-     if(teacher)booked.add(assignment);
+     if(teacher){
+      const start=clockMinutes(entry.row.starts_at),end=clockMinutes(entry.row.ends_at);
+      const existing=bookedByTeacher.get(teacher)||[];
+      const overlaps=existing.some(prior=>prior.slotId===entry.row.slot_id||(start!==null&&end!==null&&prior.start!==null&&prior.end!==null&&start<prior.end&&end>prior.start));
+      ensure(!overlaps,502,'School AI suggested overlapping cover duties.');
+      existing.push({slotId:entry.row.slot_id,start,end});
+      bookedByTeacher.set(teacher,existing);
+     }
      choices.push({slot_id:entry.row.slot_id,class_id:entry.row.class_id,teacher_id:teacher,
       reason:typeof item.reason==='string'?item.reason.slice(0,240):''});
     }

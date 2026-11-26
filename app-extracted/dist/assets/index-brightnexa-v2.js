@@ -28933,6 +28933,8 @@ function Ea({ data, students } = {}) {
         setTotalMarks("25");
         if (n3.includes("Lesson Plan")) {
           setDuration("45 Minutes");
+        } else if (n3.includes("Worksheet")) {
+          setDuration("1 Hour");
         } else if (n3.includes("Question Paper")) {
           setDuration("1 Hour");
           setTotalMarks("50");
@@ -28995,7 +28997,7 @@ function Ea({ data, students } = {}) {
       max: "50",
       placeholder: "e.g. 15"
     }
-  )), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Easy / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Board Level"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Challenging / HOTS")))), e2.includes(`Class Test`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Test Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "15 Minutes" }, "15 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "20 Minutes" }, "20 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Easy / Basic"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Standard Board Level"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Challenging / HOTS")))), e2.includes(`Class Test`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Test Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "15 Minutes" }, "15 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "20 Minutes" }, "20 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
     "input",
     {
       type: "number",
@@ -29015,7 +29017,7 @@ function Ea({ data, students } = {}) {
       max: "25",
       placeholder: "e.g. 8"
     }
-  )), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Easy"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Medium"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Hard")))), e2.includes(`Worksheet`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
+  )), /* @__PURE__ */ w.createElement(R, { label: `Difficulty` }, /* @__PURE__ */ w.createElement("select", { value: c2, onChange: (e3) => l2(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "Easy" }, "Easy"), /* @__PURE__ */ w.createElement("option", { value: "Medium" }, "Medium"), /* @__PURE__ */ w.createElement("option", { value: "Hard" }, "Hard")))), e2.includes(`Worksheet`) && /* @__PURE__ */ w.createElement(P.Fragment, null, /* @__PURE__ */ w.createElement(R, { label: `Worksheet Duration` }, /* @__PURE__ */ w.createElement("select", { value: duration, onChange: (e3) => setDuration(e3.target.value) }, /* @__PURE__ */ w.createElement("option", { value: "30 Minutes" }, "30 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "45 Minutes" }, "45 Minutes"), /* @__PURE__ */ w.createElement("option", { value: "1 Hour" }, "1 Hour"), /* @__PURE__ */ w.createElement("option", { value: "1.5 Hours" }, "1.5 Hours"))), /* @__PURE__ */ w.createElement(R, { label: `Total Marks` }, /* @__PURE__ */ w.createElement(
     "input",
     {
       type: "number",
