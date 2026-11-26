@@ -340,3 +340,88 @@ test('TDD RED: promptFor preserves all tool instructions without duplicate objec
  assert.match(notice.system,/CBSE affiliation/i);
  assert.match(notice.system,/compulsory attendance/i);
 });
+
+test('TDD: multi-school owner/teacher can target selected school in client and backend AI generation, while expired/unselected schools fail closed',async()=>{
+ const client=require('../teacher-ai-cloud.js');
+ const schoolA='11111111-1111-4111-8111-111111111111';
+ const schoolB='22222222-2222-4222-8222-222222222222';
+ const sentBodies=[];
+ const storageValues=new Map([
+  ['bn_school_staff_session_v1',JSON.stringify({access_token:'staff-jwt',expires_at:Math.floor(Date.now()/1000)+3600})],
+  ['bn_school_staff_selected_school_v1',schoolB]
+ ]);
+ const storage={getItem:k=>storageValues.get(k)??null,setItem:(k,v)=>storageValues.set(k,v)};
+ const api=client.create({storage,fetcher:async(_url,opts)=>{
+  sentBodies.push(JSON.parse(opts.body));
+  return {ok:true,json:async()=>({content:'Verified multi-school lesson plan. '.repeat(4)})};
+ }});
+ const rawInput={tool:'Lesson Plan Generator',className:'6',subject:'Science',duration:'45 Minutes'};
+ const text=await api.generate(rawInput);
+ assert.match(text,/multi-school/);
+ assert.equal(rawInput.school,undefined,'Client must not mutate caller input');
+ assert.equal(sentBodies[0].school,schoolB,'Client must forward selected school UUID');
+
+ const multiFetcher=async(url,opts={})=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user-multi'})};
+  if(url.includes('/rest/v1/school_users?'))return {ok:true,json:async()=>[
+   {id:'m-a',auth_user_id:'user-multi',institution_id:schoolA,role:'school_admin',status:'active'},
+   {id:'m-b',auth_user_id:'user-multi',institution_id:schoolB,role:'teacher',status:'active'}
+  ]};
+  if(url.includes('/rest/v1/institutions?'))return {ok:true,json:async()=>[{id:schoolA,status:'active'},{id:schoolB,status:'active'}]};
+  if(url.includes('/rest/v1/rpc/bn_school_writable')){
+   const pid=JSON.parse(opts.body||'{}').p_institution_id;
+   return {ok:true,json:async()=>pid===schoolB};
+  }
+  if(url.includes('generativelanguage.googleapis.com')){
+   return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:JSON.stringify({content:'Learning objectives: compare conductors and insulators in Class 6 Science using safe battery circuits, guided discussion, and an exit check.'})}]}}]})};
+  }
+  throw Error('Unexpected '+url);
+ };
+ const multiSvc=svc.createService({env:{GEMINI_API_KEY:'k',SCHOOL_SUPABASE_URL:'https://example.supabase.co',SCHOOL_SUPABASE_PUBLISHABLE_KEY:'p'},fetcher:multiFetcher});
+ await assert.rejects(multiSvc.generate({...rawInput},'valid-token'),e=>e.status===403);
+ await assert.rejects(multiSvc.generate({...rawInput,school:schoolA},'valid-token'),e=>e.status===403&&/read-only/i.test(e.message));
+ const generated=await multiSvc.generate({...rawInput,school:schoolB},'valid-token');
+ assert.match(generated.content,/conductors/);
+ await assert.rejects(multiSvc.generate({...rawInput,school:{bad:1}},'valid-token'),e=>e.status===422||e.status===403);
+});
+
+test('TDD: cover AI rejects overlapping cover assignments across distinct slot IDs and unwraps fenced JSON from provider',async()=>{
+ const school='11111111-1111-4111-8111-111111111111', leave='22222222-2222-4222-8222-222222222222';
+ const slot1='33333333-3333-4333-8333-333333333331', slot2='33333333-3333-4333-8333-333333333332';
+ const cls1='44444444-4444-4444-8444-444444444441', cls2='44444444-4444-4444-8444-444444444442';
+ const neha='55555555-5555-4555-8555-555555555551';
+ const overlapService=svc.createService({env:{GROQ_API_KEY:'k',SCHOOL_SUPABASE_URL:'https://example.supabase.co',SCHOOL_SUPABASE_PUBLISHABLE_KEY:'p'},now:()=>0,fetcher:async(url)=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'admin-1'})};
+  if(url.includes('/rest/v1/school_users?'))return {ok:true,json:async()=>[{id:'staff-1',auth_user_id:'admin-1',institution_id:school,role:'principal',status:'active'}]};
+  if(url.includes('/rest/v1/institutions?'))return {ok:true,json:async()=>[{id:school,status:'active'}]};
+  if(url.includes('/rest/v1/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
+  if(url.includes('/rest/v1/rpc/bn_teacher_leave_cover_plan'))return {ok:true,json:async()=>[
+   {slot_id:slot1,class_id:cls1,class_name:'6-A',subject:'Science',starts_at:'09:00:00',ends_at:'09:45:00',candidates:[{teacher_id:neha,teacher_name:'Neha',subject_match:true,periods:2}]},
+   {slot_id:slot2,class_id:cls2,class_name:'7-B',subject:'Science',starts_at:'09:30:00',ends_at:'10:15:00',candidates:[{teacher_id:neha,teacher_name:'Neha',subject_match:true,periods:2}]}
+  ]};
+  if(url.includes('api.groq.com'))return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({
+   choices:[{period:'p1',teacher:'t1',reason:'Available'},{period:'p2',teacher:'t1',reason:'Overlap'}],
+   summary:'Double booked',question:''
+  })}}]})};
+  throw Error('Unexpected '+url);
+ }});
+ await assert.rejects(overlapService.planTeacherCover({school,leave,day:'2026-11-26',instructions:['Assign free teachers']},'valid-token'),e=>e.status===502&&/overlapping/i.test(e.message));
+
+ const fencedNonOverlap=svc.createService({env:{GROQ_API_KEY:'k',SCHOOL_SUPABASE_URL:'https://example.supabase.co',SCHOOL_SUPABASE_PUBLISHABLE_KEY:'p'},now:()=>0,fetcher:async(url)=>{
+  if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'admin-1'})};
+  if(url.includes('/rest/v1/school_users?'))return {ok:true,json:async()=>[{id:'staff-1',auth_user_id:'admin-1',institution_id:school,role:'principal',status:'active'}]};
+  if(url.includes('/rest/v1/institutions?'))return {ok:true,json:async()=>[{id:school,status:'active'}]};
+  if(url.includes('/rest/v1/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
+  if(url.includes('/rest/v1/rpc/bn_teacher_leave_cover_plan'))return {ok:true,json:async()=>[
+   {slot_id:slot1,class_id:cls1,class_name:'6-A',subject:'Science',starts_at:'09:00:00',ends_at:'09:45:00',candidates:[{teacher_id:neha,teacher_name:'Neha',subject_match:true,periods:2}]},
+   {slot_id:slot2,class_id:cls2,class_name:'7-B',subject:'Science',starts_at:'09:45:00',ends_at:'10:30:00',candidates:[{teacher_id:neha,teacher_name:'Neha',subject_match:true,periods:2}]}
+  ]};
+  if(url.includes('api.groq.com'))return {ok:true,json:async()=>({choices:[{message:{content:'```json\n'+JSON.stringify({
+   choices:[{period:'p1',teacher:'t1',reason:'P1 ok'},{period:'p2',teacher:'t1',reason:'Sequential ok'}],
+   summary:'Sequential periods ok',question:''
+  })+'\n```'}}]})};
+  throw Error('Unexpected '+url);
+ }});
+ const okCover=await fencedNonOverlap.planTeacherCover({school,leave,day:'2026-11-26',instructions:['Assign free teachers']},'valid-token');
+ assert.equal(okCover.choices.length,2);
+});

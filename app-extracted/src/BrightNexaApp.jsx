@@ -32291,6 +32291,8 @@ function Ea({ data, students } = {}) {
                 setTotalMarks('25');
                 if (n.includes('Lesson Plan')) {
                   setDuration('45 Minutes');
+                } else if (n.includes('Worksheet')) {
+                  setDuration('1 Hour');
                 } else if (n.includes('Question Paper')) {
                   setDuration('1 Hour');
                   setTotalMarks('50');
@@ -32431,6 +32433,7 @@ function Ea({ data, students } = {}) {
                     <option value="20 Minutes">20 Minutes</option>
                     <option value="30 Minutes">30 Minutes</option>
                     <option value="45 Minutes">45 Minutes</option>
+                    <option value="1 Hour">1 Hour</option>
                   </select>
                 </R>
                 <R label={`Total Marks`}>
@@ -32465,6 +32468,14 @@ function Ea({ data, students } = {}) {
 
             {e.includes(`Worksheet`) && (
               <P.Fragment>
+                <R label={`Worksheet Duration`}>
+                  <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+                    <option value="30 Minutes">30 Minutes</option>
+                    <option value="45 Minutes">45 Minutes</option>
+                    <option value="1 Hour">1 Hour</option>
+                    <option value="1.5 Hours">1.5 Hours</option>
+                  </select>
+                </R>
                 <R label={`Total Marks`}>
                   <input
                     type="number"

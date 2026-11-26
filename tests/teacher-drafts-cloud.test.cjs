@@ -49,3 +49,37 @@ test('client script never stores draft content in localStorage or reports local 
  const fs=require('node:fs'),s=fs.readFileSync(require('node:path').join(__dirname,'../teacher-drafts-cloud.js'),'utf8');
  assert.doesNotMatch(s,/localStorage|Template saved locally|service_role/);
 });
+
+test('TDD: multi-school member lists and saves drafts scoped strictly to selected school UUID',async()=>{
+ const schoolA='11111111-1111-4111-8111-111111111111';
+ const schoolB='22222222-2222-4222-8222-222222222222';
+ const calls=[];
+ const store=new Map([
+  ['bn_school_staff_session_v1',JSON.stringify({access_token:'valid',expires_at:Math.floor(Date.now()/1000)+3600})],
+  ['bn_school_staff_selected_school_v1',schoolB]
+ ]);
+ const api=moduleApi.create({
+  sessionStorage:{getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v)},
+  fetcher:async(url,opts={})=>{
+   const method=opts.method||'GET';calls.push({url,method,body:opts.body});
+   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'multi-user'})};
+   if(url.includes('/school_users?'))return {ok:true,json:async()=>[
+    {id:'member-a',institution_id:schoolA,auth_user_id:'multi-user',role:'school_admin',status:'active'},
+    {id:'member-b',institution_id:schoolB,auth_user_id:'multi-user',role:'teacher',status:'active'}
+   ]};
+   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:schoolB,status:'active'}]};
+   if(url.includes('/school_teacher_drafts')&&method==='POST'){
+    const row=JSON.parse(opts.body);
+    return {ok:true,json:async()=>[{...row,id:'draft-b',created_at:'2026-11-26T00:00:00Z'}]};
+   }
+   return {ok:true,json:async()=>[{id:'draft-b',institution_id:schoolB,author_school_user_id:'member-b',tool:'Lesson Plan Generator',class_label:'6',subject:'Science',topic:'Light',language:'English',content:'Draft content',created_at:'2026-11-26T00:00:00Z'}]};
+  }
+ });
+ const listed=await api.list();
+ assert.equal(listed.length,1);
+ assert.match(calls.find(c=>c.url.includes('school_teacher_drafts?')).url,new RegExp('institution_id=eq\\.'+schoolB));
+ await api.save(draft);
+ const postBody=JSON.parse(calls.find(c=>c.method==='POST').body);
+ assert.equal(postBody.institution_id,schoolB);
+ assert.equal(postBody.author_school_user_id,'member-b');
+});

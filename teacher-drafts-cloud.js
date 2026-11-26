@@ -4,6 +4,8 @@
 const BASE='https://mrfvbwmyxndrakskqyas.supabase.co';
 const KEY='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
 const SESSION='bn_school_staff_session_v1';
+const SELECTED_SCHOOL='bn_school_staff_selected_school_v1';
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const clean=(v,max)=>String(v==null?'':v).trim().slice(0,max);
 function create(options){
  const fetcher=options?.fetcher||(typeof fetch==='function'?fetch.bind(globalThis):null);
@@ -50,7 +52,9 @@ function create(options){
   const q=new URLSearchParams({select:'id,institution_id,auth_user_id,role,status',auth_user_id:'eq.'+user.id});
   const entries=await request('/rest/v1/school_users?'+q,session.access_token);
   if(!Array.isArray(entries))throw Error('Invalid school membership response.');
-  const own=entries.filter(s=>s.auth_user_id===user.id&&s.status==='active'&&['teacher','principal','school_admin'].includes(s.role));
+  const rawSelected=typeof storage.getItem==='function'?storage.getItem(SELECTED_SCHOOL):null;
+  const selected=typeof rawSelected==='string'&&UUID.test(rawSelected.trim())?rawSelected.trim():null;
+  const own=entries.filter(s=>s.auth_user_id===user.id&&s.status==='active'&&['teacher','principal','school_admin'].includes(s.role)&&(!selected||s.institution_id===selected));
   if(own.length!==1)throw Error('Active teacher, principal or school admin membership required.');
   const schoolQuery=new URLSearchParams({select:'id,status',id:'eq.'+own[0].institution_id});
   const schools=await request('/rest/v1/institutions?'+schoolQuery,session.access_token);

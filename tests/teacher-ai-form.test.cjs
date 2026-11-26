@@ -29,3 +29,35 @@ test('switching through all ten generators keeps academic defaults valid',async(
   }
  }finally{dom.window.close()}
 });
+
+test('TDD: Worksheet Generator exposes realistic duration options so 50-mark worksheets are buildable',async()=>{
+ const source=fs.readFileSync('app-extracted/src/BrightNexaApp.jsx','utf8').replace(/\r\n/g,'\n');
+ const bootstrap=source.lastIndexOf('sa();\nCt.createRoot');assert.ok(bootstrap>0);
+ const dom=new JSDOM('<div id="root"></div>',{url:'https://school.test',runScripts:'outside-only',pretendToBeVisual:true});
+ const requests=[];
+ dom.window.BNSmartToolsAI={generate:async input=>{requests.push(input);return 'Teacher reviewed fixture content. '.repeat(5)}};
+ try{
+  dom.window.eval(esbuild.transformSync(source.slice(0,bootstrap)+'\nCt.createRoot(document.getElementById("root")).render(w.createElement(Ea));',{loader:'jsx',format:'iife',jsxFactory:'w.createElement',jsxFragment:'w.Fragment',target:'es2022'}).code);
+  const wait=()=>new Promise(r=>setTimeout(r,35));await wait();
+  const doc=dom.window.document;
+  [...doc.querySelectorAll('aside button')].find(b=>b.textContent==='Worksheet Generator').click();await wait();
+  const labels=[...doc.querySelectorAll('.ai-input-grid label')].map(el=>el.textContent);
+  assert.ok(labels.some(t=>/Worksheet Duration|Time Allowed/i.test(t)),'Worksheet Generator must include a duration selector so teachers can match marks with time');
+  const selects=[...doc.querySelectorAll('.ai-input-grid select')];
+  const durationSelect=selects.find(s=>[...s.options].some(o=>o.value==='1.5 Hours'));
+  assert.ok(durationSelect,'Worksheet Duration must support 1.5 Hours for 40–50 mark worksheets');
+  durationSelect.value='1.5 Hours';
+  durationSelect.dispatchEvent(new dom.window.Event('change',{bubbles:true}));await wait();
+  const numbers=[...doc.querySelectorAll('.ai-input-grid input[type="number"]')];
+  Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value').set.call(numbers[0],'50');
+  numbers[0].dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+  Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value').set.call(numbers[1],'20');
+  numbers[1].dispatchEvent(new dom.window.Event('input',{bubbles:true}));await wait();
+  doc.querySelector('.ai-builder > .primary-button').click();await wait();
+  const last=requests.at(-1);
+  assert.doesNotThrow(()=>svc.planAssessment(svc.validateInput(last)));
+  const bundle=fs.readFileSync('assets/index-brightnexa-v2.js','utf8');
+  assert.match(bundle,/Worksheet Duration/);
+  assert.match(bundle,/1\.5 Hours/);
+ }finally{dom.window.close()}
+});

@@ -2,6 +2,8 @@
 (function(root,factory){const api=factory();if(typeof window==='object')window.BNSmartToolsAI=api;else root.BNSmartToolsAI=api;if(typeof module==='object'&&module.exports)module.exports=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
  'use strict';
  const SESSION='bn_school_staff_session_v1';
+ const SELECTED_SCHOOL='bn_school_staff_selected_school_v1';
+ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
  const SUPABASE='https://mrfvbwmyxndrakskqyas.supabase.co';
  const PUBLISHABLE='sb_publishable_qnOuxnbwCKcPbxpVMz3QTQ_9jAjLGGT';
  const API='https://bright-nexa-school-os-api.onrender.com';
@@ -24,12 +26,16 @@
   }
   async function generate(input){
    const s=await session();
+   const rawSchool=typeof store.getItem==='function'?store.getItem(SELECTED_SCHOOL):null;
+   const chosenSchool=typeof rawSchool==='string'&&UUID.test(rawSchool.trim())?rawSchool.trim():null;
+   const requestBody=(input&&typeof input==='object'&&!Array.isArray(input)&&!input.school&&chosenSchool)
+    ?{...input,school:chosenSchool}:input;
    const endpoint=(baseUrl||API).replace(/\/$/,'')+'/api/smart-tools/generate';
    const controller=typeof AbortController==='function'?new AbortController():null;
    const timeout=controller&&typeof setTimeout==='function'?setTimeout(()=>controller.abort(),85000):null;
    let response;
    try{
-    response=await network(endpoint,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.access_token},body:JSON.stringify(input),cache:'no-store',...(controller?{signal:controller.signal}:{})});
+    response=await network(endpoint,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.access_token},body:JSON.stringify(requestBody),cache:'no-store',...(controller?{signal:controller.signal}:{})});
    }catch(err){
     throw Error(err.name==='AbortError'?'AI generation timed out; retry with fewer questions.':'School AI server could not be reached. Check connection and deployment.');
    }finally{if(timeout)clearTimeout(timeout)}
