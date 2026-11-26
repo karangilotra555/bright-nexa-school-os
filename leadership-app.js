@@ -138,6 +138,12 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     const owner=school();
     return (await send('/rest/v1/rpc/'+name,{method:'POST',body:JSON.stringify({p_school:owner.id,...args})})).data;
   }
+  async function trialStatus(){
+    const owner=school(),epoch=version;
+    const data=(await send('/rest/v1/rpc/bn_school_trial_status',{method:'POST',body:JSON.stringify({p_institution_id:owner.id})})).data;
+    if(epoch!==version||owner.id!==selected?.id)throw Error('School changed.');
+    return data;
+  }
   async function registerEmergencyAlerts(scope,device,registration){
     await fresh();
     if(selected?.id!==scope.school||selected?.memberId!==scope.member)throw schoolAccessError();
@@ -259,8 +265,20 @@ function create(fetcher=root.fetch?.bind(root),storage=root.BNMobileSession?.cre
     ]);
     return {atRisk,classSummary,followups,feeRestricted};
   }
-  return {login,resumeStaff,restore,verify,choose,school,overview,registerEmergencyAlerts,emergencyLeave,attendanceEntry,timetableClasses,datedTimetable,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today,atRiskStudents,classAttendanceSummary,feeFollowups,intelligence};
+  return {login,resumeStaff,restore,verify,choose,school,overview,trialStatus,registerEmergencyAlerts,emergencyLeave,attendanceEntry,timetableClasses,datedTimetable,review,covers,publish,publishUrgent,urgentDeliveryStatus,suggestCover,logout,today,atRiskStudents,classAttendanceSummary,feeFollowups,intelligence};
 }
+  function trialStatusText(s){
+    if(s?.status==='unassigned')return 'Subscription plan not assigned. Contact Bright Nexa.';
+    const end=Date.parse(s?.ends_at),now=Date.parse(s?.server_time);
+    if(!['trial','active','expired'].includes(s?.status)||!Number.isFinite(end)||!Number.isFinite(now))return 'Subscription status unavailable. Refresh to verify.';
+    const expiry=new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeZone:'Asia/Kolkata'}).format(new Date(end));
+    const days=Math.max(0,Math.ceil((end-now)/86400000));
+    if(s.status==='expired'||end<=now)return 'Subscription expired on '+expiry+' — read-only. Contact Bright Nexa to renew; your records remain available.';
+    const reminder=days<=1?' · Renewal reminder (final day — 1 day left): contact Bright Nexa.'
+      :days<=3?' · Renewal reminder (3-day window): contact Bright Nexa.'
+      :days<=7?' · Renewal reminder (7-day window): contact Bright Nexa.':'';
+    return (s.status==='trial'?'Free trial':'Subscription')+' · '+days+' day'+(days===1?'':'s')+' remaining · Expires '+expiry+reminder;
+  }
 function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)){
   const $=id=>doc.getElementById(id), client=create(fetcher);
   const params=new URLSearchParams(root.location?.search||'');
@@ -730,6 +748,23 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     snapshot=data;
     drawHome(data);drawLeaves(data.leaves);drawAttendanceDetails(data.pulse);
     void drawIntelligence(data);
+    const heading=$('welcomeName');
+    if(heading){
+      let banner=$('bnTrialStatus');
+      if(!banner){banner=elt('p');banner.id='bnTrialStatus';banner.setAttribute('role','status');heading.after(banner);}
+      banner.textContent='Checking subscription status…';
+      void client.trialStatus().then(status=>{
+        if(snapshot!==data)return;
+        const end=Date.parse(status?.ends_at),now=Date.parse(status?.server_time);
+        const days=Number.isFinite(end)&&Number.isFinite(now)?Math.max(0,Math.ceil((end-now)/86400000)):null;
+        const state=status?.status==='expired'||(Number.isFinite(end)&&Number.isFinite(now)&&end<=now)?'expired':(days!==null&&days<=7?'reminder':(status?.status==='unassigned'?'unassigned':'active'));
+        banner.setAttribute('data-trial-state',state);
+        if(state==='expired')banner.style.cssText='background:#fde8e8;color:#7f1d1d;padding:7px 10px;border-radius:10px;margin-top:8px;font-weight:600';
+        else if(state==='reminder')banner.style.cssText='background:#fef3c7;color:#78350f;padding:7px 10px;border-radius:10px;margin-top:8px';
+        else banner.removeAttribute('style');
+        banner.textContent=trialStatusText(status);
+      },()=>{if(snapshot===data)banner.textContent='Subscription status unavailable. Refresh to verify.';});
+    }
   }
   async function refreshVisiblePage(){
     await refresh();
@@ -747,6 +782,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
     picker.value=data.selected.id;picker.hidden=data.schools.length===1;
   }
   function clearDashboard(school){
+    $('bnTrialStatus')?.remove();
     snapshot=null;coverLeave=null;pendingNotice=null;publishedNotice=null;
     cachedIntelligence=null;
     intelligenceVersion++;
@@ -1001,7 +1037,7 @@ function mount(doc=root.document,fetcher=(...args)=>(root.fetch||fetch)(...args)
   });
   return client;
 }
-const api={create,mount,today};
+const api={create,mount,today,trialStatusText};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 else{root.BNLeadership=api;root.addEventListener('DOMContentLoaded',()=>mount());}
 })(typeof window==='undefined'?globalThis:window);

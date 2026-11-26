@@ -181,6 +181,7 @@ test('cover AI receives successive instructions and only returns eligible teache
     if (route==='/auth/v1/user') return Response.json({id:admin});
     if (route==='/rest/v1/school_users') return Response.json([{id:admin,auth_user_id:admin,institution_id:school,role:'school_admin',status:'active'}]);
     if (route==='/rest/v1/institutions') return Response.json([{id:school,status:'active'}]);
+    if (route==='/rest/v1/rpc/bn_school_writable') return Response.json(true);
     if (route==='/rest/v1/rpc/bn_teacher_leave_cover_plan') {
       assert.deepEqual(body,{p_school:school,p_leave:leave,p_day:day});
       return Response.json([{slot_id:firstSlot,class_id:cls,class_name:'LKG A',subject:'English',starts_at:'09:00',ends_at:'09:35',candidates:[

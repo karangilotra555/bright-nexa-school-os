@@ -150,6 +150,50 @@
     store.setItem(CHOSEN_KEY,school.id);
     return {schoolId:school.id,name:school.name,revision:workspace.revision};
   }
+  function trialStatusText(s){
+    if(s?.status==='unassigned')return 'Subscription plan not assigned. Contact Bright Nexa.';
+    const end=Date.parse(s?.ends_at),now=Date.parse(s?.server_time);
+    if(!['trial','active','expired'].includes(s?.status)||!Number.isFinite(end)||!Number.isFinite(now))return 'Subscription status unavailable. Refresh to verify.';
+    const expiry=new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeZone:'Asia/Kolkata'}).format(new Date(end));
+    const days=Math.max(0,Math.ceil((end-now)/86400000));
+    if(s.status==='expired'||end<=now)return 'Subscription expired on '+expiry+' — read-only. Contact Bright Nexa to renew; your records remain available.';
+    const reminder=days<=1?' · Renewal reminder (final day — 1 day left): contact Bright Nexa.'
+      :days<=3?' · Renewal reminder (3-day window): contact Bright Nexa.'
+      :days<=7?' · Renewal reminder (7-day window): contact Bright Nexa.':'';
+    return (s.status==='trial'?'Free trial':'Subscription')+' · '+days+' day'+(days===1?'':'s')+' remaining · Expires '+expiry+reminder;
+  }
+  async function showTrialStatus(verified,store){
+    const id=verified.schoolId;
+    const session=parse(store.getItem(STAFF_KEY));
+    if(!session?.access_token||!validUUID(id))return;
+    let node=document.getElementById('bnTrialStatus');
+    if(!node){
+      node=document.createElement('aside');node.id='bnTrialStatus';node.setAttribute('role','status');
+      node.style.cssText='font:13px system-ui,sans-serif;padding:8px 16px;background:#eaf4fe;color:#0b315e;text-align:center;line-height:1.4';
+      const root=document.getElementById('root');if(!root)return;root.before(node);
+    }
+    node.textContent='Checking subscription status…';
+    try{
+      const res=await window.fetch(BASE+'/rest/v1/rpc/bn_school_trial_status',{
+        method:'POST',cache:'no-store',headers:{apikey:KEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({p_institution_id:id})
+      });
+      const data=await parseResponse(res,'Subscription status unavailable');
+      const current=parse(store.getItem(ERP_KEY));
+      if(current?.institutionId===id&&current?.cloudVerified===true&&store.getItem(CHOSEN_KEY)===id){
+        const end=Date.parse(data?.ends_at),now=Date.parse(data?.server_time);
+        const days=Number.isFinite(end)&&Number.isFinite(now)?Math.max(0,Math.ceil((end-now)/86400000)):null;
+        const state=data?.status==='expired'||(Number.isFinite(end)&&Number.isFinite(now)&&end<=now)?'expired':(days!==null&&days<=7?'reminder':(data?.status==='unassigned'?'unassigned':'active'));
+        node.setAttribute('data-trial-state',state);
+        if(state==='expired')node.style.cssText='font:13px system-ui,sans-serif;padding:8px 16px;background:#fde8e8;color:#7f1d1d;text-align:center;line-height:1.4;font-weight:600';
+        else if(state==='reminder')node.style.cssText='font:13px system-ui,sans-serif;padding:8px 16px;background:#fef3c7;color:#78350f;text-align:center;line-height:1.4';
+        node.textContent=trialStatusText(data);
+      }else node.remove();
+    }catch(_){
+      if(parse(store.getItem(ERP_KEY))?.institutionId===id)node.textContent='Subscription status unavailable. Refresh to verify.';
+      else node.remove();
+    }
+  }
   async function clearImportedDeviceDraft(verified){
     const pending=parse(window.localStorage.getItem('bn_school_import_pending_clear_v1'));
     if(!pending||pending.schoolId!==verified?.schoolId)return;
@@ -194,6 +238,7 @@
         const verified=await verify({store});
         await window.BNPrivateCache.ensureUnlocked();
         await clearImportedDeviceDraft(verified);
+        void showTrialStatus(verified,store);
         window.BNWorkspaceOnlineGuard?.update('loading');
         const url=new URL(window.location.href);
         url.searchParams.set('openSchool','true');
@@ -218,5 +263,5 @@
     document.head.append(script);
     return true;
   }
-  return {start,verify,cloudEntryRequired,localSchoolDraft,showCloudGate,showError,showStatus,parse,validUUID};
+  return {start,verify,cloudEntryRequired,localSchoolDraft,showCloudGate,showError,showStatus,parse,validUUID,trialStatusText};
 });

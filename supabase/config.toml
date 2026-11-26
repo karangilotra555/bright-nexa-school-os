@@ -2,6 +2,14 @@
 [functions.school-whatsapp]
 verify_jwt = false
 
+# Validates Supabase user JWT directly against auth/v1/user + confirmed operator allowlist.
+[functions.school-platform-admin]
+verify_jwt = false
+
+# Validates confirmed user JWT directly and commits rate-limit counters before registration RPC.
+[functions.school-register-school]
+verify_jwt = false
+
 # Cron authenticates with its dedicated Vault secret inside the function.
 [functions.school-teacher-period-alerts]
 verify_jwt = false

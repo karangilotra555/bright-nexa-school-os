@@ -453,6 +453,39 @@
   const shortClassName=c=>[c.name,c.section,c.academic_stream].filter(Boolean).join(' ');
   const className=c=>c?shortClassName(c)+' ('+c.academic_year+')':'Unknown class';
   function clearChildren(e){e.replaceChildren();}
+  async function updateStaffSubscriptionBanner(epoch){
+    document.getElementById('bnStaffTrialStatus')?.remove();
+    const portal=document.getElementById('portalSection');
+    if(!portal||!me?.institution_id||epoch!==schoolLoadEpoch)return;
+    const isLeader=me.role==='school_admin'||me.role==='principal';
+    try{
+      const data=await api(isLeader?'rpc/bn_school_trial_status':'rpc/bn_school_writable','','POST',{p_institution_id:me.institution_id});
+      if(epoch!==schoolLoadEpoch||!me)return;
+      let text='',expired=false;
+      if(isLeader&&data&&typeof data==='object'){
+        if(data.status==='unassigned')text='Subscription plan not assigned. Contact Bright Nexa.';
+        else{
+          const end=Date.parse(data.ends_at),now=Date.parse(data.server_time);
+          if(Number.isFinite(end)&&Number.isFinite(now)){
+            const exp=new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeZone:'Asia/Kolkata'}).format(new Date(end));
+            const days=Math.max(0,Math.ceil((end-now)/86400000));
+            if(data.status==='expired'||end<=now){expired=true;text='Subscription expired on '+exp+' — read-only. Contact Bright Nexa to renew; your records remain available.';}
+            else if(days<=7){text=(data.status==='trial'?'Free trial':'Subscription')+' · '+days+' day'+(days===1?'':'s')+' remaining · Expires '+exp+(days<=1?' · Renewal reminder (final day — 1 day left): contact Bright Nexa.':days<=3?' · Renewal reminder (3-day window): contact Bright Nexa.':' · Renewal reminder (7-day window): contact Bright Nexa.');}
+            else text=(data.status==='trial'?'Free trial':'Subscription')+' · '+days+' days remaining · Expires '+exp;
+          }
+        }
+      }else if(data===false){
+        expired=true;
+        text='Subscription expired — read-only. Contact Bright Nexa to renew; your records remain available.';
+      }
+      if(!text)return;
+      const box=document.createElement('div');box.id='bnStaffTrialStatus';box.setAttribute('role','status');
+      box.className='notice';
+      if(expired)box.style.cssText='background:#fde8e8;border-color:#f3b4b4;color:#7f1d1d;font-weight:600;margin-bottom:12px';
+      box.textContent=text;
+      portal.prepend(box);
+    }catch(_){}
+  }
   function options(target,records,label){
     const s=$(target);s.replaceChildren();
     if(!records.length){s.append(dom('option','No available entries'));return}
@@ -474,6 +507,7 @@
     attendanceDrafts.clear();invalidateRoster();clearProfileEditor();resetTeacherMarks();resetHomeworkForm();
     $('bnTeacherActivationAdmin')?.remove();
     $('bnSchoolPendingRecovery')?.remove();
+    $('bnStaffTrialStatus')?.remove();
     display('portalSection',false);display('loginSection',true);display('logout',false);display('activation',false);
     display('savedSessionPanel',false);display('schoolPickerWrap',false);display('createFirstSchoolPanel',false);showAuthView('login');
     document.body.classList.remove('bn-teacher-app');
@@ -861,6 +895,7 @@
     applyNavigationVisibility();
     installTeacherActivationControl();
     installOwnerRecoveryControl();
+    void updateStaffSubscriptionBanner(thisLoad);
     await reload();
     if(thisLoad!==schoolLoadEpoch)return;
     const requested=new URLSearchParams(location.search).get('view');
@@ -1848,6 +1883,8 @@
     await ensureToken();
     const name=$('firstSchoolName').value.trim();
     if(name.length<3||name.length>120)throw Error('Enter a school name between 3 and 120 characters.');
+    const activationCode=$('firstSchoolActivation').value.trim().toLowerCase();
+    if(!/^[0-9a-f]{64}$/.test(activationCode))throw Error('Enter the valid activation code supplied by Bright Nexa.');
     button.disabled=true;
     try{
       // The authenticated, SECURITY DEFINER RPC enforces one school per account.
@@ -1865,9 +1902,15 @@
         if(['feeStructures','feePayments','studentFeeDues','classFeeCharges'].some(k=>Array.isArray(ops[k])&&ops[k].length))
           throw Error('Local fee records require separate reconciliation. Cloud school was not created.');
       }
-      // The first-school RPC authenticates the email-confirmed owner and
-      // atomically creates the tenant and school_admin membership.
-      const schoolId=await api('rpc/register_first_school','','POST',{p_school_name:name});
+      // The rate-limited Edge Function authenticates the email-confirmed owner,
+      // enforces activation attempts outside rollback scope, and atomically creates
+      // the tenant and school_admin membership.
+      const registered=await responseJson(await timedCloudFetch(BASE+'/functions/v1/school-register-school',{
+        method:'POST',headers:{apikey:APIKEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({schoolName:name,activationCode}),cache:'no-store'
+      }));
+      const schoolId=registered?.schoolId;
+      $('firstSchoolActivation').value='';
       if(!/^[0-9a-f-]{36}$/i.test(String(schoolId)))throw Error('School creation returned no valid school ID.');
       sessionStorage.setItem(SELECTED_SCHOOL_KEY,String(schoolId));
       let initial;

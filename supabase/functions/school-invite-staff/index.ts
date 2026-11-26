@@ -188,6 +188,8 @@ Deno.serve(async (req:Request)=>{
       .select("id,institution_id,role,status")
       .eq("auth_user_id",identity.user.id).eq("role", "school_admin").eq("status", "active").maybeSingle();
     if(memberError || !member) return reply({error:"School administrator access required"},403);
+    const {data:writable,error:writableError}=await admin.rpc("bn_school_writable",{p_institution_id:member.institution_id});
+    if(writableError || writable!==true) return reply({error:"Subscription expired: school is read-only. Contact Bright Nexa."},403);
     const email=norm(body?.email).toLowerCase(),role=norm(body?.role);
     if(!validEmail(email) || !roles.has(role))return reply({error:"Valid staff email and role required"},400);
     let facultyId=norm(body?.facultyId);
@@ -389,6 +391,8 @@ Deno.serve(async (req:Request)=>{
         p_email:email,p_staff:teacherStaffRecord(facultyId,email,facultyProfile),
         p_assignments:facultyProfile.teachingRows
       });
+      if(provisionError&&/read-only/i.test(provisionError.message||""))
+        return reply({error:"Subscription expired: school is read-only. Contact Bright Nexa."},403);
       if(provisionError||!memberId)
         return reply({error:"Teacher App setup was not confirmed. Retry Save Teacher."},503);
       return reply({ok:true,email,role,status:"invited",emailSent:false,initialMobilePassword:true,

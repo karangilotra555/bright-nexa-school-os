@@ -67,7 +67,7 @@ test('root/docs/desktop scripts and cloud owner signup are in sync',()=>{
  assert.equal(read('teacher-access.js'),read('docs/teacher-access.js'));
  assert.equal(read('teacher-access.html'),read('docs/teacher-access.html'));
  const portal=read('teacher-access.js');
- assert.match(portal,/register_first_school/);
+ assert.match(portal,/functions\/v1\/school-register-school/);
  assert.match(portal,/school_workspace_push/);
  assert.match(portal,/school_workspace_pull/);
  assert.match(portal,/bn_school_import_pending_clear_v1/);

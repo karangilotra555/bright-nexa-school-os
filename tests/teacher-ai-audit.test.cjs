@@ -40,6 +40,7 @@ test('restricted Gemini 2.5 HTTP 404 retries once using newer Flash-Lite, never 
   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
   if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  if(url.includes('/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
   calls.push(url);
   if(url.includes('gemini-2.5-flash:'))return {ok:false,status:404};
   if(url.includes('gemini-3.5-flash-lite:'))return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:JSON.stringify({content:'Learning objective: explore safe low-voltage conductor tests. Explain how a complete circuit works, compare observations, and discuss everyday examples with the teacher.'})}]}}]})};
@@ -57,6 +58,7 @@ test('default Gemini model uses current Flash-Lite rather than restricted 2.5',a
   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
   if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  if(url.includes('/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
   calls.push(url);
   return {ok:false,status:404};
  }});
@@ -69,6 +71,7 @@ test('provider transport failure falls back to Groq with bounded requests',async
   if(url.endsWith('/auth/v1/user'))return {ok:true,json:async()=>({id:'user'})};
   if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  if(url.includes('/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
   assert.ok(opts.signal,'Provider requests must have an abort deadline');
   if(url.includes('googleapis.com'))throw new TypeError('fetch failed');
   return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({content:'Learning objectives: identify conductors using a safe battery circuit. Discuss the observations, compare materials and finish with an exit ticket.'})}}]})};
@@ -93,6 +96,7 @@ for(const tool of svc.TOOLS)test('authenticated contract returns usable '+tool,a
   if(url.endsWith('/auth/v1/user')){assert.equal(options.headers.Authorization,'Bearer fixture-token');verified=true;return {ok:true,json:async()=>({id:'user'})}}
   if(url.includes('/school_users?'))return {ok:true,json:async()=>[{id:'staff',auth_user_id:'user',institution_id:'school',role:'teacher',status:'active'}]};
   if(url.includes('/institutions?'))return {ok:true,json:async()=>[{id:'school',status:'active'}]};
+  if(url.includes('/rpc/bn_school_writable'))return {ok:true,json:async()=>true};
   assert.ok(verified);return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:JSON.stringify(content)}]}}]})};
  }});
  const result=await service.generate(request,'fixture-token');

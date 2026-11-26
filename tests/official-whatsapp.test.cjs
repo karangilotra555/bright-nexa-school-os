@@ -40,3 +40,67 @@ test('TDD RED: WhatsApp browser client refreshes malformed expiry, rejects missi
  });
  await assert.rejects(abortApi.request('/connection'),/timed out/i);
 });
+
+test('TDD RED: official WhatsApp service denies batch mutations when school trial is expired',async()=>{
+ const {createService}=await import('../supabase/functions/school-whatsapp/service.mjs');
+ const handler=createService({url:'https://fixture.test',serviceKey:'server-only',anonKey:'public',fetcher:async url=>{
+  if(url.endsWith('/auth/v1/user'))return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  if(url.includes('/school_users?'))return Response.json([{id:'u1',institution_id:'22222222-2222-4222-8222-222222222222',role:'school_admin',status:'active'}]);
+  if(url.includes('/institutions?'))return Response.json([{id:'22222222-2222-4222-8222-222222222222',name:'School',status:'trial'}]);
+  if(url.includes('/rpc/bn_school_writable'))return Response.json(false);
+  throw Error('Unexpected write query on expired school: '+url);
+ }});
+ const response=await handler(new Request('https://fixture.test/functions/v1/school-whatsapp/batches',{
+  method:'POST',headers:{Authorization:'Bearer fixture'},body:JSON.stringify({confirmed:true,consentConfirmed:true})
+ }));
+ assert.equal(response.status,403);
+ assert.match((await response.json()).error,/expired|read-only/i);
+});
+
+test('TDD RED: official WhatsApp worker halts queued claims upon mid-batch expiry while Meta delivery webhook still commits',async()=>{
+ const {createService}=await import('../supabase/functions/school-whatsapp/service.mjs');
+ const events=[];
+ let claimed=false;
+ const secret='fixture-only-app-secret';
+ const rawPayload=JSON.stringify({object:'whatsapp_business_account',entry:[{id:'987654321',changes:[{value:{metadata:{phone_number_id:'123456789'},statuses:[{id:'wamid.1',status:'delivered',timestamp:'1700000000'}]}}]}]});
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const mac=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(rawPayload));
+ const sig='sha256='+Buffer.from(mac).toString('hex');
+ let writableChecks=0;
+ const handler=createService({url:'https://fixture.test',serviceKey:'server-only',anonKey:'public',fetcher:async(url,opts={})=>{
+  const p=new URL(url).pathname;
+  if(p.endsWith('/school_whatsapp_connections'))return Response.json([{institution_id:'22222222-2222-4222-8222-222222222222',phone_number_id:'123456789',waba_id:'987654321'}]);
+  if(p.endsWith('/rpc/school_wa_secret'))return Response.json(JSON.stringify({token:'tok',appSecret:secret}));
+  if(p.endsWith('/rpc/school_wa_event')){events.push(JSON.parse(opts.body));return Response.json(null);}
+  if(p.endsWith('/rpc/bn_school_writable')){writableChecks++;return Response.json(false);}
+  if(p.endsWith('/rpc/school_wa_claim')){claimed=true;return Response.json([]);}
+  throw Error('Unexpected '+p);
+ }});
+ const hookRes=await handler(new Request('https://fixture.test/functions/v1/school-whatsapp/webhook',{
+  method:'POST',headers:{'x-hub-signature-256':sig},body:rawPayload
+ }));
+ assert.equal(hookRes.status,200);
+ assert.equal(events.length,1);
+ assert.equal(events[0].p_state,'delivered');
+
+ // Resume on newly expired school must recheck writable inside work() and stop before claiming queued rows
+ const tasks=[];
+ const batchRes=createService({url:'https://fixture.test',serviceKey:'server-only',anonKey:'public',waitUntil:p=>tasks.push(p),fetcher:async url=>{
+  const p=new URL(url).pathname;
+  if(p.endsWith('/auth/v1/user'))return Response.json({id:'11111111-1111-4111-8111-111111111111'});
+  if(p.endsWith('/school_users'))return Response.json([{id:'u1',institution_id:'22222222-2222-4222-8222-222222222222'}]);
+  if(p.endsWith('/institutions'))return Response.json([{id:'22222222-2222-4222-8222-222222222222',name:'School',status:'trial'}]);
+  if(p.endsWith('/school_whatsapp_connections'))return Response.json([{institution_id:'22222222-2222-4222-8222-222222222222',phone_number_id:'123456789',waba_id:'987654321',api_version:'v24.0',webhook_verified_at:'2026-11-01',template_map:{}}]);
+  if(p.endsWith('/school_whatsapp_batches'))return Response.json([{id:'44444444-4444-4444-8444-444444444444',kind:'fee',template:{name:'t',language:'en',components:[{type:'BODY',text:'{{1}}'}]}}]);
+  if(p.endsWith('/rpc/school_wa_secret'))return Response.json(JSON.stringify({token:'tok',appSecret:secret}));
+  if(p.endsWith('/message_templates'))return Response.json({data:[{name:'t',language:'en',status:'APPROVED',components:[{type:'BODY',text:'{{1}}'}]}]});
+  if(p.endsWith('/rpc/bn_school_writable')){writableChecks++;return Response.json(writableChecks<3);}
+  if(p.endsWith('/rpc/school_wa_claim')){claimed=true;return Response.json([]);}
+  throw Error('Unexpected '+p);
+ }});
+ await batchRes(new Request('https://fixture.test/functions/v1/school-whatsapp/batches/44444444-4444-4444-8444-444444444444/resume',{
+  method:'POST',headers:{Authorization:'Bearer tok'},body:JSON.stringify({})
+ }));
+ await Promise.all(tasks);
+ assert.equal(claimed,false,'Worker must check bn_school_writable before claiming messages');
+});
