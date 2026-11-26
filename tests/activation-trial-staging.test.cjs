@@ -50,7 +50,6 @@ test('staged registration: verified email, one-time code, atomic trial, owner-sc
  await db.query('select public.bn_revoke_school_activation($1)',[revoked]);
  const code=await issue('OWNER@example.test'), unverified=await issue('unverified@example.test');
  await login(A); await assert.rejects(db.query("select public.bn_issue_school_activation('owner@example.test')"));
- await assert.rejects(db.query("select public.register_first_school('Bypass')"));
  await assert.rejects(db.query("select school_private.bn_register_first_school_legacy('Bypass')"));
  await assert.rejects(db.query("select public.bn_register_school_for_user($1,'Direct Bypass',$2)",[A,code]),/permission denied/i);
  await assert.rejects(db.query('select * from school_private.bn_activation_codes'));
@@ -270,9 +269,21 @@ test('TDD RED: bn_school_subscriptions reconciliation, persistent rate limit on 
  assert.equal((await db.query("select to_regclass('public.bn_school_subscriptions') as t")).rows[0].t,null);
  assert.ok((await db.query("select 1 from school_private.bn_platform_audit where event_type='legacy_subscription_table_retired'")).rows.length===1);
 
- // Rate-limited Edge function connected to PGlite persists failed attempts & blocks direct authenticated SQL bypass
+ // Phase 1 transition compatibility: before Render PR #182 + lockdown, legacy 84e66f7
+ // 1-arg public.register_first_school(text) MUST keep working without downtime AND create a 30-day trial!
  const {createService}=await import('../supabase/functions/school-register-school/service.mjs');
  const ownerA='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+ const legacyCallerUid=crypto.randomUUID();
+ await db.query('insert into auth.users values($1,$2,now())',[legacyCallerUid,'middeploy@example.test']);
+ await db.exec('reset role; set role authenticated');
+ await db.query("select set_config('request.jwt.claim.sub',$1,false)",[legacyCallerUid]);
+ const midDeploySchoolId=(await db.query("select public.register_first_school('Mid Deploy Transition School') as id")).rows[0].id;
+ assert.ok(midDeploySchoolId,'Existing 1-arg signup must succeed during Phase 1 deploy transition window');
+ await db.exec('reset role; set role service_role');
+ const midEnt=(await db.query("select * from public.bn_list_school_entitlements(200) where institution_id=$1",[midDeploySchoolId])).rows[0];
+ assert.equal(midEnt.effective_status,'trial');
+ assert.equal(midEnt.days_remaining,30);
+
  await db.exec('reset role; set role authenticated');
  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[ownerA]);
  await assert.rejects(db.query("select public.register_first_school('Bypass','0000000000000000000000000000000000000000000000000000000000000000')"),/does not exist|permission denied/i);
@@ -374,44 +385,31 @@ test('TDD RED: bn_school_subscriptions reconciliation, persistent rate limit on 
   await assert.rejects(db.query('insert into public.school_students(institution_id,name) values($1,$2)',[schoolId,'Blocked']),/read-only/i);
  }
 
- // Strict dependency-ordered SQL rollback (NO CASCADE) restores pre-migration registration & writes cleanly
+ // Test Rollback from Phase 1 directly (before lockdown), idempotent re-apply, then Phase 2 lockdown + full rollback!
+ const rollbackSql=fs.readFileSync('supabase/patches/activation_trial_rollback.sql','utf8');
+ const lockdownSql=fs.readFileSync('supabase/patches/activation_trial_lockdown.sql','utf8');
  await db.exec('reset role');
- await db.exec(`
-  BEGIN;
-  DROP TRIGGER IF EXISTS bn_trial_institution_guard ON public.institutions;
-  DROP TRIGGER IF EXISTS bn_trial_wa_recipient_guard ON public.school_whatsapp_recipients;
-  DO $$ DECLARE r record; BEGIN
-   FOR r IN SELECT n.nspname,c.relname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE t.tgname='bn_trial_write_guard'
-   LOOP EXECUTE format('DROP TRIGGER IF EXISTS bn_trial_write_guard ON %I.%I',r.nspname,r.relname); END LOOP;
-  END $$;
-  DROP POLICY IF EXISTS bn_trial_storage_insert_guard ON storage.objects;
-  DROP POLICY IF EXISTS bn_trial_storage_update_guard ON storage.objects;
-  DROP POLICY IF EXISTS bn_trial_storage_delete_guard ON storage.objects;
-  DROP FUNCTION public.bn_register_school_for_user(uuid,text,text);
-  DROP FUNCTION IF EXISTS public.register_first_school(text,text);
-  ALTER FUNCTION school_private.bn_register_first_school_legacy(text) SET SCHEMA public;
-  ALTER FUNCTION public.bn_register_first_school_legacy(text) RENAME TO register_first_school;
-  GRANT EXECUTE ON FUNCTION public.register_first_school(text) TO authenticated;
-  DROP FUNCTION public.bn_school_trial_status(uuid);
-  DROP FUNCTION public.bn_school_writable(uuid);
-  DROP FUNCTION public.bn_activation_attempt(text,integer);
-  DROP FUNCTION public.bn_issue_school_activation(text,uuid);
-  DROP FUNCTION public.bn_revoke_school_activation(text,uuid);
-  DROP FUNCTION public.bn_revoke_school_activation_by_prefix(text,text,uuid);
-  DROP FUNCTION public.bn_list_school_activations(integer);
-  DROP FUNCTION public.bn_assign_school_entitlement(uuid,text,integer,uuid);
-  DROP FUNCTION public.bn_renew_school_entitlement(uuid,integer,uuid);
-  DROP FUNCTION public.bn_list_school_entitlements(integer);
-  DROP FUNCTION public.bn_list_platform_audit(integer);
-  DROP FUNCTION school_private.bn_storage_school_writable(text);
-  DROP FUNCTION school_private.bn_school_is_writable(uuid);
-  DROP FUNCTION school_private.bn_assert_school_writable(uuid);
-  DROP FUNCTION school_private.bn_guard_trial_write();
-  DROP FUNCTION school_private.bn_guard_whatsapp_recipient_write();
-  DROP FUNCTION school_private.bn_guard_institution_write();
-  COMMIT;
- `);
+ await db.exec(rollbackSql);
  await login(ownerA);
- await db.query('insert into public.school_students(institution_id,name) values($1,$2)',[schoolId,'Restored After Rollback']);
+ await db.query('insert into public.school_students(institution_id,name) values($1,$2)',[schoolId,'Restored After Phase1 Rollback']);
  assert.equal((await db.query('select count(*)::int as n from public.school_students where institution_id=$1',[schoolId])).rows[0].n,2);
+
+ // Re-apply Phase 1 staging migration cleanly after rollback (idempotency + audit preservation),
+ // run Phase 2 lockdown after Render cutover, verify 1-arg RPC is blocked, then verify rollback after Phase 2!
+ await db.exec('reset role');
+ await db.exec(patchSql);
+ await db.exec(lockdownSql);
+ await db.exec('reset role; set role authenticated');
+ await assert.rejects(db.query("select public.register_first_school('Blocked After Lockdown')"),/does not exist|permission denied/i);
+ await db.exec('reset role');
+ await db.exec(rollbackSql);
+ await login(ownerA);
+ await db.query('insert into public.school_students(institution_id,name) values($1,$2)',[schoolId,'Restored After Phase2 Rollback']);
+ assert.equal((await db.query('select count(*)::int as n from public.school_students where institution_id=$1',[schoolId])).rows[0].n,3);
+ const newLegacyUid=crypto.randomUUID();
+ await db.exec('reset role');
+ await db.query('insert into auth.users values($1,$2,now())',[newLegacyUid,'afterrollback@example.test']);
+ await login(newLegacyUid);
+ const afterRollbackSchool=(await db.query("select public.register_first_school('Legacy After Rollback') as id")).rows[0].id;
+ assert.ok(afterRollbackSchool);
 });

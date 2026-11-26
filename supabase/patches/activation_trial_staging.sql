@@ -1,21 +1,26 @@
--- STAGING ONLY: not a production migration. Verify the real registration
--- function, grants, role membership and every write path before deploying.
+-- Phase 1 (Zero-Downtime Expand & Enforce): Reconciles legacy subscription state,
+-- adds trial/activation/audit infrastructure, and preserves a temporary 1-arg
+-- public.register_first_school(text) transition bridge so live clients continue
+-- working until Edge Functions + PR #182 Render deploy complete.
+-- Afterwards run supabase/patches/activation_trial_lockdown.sql to disable 1-arg signup.
 BEGIN;
 -- Prevent accidental replacement of an unexpected registration contract.
 DO $$
 BEGIN
- IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p
- JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
- WHERE n.nspname='public' AND p.proname='register_first_school'
- AND p.oid=pg_catalog.to_regprocedure('public.register_first_school(text)')
- AND p.prorettype='uuid'::regtype AND p.prosecdef)
- OR (SELECT count(*) FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
- WHERE n.nspname='public' AND p.proname='register_first_school')<>1 THEN
- RAISE EXCEPTION 'Unexpected registration RPC contract; review before applying';
+ IF pg_catalog.to_regprocedure('school_private.bn_register_first_school_legacy(text)') IS NULL THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public' AND p.proname='register_first_school'
+  AND p.oid=pg_catalog.to_regprocedure('public.register_first_school(text)')
+  AND p.prorettype='uuid'::regtype AND p.prosecdef)
+  OR (SELECT count(*) FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public' AND p.proname='register_first_school')<>1 THEN
+  RAISE EXCEPTION 'Unexpected registration RPC contract; review before applying';
+  END IF;
  END IF;
 END $$;
 
-CREATE TABLE school_private.bn_activation_codes(
+CREATE TABLE IF NOT EXISTS school_private.bn_activation_codes(
  code_hash text PRIMARY KEY,
  owner_email text NOT NULL,
  issued_at timestamptz NOT NULL DEFAULT now(),
@@ -28,7 +33,7 @@ CREATE TABLE school_private.bn_activation_codes(
  CHECK((redeemed_at IS NULL AND redeemed_by IS NULL AND institution_id IS NULL)
  OR (redeemed_at IS NOT NULL AND redeemed_by IS NOT NULL AND institution_id IS NOT NULL))
 );
-CREATE TABLE school_private.bn_school_entitlements(
+CREATE TABLE IF NOT EXISTS school_private.bn_school_entitlements(
  institution_id uuid PRIMARY KEY REFERENCES public.institutions(id) ON DELETE RESTRICT,
  plan text NOT NULL CHECK(plan IN ('trial','active')),
  starts_at timestamptz NOT NULL,
@@ -36,19 +41,19 @@ CREATE TABLE school_private.bn_school_entitlements(
  updated_at timestamptz NOT NULL DEFAULT now(),
  CHECK(ends_at>starts_at)
 );
-CREATE TABLE school_private.bn_activation_attempts(
+CREATE TABLE IF NOT EXISTS school_private.bn_activation_attempts(
  bucket text PRIMARY KEY,
  window_start timestamptz NOT NULL DEFAULT clock_timestamp(),
  attempts integer NOT NULL DEFAULT 1
 );
-CREATE TABLE school_private.bn_trial_reminders(
+CREATE TABLE IF NOT EXISTS school_private.bn_trial_reminders(
  institution_id uuid NOT NULL REFERENCES public.institutions(id) ON DELETE RESTRICT,
  ends_at timestamptz NOT NULL,
  milestone_days integer NOT NULL CHECK(milestone_days IN (7,3,1)),
  recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  PRIMARY KEY(institution_id,ends_at,milestone_days)
 );
-CREATE TABLE school_private.bn_platform_audit(
+CREATE TABLE IF NOT EXISTS school_private.bn_platform_audit(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  event_type text NOT NULL,
  actor_uid uuid,
@@ -74,6 +79,7 @@ DECLARE
  v_rows bigint := 0;
  v_fks text;
  v_views text;
+ v_procs text;
 BEGIN
  IF to_regclass('public.bn_school_subscriptions') IS NOT NULL THEN
   EXECUTE 'SELECT count(*) FROM public.bn_school_subscriptions' INTO v_rows;
@@ -96,13 +102,21 @@ BEGIN
   IF v_views IS NOT NULL THEN
    RAISE EXCEPTION 'public.bn_school_subscriptions has dependent views (%); review before dropping', v_views;
   END IF;
+  SELECT string_agg(n.nspname || '.' || p.proname, ', ') INTO v_procs
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname IN ('public','school_private')
+    AND p.prosrc ~* '\mbn_school_subscriptions\M';
+  IF v_procs IS NOT NULL THEN
+   RAISE EXCEPTION 'Functions reference public.bn_school_subscriptions (%); review before dropping', v_procs;
+  END IF;
   DROP TABLE public.bn_school_subscriptions;
   INSERT INTO school_private.bn_platform_audit(event_type,details)
   VALUES('legacy_subscription_table_retired',jsonb_build_object('table','public.bn_school_subscriptions','row_count',0));
  END IF;
 END $$;
 
-CREATE FUNCTION public.bn_activation_attempt(p_bucket text,p_limit integer)
+CREATE OR REPLACE FUNCTION public.bn_activation_attempt(p_bucket text,p_limit integer)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_attempts integer;
 BEGIN
@@ -125,7 +139,7 @@ GRANT EXECUTE ON FUNCTION public.bn_activation_attempt(text,integer) TO service_
 
 -- The platform operator's trusted server may issue a code. Never give a
 -- service_role key to a school owner or expose it in the browser.
-CREATE FUNCTION public.bn_issue_school_activation(p_owner_email text,p_actor_uid uuid DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.bn_issue_school_activation(p_owner_email text,p_actor_uid uuid DEFAULT NULL)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_email text := lower(trim(p_owner_email)); v_code text; v_hash text;
 BEGIN
@@ -147,7 +161,7 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_issue_school_activation(text,uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_issue_school_activation(text,uuid) TO service_role;
 
-CREATE FUNCTION public.bn_revoke_school_activation(p_code text,p_actor_uid uuid DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.bn_revoke_school_activation(p_code text,p_actor_uid uuid DEFAULT NULL)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_hash text;
 BEGIN
@@ -165,14 +179,43 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_revoke_school_activation(text,uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_revoke_school_activation(text,uuid) TO service_role;
 
--- Keep original registration logic rather than duplicating its tenant logic.
--- Remove all direct browser/authenticated registration access so every signup
--- must flow through the rate-limited school-register-school Edge Function.
-ALTER FUNCTION public.register_first_school(text) SET SCHEMA school_private;
-ALTER FUNCTION school_private.register_first_school(text) RENAME TO bn_register_first_school_legacy;
+-- Move original registration logic to private schema idempotently, keep a zero-downtime
+-- 1-arg transition wrapper (automatically awarding 30-day trials) until Phase 2 lockdown,
+-- and expose service_role bn_register_school_for_user for the rate-limited Edge Function.
+DO $$
+BEGIN
+ IF pg_catalog.to_regprocedure('school_private.bn_register_first_school_legacy(text)') IS NULL THEN
+  ALTER FUNCTION public.register_first_school(text) SET SCHEMA school_private;
+  ALTER FUNCTION school_private.register_first_school(text) RENAME TO bn_register_first_school_legacy;
+ END IF;
+END $$;
 REVOKE ALL ON FUNCTION school_private.bn_register_first_school_legacy(text) FROM PUBLIC,anon,authenticated,service_role;
 
-CREATE FUNCTION public.bn_register_school_for_user(p_owner_uid uuid,p_school_name text,p_activation_code text)
+CREATE OR REPLACE FUNCTION public.register_first_school(p_school_name text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE
+ v_uid uuid := auth.uid();
+ v_school uuid;
+ v_start timestamptz;
+BEGIN
+ IF v_uid IS NULL THEN RAISE EXCEPTION 'Verified owner required' USING ERRCODE='42501'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(v_uid::text, 182));
+ v_school := school_private.bn_register_first_school_legacy(p_school_name);
+ IF v_school IS NULL OR NOT school_private.has_role(v_school,ARRAY['school_admin']) THEN
+  RAISE EXCEPTION 'Registration not confirmed' USING ERRCODE='42501';
+ END IF;
+ v_start := clock_timestamp();
+ INSERT INTO school_private.bn_school_entitlements(institution_id,plan,starts_at,ends_at)
+ VALUES(v_school,'trial',v_start,v_start+interval '720 hours')
+ ON CONFLICT (institution_id) DO NOTHING;
+ INSERT INTO school_private.bn_platform_audit(event_type,actor_uid,institution_id,details)
+ VALUES('school_registered_transition',v_uid,v_school,jsonb_build_object('source','legacy_rpc_bridge'));
+ RETURN v_school;
+END $$;
+REVOKE ALL ON FUNCTION public.register_first_school(text) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.register_first_school(text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.bn_register_school_for_user(p_owner_uid uuid,p_school_name text,p_activation_code text)
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE
  v_email text;
@@ -222,7 +265,7 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_register_school_for_user(uuid,text,text) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_register_school_for_user(uuid,text,text) TO service_role;
 
-CREATE FUNCTION public.bn_school_trial_status(p_institution_id uuid)
+CREATE OR REPLACE FUNCTION public.bn_school_trial_status(p_institution_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE
  e school_private.bn_school_entitlements%ROWTYPE;
@@ -258,7 +301,7 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_school_trial_status(uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_school_trial_status(uuid) TO authenticated;
 
-CREATE FUNCTION school_private.bn_school_is_writable(p_school uuid)
+CREATE OR REPLACE FUNCTION school_private.bn_school_is_writable(p_school uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT NOT EXISTS (
  SELECT 1 FROM school_private.bn_school_entitlements e
@@ -267,7 +310,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
 $$;
 REVOKE ALL ON FUNCTION school_private.bn_school_is_writable(uuid) FROM PUBLIC,anon,authenticated,service_role;
 
-CREATE FUNCTION public.bn_school_writable(p_institution_id uuid)
+CREATE OR REPLACE FUNCTION public.bn_school_writable(p_institution_id uuid)
 RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF current_setting('role',true) IS DISTINCT FROM 'service_role' AND (auth.uid() IS NULL OR (
@@ -281,7 +324,7 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_school_writable(uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_school_writable(uuid) TO authenticated,service_role;
 
-CREATE FUNCTION public.bn_assign_school_entitlement(p_institution_id uuid,p_plan text DEFAULT 'active',p_days integer DEFAULT 30,p_actor_uid uuid DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.bn_assign_school_entitlement(p_institution_id uuid,p_plan text DEFAULT 'active',p_days integer DEFAULT 30,p_actor_uid uuid DEFAULT NULL)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_now timestamptz:=clock_timestamp();
 BEGIN
@@ -298,7 +341,7 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_assign_school_entitlement(uuid,text,integer,uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_assign_school_entitlement(uuid,text,integer,uuid) TO service_role;
 
-CREATE FUNCTION public.bn_renew_school_entitlement(p_institution_id uuid,p_days integer,p_actor_uid uuid DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.bn_renew_school_entitlement(p_institution_id uuid,p_days integer,p_actor_uid uuid DEFAULT NULL)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_now timestamptz:=clock_timestamp();
 BEGIN
@@ -315,7 +358,7 @@ REVOKE ALL ON FUNCTION public.bn_renew_school_entitlement(uuid,integer,uuid) FRO
 GRANT EXECUTE ON FUNCTION public.bn_renew_school_entitlement(uuid,integer,uuid) TO service_role;
 
 -- Super Admin platform operator listing and digest-prefix revocation (service_role only).
-CREATE FUNCTION public.bn_list_school_activations(p_limit integer DEFAULT 100)
+CREATE OR REPLACE FUNCTION public.bn_list_school_activations(p_limit integer DEFAULT 100)
 RETURNS TABLE(
  code_digest_prefix text,
  owner_email text,
@@ -345,7 +388,7 @@ $$;
 REVOKE ALL ON FUNCTION public.bn_list_school_activations(integer) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_list_school_activations(integer) TO service_role;
 
-CREATE FUNCTION public.bn_revoke_school_activation_by_prefix(p_code_prefix text,p_owner_email text,p_actor_uid uuid DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.bn_revoke_school_activation_by_prefix(p_code_prefix text,p_owner_email text,p_actor_uid uuid DEFAULT NULL)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_email text := lower(trim(p_owner_email)); v_hash text;
 BEGIN
@@ -367,7 +410,7 @@ END $$;
 REVOKE ALL ON FUNCTION public.bn_revoke_school_activation_by_prefix(text,text,uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_revoke_school_activation_by_prefix(text,text,uuid) TO service_role;
 
-CREATE FUNCTION public.bn_list_school_entitlements(p_limit integer DEFAULT 200)
+CREATE OR REPLACE FUNCTION public.bn_list_school_entitlements(p_limit integer DEFAULT 200)
 RETURNS TABLE(
  institution_id uuid,
  name text,
@@ -404,7 +447,7 @@ $$;
 REVOKE ALL ON FUNCTION public.bn_list_school_entitlements(integer) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.bn_list_school_entitlements(integer) TO service_role;
 
-CREATE FUNCTION public.bn_list_platform_audit(p_limit integer DEFAULT 100)
+CREATE OR REPLACE FUNCTION public.bn_list_platform_audit(p_limit integer DEFAULT 100)
 RETURNS TABLE(
  id uuid,
  event_type text,
@@ -426,7 +469,7 @@ GRANT EXECUTE ON FUNCTION public.bn_list_platform_audit(integer) TO service_role
 
 -- Enforce expiry across tables, private WordPress/alert tables, and Storage
 -- even inside SECURITY DEFINER RPCs.
-CREATE FUNCTION school_private.bn_assert_school_writable(p_school uuid)
+CREATE OR REPLACE FUNCTION school_private.bn_assert_school_writable(p_school uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_end timestamptz;
 BEGIN
@@ -438,7 +481,7 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION school_private.bn_assert_school_writable(uuid) FROM PUBLIC,anon,authenticated,service_role;
 
-CREATE FUNCTION school_private.bn_guard_trial_write()
+CREATE OR REPLACE FUNCTION school_private.bn_guard_trial_write()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF TG_OP IN ('UPDATE','DELETE') THEN
@@ -455,7 +498,7 @@ REVOKE ALL ON FUNCTION school_private.bn_guard_trial_write() FROM PUBLIC,anon,au
 -- Allow incoming Meta webhook delivery callbacks and in-flight worker outcome
 -- reconciliation to update previously dispatched WhatsApp recipient status
 -- while blocking new queued claims, inserts, or deletes on expired schools.
-CREATE FUNCTION school_private.bn_guard_whatsapp_recipient_write()
+CREATE OR REPLACE FUNCTION school_private.bn_guard_whatsapp_recipient_write()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF TG_OP='UPDATE'
@@ -484,7 +527,7 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION school_private.bn_guard_whatsapp_recipient_write() FROM PUBLIC,anon,authenticated,service_role;
 
-CREATE FUNCTION school_private.bn_guard_institution_write()
+CREATE OR REPLACE FUNCTION school_private.bn_guard_institution_write()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  PERFORM school_private.bn_assert_school_writable(OLD.id);
@@ -495,7 +538,7 @@ END $$;
 REVOKE ALL ON FUNCTION school_private.bn_guard_institution_write() FROM PUBLIC,anon,authenticated,service_role;
 
 -- Restrictive Storage policy helper: no direct entitlement disclosure to outsiders.
-CREATE FUNCTION school_private.bn_storage_school_writable(p_path text)
+CREATE OR REPLACE FUNCTION school_private.bn_storage_school_writable(p_path text)
 RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_prefix text:=split_part(p_path,'/',1); v_school uuid;
 BEGIN
